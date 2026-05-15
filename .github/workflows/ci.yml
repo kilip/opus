@@ -2,43 +2,80 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   api-test:
-    name: API (Go) Test
+    name: API (Go) — Lint & Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Go
-        uses: actions/setup-go@v5
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v3
         with:
-          go-version: '1.22'
+          client-id: ${{ secrets.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: api/go.mod
           cache-dependency-path: api/go.sum
-      - name: Run Tests
+
+      - name: Install golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          working-directory: ./api
+
+      - name: Run Unit Tests
         working-directory: api
-        run: go test -v ./...
+        run: go test -v -race -count=1 ./...
+
+      - name: Run Integration Tests
+        working-directory: api
+        run: go test -v -race -count=1 -tags integration ./...
 
   dash-test:
-    name: Dash (Next.js) Test
+    name: Dash (Next.js) — Lint, Test & Build
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./dash
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Node
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "22"
+
       - name: Install pnpm
         uses: pnpm/action-setup@v3
         with:
-          version: 8
+          package_json_file: "./dash/package.json"
+
       - name: Get pnpm store directory
         id: get-store-path
         shell: bash
-        run: |
-          echo "store_path=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
+        run: echo "store_path=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
+
       - name: Setup pnpm cache
         uses: actions/cache@v4
         with:
@@ -46,27 +83,44 @@ jobs:
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
+
       - name: Install dependencies
-        working-directory: dash
         run: pnpm install --frozen-lockfile
-      - name: Lint and Build
-        working-directory: dash
-        run: |
-          pnpm lint
-          pnpm build
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Unit Tests
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
 
   installer-test:
-    name: Installer Test
+    name: Installer — Syntax Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Set up Node
+      - name: Generate GitHub App Token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "22"
+
       - name: Install dependencies
         working-directory: installer
         run: npm install
+
       - name: Check syntax
         working-directory: installer
         run: node --check index.js

@@ -1,0 +1,62 @@
+{
+    "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+    "release-type": "go",
+    "bump-minor-pre-major": true,
+    "bump-patch-for-minor-pre-major": true,
+    "changelog-sections": [
+        {
+            "type": "feat",
+            "section": "New Features",
+            "hidden": false
+        },
+        {
+            "type": "fix",
+            "section": "Bug Fixes",
+            "hidden": false
+        },
+        {
+            "type": "docs",
+            "section": "Documentation",
+            "hidden": false
+        },
+        {
+            "type": "perf",
+            "section": "Performance",
+            "hidden": false
+        },
+        {
+            "type": "refactor",
+            "section": "Refactoring",
+            "hidden": true
+        },
+        {
+            "type": "chore",
+            "section": "Miscellaneous",
+            "hidden": true
+        },
+        {
+            "type": "ci",
+            "section": "CI",
+            "hidden": true
+        },
+        {
+            "type": "test",
+            "section": "Tests",
+            "hidden": true
+        }
+    ],
+    "packages": {
+        ".": {
+            "release-type": "go",
+            "package-name": "opus",
+            "changelog-path": "CHANGELOG.md",
+            "extra-files": [
+                {
+                    "type": "json",
+                    "path": "installer/package.json",
+                    "jsonpath": "$.version"
+                }
+            ]
+        }
+    }
+}
