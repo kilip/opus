@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/gofiber/fiber/v3"
@@ -213,7 +214,7 @@ func (h *AuthHandler) GitHubCallback(c fiber.Ctx) error {
 		Email  string `json:"email"`
 		Avatar string `json:"avatar_url"`
 	}
-	if err := fiber.Unmarshal(resp.Body, &ghUser); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&ghUser); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse user info")
 	}
 
