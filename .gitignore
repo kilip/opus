@@ -1,0 +1,31 @@
+# Go
+api/bin/
+api/tmp/
+*.exe
+*.test
+
+# Node.js
+dashboard/node_modules/
+dashboard/.next/
+dashboard/out/
+dashboard/.pnpm-store/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Docker
+*.log
+
+# EntGo generated (do not ignore, but do not manually edit)
+# ent/ is committed

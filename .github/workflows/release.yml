@@ -1,0 +1,57 @@
+# .github/workflows/release.yml
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    name: Cross-Compile & Publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+
+      - name: Cross-Compile Binaries
+        run: |
+          TARGETS=(
+            "linux/amd64"
+            "linux/arm64"
+            "darwin/amd64"
+            "darwin/arm64"
+            "windows/amd64"
+          )
+          mkdir -p dist
+          for TARGET in "${TARGETS[@]}"; do
+            OS=${TARGET%/*}
+            ARCH=${TARGET#*/}
+            OUTPUT="dist/opus-${OS}-${ARCH}"
+            if [ "$OS" = "windows" ]; then OUTPUT="${OUTPUT}.exe"; fi
+            GOOS=$OS GOARCH=$ARCH go build -o $OUTPUT ./api/cmd/opus
+          done
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Publish npm Package
+        run: npm publish
+        working-directory: ./installer
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

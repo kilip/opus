@@ -1,0 +1,28 @@
+# dashboard/Taskfile.yml
+version: "3"
+
+tasks:
+  setup:
+    desc: Setup Dashboard dependencies
+    cmds:
+      - echo "Setup Dashboard"
+
+  dev:
+    desc: Run Dashboard in dev mode
+    cmds:
+      - echo "Dev Dashboard"
+
+  build:
+    desc: Build Dashboard bundle
+    cmds:
+      - echo "Build Dashboard"
+
+  test:
+    desc: Run Dashboard tests
+    cmds:
+      - echo "Test Dashboard"
+
+  lint:
+    desc: Lint Dashboard
+    cmds:
+      - echo "Lint Dashboard"

@@ -1,0 +1,37 @@
+# opus/Taskfile.yml
+version: "3"
+
+includes:
+  api:
+    taskfile: ./api/Taskfile.yml
+    dir: ./api
+
+  dashboard:
+    taskfile: ./dashboard/Taskfile.yml
+    dir: ./dashboard
+
+tasks:
+  setup:
+    desc: Install all dependencies for api/ and dashboard/
+    deps: [api:setup, dashboard:setup]
+
+  dev:
+    desc: Start api/ and dashboard/ in development mode concurrently
+    deps: [api:dev, dashboard:dev]
+
+  build:
+    desc: Build api/ binary and dashboard/ production bundle
+    deps: [api:build, dashboard:build]
+
+  test:all:
+    desc: Run all tests across api/ and dashboard/
+    deps: [api:test:all, dashboard:test]
+
+  lint:
+    desc: Lint api/ and dashboard/
+    deps: [api:lint, dashboard:lint]
+
+  migrate:
+    desc: Run database migrations
+    cmds:
+      - task: api:migrate

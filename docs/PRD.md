@@ -2,7 +2,7 @@
 
 **Product:** Opus  
 **Version:** 1.0.1  
-**Status:** Draft  
+**Status:** Progress  
 **Last Updated:** 2026-05-15  
 **Authors:** Product & Architecture Team
 

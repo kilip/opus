@@ -1,0 +1,33 @@
+# api/Taskfile.yml
+version: "3"
+
+tasks:
+  setup:
+    desc: Setup API dependencies
+    cmds:
+      - echo "Setup API"
+
+  dev:
+    desc: Run API in dev mode
+    cmds:
+      - echo "Dev API"
+
+  build:
+    desc: Build API binary
+    cmds:
+      - echo "Build API"
+
+  test:all:
+    desc: Run all API tests
+    cmds:
+      - echo "Test API"
+
+  lint:
+    desc: Lint API
+    cmds:
+      - echo "Lint API"
+
+  migrate:
+    desc: Run migrations
+    cmds:
+      - echo "Migrate API"

@@ -1,0 +1,156 @@
+# Implementation Tasks — Master Index
+
+**Product:** Opus  
+**Version:** 1.0.1  
+**Status:** Progress  
+**Last Updated:** 2026-05-15  
+**Authors:** Product & Architecture Team
+
+---
+
+## How to Use This Document
+
+This file is the **master index and progress tracker** for the Opus v1.0.1 implementation. Each phase has a dedicated file with detailed, spoon-fed tasks for your AI agent.
+
+### Session Setup Checklist
+
+Before starting any session with your AI agent (Gemini), always provide:
+
+1. `docs/CONVENTIONS.md` — coding standards and rules
+2. `docs/PRD.md` — product requirements
+3. `docs/ARCHITECTURE.md` — architecture reference
+4. The relevant `docs/PHASE-X.md` — current phase tasks
+
+### Workflow Per Task
+
+```
+1. Open the relevant PHASE-X.md
+2. Read the task to Gemini with CONVENTIONS.md as context
+3. Review output against the acceptance criteria checklist
+4. Mark the task as done [ ] → [x]
+5. Proceed to the next task
+```
+
+---
+
+## Phase Overview
+
+| Phase | File | Description | Status |
+|-------|------|-------------|--------|
+| Phase 1 | `PHASE-1.md` | Monorepo Setup & Tooling | ✅ Completed |
+| Phase 2 | `PHASE-2.md` | API Foundation (Go Backend) | ⬜ Not Started |
+| Phase 3 | `PHASE-3.md` | Frontend Foundation (Next.js) | ⬜ Not Started |
+| Phase 4 | `PHASE-4.md` | Integration & Deployment | ⬜ Not Started |
+
+---
+
+## Phase 1 — Monorepo Setup & Tooling
+
+> **Goal:** Establish the monorepo structure, task automation, Docker configuration, and CI/CD scaffolding. No business logic. Zero to runnable skeleton.
+
+| ID | Task | Status |
+|----|------|--------|
+| P1-T1 | Initialize monorepo directory structure | [x] |
+| P1-T2 | Configure root Taskfile.yml | [x] |
+| P1-T3 | Configure root `.env.example` | [x] |
+| P1-T4 | Configure `docker-compose.yml` (production) | [x] |
+| P1-T5 | Configure `docker-compose.dev.yml` (development) | [x] |
+| P1-T6 | Scaffold GitHub Actions workflows | [x] |
+| P1-T7 | Write root `README.md` | [x] |
+
+---
+
+## Phase 2 — API Foundation (Go Backend)
+
+> **Goal:** Implement the full Go backend: configuration, database, authentication (OAuth2 + JWT), session management, CLI commands, and all API endpoints as defined in ARCHITECTURE.md.
+
+| ID | Task | Status |
+|----|------|--------|
+| P2-T1 | Initialize Go module and install dependencies | ⬜ |
+| P2-T2 | Implement configuration system (`internal/config/`) | ⬜ |
+| P2-T3 | Define EntGo schemas (`User`, `Session`) | ⬜ |
+| P2-T4 | Implement repository layer (`user`, `session`) | ⬜ |
+| P2-T5 | Implement auth service (`internal/service/auth.go`) | ⬜ |
+| P2-T6 | Implement user service (`internal/service/user.go`) | ⬜ |
+| P2-T7 | Implement middleware (`auth`, `logger`, `recovery`) | ⬜ |
+| P2-T8 | Implement auth handlers (OAuth2 + Email/Password + Refresh + Logout) | ⬜ |
+| P2-T9 | Implement user handler (`/user/me`) | ⬜ |
+| P2-T10 | Implement health check handler | ⬜ |
+| P2-T11 | Implement SSE handler (`/stream`) | ⬜ |
+| P2-T12 | Implement Cobra CLI commands | ⬜ |
+| P2-T13 | Configure `api/Taskfile.yml` | ⬜ |
+| P2-T14 | Write unit tests for auth service | ⬜ |
+| P2-T15 | Write integration tests for repository layer | ⬜ |
+
+---
+
+## Phase 3 — Frontend Foundation (Next.js)
+
+> **Goal:** Implement the Next.js 16 PWA: routing, authentication UI, dashboard shell, SSE streaming output, offline fallback, and service worker configuration.
+
+| ID | Task | Status |
+|----|------|--------|
+| P3-T1 | Initialize Next.js 16 project with TypeScript and pnpm | ⬜ |
+| P3-T2 | Install and configure Tailwind CSS v4, Shadcn/ui | ⬜ |
+| P3-T3 | Install and configure TanStack Query | ⬜ |
+| P3-T4 | Install and configure Serwist (PWA / Service Worker) | ⬜ |
+| P3-T5 | Implement API base client and response types (`lib/api/`) | ⬜ |
+| P3-T6 | Implement auth query hooks (`lib/api/auth.ts`) | ⬜ |
+| P3-T7 | Implement user query hooks (`lib/api/user.ts`) | ⬜ |
+| P3-T8 | Implement `useStream` hook (`lib/api/useStream.ts`) | ⬜ |
+| P3-T9 | Implement root layout and global styles | ⬜ |
+| P3-T10 | Implement auth layout and login page | ⬜ |
+| P3-T11 | Implement `AuthGuard` component | ⬜ |
+| P3-T12 | Implement dashboard layout and main dashboard page | ⬜ |
+| P3-T13 | Implement `StreamOutput` component | ⬜ |
+| P3-T14 | Implement offline fallback page | ⬜ |
+| P3-T15 | Configure PWA manifest (`manifest.webmanifest`) | ⬜ |
+| P3-T16 | Configure `dashboard/Taskfile.yml` | ⬜ |
+| P3-T17 | Write Vitest unit tests (hooks + utilities) | ⬜ |
+| P3-T18 | Write Playwright E2E tests (auth, dashboard, streaming, PWA) | ⬜ |
+
+---
+
+## Phase 4 — Integration & Deployment
+
+> **Goal:** Wire all components together, validate end-to-end flows, build the `npx opus install` wizard, and finalize CI/CD release pipelines.
+
+| ID | Task | Status |
+|----|------|--------|
+| P4-T1 | Validate end-to-end auth flow (OAuth2 → JWT → dashboard) | ⬜ |
+| P4-T2 | Validate SSE streaming end-to-end | ⬜ |
+| P4-T3 | Implement `npx opus install` wizard (Node.js installer package) | ⬜ |
+| P4-T4 | Implement `api/Dockerfile` and `dashboard/Dockerfile` | ⬜ |
+| P4-T5 | Finalize `docker-compose.yml` and `docker-compose.dev.yml` | ⬜ |
+| P4-T6 | Configure systemd / launchd / Windows Service registration | ⬜ |
+| P4-T7 | Finalize GitHub Actions `ci.yml` | ⬜ |
+| P4-T8 | Finalize GitHub Actions `build.yml` | ⬜ |
+| P4-T9 | Finalize GitHub Actions `release.yml` | ⬜ |
+| P4-T10 | Lighthouse PWA audit (target score ≥ 90) | ⬜ |
+| P4-T11 | Final cross-platform binary build validation | ⬜ |
+
+---
+
+## Progress Summary
+
+| Phase | Total Tasks | Done | Remaining |
+|-------|------------|------|-----------|
+| Phase 1 | 7 | 7 | 0 |
+| Phase 2 | 15 | 0 | 15 |
+| Phase 3 | 18 | 0 | 18 |
+| Phase 4 | 11 | 0 | 11 |
+| **Total** | **51** | **0** | **51** |
+
+---
+
+## Reference Documents
+
+| Document | Purpose |
+|----------|---------|
+| `docs/CONVENTIONS.md` | Coding conventions — provide to AI agent every session |
+| `docs/PRD.md` | Product requirements |
+| `docs/ARCHITECTURE.md` | Architecture reference |
+| `docs/PHASE-1.md` | Phase 1 detailed tasks |
+| `docs/PHASE-2.md` | Phase 2 detailed tasks |
+| `docs/PHASE-3.md` | Phase 3 detailed tasks |
+| `docs/PHASE-4.md` | Phase 4 detailed tasks |
