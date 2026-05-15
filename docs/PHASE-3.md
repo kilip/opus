@@ -86,12 +86,12 @@ Ensure `tsconfig.json` has:
 
 ### Acceptance Criteria
 
-- [ ] Directory `dashboard/app/` exists with `layout.tsx` and `page.tsx`.
-- [ ] File `dashboard/tsconfig.json` exists with `strict: true`.
-- [ ] File `dashboard/tailwind.config.ts` exists.
-- [ ] File `dashboard/.eslintrc.json` exists with `no-explicit-any: error`.
-- [ ] File `dashboard/package.json` exists with `next`, `react`, `typescript` as dependencies.
-- [ ] Running `pnpm dev` starts the development server without errors.
+- [x] Directory `dashboard/app/` exists with `layout.tsx` and `page.tsx`.
+- [x] File `dashboard/tsconfig.json` exists with `strict: true`.
+- [x] File `dashboard/tailwind.config.ts` exists.
+- [x] File `dashboard/.eslintrc.json` exists with `no-explicit-any: error`.
+- [x] File `dashboard/package.json` exists with `next`, `react`, `typescript` as dependencies.
+- [x] Running `pnpm dev` starts the development server without errors.
 
 ---
 
@@ -130,10 +130,10 @@ pnpm dlx shadcn@latest add button input label card avatar separator
 
 ### Acceptance Criteria
 
-- [ ] `tailwindcss@4.x` is listed in `package.json`.
-- [ ] `dashboard/components/ui/` contains Shadcn/ui components: `button`, `input`, `label`, `card`, `avatar`, `separator`.
-- [ ] `dashboard/app/globals.css` uses `@import "tailwindcss"` (Tailwind v4 syntax).
-- [ ] Running `pnpm build` compiles without Tailwind errors.
+- [x] `tailwindcss@4.x` is listed in `package.json`.
+- [x] `dashboard/components/ui/` contains Shadcn/ui components: `button`, `input`, `label`, `card`, `avatar`, `separator`.
+- [x] `dashboard/app/globals.css` uses `@import "tailwindcss"` (Tailwind v4 syntax).
+- [x] Running `pnpm build` compiles without Tailwind errors.
 
 ---
 
@@ -194,11 +194,11 @@ Wrap `children` in `QueryProvider` inside `dashboard/app/layout.tsx`.
 
 ### Acceptance Criteria
 
-- [ ] `@tanstack/react-query` v5.x is in `package.json`.
-- [ ] File `dashboard/components/shared/QueryProvider.tsx` exists.
-- [ ] Root `layout.tsx` wraps children with `QueryProvider`.
-- [ ] `ReactQueryDevtools` is included.
-- [ ] Running `pnpm build` compiles without errors.
+- [x] `@tanstack/react-query` v5.x is in `package.json`.
+- [x] File `dashboard/components/shared/QueryProvider.tsx` exists.
+- [x] Root `layout.tsx` wraps children with `QueryProvider`.
+- [x] `ReactQueryDevtools` is included.
+- [x] Running `pnpm build` compiles without errors.
 
 ---
 
@@ -272,12 +272,12 @@ serwist.addEventListeners();
 
 ### Acceptance Criteria
 
-- [ ] `@serwist/next` and `serwist` are in `package.json`.
-- [ ] File `dashboard/sw.ts` exists with correct caching strategies.
-- [ ] `dashboard/next.config.ts` wraps with `withSerwist`.
-- [ ] `NetworkOnly` is applied to `/api/*` routes.
-- [ ] `CacheFirst` is applied to `/offline` route.
-- [ ] Running `pnpm build` generates `public/sw.js`.
+- [x] `@serwist/next` and `serwist` are in `package.json`.
+- [x] File `dashboard/sw.ts` exists with correct caching strategies.
+- [x] `dashboard/next.config.ts` wraps with `withSerwist`.
+- [x] `NetworkOnly` is applied to `/api/*` routes.
+- [x] `CacheFirst` is applied to `/offline` route.
+- [x] Running `pnpm build` generates `public/sw.js`.
 
 ---
 
@@ -373,12 +373,12 @@ export const apiClient = {
 
 ### Acceptance Criteria
 
-- [ ] File `dashboard/lib/api/types.ts` exists with all types.
-- [ ] File `dashboard/lib/api/client.ts` exists.
-- [ ] `apiClient.get` and `apiClient.post` are exported.
-- [ ] `credentials: "include"` is set on all requests.
-- [ ] No `any` types used.
-- [ ] Code compiles with TypeScript strict mode.
+- [x] File `dashboard/lib/api/types.ts` exists with all types.
+- [x] File `dashboard/lib/api/client.ts` exists.
+- [x] `apiClient.get` and `apiClient.post` are exported.
+- [x] `credentials: "include"` is set on all requests.
+- [x] No `any` types used.
+- [x] Code compiles with TypeScript strict mode.
 
 ---
 
@@ -441,12 +441,12 @@ Update root layout to wrap with `AuthProvider`.
 
 ### Acceptance Criteria
 
-- [ ] File `dashboard/lib/api/auth.ts` exists with `useRefreshToken` and `useLogout`.
-- [ ] File `dashboard/lib/api/AuthContext.tsx` exists.
-- [ ] Root layout wraps with `AuthProvider`.
-- [ ] `useLogout` invalidates all queries on success.
-- [ ] Access token is never stored in `localStorage`.
-- [ ] Code compiles with TypeScript strict mode.
+- [x] File `dashboard/lib/api/auth.ts` exists with `useRefreshToken` and `useLogout`.
+- [x] File `dashboard/lib/api/AuthContext.tsx` exists.
+- [x] Root layout wraps with `AuthProvider`.
+- [x] `useLogout` invalidates all queries on success.
+- [x] Access token is never stored in `localStorage`.
+- [x] Code compiles with TypeScript strict mode.
 
 ---
 
@@ -477,10 +477,10 @@ export function useCurrentUser(accessToken: string | null) {
 
 ### Acceptance Criteria
 
-- [ ] File `dashboard/lib/api/user.ts` exists with `useCurrentUser` hook.
-- [ ] Query is disabled when `accessToken` is null.
-- [ ] Query sends `Authorization: Bearer <token>` header.
-- [ ] Code compiles with TypeScript strict mode.
+- [x] File `dashboard/lib/api/user.ts` exists with `useCurrentUser` hook.
+- [x] Query is disabled when `accessToken` is null.
+- [x] Query sends `Authorization: Bearer <token>` header.
+- [x] Code compiles with TypeScript strict mode.
 
 ---
 
@@ -543,12 +543,12 @@ export function useStream(accessToken: string | null) {
 
 ### Acceptance Criteria
 
-- [ ] File `dashboard/lib/api/useStream.ts` exists.
-- [ ] Hook accepts `accessToken: string | null`.
-- [ ] Hook returns `{ output, isConnected, error, clearOutput }`.
-- [ ] `EventSource` is closed on unmount.
-- [ ] Hook does nothing when `accessToken` is null.
-- [ ] Code compiles with TypeScript strict mode.
+- [x] File `dashboard/lib/api/useStream.ts` exists.
+- [x] Hook accepts `accessToken: string | null`.
+- [x] Hook returns `{ output, isConnected, error, clearOutput }`.
+- [x] `EventSource` is closed on unmount.
+- [x] Hook does nothing when `accessToken` is null.
+- [x] Code compiles with TypeScript strict mode.
 
 ---
 
@@ -607,12 +607,12 @@ Use Tailwind v4 syntax:
 
 ### Acceptance Criteria
 
-- [ ] File `dashboard/app/layout.tsx` exists.
-- [ ] Root layout wraps with `AuthProvider` and `QueryProvider`.
-- [ ] `metadata.manifest` points to `/manifest.webmanifest`.
-- [ ] `metadata.themeColor` is set.
-- [ ] File `dashboard/app/globals.css` uses `@import "tailwindcss"` (v4 syntax).
-- [ ] Code compiles without errors.
+- [x] File `dashboard/app/layout.tsx` exists.
+- [x] Root layout wraps with `AuthProvider` and `QueryProvider`.
+- [x] `metadata.manifest` points to `/manifest.webmanifest`.
+- [x] `metadata.themeColor` is set.
+- [x] File `dashboard/app/globals.css` uses `@import "tailwindcss"` (v4 syntax).
+- [x] Code compiles without errors.
 
 ---
 
@@ -647,14 +647,14 @@ Login page with:
 
 ### Acceptance Criteria
 
-- [ ] File `dashboard/app/(auth)/layout.tsx` exists.
-- [ ] File `dashboard/app/(auth)/login/page.tsx` exists.
-- [ ] Login page has "Sign in with Google" button linking to `/auth/google`.
-- [ ] Login page has "Sign in with GitHub" button linking to `/auth/github`.
-- [ ] Dev-only email form is conditionally rendered.
-- [ ] Uses Shadcn/ui `Button` component.
-- [ ] No inline styles.
-- [ ] Code compiles without errors.
+- [x] File `dashboard/app/(auth)/layout.tsx` exists.
+- [x] File `dashboard/app/(auth)/login/page.tsx` exists.
+- [x] Login page has "Sign in with Google" button linking to `/auth/google`.
+- [x] Login page has "Sign in with GitHub" button linking to `/auth/github`.
+- [x] Dev-only email form is conditionally rendered.
+- [x] Uses Shadcn/ui `Button` component.
+- [x] No inline styles.
+- [x] Code compiles without errors.
 
 ---
 
@@ -715,12 +715,12 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
 ### Acceptance Criteria
 
-- [ ] File `dashboard/components/shared/AuthGuard.tsx` exists.
-- [ ] Component is a Client Component (`"use client"`).
-- [ ] Attempts silent refresh on mount if no access token.
-- [ ] Redirects to `/login` on refresh failure.
-- [ ] Shows loading state while refresh is pending.
-- [ ] Code compiles without errors.
+- [x] File `dashboard/components/shared/AuthGuard.tsx` exists.
+- [x] Component is a Client Component (`"use client"`).
+- [x] Attempts silent refresh on mount if no access token.
+- [x] Redirects to `/login` on refresh failure.
+- [x] Shows loading state while refresh is pending.
+- [x] Code compiles without errors.
 
 ---
 
@@ -748,12 +748,12 @@ Main dashboard page:
 
 ### Acceptance Criteria
 
-- [ ] File `dashboard/app/(dashboard)/layout.tsx` exists with `AuthGuard`.
-- [ ] File `dashboard/app/(dashboard)/page.tsx` exists.
-- [ ] Dashboard page displays user name and avatar.
-- [ ] Dashboard page includes `StreamOutput` component.
-- [ ] Dashboard layout wraps with `AuthGuard`.
-- [ ] Code compiles without errors.
+- [x] File `dashboard/app/(dashboard)/layout.tsx` exists with `AuthGuard`.
+- [x] File `dashboard/app/(dashboard)/page.tsx` exists.
+- [x] Dashboard page displays user name and avatar.
+- [x] Dashboard page includes `StreamOutput` component.
+- [x] Dashboard layout wraps with `AuthGuard`.
+- [x] Code compiles without errors.
 
 ---
 
@@ -787,14 +787,14 @@ interface StreamOutputProps {
 
 ### Acceptance Criteria
 
-- [ ] File `dashboard/components/shared/StreamOutput.tsx` exists.
-- [ ] Component accepts `{ output, isConnected, error }` props.
-- [ ] Displays output in monospace font.
-- [ ] Shows connection status indicator.
-- [ ] Auto-scrolls to bottom on new content.
-- [ ] Shows empty state message when output is empty.
-- [ ] No inline styles — Tailwind only.
-- [ ] Code compiles without errors.
+- [x] File `dashboard/components/shared/StreamOutput.tsx` exists.
+- [x] Component accepts `{ output, isConnected, error }` props.
+- [x] Displays output in monospace font.
+- [x] Shows connection status indicator.
+- [x] Auto-scrolls to bottom on new content.
+- [x] Shows empty state message when output is empty.
+- [x] No inline styles — Tailwind only.
+- [x] Code compiles without errors.
 
 ---
 
@@ -818,13 +818,13 @@ Implement the PWA offline fallback page shown when the server is unreachable.
 
 ### Acceptance Criteria
 
-- [ ] File `dashboard/app/offline/page.tsx` exists.
-- [ ] Page is a Client Component (`"use client"`).
-- [ ] Displays "You are offline" message.
-- [ ] Includes a "Try again" button that calls `window.location.reload()`.
-- [ ] Page is centered and full-screen.
-- [ ] No inline styles.
-- [ ] Code compiles without errors.
+- [x] File `dashboard/app/offline/page.tsx` exists.
+- [x] Page is a Client Component (`"use client"`).
+- [x] Displays "You are offline" message.
+- [x] Includes a "Try again" button that calls `window.location.reload()`.
+- [x] Page is centered and full-screen.
+- [x] No inline styles.
+- [x] Code compiles without errors.
 
 ---
 
@@ -876,12 +876,12 @@ These will be replaced with real icons before production release.
 
 ### Acceptance Criteria
 
-- [ ] File `dashboard/public/manifest.webmanifest` exists.
-- [ ] Contains `name`, `short_name`, `description`, `start_url`, `display`.
-- [ ] Contains `background_color` and `theme_color`.
-- [ ] Contains two icon entries: 192x192 and 512x512.
-- [ ] Both icon files exist in `dashboard/public/icons/`.
-- [ ] Root layout `metadata.manifest` points to `/manifest.webmanifest`.
+- [x] File `dashboard/public/manifest.webmanifest` exists.
+- [x] Contains `name`, `short_name`, `description`, `start_url`, `display`.
+- [x] Contains `background_color` and `theme_color`.
+- [x] Contains two icon entries: 192x192 and 512x512.
+- [x] Both icon files exist in `dashboard/public/icons/`.
+- [x] Root layout `metadata.manifest` points to `/manifest.webmanifest`.
 
 ---
 
@@ -946,10 +946,10 @@ tasks:
 
 ### Acceptance Criteria
 
-- [ ] File `dashboard/Taskfile.yml` exists.
-- [ ] `task setup` installs dependencies and Playwright browsers.
-- [ ] All 7 tasks are defined.
-- [ ] Running `task --list` from `dashboard/` lists all tasks without errors.
+- [x] File `dashboard/Taskfile.yml` exists.
+- [x] `task setup` installs dependencies and Playwright browsers.
+- [x] All 7 tasks are defined.
+- [x] Running `task --list` from `dashboard/` lists all tasks without errors.
 
 ---
 
@@ -1026,12 +1026,12 @@ Add to `dashboard/package.json`:
 
 ### Acceptance Criteria
 
-- [ ] `vitest`, `@testing-library/react` are in `devDependencies`.
-- [ ] File `dashboard/vitest.config.ts` exists.
-- [ ] File `dashboard/vitest.setup.ts` exists.
-- [ ] `lib/utils/cn.test.ts` exists with 3 test cases.
-- [ ] `lib/api/useStream.test.ts` exists with 3 test cases.
-- [ ] Running `task test` passes all tests.
+- [x] `vitest`, `@testing-library/react` are in `devDependencies`.
+- [x] File `dashboard/vitest.config.ts` exists.
+- [x] File `dashboard/vitest.setup.ts` exists.
+- [x] `lib/utils/cn.test.ts` exists with 3 test cases.
+- [x] `lib/api/useStream.test.ts` exists with 3 test cases.
+- [x] Running `task test` passes all tests.
 
 ---
 
@@ -1123,13 +1123,13 @@ export default defineConfig({
 
 ### Acceptance Criteria
 
-- [ ] `@playwright/test` is in `devDependencies`.
-- [ ] File `dashboard/playwright.config.ts` exists.
-- [ ] File `e2e/auth.spec.ts` exists with 3 test cases.
-- [ ] File `e2e/dashboard.spec.ts` exists with 2 test cases.
-- [ ] File `e2e/stream.spec.ts` exists with 2 test cases.
-- [ ] File `e2e/pwa.spec.ts` exists with 3 test cases.
-- [ ] Running `task test:e2e` executes all tests.
+- [x] `@playwright/test` is in `devDependencies`.
+- [x] File `dashboard/playwright.config.ts` exists.
+- [x] File `e2e/auth.spec.ts` exists with 3 test cases.
+- [x] File `e2e/dashboard.spec.ts` exists with 2 test cases.
+- [x] File `e2e/stream.spec.ts` exists with 2 test cases.
+- [x] File `e2e/pwa.spec.ts` exists with 3 test cases.
+- [x] Running `task test:e2e` executes all tests.
 
 ---
 
@@ -1137,13 +1137,13 @@ export default defineConfig({
 
 Before proceeding to Phase 4, verify:
 
-- [ ] All 18 tasks (P3-T1 through P3-T18) are marked complete.
-- [ ] Running `pnpm build` produces a production build without errors.
-- [ ] Running `task test` passes all Vitest unit tests.
-- [ ] Running `task test:e2e` passes all Playwright E2E tests.
-- [ ] Running `task lint` passes ESLint and TypeScript checks.
-- [ ] `/manifest.webmanifest` is accessible at runtime.
-- [ ] `/offline` page renders correctly.
-- [ ] Service Worker (`/sw.js`) is served.
-- [ ] Login page shows both OAuth buttons.
-- [ ] Unauthenticated visits to `/` redirect to `/login`.
+- [x] All 18 tasks (P3-T1 through P3-T18) are marked complete.
+- [x] Running `pnpm build` produces a production build without errors.
+- [x] Running `task test` passes all Vitest unit tests.
+- [x] Running `task test:e2e` passes all Playwright E2E tests.
+- [x] Running `task lint` passes ESLint and TypeScript checks.
+- [x] `/manifest.webmanifest` is accessible at runtime.
+- [x] `/offline` page renders correctly.
+- [x] Service Worker (`/sw.js`) is served.
+- [x] Login page shows both OAuth buttons.
+- [x] Unauthenticated visits to `/` redirect to `/login`.

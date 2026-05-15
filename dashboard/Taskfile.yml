@@ -5,24 +5,35 @@ tasks:
   setup:
     desc: Setup Dashboard dependencies
     cmds:
-      - echo "Setup Dashboard"
+      - pnpm install
+      - pnpm exec playwright install --with-deps
 
   dev:
     desc: Run Dashboard in dev mode
     cmds:
-      - echo "Dev Dashboard"
+      - pnpm dev
 
   build:
     desc: Build Dashboard bundle
     cmds:
-      - echo "Build Dashboard"
+      - pnpm build
 
   test:
-    desc: Run Dashboard tests
+    desc: Run Dashboard unit tests
     cmds:
-      - echo "Test Dashboard"
+      - pnpm test
+
+  test:e2e:
+    desc: Run Dashboard E2E tests
+    cmds:
+      - pnpm exec playwright test
 
   lint:
     desc: Lint Dashboard
     cmds:
-      - echo "Lint Dashboard"
+      - pnpm lint
+
+  format:
+    desc: Format Dashboard code
+    cmds:
+      - pnpm exec biome format . --write

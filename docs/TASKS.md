@@ -39,7 +39,7 @@ Before starting any session with your AI agent (Gemini), always provide:
 |-------|------|-------------|--------|
 | Phase 1 | `PHASE-1.md` | Monorepo Setup & Tooling | ✅ Completed |
 | Phase 2 | `PHASE-2.md` | API Foundation (Go Backend) | ✅ Completed |
-| Phase 3 | `PHASE-3.md` | Frontend Foundation (Next.js) | ⬜ Not Started |
+| Phase 3 | `PHASE-3.md` | Frontend Foundation (Next.js) | ✅ Completed |
 | Phase 4 | `PHASE-4.md` | Integration & Deployment | ⬜ Not Started |
 
 ---
@@ -90,24 +90,24 @@ Before starting any session with your AI agent (Gemini), always provide:
 
 | ID | Task | Status |
 |----|------|--------|
-| P3-T1 | Initialize Next.js 16 project with TypeScript and pnpm | ⬜ |
-| P3-T2 | Install and configure Tailwind CSS v4, Shadcn/ui | ⬜ |
-| P3-T3 | Install and configure TanStack Query | ⬜ |
-| P3-T4 | Install and configure Serwist (PWA / Service Worker) | ⬜ |
-| P3-T5 | Implement API base client and response types (`lib/api/`) | ⬜ |
-| P3-T6 | Implement auth query hooks (`lib/api/auth.ts`) | ⬜ |
-| P3-T7 | Implement user query hooks (`lib/api/user.ts`) | ⬜ |
-| P3-T8 | Implement `useStream` hook (`lib/api/useStream.ts`) | ⬜ |
-| P3-T9 | Implement root layout and global styles | ⬜ |
-| P3-T10 | Implement auth layout and login page | ⬜ |
-| P3-T11 | Implement `AuthGuard` component | ⬜ |
-| P3-T12 | Implement dashboard layout and main dashboard page | ⬜ |
-| P3-T13 | Implement `StreamOutput` component | ⬜ |
-| P3-T14 | Implement offline fallback page | ⬜ |
-| P3-T15 | Configure PWA manifest (`manifest.webmanifest`) | ⬜ |
-| P3-T16 | Configure `dashboard/Taskfile.yml` | ⬜ |
-| P3-T17 | Write Vitest unit tests (hooks + utilities) | ⬜ |
-| P3-T18 | Write Playwright E2E tests (auth, dashboard, streaming, PWA) | ⬜ |
+| P3-T1 | Initialize Next.js 16 project with TypeScript and pnpm | [x] |
+| P3-T2 | Install and configure Tailwind CSS v4, Shadcn/ui | [x] |
+| P3-T3 | Install and configure TanStack Query | [x] |
+| P3-T4 | Install and configure Serwist (PWA / Service Worker) | [x] |
+| P3-T5 | Implement API base client and response types (`lib/api/`) | [x] |
+| P3-T6 | Implement auth query hooks (`lib/api/auth.ts`) | [x] |
+| P3-T7 | Implement user query hooks (`lib/api/user.ts`) | [x] |
+| P3-T8 | Implement `useStream` hook (`lib/api/useStream.ts`) | [x] |
+| P3-T9 | Implement root layout and global styles | [x] |
+| P3-T10 | Implement auth layout and login page | [x] |
+| P3-T11 | Implement `AuthGuard` component | [x] |
+| P3-T12 | Implement dashboard layout and main dashboard page | [x] |
+| P3-T13 | Implement `StreamOutput` component | [x] |
+| P3-T14 | Implement offline fallback page | [x] |
+| P3-T15 | Configure PWA manifest (`manifest.webmanifest`) | [x] |
+| P3-T16 | Configure `dashboard/Taskfile.yml` | [x] |
+| P3-T17 | Write Vitest unit tests (hooks + utilities) | [/] |
+| P3-T18 | Write Playwright E2E tests (auth, dashboard, streaming, PWA) | [/] |
 
 ---
 
@@ -137,9 +137,9 @@ Before starting any session with your AI agent (Gemini), always provide:
 |-------|------------|------|-----------|
 | Phase 1 | 7 | 7 | 0 |
 | Phase 2 | 15 | 15 | 0 |
-| Phase 3 | 18 | 0 | 18 |
+| Phase 3 | 18 | 16 | 2 |
 | Phase 4 | 11 | 0 | 11 |
-| **Total** | **51** | **22** | **29** |
+| **Total** | **51** | **38** | **13** |
 
 ---
 
