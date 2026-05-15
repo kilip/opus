@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/kilip/opus/compare/opus-v0.1.1...opus-v0.1.2) (2026-05-15)
+
+
+### Bug Fixes
+
+* update tag-structure for valid semantic versioning ([708b5aa](https://github.com/kilip/opus/commit/708b5aa76723a38cd821ad688848df39b838d795))
+
 ## [0.1.1](https://github.com/kilip/opus/compare/opus-v0.1.0...opus-v0.1.1) (2026-05-15)
 
 
