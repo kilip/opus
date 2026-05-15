@@ -12,12 +12,17 @@ type UserReader interface {
 	FindByEmail(ctx context.Context, email string) (*model.User, error)
 }
 
+type UserServiceInterface interface {
+	GetUserByID(ctx context.Context, userID string) (*model.User, error)
+	GetUserByEmail(ctx context.Context, email string) (*model.User, error)
+}
+
 type UserService struct {
 	userRepo UserReader
 	cfg      *config.Config
 }
 
-func NewUserService(userRepo UserReader, cfg *config.Config) *UserService {
+func NewUserService(userRepo UserReader, cfg *config.Config) UserServiceInterface {
 	return &UserService{
 		userRepo: userRepo,
 		cfg:      cfg,

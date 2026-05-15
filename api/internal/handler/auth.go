@@ -15,12 +15,12 @@ import (
 )
 
 type AuthHandler struct {
-	authService *service.AuthService
-	userService *service.UserService
+	authService service.AuthServiceInterface
+	userService service.UserServiceInterface
 	cfg         *config.Config
 }
 
-func NewAuthHandler(authService *service.AuthService, userService *service.UserService, cfg *config.Config) *AuthHandler {
+func NewAuthHandler(authService service.AuthServiceInterface, userService service.UserServiceInterface, cfg *config.Config) *AuthHandler {
 	return &AuthHandler{
 		authService: authService,
 		userService: userService,

@@ -27,13 +27,21 @@ type SessionRepository interface {
 	RevokeAllByUserID(ctx context.Context, userID string) error
 }
 
+type AuthServiceInterface interface {
+	UpsertOAuthUser(ctx context.Context, provider, providerID, email, name, avatarURL string) (*model.User, error)
+	IssueTokens(ctx context.Context, userID string) (string, string, error)
+	RefreshTokens(ctx context.Context, rawRefreshToken string) (string, string, error)
+	Logout(ctx context.Context, rawRefreshToken string) error
+	ValidateAccessToken(tokenString string) (string, error)
+}
+
 type AuthService struct {
 	userRepo    UserRepository
 	sessionRepo SessionRepository
 	cfg         *config.Config
 }
 
-func NewAuthService(userRepo UserRepository, sessionRepo SessionRepository, cfg *config.Config) *AuthService {
+func NewAuthService(userRepo UserRepository, sessionRepo SessionRepository, cfg *config.Config) AuthServiceInterface {
 	return &AuthService{
 		userRepo:    userRepo,
 		sessionRepo: sessionRepo,
