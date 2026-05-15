@@ -40,6 +40,19 @@ func (h *AuthHandler) getGoogleConfig() *oauth2.Config {
 	}
 }
 
+func (h *AuthHandler) getGitHubConfig() *oauth2.Config {
+	return &oauth2.Config{
+		ClientID:     h.cfg.Auth.GitHub.ClientID,
+		ClientSecret: h.cfg.Auth.GitHub.ClientSecret,
+		RedirectURL:  h.cfg.Auth.GitHub.RedirectURL,
+		Endpoint: oauth2.Endpoint{
+			AuthURL:  "https://github.com/login/oauth/authorize",
+			TokenURL: "https://github.com/login/oauth/access_token",
+		},
+		Scopes: []string{"user:email"},
+	}
+}
+
 // Login handles email/password login (dev only)
 func (h *AuthHandler) Login(c fiber.Ctx) error {
 	if h.cfg.Server.Env != "development" {
@@ -164,10 +177,61 @@ func (h *AuthHandler) GoogleCallback(c fiber.Ctx) error {
 
 	h.setRefreshTokenCookie(c, refreshToken)
 
-	// Redirect to dash with access token in query or fragment
-	// In production, we might use a postMessage or redirect to a callback page
+	// Redirect to dash with access token
 	return c.Redirect().To(fmt.Sprintf("%s/auth/callback?token=%s", "http://localhost:3000", accessToken))
 }
+
+// GitHubLogin redirects to GitHub OAuth
+func (h *AuthHandler) GitHubLogin(c fiber.Ctx) error {
+	url := h.getGitHubConfig().AuthCodeURL("state")
+	return c.Redirect().To(url)
+}
+
+// GitHubCallback handles GitHub OAuth callback
+func (h *AuthHandler) GitHubCallback(c fiber.Ctx) error {
+	code := c.Query("code")
+	if code == "" {
+		return fiber.NewError(fiber.StatusBadRequest, "Missing code")
+	}
+
+	tok, err := h.getGitHubConfig().Exchange(c.Context(), code)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to exchange code")
+	}
+
+	// Fetch GitHub user info (basic implementation)
+	client := h.getGitHubConfig().Client(c.Context(), tok)
+	resp, err := client.Get("https://api.github.com/user")
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get user info")
+	}
+	defer resp.Body.Close()
+
+	var ghUser struct {
+		ID     int    `json:"id"`
+		Login  string `json:"login"`
+		Email  string `json:"email"`
+		Avatar string `json:"avatar_url"`
+	}
+	if err := fiber.Unmarshal(resp.Body, &ghUser); err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to parse user info")
+	}
+
+	user, err := h.authService.UpsertOAuthUser(c.Context(), "github", fmt.Sprintf("%d", ghUser.ID), ghUser.Email, ghUser.Login, ghUser.Avatar)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to upsert user")
+	}
+
+	accessToken, refreshToken, err := h.authService.IssueTokens(c.Context(), user.ID)
+	if err != nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "Failed to issue tokens")
+	}
+
+	h.setRefreshTokenCookie(c, refreshToken)
+
+	return c.Redirect().To(fmt.Sprintf("%s/auth/callback?token=%s", "http://localhost:3000", accessToken))
+}
+
 
 func (h *AuthHandler) setRefreshTokenCookie(c fiber.Ctx, refreshToken string) {
 	c.Cookie(&fiber.Cookie{

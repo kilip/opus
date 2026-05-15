@@ -1,15 +1,21 @@
 version: "3"
 
+env:
+  GOBIN: "{{.HOME}}/.local/bin"
+
 tasks:
   setup:
-    desc: Install Go module dependencies
+    desc: Install Go module dependencies and tools
     cmds:
       - go mod download
+      - go install github.com/air-verse/air@latest
+      - go install go.uber.org/mock/mockgen@latest
+      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
   dev:
-    desc: Run API in development mode
+    desc: Run API in development mode with live reload
     cmds:
-      - go run ./cmd/opus start
+      - air
 
   build:
     desc: Build production binary
@@ -19,28 +25,34 @@ tasks:
   test:
     desc: Run unit tests
     cmds:
-      - go test ./internal/...
+      - go test -v -race ./internal/...
 
   test:integration:
     desc: Run integration tests
     cmds:
-      - go test -tags=integration ./internal/...
+      - go test -v -tags=integration -race ./internal/...
 
   test:all:
     desc: Run all tests
     deps: [test, test:integration]
-
-  lint:
-    desc: Run golangci-lint
-    cmds:
-      - golangci-lint run ./...
 
   ent:generate:
     desc: Regenerate EntGo code from schema
     cmds:
       - go generate ./ent/...
 
+  mock:generate:
+    desc: Generate mocks for all repository interfaces
+    cmds:
+      - mockgen -source=internal/service/auth.go -destination=internal/mocks/mock_auth_repo.go -package=mocks
+      - mockgen -source=internal/service/user.go -destination=internal/mocks/mock_user_repo.go -package=mocks
+
   migrate:
-    desc: Run database migrations
+    desc: Run database migrations (auto-run on startup via GetDatabase)
     cmds:
       - go run ./cmd/opus migrate
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - golangci-lint run ./...
