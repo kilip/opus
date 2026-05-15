@@ -49,30 +49,19 @@ Opus is a self-hosted, single-user AI agent platform. The system consists of two
 
 Both components are distributed as a single installable unit via `npx opus install`, Docker, or pre-built binaries.
 
-```
-┌─────────────────────────────────────────────┐
-│                  User Device                │
-│                                             │
-│   ┌─────────────────────────────────────┐   │
-│   │         opus-web (PWA)              │   │
-│   │   Next.js 16 + Serwist + Shadcn     │   │
-│   └────────────────┬────────────────────┘   │
-│                    │ HTTP / SSE              │
-└────────────────────┼────────────────────────┘
-                     │
-┌────────────────────┼────────────────────────┐
-│               Host Machine                  │
-│                    │                        │
-│   ┌────────────────▼────────────────────┐   │
-│   │         opus-api (Go)               │   │
-│   │   GoFiber v3 + EntGo + Viper        │   │
-│   └────────────────┬────────────────────┘   │
-│                    │                        │
-│   ┌────────────────▼────────────────────┐   │
-│   │   Database                          │   │
-│   │   SQLite  or  PostgreSQL            │   │
-│   └─────────────────────────────────────┘   │
-└─────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph "User Device"
+        WEB["opus-web (PWA)<br/>Next.js 16 + Serwist + Shadcn"]
+    end
+
+    subgraph "Host Machine"
+        API["opus-api (Go)<br/>GoFiber v3 + EntGo + Viper"]
+        DB[("Database<br/>SQLite or PostgreSQL")]
+    end
+
+    WEB -- "HTTP / SSE" --> API
+    API --> DB
 ```
 
 ---
@@ -81,29 +70,37 @@ Both components are distributed as a single installable unit via `npx opus insta
 
 ### Request Flow
 
-```
-Browser (opus-web)
-  │
-  ├── REST Request ──────────► GoFiber Router
-  │                                  │
-  │                            Middleware
-  │                         (Auth, Logger, Recovery)
-  │                                  │
-  │                              Handler
-  │                                  │
-  │                             Service (Usecase)
-  │                                  │
-  │                            Repository
-  │                                  │
-  │                           EntGo Client
-  │                                  │
-  │                        SQLite / PostgreSQL
-  │
-  └── SSE Stream ────────────► GoFiber SSE Handler
-                                     │
-                                 Service (Usecase)
-                                     │
-                              AI Provider (future)
+```mermaid
+graph TD
+    BROWSER["Browser (opus-web)"]
+    
+    subgraph "REST Path"
+        ROUTER["GoFiber Router"]
+        MIDDLEWARE["Middleware<br/>(Auth, Logger, Recovery)"]
+        HANDLER["Handler"]
+        SERVICE["Service (Usecase)"]
+        REPO["Repository"]
+        ENT["EntGo Client"]
+        DB[("SQLite / PostgreSQL")]
+    end
+
+    subgraph "SSE Path"
+        SSE_HANDLER["GoFiber SSE Handler"]
+        SSE_SERVICE["Service (Usecase)"]
+        AI["AI Provider (future)"]
+    end
+
+    BROWSER -- "REST Request" --> ROUTER
+    ROUTER --> MIDDLEWARE
+    MIDDLEWARE --> HANDLER
+    HANDLER --> SERVICE
+    SERVICE --> REPO
+    REPO --> ENT
+    ENT --> DB
+
+    BROWSER -- "SSE Stream" --> SSE_HANDLER
+    SSE_HANDLER --> SSE_SERVICE
+    SSE_SERVICE --> AI
 ```
 
 ### Component Responsibilities
@@ -183,16 +180,18 @@ opus-api/
 
 Dependency direction is strictly inward. Outer layers depend on inner layers; inner layers have no knowledge of outer layers.
 
-```
-┌─────────────────────────────────────┐
-│             handler/                │  ← HTTP I/O, framework-aware
-├─────────────────────────────────────┤
-│             service/                │  ← Business logic, framework-agnostic
-├─────────────────────────────────────┤
-│           repository/               │  ← Data access, EntGo-aware
-├─────────────────────────────────────┤
-│             model/                  │  ← Pure domain entities, no dependencies
-└─────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph "Layers"
+        HANDLER["handler/<br/>HTTP I/O, framework-aware"]
+        SERVICE["service/<br/>Business logic, framework-agnostic"]
+        REPO["repository/<br/>Data access, EntGo-aware"]
+        MODEL["model/<br/>Pure domain entities, no dependencies"]
+    end
+
+    HANDLER --> SERVICE
+    SERVICE --> REPO
+    REPO --> MODEL
 ```
 
 **Naming Convention:**
@@ -297,21 +296,22 @@ All singletons are initialized once at startup and are safe for concurrent read 
 
 #### OAuth2 Flow
 
-```
-Browser                opus-api                   OAuth Provider
-   │                       │                            │
-   ├── GET /auth/{provider} ──►                          │
-   │                       ├── Redirect to provider ───►│
-   │                       │                            │
-   │◄── Redirect with code ─────────────────────────────┤
-   │                       │                            │
-   ├── GET /auth/{provider}/callback?code=... ──►        │
-   │                       ├── Exchange code for token ─►│
-   │                       │◄── User info ──────────────┤
-   │                       │                            │
-   │                       ├── Upsert user in DB        │
-   │                       ├── Issue access + refresh token
-   │◄── Set-Cookie (refresh) + JSON (access) ───────────┤
+```mermaid
+sequenceDiagram
+    participant Browser
+    participant API as opus-api
+    participant Provider as OAuth Provider
+
+    Browser->>API: GET /auth/{provider}
+    API-->>Browser: Redirect to provider
+    Browser->>Provider: Authorize
+    Provider-->>Browser: Redirect with code
+    Browser->>API: GET /auth/{provider}/callback?code=...
+    API->>Provider: Exchange code for token
+    Provider-->>API: User info
+    API->>API: Upsert user in DB
+    API->>API: Issue access + refresh token
+    API-->>Browser: Set-Cookie (refresh) + JSON (access)
 ```
 
 #### Token Strategy
