@@ -206,7 +206,11 @@ func (h *AuthHandler) GitHubCallback(c fiber.Ctx) error {
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to get user info")
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			fmt.Printf("failed to close response body: %v\n", err)
+		}
+	}()
 
 	var ghUser struct {
 		ID     int    `json:"id"`

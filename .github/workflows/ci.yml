@@ -123,4 +123,4 @@ jobs:
 
       - name: Check syntax
         working-directory: installer
-        run: node --check index.js
+        run: npm run build

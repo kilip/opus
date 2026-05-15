@@ -16,12 +16,17 @@ func TestHealthHandler_Check(t *testing.T) {
 	app.Get("/health", handler.Check)
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
-	resp, _ := app.Test(req)
+	resp, err := app.Test(req)
+	assert.NoError(t, err)
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 	var result map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&result)
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+	assert.NoError(t, err)
 
 	assert.True(t, result["success"].(bool))
 	data := result["data"].(map[string]interface{})
