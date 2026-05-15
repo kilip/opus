@@ -1,7 +1,7 @@
 # Architecture Document
 
 **Product:** Opus  
-**Version:** 1.0.0  
+**Version:** 1.0.1  
 **Status:** Draft  
 **Last Updated:** 2026-05-15  
 **Authors:** Product & Architecture Team
@@ -11,32 +11,35 @@
 ## Table of Contents
 
 1. [System Overview](#1-system-overview)
-2. [High-Level Architecture](#2-high-level-architecture)
-3. [API — Go Backend](#3-api--go-backend)
-   - 3.1 [Technology Stack](#31-technology-stack)
-   - 3.2 [Project Structure](#32-project-structure)
-   - 3.3 [Clean Architecture Layers](#33-clean-architecture-layers)
-   - 3.4 [Configuration System](#34-configuration-system)
-   - 3.5 [Authentication & Session Management](#35-authentication--session-management)
-   - 3.6 [Database Layer](#36-database-layer)
-   - 3.7 [API Contracts](#37-api-contracts)
-   - 3.8 [Testing Strategy](#38-testing-strategy)
-   - 3.9 [Task Automation](#39-task-automation)
-4. [Frontend — Next.js](#4-frontend--nextjs)
+2. [Monorepo Structure](#2-monorepo-structure)
+3. [High-Level Architecture](#3-high-level-architecture)
+4. [API — Go Backend](#4-api--go-backend)
    - 4.1 [Technology Stack](#41-technology-stack)
    - 4.2 [Project Structure](#42-project-structure)
-   - 4.3 [PWA Configuration](#43-pwa-configuration)
-   - 4.4 [State Management & Data Fetching](#44-state-management--data-fetching)
-   - 4.5 [Testing Strategy](#45-testing-strategy)
-5. [Deployment & Distribution](#5-deployment--distribution)
-   - 5.1 [Docker](#51-docker)
-   - 5.2 [Bare Metal](#52-bare-metal)
-   - 5.3 [npx Installer](#53-npx-installer)
-   - 5.4 [CLI Commands](#54-cli-commands)
-   - 5.5 [Auto-Restart](#55-auto-restart)
-6. [Security](#6-security)
-7. [Observability](#7-observability)
-8. [Reserved: pkg/ Module](#8-reserved-pkg-module)
+   - 4.3 [Clean Architecture Layers](#43-clean-architecture-layers)
+   - 4.4 [Configuration System](#44-configuration-system)
+   - 4.5 [Authentication & Session Management](#45-authentication--session-management)
+   - 4.6 [Database Layer](#46-database-layer)
+   - 4.7 [API Contracts](#47-api-contracts)
+   - 4.8 [Testing Strategy](#48-testing-strategy)
+   - 4.9 [Task Automation](#49-task-automation)
+5. [Frontend — Next.js](#5-frontend--nextjs)
+   - 5.1 [Technology Stack](#51-technology-stack)
+   - 5.2 [Project Structure](#52-project-structure)
+   - 5.3 [PWA Configuration](#53-pwa-configuration)
+   - 5.4 [State Management & Data Fetching](#54-state-management--data-fetching)
+   - 5.5 [Testing Strategy](#55-testing-strategy)
+   - 5.6 [Task Automation](#56-task-automation)
+6. [Deployment & Distribution](#6-deployment--distribution)
+   - 6.1 [Docker](#61-docker)
+   - 6.2 [Bare Metal](#62-bare-metal)
+   - 6.3 [npx Installer](#63-npx-installer)
+   - 6.4 [CLI Commands](#64-cli-commands)
+   - 6.5 [Auto-Restart](#65-auto-restart)
+7. [CI/CD](#7-cicd)
+8. [Security](#8-security)
+9. [Observability](#9-observability)
+10. [Reserved: pkg/ Module](#10-reserved-pkg-module)
 
 ---
 
@@ -44,19 +47,19 @@
 
 Opus is a self-hosted, single-user AI agent platform. The system consists of two primary components:
 
-- **opus-api** — A Go backend exposing a REST + SSE API.
-- **opus-web** — A Next.js 16 Progressive Web App consuming the API.
+- **api/** — A Go backend exposing a REST + SSE API.
+- **dashboard/** — A Next.js 16 Progressive Web App consuming the API.
 
-Both components are distributed as a single installable unit via `npx opus install`, Docker, or pre-built binaries.
+Both components reside in a single monorepo and are distributed as a single installable unit via `npx opus install`, Docker, or pre-built binaries.
 
 ```mermaid
 graph TD
     subgraph "User Device"
-        WEB["opus-web (PWA)<br/>Next.js 16 + Serwist + Shadcn"]
+        WEB["dashboard/ (PWA)<br/>Next.js 16 + Serwist + Shadcn"]
     end
 
     subgraph "Host Machine"
-        API["opus-api (Go)<br/>GoFiber v3 + EntGo + Viper"]
+        API["api/ (Go)<br/>GoFiber v3 + EntGo + Viper"]
         DB[("Database<br/>SQLite or PostgreSQL")]
     end
 
@@ -66,13 +69,108 @@ graph TD
 
 ---
 
-## 2. High-Level Architecture
+## 2. Monorepo Structure
+
+The entire project lives under a single root directory. Root-level files handle orchestration, CI/CD, and shared configuration. Component-specific code is fully encapsulated within `api/` and `dashboard/`.
+
+```
+opus/
+├── api/                         # Go backend
+├── dashboard/                   # Next.js frontend
+├── .github/
+│   └── workflows/
+│       ├── ci.yml               # Test & lint on pull requests
+│       ├── build.yml            # Build binaries & Docker image on merge to main
+│       └── release.yml          # Publish GitHub Release + npm package on tag
+├── docker-compose.yml           # Orchestrates api/ + dashboard/ for local & production
+├── docker-compose.dev.yml       # Development overrides (live reload, exposed ports)
+├── Taskfile.yml                 # Root orchestrator — delegates to api/ and dashboard/
+├── .env.example                 # Documents all OPUS_* environment variables
+└── README.md
+```
+
+### Root Taskfile
+
+The root `Taskfile.yml` is a pure orchestrator. It does not define build logic directly; it delegates to the Taskfiles within `api/` and `dashboard/`.
+
+```yaml
+# Taskfile.yml (root)
+version: "3"
+
+tasks:
+  setup:
+    desc: Install all dependencies for api/ and dashboard/
+    deps: [api:setup, dashboard:setup]
+
+  dev:
+    desc: Start api/ and dashboard/ in development mode concurrently
+    deps: [api:dev, dashboard:dev]
+
+  build:
+    desc: Build api/ binary and dashboard/ production bundle
+    deps: [api:build, dashboard:build]
+
+  test:all:
+    desc: Run all tests across api/ and dashboard/
+    deps: [api:test:all, dashboard:test]
+
+  lint:
+    desc: Lint api/ and dashboard/
+    deps: [api:lint, dashboard:lint]
+
+  migrate:
+    desc: Run database migrations
+    cmds:
+      - task: api:migrate
+
+includes:
+  api:
+    taskfile: ./api/Taskfile.yml
+    dir: ./api
+
+  dashboard:
+    taskfile: ./dashboard/Taskfile.yml
+    dir: ./dashboard
+```
+
+### Root `.env.example`
+
+Documents every `OPUS_*` environment variable consumed by `api/`. Serves as the canonical reference for Docker and CI/CD configuration.
+
+```dotenv
+# Server
+OPUS_SERVER_PORT=8080
+OPUS_SERVER_ENV=production          # development | production
+
+# Database
+OPUS_DATABASE_DRIVER=sqlite         # sqlite | postgres
+OPUS_DATABASE_DSN=~/.opus/opus.db
+
+# Auth
+OPUS_AUTH_SECRET=                   # REQUIRED — JWT signing secret
+OPUS_AUTH_ACCESS_TOKEN_TTL=15       # minutes
+OPUS_AUTH_REFRESH_TOKEN_TTL=10080   # minutes (7 days)
+
+# OAuth2 — Google
+OPUS_AUTH_GOOGLE_CLIENT_ID=
+OPUS_AUTH_GOOGLE_CLIENT_SECRET=
+OPUS_AUTH_GOOGLE_REDIRECT_URL=http://localhost:8080/auth/google/callback
+
+# OAuth2 — GitHub
+OPUS_AUTH_GITHUB_CLIENT_ID=
+OPUS_AUTH_GITHUB_CLIENT_SECRET=
+OPUS_AUTH_GITHUB_REDIRECT_URL=http://localhost:8080/auth/github/callback
+```
+
+---
+
+## 3. High-Level Architecture
 
 ### Request Flow
 
 ```mermaid
 graph TD
-    BROWSER["Browser (opus-web)"]
+    BROWSER["Browser (dashboard/)"]
     
     subgraph "REST Path"
         ROUTER["GoFiber Router"]
@@ -116,9 +214,9 @@ graph TD
 
 ---
 
-## 3. API — Go Backend
+## 4. API — Go Backend
 
-### 3.1 Technology Stack
+### 4.1 Technology Stack
 
 | Dependency | Version | Purpose |
 |------------|---------|---------|
@@ -131,10 +229,10 @@ graph TD
 | `github.com/BurntSushi/toml` | latest | TOML config parsing |
 | Taskfile | v3 | Task automation |
 
-### 3.2 Project Structure
+### 4.2 Project Structure
 
 ```
-opus-api/
+api/
 ├── cmd/
 │   └── opus/
 │       ├── main.go              # Entry point
@@ -172,11 +270,11 @@ opus-api/
 │   │   └── session.go
 │   └── ...
 ├── Taskfile.yml
-├── .env.example
+├── .env.example                 # api/-specific env vars (mirrors root .env.example)
 └── go.mod
 ```
 
-### 3.3 Clean Architecture Layers
+### 4.3 Clean Architecture Layers
 
 Dependency direction is strictly inward. Outer layers depend on inner layers; inner layers have no knowledge of outer layers.
 
@@ -220,7 +318,7 @@ func (r *userRepository) FindByEmail(ctx context.Context, email string) (*model.
 }
 ```
 
-### 3.4 Configuration System
+### 4.4 Configuration System
 
 #### Hierarchy
 
@@ -292,14 +390,14 @@ func GetDatabase() *ent.Client
 
 All singletons are initialized once at startup and are safe for concurrent read access.
 
-### 3.5 Authentication & Session Management
+### 4.5 Authentication & Session Management
 
 #### OAuth2 Flow
 
 ```mermaid
 sequenceDiagram
     participant Browser
-    participant API as opus-api
+    participant API as api/
     participant Provider as OAuth Provider
 
     Browser->>API: GET /auth/{provider}
@@ -333,7 +431,7 @@ sequenceDiagram
 
 Enabled only when `OPUS_SERVER_ENV=development`. The handler returns `403 Forbidden` in production mode.
 
-### 3.6 Database Layer
+### 4.6 Database Layer
 
 #### Dual-Driver Support
 
@@ -365,7 +463,7 @@ ent/schema/
 └── session.go    # Refresh token / session schema
 ```
 
-### 3.7 API Contracts
+### 4.7 API Contracts
 
 **Base URL:** `/api/v1`
 
@@ -424,7 +522,7 @@ ent/schema/
 
 SSE endpoint streams events using the standard `text/event-stream` content type. Serwist (Service Worker) does not interfere with SSE streams as they are handled natively by the browser's `EventSource` API.
 
-### 3.8 Testing Strategy
+### 4.8 Testing Strategy
 
 #### Unit Tests
 
@@ -465,12 +563,13 @@ task test:integration
 task test:all
 ```
 
-### 3.9 Task Automation
+### 4.9 Task Automation
 
-`Taskfile.yml` defines the following tasks:
+`api/Taskfile.yml` defines the following tasks:
 
 | Task | Description |
 |------|-------------|
+| `task setup` | Install Go module dependencies (`go mod download`) |
 | `task dev` | Run API in development mode with live reload |
 | `task build` | Build production binary |
 | `task test` | Run unit tests |
@@ -482,9 +581,9 @@ task test:all
 
 ---
 
-## 4. Frontend — Next.js
+## 5. Frontend — Next.js
 
-### 4.1 Technology Stack
+### 5.1 Technology Stack
 
 | Dependency | Version | Purpose |
 |------------|---------|---------|
@@ -496,10 +595,10 @@ task test:all
 | Vitest | latest | Unit & component testing |
 | Playwright | latest | End-to-end testing |
 
-### 4.2 Project Structure
+### 5.2 Project Structure
 
 ```
-opus-web/
+dashboard/
 ├── app/
 │   ├── (auth)/
 │   │   ├── login/
@@ -531,10 +630,12 @@ opus-web/
 ├── next.config.ts
 ├── tailwind.config.ts
 ├── vitest.config.ts
-└── playwright.config.ts
+├── playwright.config.ts
+├── Taskfile.yml
+└── package.json
 ```
 
-### 4.3 PWA Configuration
+### 5.3 PWA Configuration
 
 PWA is managed entirely by **Serwist**, which wraps Workbox and integrates with Next.js 16's App Router.
 
@@ -565,7 +666,7 @@ PWA is managed entirely by **Serwist**, which wraps Workbox and integrates with 
 }
 ```
 
-### 4.4 State Management & Data Fetching
+### 5.4 State Management & Data Fetching
 
 - **TanStack Query** handles all server state: fetching, caching, invalidation, and background refetching.
 - No global client-side state manager (Zustand/Redux) in v1.0. React context is used for lightweight UI state where needed.
@@ -585,7 +686,7 @@ export function useStream(enabled: boolean) {
 }
 ```
 
-### 4.5 Testing Strategy
+### 5.5 Testing Strategy
 
 #### Unit & Component Tests (Vitest)
 
@@ -624,19 +725,35 @@ pnpm test:e2e
 pnpm test:e2e:ui
 ```
 
+### 5.6 Task Automation
+
+`dashboard/Taskfile.yml` defines the following tasks:
+
+| Task | Description |
+|------|-------------|
+| `task setup` | Install Node.js dependencies (`pnpm install`) |
+| `task dev` | Start Next.js in development mode (`pnpm dev`) |
+| `task build` | Build production bundle (`pnpm build`) |
+| `task test` | Run unit and component tests (Vitest) |
+| `task test:coverage` | Run unit tests with coverage report |
+| `task test:e2e` | Run end-to-end tests (Playwright) |
+| `task test:e2e:ui` | Run end-to-end tests with Playwright UI |
+| `task lint` | Run ESLint and TypeScript type checks |
+
 ---
 
-## 5. Deployment & Distribution
+## 6. Deployment & Distribution
 
-### 5.1 Docker
+### 6.1 Docker
 
-The Docker image is built from a multi-stage Dockerfile. Environment variables prefixed with `OPUS_` always override `config.toml`.
+The repository includes a root-level `docker-compose.yml` that orchestrates both `api/` and `dashboard/`. Environment variables prefixed with `OPUS_` always override `config.toml`.
 
-**Docker Compose (example):**
+**Docker Compose (production):**
 
 ```yaml
+# docker-compose.yml (root)
 services:
-  opus-api:
+  api:
     image: ghcr.io/opus/opus-api:latest
     environment:
       OPUS_SERVER_PORT: "8080"
@@ -650,6 +767,15 @@ services:
       - "8080:8080"
     depends_on:
       - db
+
+  dashboard:
+    image: ghcr.io/opus/opus-dashboard:latest
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: "http://localhost:8080"
+    depends_on:
+      - api
 
   db:
     image: postgres:16-alpine
@@ -668,16 +794,48 @@ volumes:
 
 ```yaml
 services:
-  opus-api:
+  api:
     image: ghcr.io/opus/opus-api:latest
     environment:
       OPUS_DATABASE_DRIVER: "sqlite"
       OPUS_DATABASE_DSN: "/data/opus.db"
     volumes:
       - ./data:/data
+
+  dashboard:
+    image: ghcr.io/opus/opus-dashboard:latest
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: "http://localhost:8080"
+    depends_on:
+      - api
 ```
 
-### 5.2 Bare Metal
+**Development overrides (`docker-compose.dev.yml`):**
+
+```yaml
+# docker-compose.dev.yml
+services:
+  api:
+    build:
+      context: ./api
+    volumes:
+      - ./api:/app
+    environment:
+      OPUS_SERVER_ENV: "development"
+
+  dashboard:
+    build:
+      context: ./dashboard
+    volumes:
+      - ./dashboard:/app
+      - /app/node_modules
+    environment:
+      NODE_ENV: "development"
+```
+
+### 6.2 Bare Metal
 
 Pre-built binaries are published to GitHub Releases for the following targets:
 
@@ -704,7 +862,7 @@ opus init
 opus start
 ```
 
-### 5.3 npx Installer
+### 6.3 npx Installer
 
 `npx opus install` provides an interactive setup wizard targeting end-users.
 
@@ -722,7 +880,7 @@ $ npx opus install
  ╚██████╔╝██║     ╚██████╔╝███████║
   ╚═════╝ ╚═╝      ╚═════╝ ╚══════╝
 
-  Opus Installer v1.0.0
+  Opus Installer v1.0.1
 
 [1/5] Detecting platform...          linux/amd64
 [2/5] Downloading binary...          ████████████ 100%
@@ -750,11 +908,11 @@ $ npx opus install
 - Downloads the correct binary from GitHub Releases based on `process.platform` + `process.arch`.
 - Generates `~/.opus/config.toml` from interactive prompts.
 - Auto-generates a cryptographically random `auth.secret` if not provided.
-- Registers the system service (see [5.5 Auto-Restart](#55-auto-restart)).
+- Registers the system service (see [6.5 Auto-Restart](#65-auto-restart)).
 
-### 5.4 CLI Commands
+### 6.4 CLI Commands
 
-Implemented via Cobra in `cmd/opus/`:
+Implemented via Cobra in `api/cmd/opus/`:
 
 | Command | Description |
 |---------|-------------|
@@ -766,7 +924,7 @@ Implemented via Cobra in `cmd/opus/`:
 | `opus init` | Initialize `~/.opus/config.toml` interactively |
 | `opus version` | Print current version |
 
-### 5.5 Auto-Restart
+### 6.5 Auto-Restart
 
 The installer registers Opus as a persistent system service to survive reboots and crashes.
 
@@ -796,7 +954,47 @@ WantedBy=multi-user.target
 
 ---
 
-## 6. Security
+## 7. CI/CD
+
+CI/CD pipelines are defined under `.github/workflows/`. Three workflows cover the full development lifecycle.
+
+### `ci.yml` — Continuous Integration
+
+Triggered on every pull request.
+
+| Step | Description |
+|------|-------------|
+| Checkout | Clone repository |
+| Setup Go | Install Go toolchain |
+| Setup Node | Install Node.js LTS + pnpm |
+| `task api:lint` | Run golangci-lint on `api/` |
+| `task api:test:all` | Run unit + integration tests for `api/` |
+| `task dashboard:lint` | Run ESLint + TypeScript checks on `dashboard/` |
+| `task dashboard:test` | Run Vitest unit tests for `dashboard/` |
+
+### `build.yml` — Build & Docker
+
+Triggered on merge to `main`.
+
+| Step | Description |
+|------|-------------|
+| `task api:build` | Build Go binary for all target platforms |
+| Build Docker images | Build `opus-api` and `opus-dashboard` images |
+| Push to GHCR | Push images to `ghcr.io/opus/` |
+
+### `release.yml` — Release
+
+Triggered on version tag push (e.g. `v1.0.1`).
+
+| Step | Description |
+|------|-------------|
+| Cross-compile binaries | Build all platform targets via `GOOS`/`GOARCH` |
+| Create GitHub Release | Attach binaries and changelog |
+| Publish npm package | Publish `opus` installer to npm registry |
+
+---
+
+## 8. Security
 
 | Concern | Mitigation |
 |---------|-----------|
@@ -807,10 +1005,11 @@ WantedBy=multi-user.target
 | CORS | Configured via GoFiber CORS middleware; restricted to known origins |
 | SQL Injection | Prevented by EntGo parameterised queries |
 | Path traversal | Not applicable; no user-controlled file paths |
+| Secret exposure in CI | All secrets stored as GitHub Actions encrypted secrets; never logged |
 
 ---
 
-## 7. Observability
+## 9. Observability
 
 ### Logging
 
@@ -845,7 +1044,7 @@ Log fields included on every request:
   "success": true,
   "data": {
     "status": "ok",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "db": "sqlite"
   }
 }
@@ -853,7 +1052,7 @@ Log fields included on every request:
 
 ---
 
-## 8. Reserved: pkg/ Module
+## 10. Reserved: pkg/ Module
 
 The `pkg/` directory is intentionally absent in v1.0. It is reserved for future use as a shared utilities module in the event that the project grows into multiple Go modules or requires shared code between the API server and the CLI installer.
 
