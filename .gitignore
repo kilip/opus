@@ -30,3 +30,4 @@ Thumbs.db
 # EntGo generated (do not ignore, but do not manually edit)
 # ent/ is committedinstaller/node_modules/
 installer/dist/
+.worktrees/
