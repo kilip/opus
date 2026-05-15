@@ -7,7 +7,7 @@ import (
 	"github.com/kilip/opus/api/internal/service"
 )
 
-func Auth(authService *service.AuthService) fiber.Handler {
+func Auth(authService service.AuthServiceInterface) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {

@@ -10,8 +10,8 @@ import (
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
 	"github.com/kilip/opus/api/ent"
-	_ "modernc.org/sqlite"
 	_ "github.com/lib/pq"
+	_ "modernc.org/sqlite"
 )
 
 var (

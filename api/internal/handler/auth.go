@@ -233,7 +233,6 @@ func (h *AuthHandler) GitHubCallback(c fiber.Ctx) error {
 	return c.Redirect().To(fmt.Sprintf("%s/auth/callback?token=%s", "http://localhost:3000", accessToken))
 }
 
-
 func (h *AuthHandler) setRefreshTokenCookie(c fiber.Ctx, refreshToken string) {
 	c.Cookie(&fiber.Cookie{
 		Name:     "refresh_token",

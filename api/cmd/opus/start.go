@@ -58,7 +58,7 @@ var startCmd = &cobra.Command{
 		// API Routes
 		// API Routes
 		v1 := app.Group("/api/v1")
-		
+
 		// Public Routes
 		v1.Get("/health", healthHandler.Check)
 
