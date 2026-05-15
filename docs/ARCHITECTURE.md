@@ -254,12 +254,12 @@ refresh_token_ttl = 10080 # minutes (7 days)
 [auth.google]
 client_id     = ""
 client_secret = ""
-redirect_url  = "http://localhost:8080/api/v1/auth/google/callback"
+redirect_url  = "http://localhost:8080/auth/google/callback"
 
 [auth.github]
 client_id     = ""
 client_secret = ""
-redirect_url  = "http://localhost:8080/api/v1/auth/github/callback"
+redirect_url  = "http://localhost:8080/auth/github/callback"
 ```
 
 #### Environment Variable Mapping
@@ -396,31 +396,31 @@ ent/schema/
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `GET` | `/api/v1/auth/google` | No | Redirect to Google OAuth2 |
-| `GET` | `/api/v1/auth/google/callback` | No | Google OAuth2 callback |
-| `GET` | `/api/v1/auth/github` | No | Redirect to GitHub OAuth2 |
-| `GET` | `/api/v1/auth/github/callback` | No | GitHub OAuth2 callback |
-| `POST` | `/api/v1/auth/login` | No | Email/Password login (dev only) |
-| `POST` | `/api/v1/auth/refresh` | No | Refresh access token |
-| `POST` | `/api/v1/auth/logout` | Yes | Invalidate refresh token |
+| `GET` | `/auth/google` | No | Redirect to Google OAuth2 |
+| `GET` | `/auth/google/callback` | No | Google OAuth2 callback |
+| `GET` | `/auth/github` | No | Redirect to GitHub OAuth2 |
+| `GET` | `/auth/github/callback` | No | GitHub OAuth2 callback |
+| `POST` | `/auth/login` | No | Email/Password login (dev only) |
+| `POST` | `/auth/refresh` | No | Refresh access token |
+| `POST` | `/auth/logout` | Yes | Invalidate refresh token |
 
 #### User Endpoints
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `GET` | `/api/v1/user/me` | Yes | Get current authenticated user |
+| `GET` | `/user/me` | Yes | Get current authenticated user |
 
 #### System Endpoints
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `GET` | `/api/v1/health` | No | Health check |
+| `GET` | `/health` | No | Health check |
 
 #### SSE Endpoint
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `GET` | `/api/v1/stream` | Yes | Server-Sent Events stream |
+| `GET` | `/stream` | Yes | Server-Sent Events stream |
 
 SSE endpoint streams events using the standard `text/event-stream` content type. Serwist (Service Worker) does not interfere with SSE streams as they are handled natively by the browser's `EventSource` API.
 
@@ -577,7 +577,7 @@ export function useStream(enabled: boolean) {
   const [output, setOutput] = useState<string>("");
   useEffect(() => {
     if (!enabled) return;
-    const es = new EventSource("/api/v1/stream", { withCredentials: true });
+    const es = new EventSource("/stream", { withCredentials: true });
     es.onmessage = (e) => setOutput((prev) => prev + e.data);
     return () => es.close();
   }, [enabled]);
@@ -829,7 +829,7 @@ Log fields included on every request:
   "level": "INFO",
   "msg": "request",
   "method": "GET",
-  "path": "/api/v1/user/me",
+  "path": "/user/me",
   "status": 200,
   "latency_ms": 3,
   "request_id": "abc123"
@@ -838,7 +838,7 @@ Log fields included on every request:
 
 ### Health Check
 
-`GET /api/v1/health` returns:
+`GET /health` returns:
 
 ```json
 {
