@@ -21,8 +21,8 @@ jobs:
         working-directory: api
         run: go test -v ./...
 
-  dashboard-test:
-    name: Dashboard (Next.js) Test
+  dash-test:
+    name: Dash (Next.js) Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -35,21 +35,22 @@ jobs:
         with:
           version: 8
       - name: Get pnpm store directory
+        id: get-store-path
         shell: bash
         run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+          echo "store_path=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
       - name: Setup pnpm cache
         uses: actions/cache@v4
         with:
-          path: ${{ env.STORE_PATH }}
+          path: ${{ steps.get-store-path.outputs.store_path }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
       - name: Install dependencies
-        working-directory: dashboard
+        working-directory: dash
         run: pnpm install --frozen-lockfile
       - name: Lint and Build
-        working-directory: dashboard
+        working-directory: dash
         run: |
           pnpm lint
           pnpm build

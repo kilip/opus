@@ -10,7 +10,7 @@
 
 ## Phase Goal
 
-Implement the complete Next.js 16 frontend: project initialization, PWA configuration, API client, TanStack Query hooks, SSE streaming hook, routing, auth UI, dashboard shell, and full test coverage (Vitest + Playwright).
+Implement the complete Next.js 16 frontend: project initialization, PWA configuration, API client, TanStack Query hooks, SSE streaming hook, routing, auth UI, dash shell, and full test coverage (Vitest + Playwright).
 
 ---
 
@@ -28,7 +28,7 @@ Implement the complete Next.js 16 frontend: project initialization, PWA configur
 
 > Always provide `docs/CONVENTIONS.md`, `docs/PRD.md`, and `docs/ARCHITECTURE.md` alongside this file.
 
-**You are implementing the Next.js 16 frontend for Opus (`dashboard/`).** Use the App Router exclusively — no Pages Router. All components must be TypeScript strict. Use Tailwind CSS v4 for styling. Shadcn/ui for UI components. TanStack Query for server state. Serwist for PWA/Service Worker. No global state manager (no Zustand, no Redux).
+**You are implementing the Next.js 16 frontend for Opus (`dash/`).** Use the App Router exclusively — no Pages Router. All components must be TypeScript strict. Use Tailwind CSS v4 for styling. Shadcn/ui for UI components. TanStack Query for server state. Serwist for PWA/Service Worker. No global state manager (no Zustand, no Redux).
 
 ---
 
@@ -36,12 +36,12 @@ Implement the complete Next.js 16 frontend: project initialization, PWA configur
 
 ### What to Do
 
-Initialize the Next.js 16 project with TypeScript, Tailwind CSS, and App Router inside `dashboard/`.
+Initialize the Next.js 16 project with TypeScript, Tailwind CSS, and App Router inside `dash/`.
 
 ### Commands to Run
 
 ```bash
-cd dashboard/
+cd dash/
 pnpm create next-app@latest . \
   --typescript \
   --tailwind \
@@ -81,16 +81,16 @@ Ensure `tsconfig.json` has:
 
 - Use `pnpm` as the package manager — never `npm` or `yarn`.
 - App Router only — no `pages/` directory.
-- No `src/` directory — files at root level of `dashboard/`.
+- No `src/` directory — files at root level of `dash/`.
 - Import alias must be `@/*`.
 
 ### Acceptance Criteria
 
-- [x] Directory `dashboard/app/` exists with `layout.tsx` and `page.tsx`.
-- [x] File `dashboard/tsconfig.json` exists with `strict: true`.
-- [x] File `dashboard/tailwind.config.ts` exists.
-- [x] File `dashboard/.eslintrc.json` exists with `no-explicit-any: error`.
-- [x] File `dashboard/package.json` exists with `next`, `react`, `typescript` as dependencies.
+- [x] Directory `dash/app/` exists with `layout.tsx` and `page.tsx`.
+- [x] File `dash/tsconfig.json` exists with `strict: true`.
+- [x] File `dash/tailwind.config.ts` exists.
+- [x] File `dash/.eslintrc.json` exists with `no-explicit-any: error`.
+- [x] File `dash/package.json` exists with `next`, `react`, `typescript` as dependencies.
 - [x] Running `pnpm dev` starts the development server without errors.
 
 ---
@@ -104,7 +104,7 @@ Upgrade to Tailwind CSS v4 and initialize Shadcn/ui with the default theme.
 ### Commands to Run
 
 ```bash
-cd dashboard/
+cd dash/
 pnpm add tailwindcss@latest @tailwindcss/postcss
 pnpm dlx shadcn@latest init
 ```
@@ -124,15 +124,15 @@ pnpm dlx shadcn@latest add button input label card avatar separator
 
 ### Constraints
 
-- All Shadcn/ui components go into `dashboard/components/ui/` — do not edit them manually.
+- All Shadcn/ui components go into `dash/components/ui/` — do not edit them manually.
 - Use CSS variables for theming — never hardcode color values.
 - Tailwind v4 uses `@import "tailwindcss"` in CSS, not the v3 `@tailwind` directives.
 
 ### Acceptance Criteria
 
 - [x] `tailwindcss@4.x` is listed in `package.json`.
-- [x] `dashboard/components/ui/` contains Shadcn/ui components: `button`, `input`, `label`, `card`, `avatar`, `separator`.
-- [x] `dashboard/app/globals.css` uses `@import "tailwindcss"` (Tailwind v4 syntax).
+- [x] `dash/components/ui/` contains Shadcn/ui components: `button`, `input`, `label`, `card`, `avatar`, `separator`.
+- [x] `dash/app/globals.css` uses `@import "tailwindcss"` (Tailwind v4 syntax).
 - [x] Running `pnpm build` compiles without Tailwind errors.
 
 ---
@@ -146,13 +146,13 @@ Install TanStack Query v5 and configure a global `QueryClient` provider in the r
 ### Commands to Run
 
 ```bash
-cd dashboard/
+cd dash/
 pnpm add @tanstack/react-query @tanstack/react-query-devtools
 ```
 
 ### Files to Create
 
-`dashboard/components/shared/QueryProvider.tsx`
+`dash/components/shared/QueryProvider.tsx`
 
 ```tsx
 "use client";
@@ -185,7 +185,7 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
 
 ### Update Root Layout
 
-Wrap `children` in `QueryProvider` inside `dashboard/app/layout.tsx`.
+Wrap `children` in `QueryProvider` inside `dash/app/layout.tsx`.
 
 ### Constraints
 
@@ -195,7 +195,7 @@ Wrap `children` in `QueryProvider` inside `dashboard/app/layout.tsx`.
 ### Acceptance Criteria
 
 - [x] `@tanstack/react-query` v5.x is in `package.json`.
-- [x] File `dashboard/components/shared/QueryProvider.tsx` exists.
+- [x] File `dash/components/shared/QueryProvider.tsx` exists.
 - [x] Root `layout.tsx` wraps children with `QueryProvider`.
 - [x] `ReactQueryDevtools` is included.
 - [x] Running `pnpm build` compiles without errors.
@@ -211,7 +211,7 @@ Install Serwist and configure it for Next.js 16 App Router. Set up the Service W
 ### Commands to Run
 
 ```bash
-cd dashboard/
+cd dash/
 pnpm add @serwist/next serwist
 ```
 
@@ -230,7 +230,7 @@ export default withSerwistConfig({
 });
 ```
 
-### Create `dashboard/sw.ts`
+### Create `dash/sw.ts`
 
 ```ts
 import { defaultCache } from "@serwist/next/worker";
@@ -268,13 +268,13 @@ serwist.addEventListeners();
 
 - API routes (`/api/*`) must use `NetworkOnly` strategy — never cache API responses.
 - The `/offline` page must use `CacheFirst` strategy.
-- The Service Worker source is `sw.ts` at the root of `dashboard/`.
+- The Service Worker source is `sw.ts` at the root of `dash/`.
 
 ### Acceptance Criteria
 
 - [x] `@serwist/next` and `serwist` are in `package.json`.
-- [x] File `dashboard/sw.ts` exists with correct caching strategies.
-- [x] `dashboard/next.config.ts` wraps with `withSerwist`.
+- [x] File `dash/sw.ts` exists with correct caching strategies.
+- [x] `dash/next.config.ts` wraps with `withSerwist`.
 - [x] `NetworkOnly` is applied to `/api/*` routes.
 - [x] `CacheFirst` is applied to `/offline` route.
 - [x] Running `pnpm build` generates `public/sw.js`.
@@ -289,8 +289,8 @@ Implement the base API client and all shared TypeScript types used across query 
 
 ### Files to Create
 
-- `dashboard/lib/api/client.ts`
-- `dashboard/lib/api/types.ts`
+- `dash/lib/api/client.ts`
+- `dash/lib/api/types.ts`
 
 ### `types.ts`
 
@@ -373,8 +373,8 @@ export const apiClient = {
 
 ### Acceptance Criteria
 
-- [x] File `dashboard/lib/api/types.ts` exists with all types.
-- [x] File `dashboard/lib/api/client.ts` exists.
+- [x] File `dash/lib/api/types.ts` exists with all types.
+- [x] File `dash/lib/api/client.ts` exists.
 - [x] `apiClient.get` and `apiClient.post` are exported.
 - [x] `credentials: "include"` is set on all requests.
 - [x] No `any` types used.
@@ -390,7 +390,7 @@ Implement TanStack Query hooks for authentication actions.
 
 ### File to Create
 
-`dashboard/lib/api/auth.ts`
+`dash/lib/api/auth.ts`
 
 ### Hooks to Implement
 
@@ -403,7 +403,7 @@ Implement TanStack Query hooks for authentication actions.
 
 The access token is stored in React state (not localStorage — see Conventions Section 4). Implement a simple React context to hold the access token:
 
-**`dashboard/lib/api/AuthContext.tsx`**
+**`dash/lib/api/AuthContext.tsx`**
 
 ```tsx
 "use client";
@@ -441,8 +441,8 @@ Update root layout to wrap with `AuthProvider`.
 
 ### Acceptance Criteria
 
-- [x] File `dashboard/lib/api/auth.ts` exists with `useRefreshToken` and `useLogout`.
-- [x] File `dashboard/lib/api/AuthContext.tsx` exists.
+- [x] File `dash/lib/api/auth.ts` exists with `useRefreshToken` and `useLogout`.
+- [x] File `dash/lib/api/AuthContext.tsx` exists.
 - [x] Root layout wraps with `AuthProvider`.
 - [x] `useLogout` invalidates all queries on success.
 - [x] Access token is never stored in `localStorage`.
@@ -458,7 +458,7 @@ Implement TanStack Query hook to fetch the current authenticated user.
 
 ### File to Create
 
-`dashboard/lib/api/user.ts`
+`dash/lib/api/user.ts`
 
 ### Hook to Implement
 
@@ -477,7 +477,7 @@ export function useCurrentUser(accessToken: string | null) {
 
 ### Acceptance Criteria
 
-- [x] File `dashboard/lib/api/user.ts` exists with `useCurrentUser` hook.
+- [x] File `dash/lib/api/user.ts` exists with `useCurrentUser` hook.
 - [x] Query is disabled when `accessToken` is null.
 - [x] Query sends `Authorization: Bearer <token>` header.
 - [x] Code compiles with TypeScript strict mode.
@@ -492,7 +492,7 @@ Implement the SSE streaming hook using the browser-native `EventSource` API.
 
 ### File to Create
 
-`dashboard/lib/api/useStream.ts`
+`dash/lib/api/useStream.ts`
 
 ### Implementation
 
@@ -543,7 +543,7 @@ export function useStream(accessToken: string | null) {
 
 ### Acceptance Criteria
 
-- [x] File `dashboard/lib/api/useStream.ts` exists.
+- [x] File `dash/lib/api/useStream.ts` exists.
 - [x] Hook accepts `accessToken: string | null`.
 - [x] Hook returns `{ output, isConnected, error, clearOutput }`.
 - [x] `EventSource` is closed on unmount.
@@ -556,7 +556,7 @@ export function useStream(accessToken: string | null) {
 
 ### What to Do
 
-Implement `dashboard/app/layout.tsx` (root layout) and `dashboard/app/globals.css`.
+Implement `dash/app/layout.tsx` (root layout) and `dash/app/globals.css`.
 
 ### `app/layout.tsx`
 
@@ -607,11 +607,11 @@ Use Tailwind v4 syntax:
 
 ### Acceptance Criteria
 
-- [x] File `dashboard/app/layout.tsx` exists.
+- [x] File `dash/app/layout.tsx` exists.
 - [x] Root layout wraps with `AuthProvider` and `QueryProvider`.
 - [x] `metadata.manifest` points to `/manifest.webmanifest`.
 - [x] `metadata.themeColor` is set.
-- [x] File `dashboard/app/globals.css` uses `@import "tailwindcss"` (v4 syntax).
+- [x] File `dash/app/globals.css` uses `@import "tailwindcss"` (v4 syntax).
 - [x] Code compiles without errors.
 
 ---
@@ -624,12 +624,12 @@ Implement the auth route group layout and the login page.
 
 ### Files to Create
 
-- `dashboard/app/(auth)/layout.tsx`
-- `dashboard/app/(auth)/login/page.tsx`
+- `dash/app/(auth)/layout.tsx`
+- `dash/app/(auth)/login/page.tsx`
 
 ### `(auth)/layout.tsx`
 
-Centered layout for auth pages. No navigation. Redirects to dashboard if user is already authenticated.
+Centered layout for auth pages. No navigation. Redirects to dash if user is already authenticated.
 
 ### `(auth)/login/page.tsx`
 
@@ -647,8 +647,8 @@ Login page with:
 
 ### Acceptance Criteria
 
-- [x] File `dashboard/app/(auth)/layout.tsx` exists.
-- [x] File `dashboard/app/(auth)/login/page.tsx` exists.
+- [x] File `dash/app/(auth)/layout.tsx` exists.
+- [x] File `dash/app/(auth)/login/page.tsx` exists.
 - [x] Login page has "Sign in with Google" button linking to `/auth/google`.
 - [x] Login page has "Sign in with GitHub" button linking to `/auth/github`.
 - [x] Dev-only email form is conditionally rendered.
@@ -666,7 +666,7 @@ Implement a client-side route protection component that redirects unauthenticate
 
 ### File to Create
 
-`dashboard/components/shared/AuthGuard.tsx`
+`dash/components/shared/AuthGuard.tsx`
 
 ### Implementation
 
@@ -715,7 +715,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
 ### Acceptance Criteria
 
-- [x] File `dashboard/components/shared/AuthGuard.tsx` exists.
+- [x] File `dash/components/shared/AuthGuard.tsx` exists.
 - [x] Component is a Client Component (`"use client"`).
 - [x] Attempts silent refresh on mount if no access token.
 - [x] Redirects to `/login` on refresh failure.
@@ -724,35 +724,35 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
 ---
 
-## P3-T12 — Implement Dashboard Layout and Main Dashboard Page
+## P3-T12 — Implement Dash Layout and Main Dash Page
 
 ### What to Do
 
-Implement the protected dashboard route group.
+Implement the protected dash route group.
 
 ### Files to Create
 
-- `dashboard/app/(dashboard)/layout.tsx`
-- `dashboard/app/(dashboard)/page.tsx`
+- `dash/app/(dash)/layout.tsx`
+- `dash/app/(dash)/page.tsx`
 
-### `(dashboard)/layout.tsx`
+### `(dash)/layout.tsx`
 
-Wrap all dashboard pages with `AuthGuard`. Include a minimal navigation bar with the Opus logo and a logout button.
+Wrap all dash pages with `AuthGuard`. Include a minimal navigation bar with the Opus logo and a logout button.
 
-### `(dashboard)/page.tsx`
+### `(dash)/page.tsx`
 
-Main dashboard page:
+Main dash page:
 - Display current user name and avatar (from `useCurrentUser` hook).
 - Include a `StreamOutput` component.
 - Include a "Connect" button that starts the SSE stream.
 
 ### Acceptance Criteria
 
-- [x] File `dashboard/app/(dashboard)/layout.tsx` exists with `AuthGuard`.
-- [x] File `dashboard/app/(dashboard)/page.tsx` exists.
-- [x] Dashboard page displays user name and avatar.
-- [x] Dashboard page includes `StreamOutput` component.
-- [x] Dashboard layout wraps with `AuthGuard`.
+- [x] File `dash/app/(dash)/layout.tsx` exists with `AuthGuard`.
+- [x] File `dash/app/(dash)/page.tsx` exists.
+- [x] Dash page displays user name and avatar.
+- [x] Dash page includes `StreamOutput` component.
+- [x] Dash layout wraps with `AuthGuard`.
 - [x] Code compiles without errors.
 
 ---
@@ -765,7 +765,7 @@ Implement the component that displays SSE stream output.
 
 ### File to Create
 
-`dashboard/components/shared/StreamOutput.tsx`
+`dash/components/shared/StreamOutput.tsx`
 
 ### Props Interface
 
@@ -787,7 +787,7 @@ interface StreamOutputProps {
 
 ### Acceptance Criteria
 
-- [x] File `dashboard/components/shared/StreamOutput.tsx` exists.
+- [x] File `dash/components/shared/StreamOutput.tsx` exists.
 - [x] Component accepts `{ output, isConnected, error }` props.
 - [x] Displays output in monospace font.
 - [x] Shows connection status indicator.
@@ -806,7 +806,7 @@ Implement the PWA offline fallback page shown when the server is unreachable.
 
 ### File to Create
 
-`dashboard/app/offline/page.tsx`
+`dash/app/offline/page.tsx`
 
 ### Requirements
 
@@ -818,7 +818,7 @@ Implement the PWA offline fallback page shown when the server is unreachable.
 
 ### Acceptance Criteria
 
-- [x] File `dashboard/app/offline/page.tsx` exists.
+- [x] File `dash/app/offline/page.tsx` exists.
 - [x] Page is a Client Component (`"use client"`).
 - [x] Displays "You are offline" message.
 - [x] Includes a "Try again" button that calls `window.location.reload()`.
@@ -836,7 +836,7 @@ Create the PWA web app manifest file.
 
 ### File to Create
 
-`dashboard/public/manifest.webmanifest`
+`dash/public/manifest.webmanifest`
 
 ### Content
 
@@ -869,31 +869,31 @@ Create the PWA web app manifest file.
 ### Icon Placeholders
 
 Create two placeholder PNG files (1x1 pixel black PNG) at:
-- `dashboard/public/icons/icon-192.png`
-- `dashboard/public/icons/icon-512.png`
+- `dash/public/icons/icon-192.png`
+- `dash/public/icons/icon-512.png`
 
 These will be replaced with real icons before production release.
 
 ### Acceptance Criteria
 
-- [x] File `dashboard/public/manifest.webmanifest` exists.
+- [x] File `dash/public/manifest.webmanifest` exists.
 - [x] Contains `name`, `short_name`, `description`, `start_url`, `display`.
 - [x] Contains `background_color` and `theme_color`.
 - [x] Contains two icon entries: 192x192 and 512x512.
-- [x] Both icon files exist in `dashboard/public/icons/`.
+- [x] Both icon files exist in `dash/public/icons/`.
 - [x] Root layout `metadata.manifest` points to `/manifest.webmanifest`.
 
 ---
 
-## P3-T16 — Configure `dashboard/Taskfile.yml`
+## P3-T16 — Configure `dash/Taskfile.yml`
 
 ### What to Do
 
-Create the final `dashboard/Taskfile.yml` with all tasks.
+Create the final `dash/Taskfile.yml` with all tasks.
 
 ### File to Create
 
-`dashboard/Taskfile.yml`
+`dash/Taskfile.yml`
 
 ### Content
 
@@ -946,10 +946,10 @@ tasks:
 
 ### Acceptance Criteria
 
-- [x] File `dashboard/Taskfile.yml` exists.
+- [x] File `dash/Taskfile.yml` exists.
 - [x] `task setup` installs dependencies and Playwright browsers.
 - [x] All 7 tasks are defined.
-- [x] Running `task --list` from `dashboard/` lists all tasks without errors.
+- [x] Running `task --list` from `dash/` lists all tasks without errors.
 
 ---
 
@@ -962,7 +962,7 @@ Install Vitest and write unit tests for custom hooks and utility functions.
 ### Commands to Run
 
 ```bash
-cd dashboard/
+cd dash/
 pnpm add -D vitest @vitejs/plugin-react @testing-library/react @testing-library/user-event jsdom
 ```
 
@@ -1013,7 +1013,7 @@ import "@testing-library/jest-dom";
 
 ### `package.json` Scripts
 
-Add to `dashboard/package.json`:
+Add to `dash/package.json`:
 
 ```json
 {
@@ -1027,8 +1027,8 @@ Add to `dashboard/package.json`:
 ### Acceptance Criteria
 
 - [x] `vitest`, `@testing-library/react` are in `devDependencies`.
-- [x] File `dashboard/vitest.config.ts` exists.
-- [x] File `dashboard/vitest.setup.ts` exists.
+- [x] File `dash/vitest.config.ts` exists.
+- [x] File `dash/vitest.setup.ts` exists.
 - [x] `lib/utils/cn.test.ts` exists with 3 test cases.
 - [x] `lib/api/useStream.test.ts` exists with 3 test cases.
 - [x] Running `task test` passes all tests.
@@ -1044,7 +1044,7 @@ Install Playwright and write E2E tests for the four critical flows.
 ### Commands to Run
 
 ```bash
-cd dashboard/
+cd dash/
 pnpm add -D @playwright/test
 ```
 
@@ -1088,11 +1088,11 @@ export default defineConfig({
 | `login page shows Google and GitHub buttons` | Both OAuth buttons visible |
 | `Google login button redirects to /auth/google` | Click → navigates to `/auth/google` |
 
-**`e2e/dashboard.spec.ts`**
+**`e2e/dash.spec.ts`**
 
 | Test | Description |
 |------|-------------|
-| `authenticated users see dashboard` | Mock auth → visit `/` → dashboard visible |
+| `authenticated users see dash` | Mock auth → visit `/` → dash visible |
 | `logout clears session and redirects to login` | Click logout → redirected to `/login` |
 
 **`e2e/stream.spec.ts`**
@@ -1100,7 +1100,7 @@ export default defineConfig({
 | Test | Description |
 |------|-------------|
 | `StreamOutput shows empty state` | No output → empty state message visible |
-| `Connect button is visible` | "Connect" button renders on dashboard |
+| `Connect button is visible` | "Connect" button renders on dash |
 
 **`e2e/pwa.spec.ts`**
 
@@ -1124,9 +1124,9 @@ export default defineConfig({
 ### Acceptance Criteria
 
 - [x] `@playwright/test` is in `devDependencies`.
-- [x] File `dashboard/playwright.config.ts` exists.
+- [x] File `dash/playwright.config.ts` exists.
 - [x] File `e2e/auth.spec.ts` exists with 3 test cases.
-- [x] File `e2e/dashboard.spec.ts` exists with 2 test cases.
+- [x] File `e2e/dash.spec.ts` exists with 2 test cases.
 - [x] File `e2e/stream.spec.ts` exists with 2 test cases.
 - [x] File `e2e/pwa.spec.ts` exists with 3 test cases.
 - [x] Running `task test:e2e` executes all tests.

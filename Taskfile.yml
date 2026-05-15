@@ -6,30 +6,30 @@ includes:
     taskfile: ./api/Taskfile.yml
     dir: ./api
 
-  dashboard:
-    taskfile: ./dashboard/Taskfile.yml
-    dir: ./dashboard
+  dash:
+    taskfile: ./dash/Taskfile.yml
+    dir: ./dash
 
 tasks:
   setup:
-    desc: Install all dependencies for api/ and dashboard/
-    deps: [api:setup, dashboard:setup]
+    desc: Install all dependencies for api/ and dash/
+    deps: [api:setup, dash:setup]
 
   dev:
-    desc: Start api/ and dashboard/ in development mode concurrently
-    deps: [api:dev, dashboard:dev]
+    desc: Start api/ and dash/ in development mode concurrently
+    deps: [api:dev, dash:dev]
 
   build:
-    desc: Build api/ binary and dashboard/ production bundle
-    deps: [api:build, dashboard:build]
+    desc: Build api/ binary and dash/ production bundle
+    deps: [api:build, dash:build]
 
   test:all:
-    desc: Run all tests across api/ and dashboard/
-    deps: [api:test:all, dashboard:test]
+    desc: Run all tests across api/ and dash/
+    deps: [api:test:all, dash:test]
 
   lint:
-    desc: Lint api/ and dashboard/
-    deps: [api:lint, dashboard:lint]
+    desc: Lint api/ and dash/
+    deps: [api:lint, dash:lint]
 
   migrate:
     desc: Run database migrations

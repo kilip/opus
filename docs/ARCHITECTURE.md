@@ -48,14 +48,14 @@
 Opus is a self-hosted, single-user AI agent platform. The system consists of two primary components:
 
 - **api/** — A Go backend exposing a REST + SSE API.
-- **dashboard/** — A Next.js 16 Progressive Web App consuming the API.
+- **dash/** — A Next.js 16 Progressive Web App consuming the API.
 
 Both components reside in a single monorepo and are distributed as a single installable unit via `npx opus install`, Docker, or pre-built binaries.
 
 ```mermaid
 graph TD
     subgraph "User Device"
-        WEB["dashboard/ (PWA)<br/>Next.js 16 + Serwist + Shadcn"]
+        WEB["dash/ (PWA)<br/>Next.js 16 + Serwist + Shadcn"]
     end
 
     subgraph "Host Machine"
@@ -71,27 +71,27 @@ graph TD
 
 ## 2. Monorepo Structure
 
-The entire project lives under a single root directory. Root-level files handle orchestration, CI/CD, and shared configuration. Component-specific code is fully encapsulated within `api/` and `dashboard/`.
+The entire project lives under a single root directory. Root-level files handle orchestration, CI/CD, and shared configuration. Component-specific code is fully encapsulated within `api/` and `dash/`.
 
 ```
 opus/
 ├── api/                         # Go backend
-├── dashboard/                   # Next.js frontend
+├── dash/                   # Next.js frontend
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml               # Test & lint on pull requests
 │       ├── build.yml            # Build binaries & Docker image on merge to main
 │       └── release.yml          # Publish GitHub Release + npm package on tag
-├── docker-compose.yml           # Orchestrates api/ + dashboard/ for local & production
+├── docker-compose.yml           # Orchestrates api/ + dash/ for local & production
 ├── docker-compose.dev.yml       # Development overrides (live reload, exposed ports)
-├── Taskfile.yml                 # Root orchestrator — delegates to api/ and dashboard/
+├── Taskfile.yml                 # Root orchestrator — delegates to api/ and dash/
 ├── .env.example                 # Documents all OPUS_* environment variables
 └── README.md
 ```
 
 ### Root Taskfile
 
-The root `Taskfile.yml` is a pure orchestrator. It does not define build logic directly; it delegates to the Taskfiles within `api/` and `dashboard/`.
+The root `Taskfile.yml` is a pure orchestrator. It does not define build logic directly; it delegates to the Taskfiles within `api/` and `dash/`.
 
 ```yaml
 # Taskfile.yml (root)
@@ -99,24 +99,24 @@ version: "3"
 
 tasks:
   setup:
-    desc: Install all dependencies for api/ and dashboard/
-    deps: [api:setup, dashboard:setup]
+    desc: Install all dependencies for api/ and dash/
+    deps: [api:setup, dash:setup]
 
   dev:
-    desc: Start api/ and dashboard/ in development mode concurrently
-    deps: [api:dev, dashboard:dev]
+    desc: Start api/ and dash/ in development mode concurrently
+    deps: [api:dev, dash:dev]
 
   build:
-    desc: Build api/ binary and dashboard/ production bundle
-    deps: [api:build, dashboard:build]
+    desc: Build api/ binary and dash/ production bundle
+    deps: [api:build, dash:build]
 
   test:all:
-    desc: Run all tests across api/ and dashboard/
-    deps: [api:test:all, dashboard:test]
+    desc: Run all tests across api/ and dash/
+    deps: [api:test:all, dash:test]
 
   lint:
-    desc: Lint api/ and dashboard/
-    deps: [api:lint, dashboard:lint]
+    desc: Lint api/ and dash/
+    deps: [api:lint, dash:lint]
 
   migrate:
     desc: Run database migrations
@@ -128,9 +128,9 @@ includes:
     taskfile: ./api/Taskfile.yml
     dir: ./api
 
-  dashboard:
-    taskfile: ./dashboard/Taskfile.yml
-    dir: ./dashboard
+  dash:
+    taskfile: ./dash/Taskfile.yml
+    dir: ./dash
 ```
 
 ### Root `.env.example`
@@ -170,7 +170,7 @@ OPUS_AUTH_GITHUB_REDIRECT_URL=http://localhost:8080/auth/github/callback
 
 ```mermaid
 graph TD
-    BROWSER["Browser (dashboard/)"]
+    BROWSER["Browser (dash/)"]
     
     subgraph "REST Path"
         ROUTER["GoFiber Router"]
@@ -598,15 +598,15 @@ task test:all
 ### 5.2 Project Structure
 
 ```
-dashboard/
+dash/
 ├── app/
 │   ├── (auth)/
 │   │   ├── login/
 │   │   │   └── page.tsx         # Login page
 │   │   └── layout.tsx           # Auth layout
-│   ├── (dashboard)/
-│   │   ├── page.tsx             # Main dashboard
-│   │   └── layout.tsx           # Dashboard layout (protected)
+│   ├── (dash)/
+│   │   ├── page.tsx             # Main dash
+│   │   └── layout.tsx           # Dash layout (protected)
 │   ├── offline/
 │   │   └── page.tsx             # PWA offline fallback page
 │   ├── layout.tsx               # Root layout
@@ -705,7 +705,7 @@ export function useStream(enabled: boolean) {
 | Test | Description |
 |------|-------------|
 | `auth.spec.ts` | Login via Google OAuth2 (mocked), GitHub OAuth2 (mocked), logout |
-| `dashboard.spec.ts` | Authenticated dashboard render, protected route redirect |
+| `dash.spec.ts` | Authenticated dash render, protected route redirect |
 | `stream.spec.ts` | SSE stream connection and output rendering |
 | `pwa.spec.ts` | PWA installability, offline fallback page |
 
@@ -727,7 +727,7 @@ pnpm test:e2e:ui
 
 ### 5.6 Task Automation
 
-`dashboard/Taskfile.yml` defines the following tasks:
+`dash/Taskfile.yml` defines the following tasks:
 
 | Task | Description |
 |------|-------------|
@@ -746,7 +746,7 @@ pnpm test:e2e:ui
 
 ### 6.1 Docker
 
-The repository includes a root-level `docker-compose.yml` that orchestrates both `api/` and `dashboard/`. Environment variables prefixed with `OPUS_` always override `config.toml`.
+The repository includes a root-level `docker-compose.yml` that orchestrates both `api/` and `dash/`. Environment variables prefixed with `OPUS_` always override `config.toml`.
 
 **Docker Compose (production):**
 
@@ -768,8 +768,8 @@ services:
     depends_on:
       - db
 
-  dashboard:
-    image: ghcr.io/opus/opus-dashboard:latest
+  dash:
+    image: ghcr.io/opus/opus-dash:latest
     ports:
       - "3000:3000"
     environment:
@@ -802,8 +802,8 @@ services:
     volumes:
       - ./data:/data
 
-  dashboard:
-    image: ghcr.io/opus/opus-dashboard:latest
+  dash:
+    image: ghcr.io/opus/opus-dash:latest
     ports:
       - "3000:3000"
     environment:
@@ -825,11 +825,11 @@ services:
     environment:
       OPUS_SERVER_ENV: "development"
 
-  dashboard:
+  dash:
     build:
-      context: ./dashboard
+      context: ./dash
     volumes:
-      - ./dashboard:/app
+      - ./dash:/app
       - /app/node_modules
     environment:
       NODE_ENV: "development"
@@ -969,8 +969,8 @@ Triggered on every pull request.
 | Setup Node | Install Node.js LTS + pnpm |
 | `task api:lint` | Run golangci-lint on `api/` |
 | `task api:test:all` | Run unit + integration tests for `api/` |
-| `task dashboard:lint` | Run ESLint + TypeScript checks on `dashboard/` |
-| `task dashboard:test` | Run Vitest unit tests for `dashboard/` |
+| `task dash:lint` | Run ESLint + TypeScript checks on `dash/` |
+| `task dash:test` | Run Vitest unit tests for `dash/` |
 
 ### `build.yml` — Build & Docker
 
@@ -979,7 +979,7 @@ Triggered on merge to `main`.
 | Step | Description |
 |------|-------------|
 | `task api:build` | Build Go binary for all target platforms |
-| Build Docker images | Build `opus-api` and `opus-dashboard` images |
+| Build Docker images | Build `opus-api` and `opus-dash` images |
 | Push to GHCR | Push images to `ghcr.io/opus/` |
 
 ### `release.yml` — Release
@@ -1062,4 +1062,4 @@ The `pkg/` directory is intentionally absent in v1.0. It is reserved for future 
 - A library is mature enough to be versioned independently.
 - A capability is generic enough to be useful outside the Opus project.
 
-Until that threshold is reached, all shared utilities shall reside in `internal/config/` or adjacent `internal/` packages.
+Until that threshold is reached, all shared utilities shall reside in `internal/config/` or adjacent `internal/` packages.ages.

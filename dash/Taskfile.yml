@@ -1,0 +1,40 @@
+# dash/Taskfile.yml
+version: "3"
+
+tasks:
+  setup:
+    desc: Setup Dash dependencies
+    cmds:
+      - pnpm install
+      - pnpm exec playwright install --with-deps
+
+  dev:
+    desc: Run Dash in dev mode
+    cmds:
+      - pnpm dev
+
+  build:
+    desc: Build Dash bundle
+    cmds:
+      - pnpm build
+
+  test:
+    desc: Run Dash unit tests
+    cmds:
+      - pnpm test
+
+  test:e2e:
+    desc: Run Dash E2E tests
+    cmds:
+      - pnpm exec playwright test
+
+  lint:
+    desc: Lint Dash
+    cmds:
+      - pnpm lint
+
+  format:
+    desc: Format Dash code
+    cmds:
+      - pnpm exec biome format . --write
+

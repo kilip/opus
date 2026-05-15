@@ -27,7 +27,7 @@
 
 Opus is an autonomous AI agent designed for 24/7 personal assistance. It provides a self-hostable, privacy-first platform that runs on the user's own infrastructure — from a single Raspberry Pi to a production server — accessible via a Progressive Web App (PWA). Opus is designed to be installable in minutes, extensible by design, and operable without cloud dependencies.
 
-The project is structured as a monorepo with two primary components: `api/` (Go backend) and `dashboard/` (Next.js frontend), orchestrated via a root-level Taskfile and distributed as a single installable unit.
+The project is structured as a monorepo with two primary components: `api/` (Go backend) and `dash/` (Next.js frontend), orchestrated via a root-level Taskfile and distributed as a single installable unit.
 
 ---
 
@@ -54,7 +54,7 @@ Opus addresses all four problems by providing a lightweight, self-hosted AI agen
 - Support multiple database backends (SQLite and PostgreSQL) — user's choice, not environment-dictated.
 - Provide secure authentication via OAuth2 (Google, GitHub) and Email/Password (development only).
 - Maintain a clean, extensible codebase using Clean Architecture principles.
-- Provide a monorepo structure (`api/` + `dashboard/`) with a unified root Taskfile for developer orchestration.
+- Provide a monorepo structure (`api/` + `dash/`) with a unified root Taskfile for developer orchestration.
 
 ### Non-Goals (v1.0)
 
@@ -90,7 +90,7 @@ Opus addresses all four problems by providing a lightweight, self-hosted AI agen
 - As an end-user, I want the installer to configure auto-restart (systemd / launchd / Windows Service) so that Opus survives reboots.
 - As a developer, I want to run Opus via Docker Compose with environment variable overrides.
 - As a developer, I want to run Opus on bare metal using a pre-built binary.
-- As a developer, I want to run a single command (`task setup`) to install all dependencies for both `api/` and `dashboard/` in one step.
+- As a developer, I want to run a single command (`task setup`) to install all dependencies for both `api/` and `dash/` in one step.
 
 ### Configuration
 
@@ -153,7 +153,7 @@ Opus addresses all four problems by providing a lightweight, self-hosted AI agen
 | DIST-04 | The installer shall register Opus as a system service (systemd on Linux, launchd on macOS, Windows Service on Windows). |
 | DIST-05 | Docker image shall be provided with documented environment variable configuration. |
 | DIST-06 | Bare metal binary shall be available for manual installation. |
-| DIST-07 | A root-level `docker-compose.yml` shall orchestrate both `api/` and `dashboard/` services. |
+| DIST-07 | A root-level `docker-compose.yml` shall orchestrate both `api/` and `dash/` services. |
 
 ### 6.5 CLI
 
@@ -169,7 +169,7 @@ Opus addresses all four problems by providing a lightweight, self-hosted AI agen
 
 | ID | Requirement |
 |----|-------------|
-| FE-01 | Frontend shall be a Next.js 16 application located at `dashboard/`. |
+| FE-01 | Frontend shall be a Next.js 16 application located at `dash/`. |
 | FE-02 | Frontend shall be installable as a PWA on desktop and mobile. |
 | FE-03 | Frontend shall display an offline fallback page when the server is unreachable. |
 | FE-04 | Frontend shall consume the API via TanStack Query for server state management. |
@@ -180,9 +180,9 @@ Opus addresses all four problems by providing a lightweight, self-hosted AI agen
 
 | ID | Requirement |
 |----|-------------|
-| DX-01 | Root `Taskfile.yml` shall act as an orchestrator, delegating tasks to `api/Taskfile.yml` and `dashboard/Taskfile.yml`. |
-| DX-02 | `task setup` at root level shall install all dependencies for both `api/` and `dashboard/`. |
-| DX-03 | `task dev` at root level shall start both `api/` and `dashboard/` in development mode concurrently. |
+| DX-01 | Root `Taskfile.yml` shall act as an orchestrator, delegating tasks to `api/Taskfile.yml` and `dash/Taskfile.yml`. |
+| DX-02 | `task setup` at root level shall install all dependencies for both `api/` and `dash/`. |
+| DX-03 | `task dev` at root level shall start both `api/` and `dash/` in development mode concurrently. |
 | DX-04 | `task build` at root level shall build both components. |
 | DX-05 | `task test:all` at root level shall execute all unit and integration tests across both components. |
 | DX-06 | Root `.env.example` shall document all `OPUS_*` environment variables. |
@@ -212,7 +212,7 @@ Opus addresses all four problems by providing a lightweight, self-hosted AI agen
 - The AI provider integration is **out of scope** for base structure; the agent interface will be defined in a subsequent iteration.
 - SQLite is a fully supported production database for lightweight, single-user deployments.
 - The `npx opus install` wizard targets end-users with Node.js installed (LTS).
-- The monorepo structure (`api/` + `dashboard/`) is housed within a single root `opus/` directory.
+- The monorepo structure (`api/` + `dash/`) is housed within a single root `opus/` directory.
 
 ---
 
@@ -224,7 +224,7 @@ Opus addresses all four problems by providing a lightweight, self-hosted AI agen
 | Time to first working installation (Docker path) | < 2 minutes |
 | Time to full local dev environment setup (`task setup` + `task dev`) | < 3 minutes |
 | API unit test coverage | ≥ 80% |
-| Frontend E2E test coverage (critical flows) | Auth, Dashboard, Streaming |
+| Frontend E2E test coverage (critical flows) | Auth, Dash, Streaming |
 | PWA Lighthouse score | ≥ 90 |
 
 ---

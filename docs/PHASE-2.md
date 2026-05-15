@@ -735,7 +735,7 @@ func NewAuthHandler(authService *service.AuthService, cfg *config.Config) *AuthH
 - `EmailPasswordLogin`: Return `fiber.StatusForbidden` with error `{"code": "FORBIDDEN", "message": "Email/password login is disabled in production."}` when `cfg.Server.Env != "development"`.
 - `RefreshToken`: Read refresh token from `HttpOnly` cookie named `refresh_token`. Call `authService.RefreshTokens()`. Set new refresh token as HttpOnly cookie. Return new access token in JSON response body.
 - `Logout`: Read refresh token from cookie. Call `authService.Logout()`. Clear the cookie.
-- OAuth2 callbacks: Call `authService.UpsertOAuthUser()`, then `authService.IssueTokens()`, then redirect to dashboard with access token.
+- OAuth2 callbacks: Call `authService.UpsertOAuthUser()`, then `authService.IssueTokens()`, then redirect to dash with access token.
 - All responses use the standard envelope: `{ success, data, error }`.
 
 ### Refresh Token Cookie Settings

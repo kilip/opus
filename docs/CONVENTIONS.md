@@ -29,7 +29,7 @@ This document defines the coding conventions, naming rules, and structural stand
 ```
 opus/
 ├── api/                  # Go backend (GoFiber v3 + EntGo + Viper)
-├── dashboard/            # Next.js 16 frontend (PWA)
+├── dash/            # Next.js 16 frontend (PWA)
 ├── docs/                 # Project documentation
 ├── .github/workflows/    # CI/CD pipelines
 ├── docker-compose.yml
@@ -181,7 +181,7 @@ func TestAuthService_Login(t *testing.T) {
 
 ---
 
-## 4. Frontend (`dashboard/`)
+## 4. Frontend (`dash/`)
 
 ### 4.1 Language & Toolchain
 
@@ -210,10 +210,10 @@ func TestAuthService_Login(t *testing.T) {
 ### 4.3 Directory Structure
 
 ```
-dashboard/
+dash/
 ├── app/                    # Next.js App Router pages and layouts
 │   ├── (auth)/             # Auth route group
-│   ├── (dashboard)/        # Protected route group
+│   ├── (dash)/        # Protected route group
 │   └── offline/            # PWA offline fallback
 ├── components/
 │   ├── ui/                 # Shadcn/ui generated — do not edit manually
@@ -287,7 +287,7 @@ const response: any = await fetch(...);
 | Test Type | Tool | Location | Scope |
 |-----------|------|----------|-------|
 | Unit / Component | Vitest + React Testing Library | co-located `*.test.tsx` | Utilities, hooks, components |
-| End-to-End | Playwright | `e2e/` directory | Auth flow, dashboard, streaming, PWA |
+| End-to-End | Playwright | `e2e/` directory | Auth flow, dash, streaming, PWA |
 
 ---
 

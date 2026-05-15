@@ -26,7 +26,7 @@ Wire all components together and validate end-to-end flows. Build the `npx opus 
 
 > Always provide `docs/CONVENTIONS.md`, `docs/PRD.md`, and `docs/ARCHITECTURE.md` alongside this file.
 
-**You are wiring together the Opus API and dashboard, building the distribution layer, and validating everything end-to-end.** Follow the Architecture document for all deployment specifications. The `npx opus install` wizard is a separate Node.js package in `installer/`.
+**You are wiring together the Opus API and dash, building the distribution layer, and validating everything end-to-end.** Follow the Architecture document for all deployment specifications. The `npx opus install` wizard is a separate Node.js package in `installer/`.
 
 ---
 
@@ -34,7 +34,7 @@ Wire all components together and validate end-to-end flows. Build the `npx opus 
 
 ### What to Do
 
-Validate the complete OAuth2 authentication flow end-to-end with both the API and dashboard running concurrently. This is a manual validation task with a defined checklist.
+Validate the complete OAuth2 authentication flow end-to-end with both the API and dash running concurrently. This is a manual validation task with a defined checklist.
 
 ### Setup
 
@@ -43,8 +43,8 @@ Validate the complete OAuth2 authentication flow end-to-end with both the API an
 cd api/
 OPUS_SERVER_ENV=development OPUS_AUTH_SECRET=test-secret-32-chars-minimum task dev
 
-# Terminal 2 — Start Dashboard
-cd dashboard/
+# Terminal 2 — Start Dash
+cd dash/
 NEXT_PUBLIC_API_URL=http://localhost:8080 task dev
 ```
 
@@ -57,7 +57,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8080 task dev
 3. Click "Sign in with Google".
 4. Verify redirect to `http://localhost:8080/auth/google`.
 5. Complete Google OAuth2 (requires valid `OPUS_AUTH_GOOGLE_CLIENT_ID`).
-6. Verify redirect back to dashboard at `http://localhost:3000`.
+6. Verify redirect back to dash at `http://localhost:3000`.
 7. Verify user name and avatar are displayed.
 8. Open browser DevTools → Application → Cookies.
 9. Verify `refresh_token` cookie exists with `HttpOnly: true` and `SameSite: Strict`.
@@ -68,11 +68,11 @@ NEXT_PUBLIC_API_URL=http://localhost:8080 task dev
 1. Wait for access token to expire (or manually test `POST /auth/refresh`).
 2. Verify `AuthGuard` silently refreshes the token.
 3. Verify the old `refresh_token` cookie is replaced with a new one.
-4. Verify the user remains on the dashboard.
+4. Verify the user remains on the dash.
 
 #### Logout Flow
 
-1. Click the logout button on the dashboard.
+1. Click the logout button on the dash.
 2. Verify `POST /auth/logout` is called.
 3. Verify `refresh_token` cookie is cleared.
 4. Verify redirect to `/login`.
@@ -105,7 +105,7 @@ Validate the SSE streaming connection end-to-end with both services running.
 ### Validation Steps
 
 1. Log in via OAuth2 or email/password (development mode).
-2. Navigate to the dashboard.
+2. Navigate to the dash.
 3. Click the "Connect" button.
 4. Verify `StreamOutput` component shows `isConnected: true` (green indicator).
 5. Verify heartbeat events appear in the output every ~30 seconds.
@@ -260,7 +260,7 @@ Register the system service based on platform:
 
 ---
 
-## P4-T4 — Implement `api/Dockerfile` and `dashboard/Dockerfile`
+## P4-T4 — Implement `api/Dockerfile` and `dash/Dockerfile`
 
 ### What to Do
 
@@ -289,7 +289,7 @@ EXPOSE 8080
 CMD ["opus", "start"]
 ```
 
-### `dashboard/Dockerfile`
+### `dash/Dockerfile`
 
 ```dockerfile
 # Stage 1: Dependencies
@@ -321,7 +321,7 @@ CMD ["node", "server.js"]
 
 ### Next.js Standalone Output
 
-Add to `dashboard/next.config.ts`:
+Add to `dash/next.config.ts`:
 
 ```ts
 export default withSerwistConfig({
@@ -334,19 +334,19 @@ export default withSerwistConfig({
 
 - Use multi-stage builds to minimize image size.
 - `api/Dockerfile` must include `sqlite-libs` for SQLite support.
-- `dashboard/Dockerfile` must use `output: "standalone"` Next.js configuration.
+- `dash/Dockerfile` must use `output: "standalone"` Next.js configuration.
 - `CGO_ENABLED=1` is required for the `go-sqlite3` driver.
 
 ### Acceptance Criteria
 
 - [x] File `api/Dockerfile` exists with multi-stage build.
-- [x] File `dashboard/Dockerfile` exists with multi-stage build.
+- [x] File `dash/Dockerfile` exists with multi-stage build.
 - [x] `api/Dockerfile` includes `sqlite-libs` in runtime stage.
-- [x] `dashboard/next.config.ts` has `output: "standalone"`.
+- [x] `dash/next.config.ts` has `output: "standalone"`.
 - [x] Running `docker build -t opus-api ./api` succeeds.
-- [x] Running `docker build -t opus-dashboard ./dashboard` succeeds.
+- [x] Running `docker build -t opus-dash ./dash` succeeds.
 - [x] Running `docker run -p 8080:8080 opus-api` starts the API server.
-- [x] Running `docker run -p 3000:3000 opus-dashboard` starts the dashboard.
+- [x] Running `docker run -p 3000:3000 opus-dash` starts the dash.
 
 ---
 
@@ -369,7 +369,7 @@ api:
     retries: 3
 ```
 
-Add `dashboard` depends on `api` with `condition: service_healthy`.
+Add `dash` depends on `api` with `condition: service_healthy`.
 
 ### Updates to `docker-compose.dev.yml`
 
@@ -391,11 +391,11 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 ### Acceptance Criteria
 
 - [x] `api` service in `docker-compose.yml` has a health check targeting `/health`.
-- [x] `dashboard` depends on `api` with `condition: service_healthy`.
+- [x] `dash` depends on `api` with `condition: service_healthy`.
 - [x] Both compose files pass `docker compose config` validation.
 - [x] Running the full stack via Docker Compose starts both services successfully.
 - [x] `GET http://localhost:8080/health` returns `{"success": true}` when running via Docker.
-- [x] `http://localhost:3000` serves the dashboard when running via Docker.
+- [x] `http://localhost:3000` serves the dash when running via Docker.
 
 ---
 
@@ -494,7 +494,7 @@ Add caching steps:
   uses: actions/cache@v4
   with:
     path: ~/.pnpm-store
-    key: ${{ runner.os }}-pnpm-${{ hashFiles('dashboard/pnpm-lock.yaml') }}
+    key: ${{ runner.os }}-pnpm-${{ hashFiles('dash/pnpm-lock.yaml') }}
 ```
 
 ### Acceptance Criteria
@@ -531,13 +531,13 @@ Update the build workflow to use Docker Buildx for multi-platform image builds (
     cache-to: type=gha,mode=max
 ```
 
-Apply the same multi-platform configuration to the `dashboard` image build.
+Apply the same multi-platform configuration to the `dash` image build.
 
 ### Acceptance Criteria
 
 - [x] `build.yml` uses `docker/setup-buildx-action@v3`.
 - [x] API image is built for `linux/amd64` and `linux/arm64`.
-- [x] Dashboard image is built for `linux/amd64` and `linux/arm64`.
+- [x] Dash image is built for `linux/amd64` and `linux/arm64`.
 - [x] Images are tagged with both `latest` and `${{ github.sha }}`.
 - [x] Docker layer caching is configured with `type=gha`.
 
@@ -597,8 +597,8 @@ Run a Lighthouse audit against the production build and verify the PWA score mee
 ### Setup
 
 ```bash
-# Build production dashboard
-cd dashboard/
+# Build production dash
+cd dash/
 pnpm build
 pnpm start &
 
@@ -767,7 +767,7 @@ cp .env.example .env
 task setup
 task dev
 # API: http://localhost:8080
-# Dashboard: http://localhost:3000
+# Dash: http://localhost:3000
 ```
 
 All three installation paths must succeed for the project to be considered complete.

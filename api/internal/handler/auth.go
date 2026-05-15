@@ -164,7 +164,7 @@ func (h *AuthHandler) GoogleCallback(c fiber.Ctx) error {
 
 	h.setRefreshTokenCookie(c, refreshToken)
 
-	// Redirect to dashboard with access token in query or fragment
+	// Redirect to dash with access token in query or fragment
 	// In production, we might use a postMessage or redirect to a callback page
 	return c.Redirect().To(fmt.Sprintf("%s/auth/callback?token=%s", "http://localhost:3000", accessToken))
 }

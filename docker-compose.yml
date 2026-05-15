@@ -19,9 +19,9 @@ services:
       timeout: 10s
       retries: 3
 
-  dashboard:
+  dash:
     build:
-      context: ./dashboard
+      context: ./dash
       dockerfile: Dockerfile
       args:
         - NEXT_PUBLIC_API_URL=http://localhost:8080

@@ -86,7 +86,7 @@ Before starting any session with your AI agent (Gemini), always provide:
 
 ## Phase 3 — Frontend Foundation (Next.js)
 
-> **Goal:** Implement the Next.js 16 PWA: routing, authentication UI, dashboard shell, SSE streaming output, offline fallback, and service worker configuration.
+> **Goal:** Implement the Next.js 16 PWA: routing, authentication UI, dash shell, SSE streaming output, offline fallback, and service worker configuration.
 
 | ID | Task | Status |
 |----|------|--------|
@@ -101,13 +101,13 @@ Before starting any session with your AI agent (Gemini), always provide:
 | P3-T9 | Implement root layout and global styles | [x] |
 | P3-T10 | Implement auth layout and login page | [x] |
 | P3-T11 | Implement `AuthGuard` component | [x] |
-| P3-T12 | Implement dashboard layout and main dashboard page | [x] |
+| P3-T12 | Implement dash layout and main dash page | [x] |
 | P3-T13 | Implement `StreamOutput` component | [x] |
 | P3-T14 | Implement offline fallback page | [x] |
 | P3-T15 | Configure PWA manifest (`manifest.webmanifest`) | [x] |
-| P3-T16 | Configure `dashboard/Taskfile.yml` | [x] |
+| P3-T16 | Configure `dash/Taskfile.yml` | [x] |
 | P3-T17 | Write Vitest unit tests (hooks + utilities) | [x] |
-| P3-T18 | Write Playwright E2E tests (auth, dashboard, streaming, PWA) | [x] |
+| P3-T18 | Write Playwright E2E tests (auth, dash, streaming, PWA) | [x] |
 
 ---
 
@@ -117,10 +117,10 @@ Before starting any session with your AI agent (Gemini), always provide:
 
 | ID | Task | Status |
 |----|------|--------|
-| P4-T1 | Validate end-to-end auth flow (OAuth2 → JWT → dashboard) | [x] |
+| P4-T1 | Validate end-to-end auth flow (OAuth2 → JWT → dash) | [x] |
 | P4-T2 | Validate SSE streaming end-to-end | [x] |
 | P4-T3 | Implement `npx opus install` wizard (Node.js installer package) | [x] |
-| P4-T4 | Implement `api/Dockerfile` and `dashboard/Dockerfile` | [x] |
+| P4-T4 | Implement `api/Dockerfile` and `dash/Dockerfile` | [x] |
 | P4-T5 | Finalize `docker-compose.yml` and `docker-compose.dev.yml` | [x] |
 | P4-T6 | Configure systemd / launchd / Windows Service registration | [x] |
 | P4-T7 | Finalize GitHub Actions `ci.yml` | [x] |

@@ -14,12 +14,12 @@ services:
       OPUS_DATABASE_DRIVER: "sqlite"
       OPUS_DATABASE_DSN: "/app/tmp/opus.db"
 
-  dashboard:
+  dash:
     build:
-      context: ./dashboard
+      context: ./dash
       dockerfile: Dockerfile
     volumes:
-      - ./dashboard:/app
+      - ./dash:/app
       - /app/node_modules
       - /app/.next
     environment:

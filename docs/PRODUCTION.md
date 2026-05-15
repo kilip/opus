@@ -43,7 +43,7 @@ docker compose up -d
 
 ### Services
 - **API**: Runs on port `8080` (Internal endpoint: `http://localhost:8080`).
-- **Dashboard**: Runs on port `3000` (Access at: `http://localhost:3000`).
+- **Dash**: Runs on port `3000` (Access at: `http://localhost:3000`).
 
 ---
 
@@ -86,7 +86,7 @@ Opus uses a `config.toml` file located at `~/.opus/config.toml` by default.
 ## 📱 Progressive Web App (PWA)
 
 Opus is a fully compliant PWA. Once installed and running:
-1. Open the dashboard in Chrome or Safari.
+1. Open the dash in Chrome or Safari.
 2. Click the **Install** icon in the address bar (Chrome) or **Add to Home Screen** (Safari iOS).
 3. Opus will now appear as a native app on your desktop or mobile home screen.
 

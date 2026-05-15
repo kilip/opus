@@ -31,7 +31,7 @@ Before starting this phase, ensure the following tools are installed on the deve
 
 > Provide `docs/CONVENTIONS.md`, `docs/PRD.md`, and `docs/ARCHITECTURE.md` alongside this file to your AI agent before starting.
 
-**You are scaffolding the Opus monorepo.** Opus is a self-hosted AI agent platform with two components: a Go backend (`api/`) and a Next.js 16 frontend (`dashboard/`). This phase creates only the skeleton — no Go or TypeScript source code is written yet.
+**You are scaffolding the Opus monorepo.** Opus is a self-hosted AI agent platform with two components: a Go backend (`api/`) and a Next.js 16 frontend (`dash/`). This phase creates only the skeleton — no Go or TypeScript source code is written yet.
 
 ---
 
@@ -56,10 +56,10 @@ opus/
 │   │   └── config/
 │   ├── ent/schema/
 │   └── .gitkeep
-├── dashboard/
+├── dash/
 │   ├── app/
 │   │   ├── (auth)/login/
-│   │   ├── (dashboard)/
+│   │   ├── (dash)/
 │   │   └── offline/
 │   ├── components/
 │   │   ├── ui/
@@ -92,14 +92,14 @@ opus/
 - [x] Directory `opus/api/internal/middleware/` exists.
 - [x] Directory `opus/api/internal/config/` exists.
 - [x] Directory `opus/api/ent/schema/` exists.
-- [x] Directory `opus/dashboard/app/(auth)/login/` exists.
-- [x] Directory `opus/dashboard/app/(dashboard)/` exists.
-- [x] Directory `opus/dashboard/app/offline/` exists.
-- [x] Directory `opus/dashboard/components/ui/` exists.
-- [x] Directory `opus/dashboard/components/shared/` exists.
-- [x] Directory `opus/dashboard/lib/api/` exists.
-- [x] Directory `opus/dashboard/lib/utils/` exists.
-- [x] Directory `opus/dashboard/public/icons/` exists.
+- [x] Directory `opus/dash/app/(auth)/login/` exists.
+- [x] Directory `opus/dash/app/(dash)/` exists.
+- [x] Directory `opus/dash/app/offline/` exists.
+- [x] Directory `opus/dash/components/ui/` exists.
+- [x] Directory `opus/dash/components/shared/` exists.
+- [x] Directory `opus/dash/lib/api/` exists.
+- [x] Directory `opus/dash/lib/utils/` exists.
+- [x] Directory `opus/dash/public/icons/` exists.
 - [x] Directory `opus/.github/workflows/` exists.
 - [x] Directory `opus/docs/` exists.
 - [x] File `opus/.gitignore` exists (see content below).
@@ -114,10 +114,10 @@ api/tmp/
 *.test
 
 # Node.js
-dashboard/node_modules/
-dashboard/.next/
-dashboard/out/
-dashboard/.pnpm-store/
+dash/node_modules/
+dash/.next/
+dash/out/
+dash/.pnpm-store/
 
 # Environment
 .env
@@ -146,7 +146,7 @@ Thumbs.db
 
 ### What to Do
 
-Create the root `Taskfile.yml` at `opus/Taskfile.yml`. This file is a **pure orchestrator** — it delegates all tasks to `api/Taskfile.yml` and `dashboard/Taskfile.yml` using the `includes` directive. It does not define build logic directly.
+Create the root `Taskfile.yml` at `opus/Taskfile.yml`. This file is a **pure orchestrator** — it delegates all tasks to `api/Taskfile.yml` and `dash/Taskfile.yml` using the `includes` directive. It does not define build logic directly.
 
 ### File to Create
 
@@ -163,30 +163,30 @@ includes:
     taskfile: ./api/Taskfile.yml
     dir: ./api
 
-  dashboard:
-    taskfile: ./dashboard/Taskfile.yml
-    dir: ./dashboard
+  dash:
+    taskfile: ./dash/Taskfile.yml
+    dir: ./dash
 
 tasks:
   setup:
-    desc: Install all dependencies for api/ and dashboard/
-    deps: [api:setup, dashboard:setup]
+    desc: Install all dependencies for api/ and dash/
+    deps: [api:setup, dash:setup]
 
   dev:
-    desc: Start api/ and dashboard/ in development mode concurrently
-    deps: [api:dev, dashboard:dev]
+    desc: Start api/ and dash/ in development mode concurrently
+    deps: [api:dev, dash:dev]
 
   build:
-    desc: Build api/ binary and dashboard/ production bundle
-    deps: [api:build, dashboard:build]
+    desc: Build api/ binary and dash/ production bundle
+    deps: [api:build, dash:build]
 
   test:all:
-    desc: Run all tests across api/ and dashboard/
-    deps: [api:test:all, dashboard:test]
+    desc: Run all tests across api/ and dash/
+    deps: [api:test:all, dash:test]
 
   lint:
-    desc: Lint api/ and dashboard/
-    deps: [api:lint, dashboard:lint]
+    desc: Lint api/ and dash/
+    deps: [api:lint, dash:lint]
 
   migrate:
     desc: Run database migrations
@@ -197,17 +197,17 @@ tasks:
 ### Constraints
 
 - Do not add any task that contains build logic directly — all logic lives in the sub-Taskfiles.
-- The `includes` section must reference `./api/Taskfile.yml` and `./dashboard/Taskfile.yml`.
+- The `includes` section must reference `./api/Taskfile.yml` and `./dash/Taskfile.yml`.
 
 ### Acceptance Criteria
 
 - [x] File `opus/Taskfile.yml` exists.
-- [x] Contains `includes` block with `api` and `dashboard` entries.
-- [x] Task `setup` delegates to `api:setup` and `dashboard:setup`.
-- [x] Task `dev` delegates to `api:dev` and `dashboard:dev`.
-- [x] Task `build` delegates to `api:build` and `dashboard:build`.
-- [x] Task `test:all` delegates to `api:test:all` and `dashboard:test`.
-- [x] Task `lint` delegates to `api:lint` and `dashboard:lint`.
+- [x] Contains `includes` block with `api` and `dash` entries.
+- [x] Task `setup` delegates to `api:setup` and `dash:setup`.
+- [x] Task `dev` delegates to `api:dev` and `dash:dev`.
+- [x] Task `build` delegates to `api:build` and `dash:build`.
+- [x] Task `test:all` delegates to `api:test:all` and `dash:test`.
+- [x] Task `lint` delegates to `api:lint` and `dash:lint`.
 - [x] Task `migrate` delegates to `api:migrate`.
 - [x] Running `task --list` from `opus/` lists all tasks without errors.
 
@@ -289,7 +289,7 @@ OPUS_AUTH_GITHUB_REDIRECT_URL=http://localhost:8080/auth/github/callback
 
 ### What to Do
 
-Create `opus/docker-compose.yml` for production deployment. This file orchestrates three services: `api`, `dashboard`, and `db` (PostgreSQL). It must also include a SQLite-only variant via comments.
+Create `opus/docker-compose.yml` for production deployment. This file orchestrates three services: `api`, `dash`, and `db` (PostgreSQL). It must also include a SQLite-only variant via comments.
 
 ### File to Create
 
@@ -327,8 +327,8 @@ services:
       db:
         condition: service_healthy
 
-  dashboard:
-    image: ghcr.io/opus/opus-dashboard:latest
+  dash:
+    image: ghcr.io/opus/opus-dash:latest
     restart: unless-stopped
     ports:
       - "3000:3000"
@@ -358,7 +358,7 @@ volumes:
 
 ### Constraints
 
-- Use `ghcr.io/opus/opus-api:latest` and `ghcr.io/opus/opus-dashboard:latest` as image names.
+- Use `ghcr.io/opus/opus-api:latest` and `ghcr.io/opus/opus-dash:latest` as image names.
 - The `api` service must depend on `db` with `condition: service_healthy`.
 - Secrets must use `${VARIABLE}` substitution — never hardcoded values.
 - Include a comment block explaining the SQLite-only variant.
@@ -366,11 +366,11 @@ volumes:
 ### Acceptance Criteria
 
 - [x] File `opus/docker-compose.yml` exists.
-- [x] Contains `api`, `dashboard`, and `db` services.
+- [x] Contains `api`, `dash`, and `db` services.
 - [x] `api` service uses environment variable substitution for secrets.
 - [x] `db` service has a `healthcheck` block.
 - [x] `api` depends on `db` with `condition: service_healthy`.
-- [x] `dashboard` depends on `api`.
+- [x] `dash` depends on `api`.
 - [x] `pgdata` volume is defined.
 - [x] Comment block explaining SQLite-only variant is present.
 - [x] Running `docker compose config` validates without errors.
@@ -381,7 +381,7 @@ volumes:
 
 ### What to Do
 
-Create `opus/docker-compose.dev.yml` as a development override file. This file enables live reload for both `api/` and `dashboard/` and exposes additional ports for debugging.
+Create `opus/docker-compose.dev.yml` as a development override file. This file enables live reload for both `api/` and `dash/` and exposes additional ports for debugging.
 
 ### File to Create
 
@@ -406,12 +406,12 @@ services:
       OPUS_DATABASE_DRIVER: "sqlite"
       OPUS_DATABASE_DSN: "/app/tmp/opus.db"
 
-  dashboard:
+  dash:
     build:
-      context: ./dashboard
+      context: ./dash
       dockerfile: Dockerfile
     volumes:
-      - ./dashboard:/app
+      - ./dash:/app
       - /app/node_modules
       - /app/.next
     environment:
@@ -433,8 +433,8 @@ services:
 - [x] `api` service uses `build.context: ./api`.
 - [x] `api` service mounts `./api:/app`.
 - [x] `api` service sets `OPUS_SERVER_ENV: "development"` and `OPUS_DATABASE_DRIVER: "sqlite"`.
-- [x] `dashboard` service mounts `./dashboard:/app`.
-- [x] `dashboard` service has anonymous volumes for `node_modules` and `.next`.
+- [x] `dash` service mounts `./dash:/app`.
+- [x] `dash` service has anonymous volumes for `node_modules` and `.next`.
 - [x] Usage comment at the top of the file is present.
 - [x] Running `docker compose -f docker-compose.yml -f docker-compose.dev.yml config` validates without errors.
 
@@ -495,11 +495,11 @@ jobs:
       - name: Test API
         run: task api:test:all
 
-      - name: Lint Dashboard
-        run: task dashboard:lint
+      - name: Lint Dash
+        run: task dash:lint
 
-      - name: Test Dashboard
-        run: task dashboard:test
+      - name: Test Dash
+        run: task dash:test
 ```
 
 ### `build.yml` — Build & Docker
@@ -542,8 +542,8 @@ jobs:
       - name: Build API
         run: task api:build
 
-      - name: Build Dashboard
-        run: task dashboard:build
+      - name: Build Dash
+        run: task dash:build
 
       - name: Login to GHCR
         uses: docker/login-action@v3
@@ -559,12 +559,12 @@ jobs:
           push: true
           tags: ghcr.io/opus/opus-api:latest
 
-      - name: Build and Push Dashboard Image
+      - name: Build and Push Dash Image
         uses: docker/build-push-action@v5
         with:
-          context: ./dashboard
+          context: ./dash
           push: true
-          tags: ghcr.io/opus/opus-dashboard:latest
+          tags: ghcr.io/opus/opus-dash:latest
 ```
 
 ### `release.yml` — Release
@@ -642,7 +642,7 @@ jobs:
 - [x] File `.github/workflows/release.yml` exists.
 - [x] `ci.yml` runs on pull requests to `main`.
 - [x] `ci.yml` includes Go setup, Node.js setup, pnpm setup, and Task setup steps.
-- [x] `ci.yml` runs `task api:lint`, `task api:test:all`, `task dashboard:lint`, `task dashboard:test`.
+- [x] `ci.yml` runs `task api:lint`, `task api:test:all`, `task dash:lint`, `task dash:test`.
 - [x] `build.yml` runs on push to `main`.
 - [x] `build.yml` builds and pushes Docker images to `ghcr.io/opus/`.
 - [x] `release.yml` runs on version tag push.
