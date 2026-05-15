@@ -1,6 +1,6 @@
 {
   "name": "get-opus",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "Installer for Opus AI Agent",
   "main": "dist/index.js",
   "bin": {

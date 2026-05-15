@@ -1,13 +1,15 @@
 # Stage 1: Build
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Install pnpm
-RUN npm install -g pnpm
+# Install pnpm with specific version
+RUN npm install -g pnpm@11.1.2
 
-# Copy package files
-COPY package.json pnpm-lock.yaml* ./
+# Copy package files and pnpm config
+COPY package.json pnpm-lock.yaml* .npmrc* pnpm-workspace.yaml* ./
+
+# Install with build scripts allowed for specific packages
 RUN pnpm install --frozen-lockfile
 
 # Copy source code
@@ -21,7 +23,7 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN pnpm build
 
 # Stage 2: Runtime
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 
 WORKDIR /app
 

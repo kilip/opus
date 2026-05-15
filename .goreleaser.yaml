@@ -108,16 +108,12 @@ release:
     **Full Changelog**: https://github.com/kilip/opus/compare/{{ .PreviousTag }}...{{ .Tag }}
 
 dockers:
-  - id: opus-api-amd64
-    ids:
-      - opus
-    goos: linux
-    goarch: amd64
-    image_templates:
+  - image_templates:
       - "ghcr.io/kilip/opus-api:{{ .Tag }}-amd64"
       - "ghcr.io/kilip/opus-api:latest-amd64"
+    ids:
+      - opus
     dockerfile: api/Dockerfile
-    use: buildx
     build_flag_templates:
       - "--platform=linux/amd64"
       - "--label=org.opencontainers.image.title=opus-api"
@@ -126,16 +122,12 @@ dockers:
       - "--label=org.opencontainers.image.created={{ .Date }}"
       - "--label=org.opencontainers.image.source=https://github.com/kilip/opus"
 
-  - id: opus-api-arm64
-    ids:
-      - opus
-    goos: linux
-    goarch: arm64
-    image_templates:
+  - image_templates:
       - "ghcr.io/kilip/opus-api:{{ .Tag }}-arm64"
       - "ghcr.io/kilip/opus-api:latest-arm64"
+    ids:
+      - opus
     dockerfile: api/Dockerfile
-    use: buildx
     build_flag_templates:
       - "--platform=linux/arm64"
       - "--label=org.opencontainers.image.title=opus-api"
