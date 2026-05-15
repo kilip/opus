@@ -6,10 +6,10 @@ Opus is a powerful, self-hosted AI agent platform designed to give you full cont
 
 ## Quick Start
 
-### 1. npx opus install (Recommended)
+### 1. npx get-opus (Recommended)
 The easiest way to get started as an end user.
 ```bash
-npx opus install
+npx get-opus
 ```
 
 ### 2. Docker Compose

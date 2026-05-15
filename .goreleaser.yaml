@@ -99,7 +99,7 @@ release:
     ### Quick Install
 
     ```bash
-    npx opus install
+    npx get-opus
     ```
 
     Or download the binary for your platform below.

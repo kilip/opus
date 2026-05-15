@@ -7,7 +7,7 @@ This guide covers the various ways to deploy **Opus v1.0.1** in a production env
 The easiest way to get Opus running on your machine (Linux, macOS, or Windows) is using our interactive installer.
 
 ```bash
-npx opus install
+npx get-opus
 ```
 
 ### What the installer does:

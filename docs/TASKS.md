@@ -113,13 +113,13 @@ Before starting any session with your AI agent (Gemini), always provide:
 
 ## Phase 4 — Integration & Deployment
 
-> **Goal:** Wire all components together, validate end-to-end flows, build the `npx opus install` wizard, and finalize CI/CD release pipelines.
+> **Goal:** Wire all components together, validate end-to-end flows, build the `npx get-opus` wizard, and finalize CI/CD release pipelines.
 
 | ID | Task | Status |
 |----|------|--------|
 | P4-T1 | Validate end-to-end auth flow (OAuth2 → JWT → dash) | [x] |
 | P4-T2 | Validate SSE streaming end-to-end | [x] |
-| P4-T3 | Implement `npx opus install` wizard (Node.js installer package) | [x] |
+| P4-T3 | Implement `npx get-opus` wizard (Node.js installer package) | [x] |
 | P4-T4 | Implement `api/Dockerfile` and `dash/Dockerfile` | [x] |
 | P4-T5 | Finalize `docker-compose.yml` and `docker-compose.dev.yml` | [x] |
 | P4-T6 | Configure systemd / launchd / Windows Service registration | [x] |

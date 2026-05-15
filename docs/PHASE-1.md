@@ -666,8 +666,7 @@ Create `opus/README.md` with project overview, quick start instructions for all 
 
 1. **Project title and one-line description**
 2. **Quick Start** — three paths:
-   - `npx opus install` (end users)
-   - Docker Compose (technical users)
+   - `npx get-opus` (end users)   - Docker Compose (technical users)
    - Bare metal binary (manual)
 3. **Developer Setup** — `task setup` and `task dev`
 4. **CLI Commands** — table of all `opus` commands
@@ -686,7 +685,7 @@ Create `opus/README.md` with project overview, quick start instructions for all 
 
 - [x] File `opus/README.md` exists.
 - [x] Contains project title and one-line description.
-- [x] Contains Quick Start section with `npx opus install` instructions.
+- [x] Contains Quick Start section with `npx get-opus` instructions.
 - [x] Contains Quick Start section with Docker Compose instructions.
 - [x] Contains Quick Start section with bare metal binary instructions.
 - [x] Contains Developer Setup section with `task setup` and `task dev`.

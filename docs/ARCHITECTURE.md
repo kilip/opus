@@ -58,7 +58,7 @@ Opus is a self-hosted, single-user AI agent platform. The system consists of two
 - **api/** — A Go backend exposing a REST + SSE API.
 - **dash/** — A Next.js 16 Progressive Web App consuming the API.
 
-Both components reside in a single monorepo and are distributed as a single installable unit via `npx opus install`, Docker, or pre-built binaries.
+Both components reside in a single monorepo and are distributed as a single installable unit via `npx get-opus`, Docker, or pre-built binaries.
 
 ```mermaid
 graph TD
@@ -880,14 +880,14 @@ opus start
 
 ### 6.3 npx Installer
 
-`npx opus install` provides an interactive setup wizard targeting end-users.
+`npx get-opus` provides an interactive setup wizard targeting end-users.
 
 **Prerequisites:** Node.js LTS (user-facing requirement).
 
 **Installer flow:**
 
 ```
-$ npx opus install
+$ npx get-opus
 
   ██████╗ ██████╗ ██╗   ██╗███████╗
  ██╔═══██╗██╔══██╗██║   ██║██╔════╝

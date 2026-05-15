@@ -49,7 +49,7 @@ Opus addresses all four problems by providing a lightweight, self-hosted AI agen
 ### Goals
 
 - Provide a fully self-hosted AI agent accessible via PWA.
-- Support installation via `npx opus install` for end-users with minimal technical knowledge.
+- Support installation via `npx get-opus` for end-users with minimal technical knowledge.
 - Support Docker and bare metal deployment for technical users.
 - Support multiple database backends (SQLite and PostgreSQL) — user's choice, not environment-dictated.
 - Provide secure authentication via OAuth2 (Google, GitHub) and Email/Password (development only).
@@ -69,7 +69,7 @@ Opus addresses all four problems by providing a lightweight, self-hosted AI agen
 
 | Persona | Description | Primary Install Path |
 |---------|-------------|----------------------|
-| **End User** | Non-technical individual wanting a personal AI assistant | `npx opus install` |
+| **End User** | Non-technical individual wanting a personal AI assistant | `npx get-opus` |
 | **Developer** | Engineer who wants to self-host, extend, or contribute | Docker / bare metal |
 | **Power User** | Technical-leaning user who self-hosts other services | Docker Compose |
 
@@ -86,7 +86,7 @@ Opus addresses all four problems by providing a lightweight, self-hosted AI agen
 
 ### Installation & Setup
 
-- As an end-user, I want to run a single command (`npx opus install`) to set up Opus interactively on my machine.
+- As an end-user, I want to run a single command (`npx get-opus`) to set up Opus interactively on my machine.
 - As an end-user, I want the installer to configure auto-restart (systemd / launchd / Windows Service) so that Opus survives reboots.
 - As a developer, I want to run Opus via Docker Compose with environment variable overrides.
 - As a developer, I want to run Opus on bare metal using a pre-built binary.
@@ -147,7 +147,7 @@ Opus addresses all four problems by providing a lightweight, self-hosted AI agen
 
 | ID | Requirement |
 |----|-------------|
-| DIST-01 | `npx opus install` shall provide an interactive CLI wizard for first-time setup. |
+| DIST-01 | `npx get-opus` shall provide an interactive CLI wizard for first-time setup. |
 | DIST-02 | The installer shall download the appropriate pre-built Go binary from GitHub Releases. |
 | DIST-03 | The installer shall generate `~/.opus/config.toml` based on user inputs. |
 | DIST-04 | The installer shall register Opus as a system service (systemd on Linux, launchd on macOS, Windows Service on Windows). |
@@ -211,7 +211,7 @@ Opus addresses all four problems by providing a lightweight, self-hosted AI agen
 - Email/Password authentication is explicitly **development-only** and disabled in production builds.
 - The AI provider integration is **out of scope** for base structure; the agent interface will be defined in a subsequent iteration.
 - SQLite is a fully supported production database for lightweight, single-user deployments.
-- The `npx opus install` wizard targets end-users with Node.js installed (LTS).
+- The `npx get-opus` wizard targets end-users with Node.js installed (LTS).
 - The monorepo structure (`api/` + `dash/`) is housed within a single root `opus/` directory.
 
 ---

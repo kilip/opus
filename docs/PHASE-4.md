@@ -10,7 +10,7 @@
 
 ## Phase Goal
 
-Wire all components together and validate end-to-end flows. Build the `npx opus install` wizard, finalize Docker images, configure system service registration, and complete CI/CD release pipelines. The output is a fully deployable, installable Opus v1.0.1.
+Wire all components together and validate end-to-end flows. Build the `npx get-opus` wizard, finalize Docker images, configure system service registration, and complete CI/CD release pipelines. The output is a fully deployable, installable Opus v1.0.1.
 
 ---
 
@@ -26,7 +26,7 @@ Wire all components together and validate end-to-end flows. Build the `npx opus 
 
 > Always provide `docs/CONVENTIONS.md`, `docs/PRD.md`, and `docs/ARCHITECTURE.md` alongside this file.
 
-**You are wiring together the Opus API and dash, building the distribution layer, and validating everything end-to-end.** Follow the Architecture document for all deployment specifications. The `npx opus install` wizard is a separate Node.js package in `installer/`.
+**You are wiring together the Opus API and dash, building the distribution layer, and validating everything end-to-end.** Follow the Architecture document for all deployment specifications. The `npx get-opus` wizard is a separate Node.js package in `installer/`.
 
 ---
 
@@ -125,11 +125,11 @@ Validate the SSE streaming connection end-to-end with both services running.
 
 ---
 
-## P4-T3 — Implement `npx opus install` Wizard
+## P4-T3 — Implement `npx get-opus` Wizard
 
 ### What to Do
 
-Create the Node.js installer package that provides the `npx opus install` experience. This is a separate package in `installer/` at the monorepo root.
+Create the Node.js installer package that provides the `npx get-opus` experience. This is a separate package in `installer/` at the monorepo root.
 
 ### Directory Structure
 
@@ -150,7 +150,7 @@ installer/
 
 ```json
 {
-  "name": "opus",
+  "name": "get-opus",
   "version": "1.0.1",
   "description": "Installer for Opus AI Agent",
   "bin": {
@@ -403,7 +403,7 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 
 ### What to Do
 
-Create the system service definition files that the `npx opus install` wizard deploys. These files are templates — the installer substitutes variables at install time.
+Create the system service definition files that the `npx get-opus` wizard deploys. These files are templates — the installer substitutes variables at install time.
 
 ### Files to Create
 
@@ -711,7 +711,7 @@ This is the final phase. Before marking the project as complete, verify:
 - [x] All 11 tasks (P4-T1 through P4-T11) are marked complete.
 - [x] End-to-end Google OAuth2 flow works without errors.
 - [x] End-to-end SSE streaming works without errors.
-- [x] `npx opus install` wizard runs and produces a working installation.
+- [x] `npx get-opus` wizard runs and produces a working installation.
 - [x] `docker compose up` starts both services and health checks pass.
 - [x] Lighthouse PWA score is ≥ 90.
 - [x] All 5 platform binaries build successfully.
@@ -727,10 +727,10 @@ This is the final phase. Before marking the project as complete, verify:
 
 After all phases are complete, perform this final validation:
 
-### Installation Path 1: `npx opus install`
+### Installation Path 1: `npx get-opus`
 
 ```bash
-npx opus install
+npx get-opus
 # Follow interactive prompts
 # Verify service starts
 opus status

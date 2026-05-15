@@ -1,0 +1,16 @@
+[Unit]
+Description=Opus AI Agent
+Documentation=https://github.com/kilip/opus/opus
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/opus start
+Restart=always
+RestartSec=5
+User={{USER}}
+Environment=HOME=/home/{{USER}}
+Environment=OPUS_SERVER_ENV=production
+
+[Install]
+WantedBy=multi-user.target
