@@ -50,7 +50,7 @@ opus/
 | Item | Standard |
 |------|----------|
 | Go version | 1.23+ |
-| Module name | `github.com/opus/api` |
+| Module name | `github.com/kilip/opus/api` |
 | Linter | `golangci-lint` |
 | Task runner | Taskfile v3 |
 

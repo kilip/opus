@@ -43,7 +43,7 @@ Initialize the Go module for `api/` and install all required dependencies. Creat
 
 ```bash
 cd api/
-go mod init github.com/opus/api
+go mod init github.com/kilip/opus/api
 go get github.com/gofiber/fiber/v3
 go get github.com/spf13/viper
 go get github.com/spf13/cobra
@@ -110,15 +110,15 @@ tasks:
 
 ### Acceptance Criteria
 
-- [ ] File `api/go.mod` exists with module name `github.com/opus/api`.
-- [ ] `github.com/gofiber/fiber/v3` is listed in `go.mod`.
-- [ ] `github.com/spf13/viper` is listed in `go.mod`.
-- [ ] `github.com/spf13/cobra` is listed in `go.mod`.
-- [ ] `entgo.io/ent` is listed in `go.mod`.
-- [ ] `go.uber.org/mock` is listed in `go.mod`.
-- [ ] `github.com/mattn/go-sqlite3` is listed in `go.mod`.
-- [ ] File `api/Taskfile.yml` exists with all tasks defined.
-- [ ] Running `task setup` from `api/` completes without errors.
+- [x] File `api/go.mod` exists with module name `github.com/kilip/opus/api`.
+- [x] `github.com/gofiber/fiber/v3` is listed in `go.mod`.
+- [x] `github.com/spf13/viper` is listed in `go.mod`.
+- [x] `github.com/spf13/cobra` is listed in `go.mod`.
+- [x] `entgo.io/ent` is listed in `go.mod`.
+- [x] `go.uber.org/mock` is listed in `go.mod`.
+- [x] `github.com/mattn/go-sqlite3` is listed in `go.mod`.
+- [x] File `api/Taskfile.yml` exists with all tasks defined.
+- [x] Running `task setup` from `api/` completes without errors.
 
 ---
 
@@ -252,7 +252,7 @@ import (
     "log"
     "sync"
 
-    "github.com/opus/api/ent"
+    "github.com/kilip/opus/api/ent"
     _ "github.com/mattn/go-sqlite3"
     _ "github.com/lib/pq"
 )
@@ -294,18 +294,18 @@ func GetDatabase() *ent.Client {
 
 ### Acceptance Criteria
 
-- [ ] File `api/internal/config/config.go` exists.
-- [ ] File `api/internal/config/logger.go` exists.
-- [ ] File `api/internal/config/database.go` exists.
-- [ ] `GetConfig()` uses `sync.Once` and returns a `*Config` struct.
-- [ ] `GetConfig()` sets `OPUS_` env prefix and calls `AutomaticEnv()`.
-- [ ] `GetConfig()` reads from `$HOME/.opus/config.toml`.
-- [ ] `GetConfig()` has defaults for all non-required fields.
-- [ ] `GetLogger()` returns a `*slog.Logger` using `slog.NewTextHandler` in development and `slog.NewJSONHandler` in production.
-- [ ] `GetDatabase()` supports both `sqlite` and `postgres` drivers.
-- [ ] `GetDatabase()` runs `Schema.Create()` on startup.
-- [ ] All three use `sync.Once` for singleton initialization.
-- [ ] Code compiles without errors (`go build ./internal/config/...`).
+- [x] File `api/internal/config/config.go` exists.
+- [x] File `api/internal/config/logger.go` exists.
+- [x] File `api/internal/config/database.go` exists.
+- [x] `GetConfig()` uses `sync.Once` and returns a `*Config` struct.
+- [x] `GetConfig()` sets `OPUS_` env prefix and calls `AutomaticEnv()`.
+- [x] `GetConfig()` reads from `$HOME/.opus/config.toml`.
+- [x] `GetConfig()` has defaults for all non-required fields.
+- [x] `GetLogger()` returns a `*slog.Logger` using `slog.NewTextHandler` in development and `slog.NewJSONHandler` in production.
+- [x] `GetDatabase()` supports both `sqlite` and `postgres` drivers.
+- [x] `GetDatabase()` runs `Schema.Create()` on startup.
+- [x] All three use `sync.Once` for singleton initialization.
+- [x] Code compiles without errors (`go build ./internal/config/...`).
 
 ---
 
@@ -407,14 +407,14 @@ go generate ./ent/...
 
 ### Acceptance Criteria
 
-- [ ] File `api/ent/schema/user.go` exists.
-- [ ] File `api/ent/schema/session.go` exists.
-- [ ] `User` schema has fields: `id`, `email`, `name`, `avatar_url`, `provider`, `provider_id`, `created_at`, `updated_at`.
-- [ ] `Session` schema has fields: `id`, `token_hash`, `user_id`, `expires_at`, `revoked`, `created_at`.
-- [ ] `User` has edge `To("sessions", Session.Type)`.
-- [ ] `Session` has edge `From("user", User.Type)`.
-- [ ] Running `go generate ./ent/...` completes without errors.
-- [ ] `api/ent/` directory contains generated client code after `go generate`.
+- [x] File `api/ent/schema/user.go` exists.
+- [x] File `api/ent/schema/session.go` exists.
+- [x] `User` schema has fields: `id`, `email`, `name`, `avatar_url`, `provider`, `provider_id`, `created_at`, `updated_at`.
+- [x] `Session` schema has fields: `id`, `token_hash`, `user_id`, `expires_at`, `revoked`, `created_at`.
+- [x] `User` has edge `To("sessions", Session.Type)`.
+- [x] `Session` has edge `From("user", User.Type)`.
+- [x] Running `go generate ./ent/...` completes without errors.
+- [x] `api/ent/` directory contains generated client code after `go generate`.
 
 ---
 
@@ -520,17 +520,17 @@ var (
 
 ### Acceptance Criteria
 
-- [ ] File `api/internal/model/user.go` exists with `User` struct.
-- [ ] File `api/internal/model/session.go` exists with `Session` struct.
-- [ ] File `api/internal/model/errors.go` exists with all sentinel errors.
-- [ ] File `api/internal/repository/user.go` exists.
-- [ ] File `api/internal/repository/session.go` exists.
-- [ ] `userRepository` implements all 5 methods.
-- [ ] `sessionRepository` implements all 4 methods.
-- [ ] Both constructors return the interface type, not the concrete struct.
-- [ ] No `*ent.User` or `*ent.Session` types are returned from repository methods.
-- [ ] All methods wrap errors with `fmt.Errorf`.
-- [ ] Code compiles without errors.
+- [x] File `api/internal/model/user.go` exists with `User` struct.
+- [x] File `api/internal/model/session.go` exists with `Session` struct.
+- [x] File `api/internal/model/errors.go` exists with all sentinel errors.
+- [x] File `api/internal/repository/user.go` exists.
+- [x] File `api/internal/repository/session.go` exists.
+- [x] `userRepository` implements all 5 methods.
+- [x] `sessionRepository` implements all 4 methods.
+- [x] Both constructors return the interface type, not the concrete struct.
+- [x] No `*ent.User` or `*ent.Session` types are returned from repository methods.
+- [x] All methods wrap errors with `fmt.Errorf`.
+- [x] Code compiles without errors.
 
 ---
 
@@ -594,17 +594,17 @@ func NewAuthService(userRepo UserRepository, sessionRepo SessionRepository, cfg 
 
 ### Acceptance Criteria
 
-- [ ] File `api/internal/service/auth.go` exists.
-- [ ] `UserRepository` and `SessionRepository` interfaces are defined in this file.
-- [ ] `AuthService` struct implements all 5 methods.
-- [ ] `IssueTokens` generates a JWT access token signed with HS256.
-- [ ] `IssueTokens` generates a cryptographically random refresh token.
-- [ ] `IssueTokens` stores the SHA-256 hash of the refresh token in the database.
-- [ ] `RefreshTokens` revokes the old session before issuing new tokens.
-- [ ] `RefreshTokens` calls `RevokeAllByUserID` on replay detection (revoked token used again).
-- [ ] `UpsertOAuthUser` finds existing user by provider ID before creating.
-- [ ] No raw tokens or secrets are logged.
-- [ ] Code compiles without errors.
+- [x] File `api/internal/service/auth.go` exists.
+- [x] `UserRepository` and `SessionRepository` interfaces are defined in this file.
+- [x] `AuthService` struct implements all 5 methods.
+- [x] `IssueTokens` generates a JWT access token signed with HS256.
+- [x] `IssueTokens` generates a cryptographically random refresh token.
+- [x] `IssueTokens` stores the SHA-256 hash of the refresh token in the database.
+- [x] `RefreshTokens` revokes the old session before issuing new tokens.
+- [x] `RefreshTokens` calls `RevokeAllByUserID` on replay detection (revoked token used again).
+- [x] `UpsertOAuthUser` finds existing user by provider ID before creating.
+- [x] No raw tokens or secrets are logged.
+- [x] Code compiles without errors.
 
 ---
 
@@ -640,11 +640,11 @@ func NewUserService(userRepo UserReader, cfg *config.Config) *UserService
 
 ### Acceptance Criteria
 
-- [ ] File `api/internal/service/user.go` exists.
-- [ ] `UserReader` interface is defined in this file.
-- [ ] `UserService` implements `GetCurrentUser`.
-- [ ] Returns `model.ErrUserNotFound` when user does not exist.
-- [ ] Code compiles without errors.
+- [x] File `api/internal/service/user.go` exists.
+- [x] `UserReader` interface is defined in this file.
+- [x] `UserService` implements `GetCurrentUser`.
+- [x] Returns `model.ErrUserNotFound` when user does not exist.
+- [x] Code compiles without errors.
 
 ---
 
@@ -685,15 +685,15 @@ Panic recovery middleware. Catches panics, logs them with `slog`, and returns a 
 
 ### Acceptance Criteria
 
-- [ ] File `api/internal/middleware/auth.go` exists.
-- [ ] File `api/internal/middleware/logger.go` exists.
-- [ ] File `api/internal/middleware/recovery.go` exists.
-- [ ] Auth middleware extracts Bearer token from `Authorization` header.
-- [ ] Auth middleware returns 401 with standard error envelope on invalid/missing token.
-- [ ] Auth middleware sets `userID` in `c.Locals("userID", userID)`.
-- [ ] Logger middleware logs `method`, `path`, `status`, `latency_ms`, `request_id` using `slog`.
-- [ ] Recovery middleware catches panics and returns 500 with standard error envelope.
-- [ ] Code compiles without errors.
+- [x] File `api/internal/middleware/auth.go` exists.
+- [x] File `api/internal/middleware/logger.go` exists.
+- [x] File `api/internal/middleware/recovery.go` exists.
+- [x] Auth middleware extracts Bearer token from `Authorization` header.
+- [x] Auth middleware returns 401 with standard error envelope on invalid/missing token.
+- [x] Auth middleware sets `userID` in `c.Locals("userID", userID)`.
+- [x] Logger middleware logs `method`, `path`, `status`, `latency_ms`, `request_id` using `slog`.
+- [x] Recovery middleware catches panics and returns 500 with standard error envelope.
+- [x] Code compiles without errors.
 
 ---
 
@@ -759,14 +759,14 @@ cookie := &fiber.Cookie{
 
 ### Acceptance Criteria
 
-- [ ] File `api/internal/handler/auth.go` exists.
-- [ ] All 7 endpoints are implemented.
-- [ ] `EmailPasswordLogin` returns 403 in production mode.
-- [ ] `RefreshToken` reads refresh token from cookie and sets a new HttpOnly cookie.
-- [ ] `Logout` clears the `refresh_token` cookie.
-- [ ] All responses use the standard envelope.
-- [ ] Cookie is set with `HTTPOnly: true`, `SameSite: "Strict"`, and `Secure: true` in production.
-- [ ] Code compiles without errors.
+- [x] File `api/internal/handler/auth.go` exists.
+- [x] All 7 endpoints are implemented.
+- [x] `EmailPasswordLogin` returns 403 in production mode.
+- [x] `RefreshToken` reads refresh token from cookie and sets a new HttpOnly cookie.
+- [x] `Logout` clears the `refresh_token` cookie.
+- [x] All responses use the standard envelope.
+- [x] Cookie is set with `HTTPOnly: true`, `SameSite: "Strict"`, and `Secure: true` in production.
+- [x] Code compiles without errors.
 
 ---
 
@@ -796,11 +796,11 @@ func NewUserHandler(userService *service.UserService) *UserHandler
 
 ### Acceptance Criteria
 
-- [ ] File `api/internal/handler/user.go` exists.
-- [ ] Handler reads `userID` from `c.Locals("userID")`.
-- [ ] Handler returns user data in standard envelope.
-- [ ] Handler returns 404 with standard error envelope when user is not found.
-- [ ] Code compiles without errors.
+- [x] File `api/internal/handler/user.go` exists.
+- [x] Handler reads `userID` from `c.Locals("userID")`.
+- [x] Handler returns user data in standard envelope.
+- [x] Handler returns 404 with standard error envelope when user is not found.
+- [x] Code compiles without errors.
 
 ---
 
@@ -832,10 +832,10 @@ Implement the health check endpoint.
 
 ### Acceptance Criteria
 
-- [ ] File `api/internal/handler/health.go` exists.
-- [ ] Returns 200 with `status: "ok"`, `version`, and `db` driver name.
-- [ ] Response uses standard envelope.
-- [ ] Code compiles without errors.
+- [x] File `api/internal/handler/health.go` exists.
+- [x] Returns 200 with `status: "ok"`, `version`, and `db` driver name.
+- [x] Response uses standard envelope.
+- [x] Code compiles without errors.
 
 ---
 
@@ -865,12 +865,12 @@ Implement the Server-Sent Events endpoint. This is a placeholder for the future 
 
 ### Acceptance Criteria
 
-- [ ] File `api/internal/handler/stream.go` exists.
-- [ ] Endpoint is protected by Auth middleware.
-- [ ] Content-Type is `text/event-stream`.
-- [ ] Sends heartbeat event every 30 seconds.
-- [ ] Closes gracefully on client disconnect.
-- [ ] Code compiles without errors.
+- [x] File `api/internal/handler/stream.go` exists.
+- [x] Endpoint is protected by Auth middleware.
+- [x] Content-Type is `text/event-stream`.
+- [x] Sends heartbeat event every 30 seconds.
+- [x] Closes gracefully on client disconnect.
+- [x] Code compiles without errors.
 
 ---
 
@@ -920,16 +920,16 @@ GET  /api/v1/stream               → streamHandler.Stream (auth required)
 
 ### Acceptance Criteria
 
-- [ ] File `api/cmd/opus/main.go` exists with `main()` function calling root command.
-- [ ] File `api/cmd/opus/root.go` exists with Cobra root command.
-- [ ] Files for `start`, `stop`, `restart`, `status`, `logs` commands exist.
-- [ ] `start` command initializes all dependencies and starts the GoFiber server.
-- [ ] All routes are registered as specified.
-- [ ] Protected routes use Auth middleware.
-- [ ] CORS middleware is registered.
-- [ ] Recovery and logger middleware are registered.
-- [ ] Running `go build ./cmd/opus` produces a binary without errors.
-- [ ] Running `./bin/opus --help` lists all commands.
+- [x] File `api/cmd/opus/main.go` exists with `main()` function calling root command.
+- [x] File `api/cmd/opus/root.go` exists with Cobra root command.
+- [x] Files for `start`, `stop`, `restart`, `status`, `logs` commands exist.
+- [x] `start` command initializes all dependencies and starts the GoFiber server.
+- [x] All routes are registered as specified.
+- [x] Protected routes use Auth middleware.
+- [x] CORS middleware is registered.
+- [x] Recovery and logger middleware are registered.
+- [x] Running `go build ./cmd/opus` produces a binary without errors.
+- [x] Running `./bin/opus --help` lists all commands.
 
 ---
 
@@ -1010,12 +1010,12 @@ tasks:
 
 ### Acceptance Criteria
 
-- [ ] File `api/Taskfile.yml` is updated with all tasks.
-- [ ] `task setup` installs `air`, `mockgen`, and `golangci-lint`.
-- [ ] `task dev` runs `air` for live reload.
-- [ ] `task mock:generate` generates mocks into `internal/mocks/`.
-- [ ] `task test` runs with `-race` flag.
-- [ ] `task test:integration` uses `-tags=integration`.
+- [x] File `api/Taskfile.yml` is updated with all tasks.
+- [x] `task setup` installs `air`, `mockgen`, and `golangci-lint`.
+- [x] `task dev` runs `air` for live reload.
+- [x] `task mock:generate` generates mocks into `internal/mocks/`.
+- [x] `task test` runs with `-race` flag.
+- [x] `task test:integration` uses `-tags=integration`.
 
 ---
 
@@ -1052,11 +1052,11 @@ Write unit tests for `internal/service/auth.go` using `uber/mock`. Generate mock
 
 ### Acceptance Criteria
 
-- [ ] File `api/internal/service/auth_test.go` exists.
-- [ ] All 9 test cases are implemented.
-- [ ] No real database calls — all repository methods are mocked.
-- [ ] Running `task test` passes all unit tests.
-- [ ] Test coverage for `auth.go` is ≥ 80%.
+- [x] File `api/internal/service/auth_test.go` exists.
+- [x] All 9 test cases are implemented.
+- [x] No real database calls — all repository methods are mocked.
+- [x] Running `task test` passes all unit tests.
+- [x] Test coverage for `auth.go` is ≥ 80%.
 
 ---
 
@@ -1112,12 +1112,12 @@ func setupTestDB(t *testing.T) *ent.Client {
 
 ### Acceptance Criteria
 
-- [ ] File `api/internal/repository/user_integration_test.go` exists with `//go:build integration` tag.
-- [ ] File `api/internal/repository/session_integration_test.go` exists with `//go:build integration` tag.
-- [ ] All user repository test cases are implemented.
-- [ ] All session repository test cases are implemented.
-- [ ] Tests use SQLite in-memory database — no mocks.
-- [ ] Running `task test:integration` passes all integration tests.
+- [x] File `api/internal/repository/user_integration_test.go` exists with `//go:build integration` tag.
+- [x] File `api/internal/repository/session_integration_test.go` exists with `//go:build integration` tag.
+- [x] All user repository test cases are implemented.
+- [x] All session repository test cases are implemented.
+- [x] Tests use SQLite in-memory database — no mocks.
+- [x] Running `task test:integration` passes all integration tests.
 
 ---
 
@@ -1125,12 +1125,12 @@ func setupTestDB(t *testing.T) *ent.Client {
 
 Before proceeding to Phase 3, verify:
 
-- [ ] All 15 tasks (P2-T1 through P2-T15) are marked complete.
-- [ ] Running `go build ./cmd/opus` produces a binary without errors.
-- [ ] Running `./bin/opus --help` lists all Cobra commands.
-- [ ] Running `task test` passes all unit tests.
-- [ ] Running `task test:integration` passes all integration tests.
-- [ ] Running `task lint` passes without errors.
-- [ ] `GET /health` returns `{"success": true, "data": {"status": "ok", ...}}`.
-- [ ] Email/Password login returns 403 when `OPUS_SERVER_ENV=production`.
-- [ ] No raw tokens or secrets appear in any log output.
+- [x] All 15 tasks (P2-T1 through P2-T15) are marked complete.
+- [x] Running `go build ./cmd/opus` produces a binary without errors.
+- [x] Running `./bin/opus --help` lists all Cobra commands.
+- [x] Running `task test` passes all unit tests.
+- [x] Running `task test:integration` passes all integration tests.
+- [x] Running `task lint` passes without errors.
+- [x] `GET /health` returns `{"success": true, "data": {"status": "ok", ...}}`.
+- [x] Email/Password login returns 403 when `OPUS_SERVER_ENV=production`.
+- [x] No raw tokens or secrets appear in any log output.

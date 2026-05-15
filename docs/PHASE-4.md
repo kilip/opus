@@ -217,7 +217,7 @@ Detect OS and architecture to select the correct binary from GitHub Releases:
 
 Download the binary from:
 ```
-https://github.com/opus/opus/releases/latest/download/<binary-name>
+https://github.com/kilip/opus/opus/releases/latest/download/<binary-name>
 ```
 
 Save to `/usr/local/bin/opus` (Linux/macOS) or `%LOCALAPPDATA%\opus\opus.exe` (Windows).
@@ -412,7 +412,7 @@ Create the system service definition files that the `npx opus install` wizard de
 ```ini
 [Unit]
 Description=Opus AI Agent
-Documentation=https://github.com/opus/opus
+Documentation=https://github.com/kilip/opus/opus
 After=network.target
 
 [Service]
@@ -751,7 +751,7 @@ curl http://localhost:8080/health
 ### Installation Path 3: Bare Metal Binary
 
 ```bash
-curl -L https://github.com/opus/opus/releases/latest/download/opus-linux-amd64 -o opus
+curl -L https://github.com/kilip/opus/opus/releases/latest/download/opus-linux-amd64 -o opus
 chmod +x opus
 sudo mv opus /usr/local/bin/
 opus init
@@ -761,7 +761,7 @@ opus start
 ### Developer Setup
 
 ```bash
-git clone https://github.com/opus/opus
+git clone https://github.com/kilip/opus/opus
 cd opus
 cp .env.example .env
 task setup

@@ -851,7 +851,7 @@ Pre-built binaries are published to GitHub Releases for the following targets:
 
 ```bash
 # Download binary
-curl -L https://github.com/opus/opus/releases/latest/download/opus-linux-amd64 -o opus
+curl -L https://github.com/kilip/opus/opus/releases/latest/download/opus-linux-amd64 -o opus
 chmod +x opus
 sudo mv opus /usr/local/bin/
 

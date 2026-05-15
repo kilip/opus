@@ -38,7 +38,7 @@ Before starting any session with your AI agent (Gemini), always provide:
 | Phase | File | Description | Status |
 |-------|------|-------------|--------|
 | Phase 1 | `PHASE-1.md` | Monorepo Setup & Tooling | ✅ Completed |
-| Phase 2 | `PHASE-2.md` | API Foundation (Go Backend) | ⬜ Not Started |
+| Phase 2 | `PHASE-2.md` | API Foundation (Go Backend) | ✅ Completed |
 | Phase 3 | `PHASE-3.md` | Frontend Foundation (Next.js) | ⬜ Not Started |
 | Phase 4 | `PHASE-4.md` | Integration & Deployment | ⬜ Not Started |
 
@@ -66,21 +66,21 @@ Before starting any session with your AI agent (Gemini), always provide:
 
 | ID | Task | Status |
 |----|------|--------|
-| P2-T1 | Initialize Go module and install dependencies | ⬜ |
-| P2-T2 | Implement configuration system (`internal/config/`) | ⬜ |
-| P2-T3 | Define EntGo schemas (`User`, `Session`) | ⬜ |
-| P2-T4 | Implement repository layer (`user`, `session`) | ⬜ |
-| P2-T5 | Implement auth service (`internal/service/auth.go`) | ⬜ |
-| P2-T6 | Implement user service (`internal/service/user.go`) | ⬜ |
-| P2-T7 | Implement middleware (`auth`, `logger`, `recovery`) | ⬜ |
-| P2-T8 | Implement auth handlers (OAuth2 + Email/Password + Refresh + Logout) | ⬜ |
-| P2-T9 | Implement user handler (`/user/me`) | ⬜ |
-| P2-T10 | Implement health check handler | ⬜ |
-| P2-T11 | Implement SSE handler (`/stream`) | ⬜ |
-| P2-T12 | Implement Cobra CLI commands | ⬜ |
-| P2-T13 | Configure `api/Taskfile.yml` | ⬜ |
-| P2-T14 | Write unit tests for auth service | ⬜ |
-| P2-T15 | Write integration tests for repository layer | ⬜ |
+| P2-T1 | Initialize Go module and install dependencies | [x] |
+| P2-T2 | Implement configuration system (`internal/config/`) | [x] |
+| P2-T3 | Define EntGo schemas (`User`, `Session`) | [x] |
+| P2-T4 | Implement repository layer (`user`, `session`) | [x] |
+| P2-T5 | Implement auth service (`internal/service/auth.go`) | [x] |
+| P2-T6 | Implement user service (`internal/service/user.go`) | [x] |
+| P2-T7 | Implement middleware (`auth`, `logger`, `recovery`) | [x] |
+| P2-T8 | Implement auth handlers (OAuth2 + Email/Password + Refresh + Logout) | [x] |
+| P2-T9 | Implement user handler (`/user/me`) | [x] |
+| P2-T10 | Implement health check handler | [x] |
+| P2-T11 | Implement SSE handler (`/stream`) | [x] |
+| P2-T12 | Implement Cobra CLI commands | [x] |
+| P2-T13 | Configure `api/Taskfile.yml` | [x] |
+| P2-T14 | Write unit tests for auth service | [x] |
+| P2-T15 | Write integration tests for repository layer | [x] |
 
 ---
 
@@ -136,10 +136,10 @@ Before starting any session with your AI agent (Gemini), always provide:
 | Phase | Total Tasks | Done | Remaining |
 |-------|------------|------|-----------|
 | Phase 1 | 7 | 7 | 0 |
-| Phase 2 | 15 | 0 | 15 |
+| Phase 2 | 15 | 15 | 0 |
 | Phase 3 | 18 | 0 | 18 |
 | Phase 4 | 11 | 0 | 11 |
-| **Total** | **51** | **0** | **51** |
+| **Total** | **51** | **22** | **29** |
 
 ---
 

@@ -1,33 +1,46 @@
-# api/Taskfile.yml
 version: "3"
 
 tasks:
   setup:
-    desc: Setup API dependencies
+    desc: Install Go module dependencies
     cmds:
-      - echo "Setup API"
+      - go mod download
 
   dev:
-    desc: Run API in dev mode
+    desc: Run API in development mode
     cmds:
-      - echo "Dev API"
+      - go run . start
 
   build:
-    desc: Build API binary
+    desc: Build production binary
     cmds:
-      - echo "Build API"
+      - go build -o bin/opus .
+
+  test:
+    desc: Run unit tests
+    cmds:
+      - go test ./internal/...
+
+  test:integration:
+    desc: Run integration tests
+    cmds:
+      - go test -tags=integration ./internal/...
 
   test:all:
-    desc: Run all API tests
-    cmds:
-      - echo "Test API"
+    desc: Run all tests
+    deps: [test, test:integration]
 
   lint:
-    desc: Lint API
+    desc: Run golangci-lint
     cmds:
-      - echo "Lint API"
+      - golangci-lint run ./...
+
+  ent:generate:
+    desc: Regenerate EntGo code from schema
+    cmds:
+      - go generate ./ent/...
 
   migrate:
-    desc: Run migrations
+    desc: Run database migrations
     cmds:
-      - echo "Migrate API"
+      - go run . migrate
