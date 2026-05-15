@@ -9,12 +9,12 @@ tasks:
   dev:
     desc: Run API in development mode
     cmds:
-      - go run . start
+      - go run ./cmd/opus start
 
   build:
     desc: Build production binary
     cmds:
-      - go build -o bin/opus .
+      - go build -o bin/opus ./cmd/opus
 
   test:
     desc: Run unit tests
@@ -43,4 +43,4 @@ tasks:
   migrate:
     desc: Run database migrations
     cmds:
-      - go run . migrate
+      - go run ./cmd/opus migrate

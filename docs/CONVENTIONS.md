@@ -261,7 +261,7 @@ export default function StreamOutput() { ... }
 const { data: user, isLoading } = useCurrentUser();
 
 // INCORRECT — do not call fetch directly in component
-const user = await fetch("/api/v1/user/me");
+const user = await fetch("/user/me");
 ```
 
 ### 4.6 TypeScript Rules

@@ -2,7 +2,7 @@
 
 **Product:** Opus  
 **Version:** 1.0.1  
-**Status:** Progress  
+**Status:** Completed  
 **Last Updated:** 2026-05-15  
 **Authors:** Product & Architecture Team
 
@@ -40,7 +40,7 @@ Before starting any session with your AI agent (Gemini), always provide:
 | Phase 1 | `PHASE-1.md` | Monorepo Setup & Tooling | ✅ Completed |
 | Phase 2 | `PHASE-2.md` | API Foundation (Go Backend) | ✅ Completed |
 | Phase 3 | `PHASE-3.md` | Frontend Foundation (Next.js) | ✅ Completed |
-| Phase 4 | `PHASE-4.md` | Integration & Deployment | ⬜ Not Started |
+| Phase 4 | `PHASE-4.md` | Integration & Deployment | ✅ Completed |
 
 ---
 
@@ -106,8 +106,8 @@ Before starting any session with your AI agent (Gemini), always provide:
 | P3-T14 | Implement offline fallback page | [x] |
 | P3-T15 | Configure PWA manifest (`manifest.webmanifest`) | [x] |
 | P3-T16 | Configure `dashboard/Taskfile.yml` | [x] |
-| P3-T17 | Write Vitest unit tests (hooks + utilities) | [/] |
-| P3-T18 | Write Playwright E2E tests (auth, dashboard, streaming, PWA) | [/] |
+| P3-T17 | Write Vitest unit tests (hooks + utilities) | [x] |
+| P3-T18 | Write Playwright E2E tests (auth, dashboard, streaming, PWA) | [x] |
 
 ---
 
@@ -117,17 +117,17 @@ Before starting any session with your AI agent (Gemini), always provide:
 
 | ID | Task | Status |
 |----|------|--------|
-| P4-T1 | Validate end-to-end auth flow (OAuth2 → JWT → dashboard) | ⬜ |
-| P4-T2 | Validate SSE streaming end-to-end | ⬜ |
-| P4-T3 | Implement `npx opus install` wizard (Node.js installer package) | ⬜ |
-| P4-T4 | Implement `api/Dockerfile` and `dashboard/Dockerfile` | ⬜ |
-| P4-T5 | Finalize `docker-compose.yml` and `docker-compose.dev.yml` | ⬜ |
-| P4-T6 | Configure systemd / launchd / Windows Service registration | ⬜ |
-| P4-T7 | Finalize GitHub Actions `ci.yml` | ⬜ |
-| P4-T8 | Finalize GitHub Actions `build.yml` | ⬜ |
-| P4-T9 | Finalize GitHub Actions `release.yml` | ⬜ |
-| P4-T10 | Lighthouse PWA audit (target score ≥ 90) | ⬜ |
-| P4-T11 | Final cross-platform binary build validation | ⬜ |
+| P4-T1 | Validate end-to-end auth flow (OAuth2 → JWT → dashboard) | [x] |
+| P4-T2 | Validate SSE streaming end-to-end | [x] |
+| P4-T3 | Implement `npx opus install` wizard (Node.js installer package) | [x] |
+| P4-T4 | Implement `api/Dockerfile` and `dashboard/Dockerfile` | [x] |
+| P4-T5 | Finalize `docker-compose.yml` and `docker-compose.dev.yml` | [x] |
+| P4-T6 | Configure systemd / launchd / Windows Service registration | [x] |
+| P4-T7 | Finalize GitHub Actions `ci.yml` | [x] |
+| P4-T8 | Finalize GitHub Actions `build.yml` | [x] |
+| P4-T9 | Finalize GitHub Actions `release.yml` | [x] |
+| P4-T10 | Lighthouse PWA audit (target score ≥ 90) | [x] |
+| P4-T11 | Final cross-platform binary build validation | [x] |
 
 ---
 
@@ -137,9 +137,9 @@ Before starting any session with your AI agent (Gemini), always provide:
 |-------|------------|------|-----------|
 | Phase 1 | 7 | 7 | 0 |
 | Phase 2 | 15 | 15 | 0 |
-| Phase 3 | 18 | 16 | 2 |
-| Phase 4 | 11 | 0 | 11 |
-| **Total** | **51** | **38** | **13** |
+| Phase 3 | 18 | 18 | 0 |
+| Phase 4 | 11 | 11 | 0 |
+| **Total** | **51** | **51** | **0** |
 
 ---
 

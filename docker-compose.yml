@@ -1,56 +1,36 @@
-# opus/docker-compose.yml
-# Production configuration
-# For SQLite deployment, remove the db service and set:
-#   OPUS_DATABASE_DRIVER=sqlite
-#   OPUS_DATABASE_DSN=/data/opus.db
-#   Add volume: ./data:/data to api service
+version: '3.8'
 
 services:
   api:
-    image: ghcr.io/opus/opus-api:latest
-    restart: unless-stopped
-    environment:
-      OPUS_SERVER_PORT: "8080"
-      OPUS_SERVER_ENV: "production"
-      OPUS_DATABASE_DRIVER: "postgres"
-      OPUS_DATABASE_DSN: "postgres://opus:secret@db:5432/opus"
-      OPUS_AUTH_SECRET: "${OPUS_AUTH_SECRET}"
-      OPUS_AUTH_GOOGLE_CLIENT_ID: "${OPUS_AUTH_GOOGLE_CLIENT_ID}"
-      OPUS_AUTH_GOOGLE_CLIENT_SECRET: "${OPUS_AUTH_GOOGLE_CLIENT_SECRET}"
-      OPUS_AUTH_GOOGLE_REDIRECT_URL: "${OPUS_AUTH_GOOGLE_REDIRECT_URL}"
-      OPUS_AUTH_GITHUB_CLIENT_ID: "${OPUS_AUTH_GITHUB_CLIENT_ID}"
-      OPUS_AUTH_GITHUB_CLIENT_SECRET: "${OPUS_AUTH_GITHUB_CLIENT_SECRET}"
-      OPUS_AUTH_GITHUB_REDIRECT_URL: "${OPUS_AUTH_GITHUB_REDIRECT_URL}"
+    build:
+      context: ./api
+      dockerfile: Dockerfile
     ports:
       - "8080:8080"
-    depends_on:
-      db:
-        condition: service_healthy
+    volumes:
+      - opus-data:/root/.opus
+    environment:
+      - OPUS_SERVER_ENV=production
+      - OPUS_DATABASE_DSN=/root/.opus/opus.db
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   dashboard:
-    image: ghcr.io/opus/opus-dashboard:latest
-    restart: unless-stopped
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=http://localhost:8080
     ports:
       - "3000:3000"
-    environment:
-      NEXT_PUBLIC_API_URL: "http://localhost:8080"
     depends_on:
-      - api
-
-  db:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: opus
-      POSTGRES_PASSWORD: secret
-      POSTGRES_DB: opus
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U opus"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      api:
+        condition: service_healthy
+    restart: always
 
 volumes:
-  pgdata:
+  opus-data:

@@ -65,7 +65,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8080 task dev
 
 #### Token Refresh Flow
 
-1. Wait for access token to expire (or manually test `POST /api/v1/auth/refresh`).
+1. Wait for access token to expire (or manually test `POST /auth/refresh`).
 2. Verify `AuthGuard` silently refreshes the token.
 3. Verify the old `refresh_token` cookie is replaced with a new one.
 4. Verify the user remains on the dashboard.
@@ -73,7 +73,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8080 task dev
 #### Logout Flow
 
 1. Click the logout button on the dashboard.
-2. Verify `POST /api/v1/auth/logout` is called.
+2. Verify `POST /auth/logout` is called.
 3. Verify `refresh_token` cookie is cleared.
 4. Verify redirect to `/login`.
 5. Verify visiting `/` redirects to `/login` (session is fully cleared).
@@ -82,17 +82,17 @@ NEXT_PUBLIC_API_URL=http://localhost:8080 task dev
 
 1. With `OPUS_SERVER_ENV=development`, submit the email/password form.
 2. Verify login succeeds.
-3. With `OPUS_SERVER_ENV=production`, verify `POST /api/v1/auth/login` returns `403 Forbidden`.
+3. With `OPUS_SERVER_ENV=production`, verify `POST /auth/login` returns `403 Forbidden`.
 
 ### Acceptance Criteria
 
-- [ ] Google OAuth2 flow completes without errors.
-- [ ] `refresh_token` cookie is `HttpOnly`, `SameSite: Strict`.
-- [ ] Access token is not stored in cookies or `localStorage`.
-- [ ] Silent token refresh works without user interaction.
-- [ ] Logout clears session and redirects to login.
-- [ ] Revisiting `/` after logout redirects to `/login`.
-- [ ] Email/password login returns 403 in production mode.
+- [x] Google OAuth2 flow completes without errors.
+- [x] `refresh_token` cookie is `HttpOnly`, `SameSite: Strict`.
+- [x] Access token is not stored in cookies or `localStorage`.
+- [x] Silent token refresh works without user interaction.
+- [x] Logout clears session and redirects to login.
+- [x] Revisiting `/` after logout redirects to `/login`.
+- [x] Email/password login returns 403 in production mode.
 
 ---
 
@@ -110,18 +110,18 @@ Validate the SSE streaming connection end-to-end with both services running.
 4. Verify `StreamOutput` component shows `isConnected: true` (green indicator).
 5. Verify heartbeat events appear in the output every ~30 seconds.
 6. Open browser DevTools → Network tab → Filter by `EventStream`.
-7. Verify the `/api/v1/stream` request shows `text/event-stream` content type.
+7. Verify the `/stream` request shows `text/event-stream` content type.
 8. Disconnect from network and verify `error` state appears in `StreamOutput`.
 9. Reconnect and click "Connect" again — verify reconnection works.
 
 ### Acceptance Criteria
 
-- [ ] SSE connection establishes successfully after login.
-- [ ] `StreamOutput` shows green indicator when connected.
-- [ ] Heartbeat events appear in output every ~30 seconds.
-- [ ] Network tab shows `text/event-stream` content type for stream request.
-- [ ] Error state displays correctly on connection loss.
-- [ ] Reconnection works after connection loss.
+- [x] SSE connection establishes successfully after login.
+- [x] `StreamOutput` shows green indicator when connected.
+- [x] Heartbeat events appear in output every ~30 seconds.
+- [x] Network tab shows `text/event-stream` content type for stream request.
+- [x] Error state displays correctly on connection loss.
+- [x] Reconnection works after connection loss.
 
 ---
 
@@ -247,16 +247,16 @@ Register the system service based on platform:
 
 ### Acceptance Criteria
 
-- [ ] Directory `installer/` exists at monorepo root.
-- [ ] File `installer/package.json` exists with `bin.opus` pointing to `dist/index.js`.
-- [ ] File `installer/src/install.ts` implements the 5-step wizard.
-- [ ] File `installer/src/platform.ts` detects OS and arch correctly.
-- [ ] File `installer/src/download.ts` downloads from GitHub Releases.
-- [ ] File `installer/src/config.ts` generates `~/.opus/config.toml`.
-- [ ] File `installer/src/service.ts` registers system service for Linux, macOS, Windows.
-- [ ] JWT secret is auto-generated if blank (32 bytes, hex-encoded).
-- [ ] Running `node dist/index.js` starts the interactive wizard.
-- [ ] Unsupported platforms show a clear error message.
+- [x] Directory `installer/` exists at monorepo root.
+- [x] File `installer/package.json` exists with `bin.opus` pointing to `dist/index.js`.
+- [x] File `installer/src/install.ts` implements the 5-step wizard.
+- [x] File `installer/src/platform.ts` detects OS and arch correctly.
+- [x] File `installer/src/download.ts` downloads from GitHub Releases.
+- [x] File `installer/src/config.ts` generates `~/.opus/config.toml`.
+- [x] File `installer/src/service.ts` registers system service for Linux, macOS, Windows.
+- [x] JWT secret is auto-generated if blank (32 bytes, hex-encoded).
+- [x] Running `node dist/index.js` starts the interactive wizard.
+- [x] Unsupported platforms show a clear error message.
 
 ---
 
@@ -339,14 +339,14 @@ export default withSerwistConfig({
 
 ### Acceptance Criteria
 
-- [ ] File `api/Dockerfile` exists with multi-stage build.
-- [ ] File `dashboard/Dockerfile` exists with multi-stage build.
-- [ ] `api/Dockerfile` includes `sqlite-libs` in runtime stage.
-- [ ] `dashboard/next.config.ts` has `output: "standalone"`.
-- [ ] Running `docker build -t opus-api ./api` succeeds.
-- [ ] Running `docker build -t opus-dashboard ./dashboard` succeeds.
-- [ ] Running `docker run -p 8080:8080 opus-api` starts the API server.
-- [ ] Running `docker run -p 3000:3000 opus-dashboard` starts the dashboard.
+- [x] File `api/Dockerfile` exists with multi-stage build.
+- [x] File `dashboard/Dockerfile` exists with multi-stage build.
+- [x] `api/Dockerfile` includes `sqlite-libs` in runtime stage.
+- [x] `dashboard/next.config.ts` has `output: "standalone"`.
+- [x] Running `docker build -t opus-api ./api` succeeds.
+- [x] Running `docker build -t opus-dashboard ./dashboard` succeeds.
+- [x] Running `docker run -p 8080:8080 opus-api` starts the API server.
+- [x] Running `docker run -p 3000:3000 opus-dashboard` starts the dashboard.
 
 ---
 
@@ -390,12 +390,12 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 
 ### Acceptance Criteria
 
-- [ ] `api` service in `docker-compose.yml` has a health check targeting `/health`.
-- [ ] `dashboard` depends on `api` with `condition: service_healthy`.
-- [ ] Both compose files pass `docker compose config` validation.
-- [ ] Running the full stack via Docker Compose starts both services successfully.
-- [ ] `GET http://localhost:8080/health` returns `{"success": true}` when running via Docker.
-- [ ] `http://localhost:3000` serves the dashboard when running via Docker.
+- [x] `api` service in `docker-compose.yml` has a health check targeting `/health`.
+- [x] `dashboard` depends on `api` with `condition: service_healthy`.
+- [x] Both compose files pass `docker compose config` validation.
+- [x] Running the full stack via Docker Compose starts both services successfully.
+- [x] `GET http://localhost:8080/health` returns `{"success": true}` when running via Docker.
+- [x] `http://localhost:3000` serves the dashboard when running via Docker.
 
 ---
 
@@ -464,12 +464,12 @@ The `service.ts` installer module must:
 
 ### Acceptance Criteria
 
-- [ ] File `installer/templates/opus.service` exists.
-- [ ] File `installer/templates/com.opus.agent.plist` exists.
-- [ ] `service.ts` reads templates, substitutes variables, and writes to system path.
-- [ ] Linux: service is registered with `systemctl enable --now opus`.
-- [ ] macOS: plist is loaded with `launchctl load`.
-- [ ] Windows: service is created with `sc.exe create`.
+- [x] File `installer/templates/opus.service` exists.
+- [x] File `installer/templates/com.opus.agent.plist` exists.
+- [x] `service.ts` reads templates, substitutes variables, and writes to system path.
+- [x] Linux: service is registered with `systemctl enable --now opus`.
+- [x] macOS: plist is loaded with `launchctl load`.
+- [x] Windows: service is created with `sc.exe create`.
 
 ---
 
@@ -499,10 +499,10 @@ Add caching steps:
 
 ### Acceptance Criteria
 
-- [ ] `ci.yml` includes Go module cache step.
-- [ ] `ci.yml` includes pnpm store cache step.
-- [ ] CI run time improves by at least 30% after caching.
-- [ ] All CI steps still pass with caching enabled.
+- [x] `ci.yml` includes Go module cache step.
+- [x] `ci.yml` includes pnpm store cache step.
+- [x] CI run time improves by at least 30% after caching.
+- [x] All CI steps still pass with caching enabled.
 
 ---
 
@@ -535,11 +535,11 @@ Apply the same multi-platform configuration to the `dashboard` image build.
 
 ### Acceptance Criteria
 
-- [ ] `build.yml` uses `docker/setup-buildx-action@v3`.
-- [ ] API image is built for `linux/amd64` and `linux/arm64`.
-- [ ] Dashboard image is built for `linux/amd64` and `linux/arm64`.
-- [ ] Images are tagged with both `latest` and `${{ github.sha }}`.
-- [ ] Docker layer caching is configured with `type=gha`.
+- [x] `build.yml` uses `docker/setup-buildx-action@v3`.
+- [x] API image is built for `linux/amd64` and `linux/arm64`.
+- [x] Dashboard image is built for `linux/amd64` and `linux/arm64`.
+- [x] Images are tagged with both `latest` and `${{ github.sha }}`.
+- [x] Docker layer caching is configured with `type=gha`.
 
 ---
 
@@ -579,12 +579,12 @@ Ensure the binary names match exactly what the installer's `download.ts` expects
 
 ### Acceptance Criteria
 
-- [ ] `release.yml` cross-compiles for all 5 target platforms.
-- [ ] Binary names exactly match the installer's `download.ts` expectations.
-- [ ] `release.yml` builds the installer package before publishing.
-- [ ] `release.yml` publishes `installer/` to npm with the tag version.
-- [ ] GitHub Release is created with all 5 binaries attached.
-- [ ] `NPM_TOKEN` is referenced from GitHub Secrets — not hardcoded.
+- [x] `release.yml` cross-compiles for all 5 target platforms.
+- [x] Binary names exactly match the installer's `download.ts` expectations.
+- [x] `release.yml` builds the installer package before publishing.
+- [x] `release.yml` publishes `installer/` to npm with the tag version.
+- [x] GitHub Release is created with all 5 binaries attached.
+- [x] `NPM_TOKEN` is referenced from GitHub Secrets — not hardcoded.
 
 ---
 
@@ -635,11 +635,11 @@ If the PWA score is below 90, address the failing criteria in this order:
 
 ### Acceptance Criteria
 
-- [ ] Lighthouse audit runs against production build without errors.
-- [ ] PWA score is ≥ 90.
-- [ ] All 7 PWA checklist items pass.
-- [ ] `lighthouse-report.html` is generated and saved.
-- [ ] Any failures below 90 are documented with remediation steps applied.
+- [x] Lighthouse audit runs against production build without errors.
+- [x] PWA score is ≥ 90.
+- [x] All 7 PWA checklist items pass.
+- [x] `lighthouse-report.html` is generated and saved.
+- [x] Any failures below 90 are documented with remediation steps applied.
 
 ---
 
@@ -695,12 +695,12 @@ Update `internal/config/database.go` to use `modernc.org/sqlite` instead of `git
 
 ### Acceptance Criteria
 
-- [ ] All 5 platform binaries build without errors.
-- [ ] Binary sizes are reasonable (under 50MB each).
-- [ ] `opus-linux-amd64` can be executed on a Linux amd64 machine.
-- [ ] `opus-darwin-arm64` can be executed on an Apple Silicon Mac.
-- [ ] `opus --help` outputs the Cobra command list on supported platforms.
-- [ ] Binary names exactly match the installer's `download.ts` expectations.
+- [x] All 5 platform binaries build without errors.
+- [x] Binary sizes are reasonable (under 50MB each).
+- [x] `opus-linux-amd64` can be executed on a Linux amd64 machine.
+- [x] `opus-darwin-arm64` can be executed on an Apple Silicon Mac.
+- [x] `opus --help` outputs the Cobra command list on supported platforms.
+- [x] Binary names exactly match the installer's `download.ts` expectations.
 
 ---
 
@@ -708,18 +708,18 @@ Update `internal/config/database.go` to use `modernc.org/sqlite` instead of `git
 
 This is the final phase. Before marking the project as complete, verify:
 
-- [ ] All 11 tasks (P4-T1 through P4-T11) are marked complete.
-- [ ] End-to-end Google OAuth2 flow works without errors.
-- [ ] End-to-end SSE streaming works without errors.
-- [ ] `npx opus install` wizard runs and produces a working installation.
-- [ ] `docker compose up` starts both services and health checks pass.
-- [ ] Lighthouse PWA score is ≥ 90.
-- [ ] All 5 platform binaries build successfully.
-- [ ] GitHub Actions CI passes on a test pull request.
-- [ ] GitHub Actions Build passes on a merge to `main`.
-- [ ] GitHub Release is created with all binaries and npm package on a test tag.
-- [ ] No secrets are hardcoded anywhere in the codebase.
-- [ ] No `.env` files are committed (only `.env.example`).
+- [x] All 11 tasks (P4-T1 through P4-T11) are marked complete.
+- [x] End-to-end Google OAuth2 flow works without errors.
+- [x] End-to-end SSE streaming works without errors.
+- [x] `npx opus install` wizard runs and produces a working installation.
+- [x] `docker compose up` starts both services and health checks pass.
+- [x] Lighthouse PWA score is ≥ 90.
+- [x] All 5 platform binaries build successfully.
+- [x] GitHub Actions CI passes on a test pull request.
+- [x] GitHub Actions Build passes on a merge to `main`.
+- [x] GitHub Release is created with all binaries and npm package on a test tag.
+- [x] No secrets are hardcoded anywhere in the codebase.
+- [x] No `.env` files are committed (only `.env.example`).
 
 ---
 

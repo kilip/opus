@@ -2,40 +2,42 @@
 package config
 
 import (
+	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/spf13/viper"
 )
 
 type Config struct {
-	Server   ServerConfig
-	Database DatabaseConfig
-	Auth     AuthConfig
+	Server   ServerConfig   `mapstructure:"server"`
+	Database DatabaseConfig `mapstructure:"database"`
+	Auth     AuthConfig     `mapstructure:"auth"`
 }
 
 type ServerConfig struct {
-	Host string
-	Port int
-	Env  string
+	Host string `mapstructure:"host"`
+	Port int    `mapstructure:"port"`
+	Env  string `mapstructure:"env"`
 }
 
 type DatabaseConfig struct {
-	Driver string
-	DSN    string
+	Driver string `mapstructure:"driver"`
+	DSN    string `mapstructure:"dsn"`
 }
 
 type AuthConfig struct {
-	Secret          string
-	AccessTokenTTL  int
-	RefreshTokenTTL int
-	Google          OAuthConfig
-	GitHub          OAuthConfig
+	Secret          string      `mapstructure:"secret"`
+	AccessTokenTTL  int         `mapstructure:"access_token_ttl"`
+	RefreshTokenTTL int         `mapstructure:"refresh_token_ttl"`
+	Google          OAuthConfig `mapstructure:"google"`
+	GitHub          OAuthConfig `mapstructure:"github"`
 }
 
 type OAuthConfig struct {
-	ClientID     string
-	ClientSecret string
-	RedirectURL  string
+	ClientID     string `mapstructure:"client_id"`
+	ClientSecret string `mapstructure:"client_secret"`
+	RedirectURL  string `mapstructure:"redirect_url"`
 }
 
 var (
@@ -49,6 +51,7 @@ func GetConfig() *Config {
 		viper.SetConfigType("toml")
 		viper.AddConfigPath("$HOME/.opus")
 		viper.SetEnvPrefix("OPUS")
+		viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 		viper.AutomaticEnv()
 
 		// Defaults
@@ -59,11 +62,20 @@ func GetConfig() *Config {
 		viper.SetDefault("database.dsn", "$HOME/.opus/opus.db")
 		viper.SetDefault("auth.access_token_ttl", 15)
 		viper.SetDefault("auth.refresh_token_ttl", 10080)
+		viper.SetDefault("auth.secret", "")
 
 		_ = viper.ReadInConfig()
 
 		cfg = &Config{}
 		_ = viper.Unmarshal(cfg)
+		// Mask secret for logging
+		maskedSecret := ""
+		if len(cfg.Auth.Secret) > 4 {
+			maskedSecret = cfg.Auth.Secret[:2] + "****" + cfg.Auth.Secret[len(cfg.Auth.Secret)-2:]
+		} else if cfg.Auth.Secret != "" {
+			maskedSecret = "****"
+		}
+		fmt.Printf("Config loaded: Env=%s, DB=%s, AuthSecret=%s\n", cfg.Server.Env, cfg.Database.Driver, maskedSecret)
 	})
 	return cfg
 }

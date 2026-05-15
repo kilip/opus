@@ -10,6 +10,14 @@ export const metadata: Metadata = {
   title: "Opus",
   description: "Your 24/7 autonomous AI assistant",
   manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Opus",
+  },
+  icons: {
+    apple: "/icons/apple-touch-icon.png",
+  },
 };
 
 export const viewport = {

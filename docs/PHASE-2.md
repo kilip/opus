@@ -792,7 +792,7 @@ func NewUserHandler(userService *service.UserService) *UserHandler
 
 ### Endpoint
 
-`GET /api/v1/user/me` — Protected by Auth middleware. Reads `userID` from `c.Locals("userID")`. Calls `userService.GetCurrentUser()`. Returns user data in standard envelope.
+`GET /user/me` — Protected by Auth middleware. Reads `userID` from `c.Locals("userID")`. Calls `userService.GetCurrentUser()`. Returns user data in standard envelope.
 
 ### Acceptance Criteria
 
@@ -851,7 +851,7 @@ Implement the Server-Sent Events endpoint. This is a placeholder for the future 
 
 ### Endpoint
 
-`GET /api/v1/stream` — Protected by Auth middleware.
+`GET /stream` — Protected by Auth middleware.
 
 ### SSE Implementation
 
@@ -911,11 +911,11 @@ GET  /auth/google                 → authHandler.RedirectToGoogle (no auth)
 GET  /auth/google/callback        → authHandler.GoogleCallback (no auth)
 GET  /auth/github                 → authHandler.RedirectToGitHub (no auth)
 GET  /auth/github/callback        → authHandler.GitHubCallback (no auth)
-POST /api/v1/auth/login           → authHandler.EmailPasswordLogin (no auth)
-POST /api/v1/auth/refresh         → authHandler.RefreshToken (no auth)
-POST /api/v1/auth/logout          → authHandler.Logout (auth required)
-GET  /api/v1/user/me              → userHandler.GetMe (auth required)
-GET  /api/v1/stream               → streamHandler.Stream (auth required)
+POST /auth/login           → authHandler.EmailPasswordLogin (no auth)
+POST /auth/refresh         → authHandler.RefreshToken (no auth)
+POST /auth/logout          → authHandler.Logout (auth required)
+GET  /user/me              → userHandler.GetMe (auth required)
+GET  /stream               → streamHandler.Stream (auth required)
 ```
 
 ### Acceptance Criteria

@@ -15,7 +15,7 @@ export function useStream(accessToken: string | null) {
 
     // EventSource does not support custom headers
     // Pass token as query param (acceptable for SSE — token is short-lived)
-    const url = `${API_BASE_URL}/api/v1/stream?token=${encodeURIComponent(accessToken)}`;
+    const url = `${API_BASE_URL}/stream?token=${encodeURIComponent(accessToken)}`;
     const es = new EventSource(url, { withCredentials: true });
 
     es.onopen = () => setIsConnected(true);

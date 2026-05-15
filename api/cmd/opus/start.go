@@ -55,11 +55,14 @@ var startCmd = &cobra.Command{
 		app.Use(middleware.Logger())
 		app.Use(middleware.Recovery())
 
-		// Public Routes
-		api := app.Group("/api")
-		api.Get("/health", healthHandler.Check)
+		// API Routes
+		// API Routes
+		v1 := app.Group("/api/v1")
 		
-		auth := api.Group("/auth")
+		// Public Routes
+		v1.Get("/health", healthHandler.Check)
+
+		auth := v1.Group("/auth")
 		auth.Post("/login", authHandler.Login)
 		auth.Post("/refresh", authHandler.Refresh)
 		auth.Post("/logout", authHandler.Logout)
@@ -67,11 +70,8 @@ var startCmd = &cobra.Command{
 		auth.Get("/google/callback", authHandler.GoogleCallback)
 
 		// Protected Routes
-		protected := api.Group("/")
-		protected.Use(middleware.Auth(authService))
-		
-		protected.Get("/user/me", userHandler.Me)
-		protected.Get("/stream", sseHandler.Stream)
+		v1.Get("/user/me", userHandler.Me, middleware.Auth(authService))
+		v1.Get("/stream", sseHandler.Stream, middleware.Auth(authService))
 
 		addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 		log.Printf("Starting server on %s", addr)
