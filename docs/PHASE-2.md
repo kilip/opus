@@ -994,8 +994,9 @@ tasks:
   mock:generate:
     desc: Generate mocks for all repository interfaces
     cmds:
-      - mockgen -source=internal/service/auth.go -destination=internal/mocks/mock_auth_repo.go -package=mocks
-      - mockgen -source=internal/service/user.go -destination=internal/mocks/mock_user_repo.go -package=mocks
+      - mkdir -p mocks
+      - mockgen -source=internal/repository/user.go -destination=mocks/mock_user_repo.go -package=mocks
+      - mockgen -source=internal/repository/session.go -destination=mocks/mock_session_repo.go -package=mocks
 
   migrate:
     desc: Run database migrations (auto-run on startup via GetDatabase)
@@ -1013,7 +1014,7 @@ tasks:
 - [x] File `api/Taskfile.yml` is updated with all tasks.
 - [x] `task setup` installs `air`, `mockgen`, and `golangci-lint`.
 - [x] `task dev` runs `air` for live reload.
-- [x] `task mock:generate` generates mocks into `internal/mocks/`.
+- [x] `task mock:generate` generates mocks into `api/mocks/`.
 - [x] `task test` runs with `-race` flag.
 - [x] `task test:integration` uses `-tags=integration`.
 
