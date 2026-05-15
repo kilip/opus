@@ -139,7 +139,7 @@ jobs:
         with:
           context: ./dash
           push: true
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           tags: |
             ghcr.io/kilip/opus-dash:${{ steps.meta.outputs.tag }}
             ghcr.io/kilip/opus-dash:latest
