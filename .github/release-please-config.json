@@ -50,6 +50,7 @@
             "release-type": "go",
             "package-name": "opus",
             "changelog-path": "CHANGELOG.md",
+            "tag-structure": "v${version}",
             "extra-files": [
                 {
                     "type": "json",
