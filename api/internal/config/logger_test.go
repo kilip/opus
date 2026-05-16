@@ -42,10 +42,10 @@ func TestGetLogger_Development(t *testing.T) {
 	h := l.Handler()
 	assert.NotNil(t, h)
 	
-	// We can try to cast to see if it's what we expect
-	// Note: slog handlers are often wrapped, but the direct ones are exported.
-	_, isJSON := h.(*slog.JSONHandler)
-	assert.False(t, isJSON, "Should not be a JSONHandler in development")
+	// In the new implementation, GetLogger returns a multiHandler
+	mh, isMulti := h.(*multiHandler)
+	assert.True(t, isMulti, "Should be a multiHandler")
+	assert.NotEmpty(t, mh.handlers)
 }
 
 func TestGetLogger_Production(t *testing.T) {
@@ -62,6 +62,16 @@ func TestGetLogger_Production(t *testing.T) {
 	h := l.Handler()
 	assert.NotNil(t, h)
 	
-	_, isJSON := h.(*slog.JSONHandler)
-	assert.True(t, isJSON, "Should be a JSONHandler in production")
+	mh, isMulti := h.(*multiHandler)
+	assert.True(t, isMulti, "Should be a multiHandler")
+
+	// In production, at least one handler should be a JSONHandler
+	foundJSON := false
+	for _, h := range mh.handlers {
+		if _, ok := h.(*slog.JSONHandler); ok {
+			foundJSON = true
+			break
+		}
+	}
+	assert.True(t, foundJSON, "Should contain a JSONHandler in production")
 }

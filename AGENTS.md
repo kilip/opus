@@ -6,7 +6,7 @@
 
 ## Project Overview
 
-Opus is a self-hosted, single-user AI agent platform. Monorepo structure:
+Opus is a self-hosted, multi-user AI agent platform. Monorepo structure:
 
 - `api/` — Go backend (GoFiber v3, EntGo, Viper, Cobra)
 - `dash/` — Next.js 16 frontend (PWA, TanStack Query, Serwist, Shadcn/ui)

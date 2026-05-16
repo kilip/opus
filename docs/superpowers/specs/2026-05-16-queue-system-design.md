@@ -325,7 +325,7 @@ Used for both PostgreSQL and SQLite backends via the shared EntGo client.
 
 **PostgreSQL** uses `SELECT FOR UPDATE SKIP LOCKED` for concurrent-safe dequeuing.
 
-**SQLite** uses an in-process `sync.Mutex`. Since Opus is a single-user, single-process deployment, a mutex is sufficient to guarantee that only one goroutine dequeues at a time — no workaround complexity required.
+**SQLite** uses an in-process `sync.Mutex`. Since Opus is a multi-user, single-process deployment, a mutex is sufficient to guarantee that only one goroutine dequeues at a time — no workaround complexity required.
 
 ```go
 type entGoDriver struct {

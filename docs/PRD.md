@@ -52,6 +52,7 @@ Opus addresses all four problems by providing a lightweight, self-hosted AI agen
 - Support installation via `npx get-opus` for end-users with minimal technical knowledge.
 - Support Docker and bare metal deployment for technical users.
 - Support multiple database backends (SQLite and PostgreSQL) — user's choice, not environment-dictated.
+- Support multi-user deployments.
 - Provide secure authentication via OAuth2 (Google, GitHub) and Email/Password (development only).
 - Maintain a clean, extensible codebase using Clean Architecture principles.
 - Provide a monorepo structure (`api/` + `dash/`) with a unified root Taskfile for developer orchestration.
@@ -207,10 +208,10 @@ Opus addresses all four problems by providing a lightweight, self-hosted AI agen
 
 ## 8. Constraints & Assumptions
 
-- Opus v1.0 is a **single-user** system. Multi-user support is deferred.
+- Opus v1.0 is a **multi-user** system.
 - Email/Password authentication is explicitly **development-only** and disabled in production builds.
 - The AI provider integration is **out of scope** for base structure; the agent interface will be defined in a subsequent iteration.
-- SQLite is a fully supported production database for lightweight, single-user deployments.
+- SQLite is a fully supported production database for lightweight, multi-user deployments.
 - The `npx get-opus` wizard targets end-users with Node.js installed (LTS).
 - The monorepo structure (`api/` + `dash/`) is housed within a single root `opus/` directory.
 
@@ -231,7 +232,6 @@ Opus addresses all four problems by providing a lightweight, self-hosted AI agen
 
 ## 10. Out of Scope (v1.0)
 
-- Multi-user / multi-tenant support.
 - AI provider configuration and agent capability definition.
 - Push notifications (PWA — deferred to v1.1).
 - Mobile native applications.

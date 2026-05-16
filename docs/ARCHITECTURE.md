@@ -53,7 +53,7 @@
 
 ## 1. System Overview
 
-Opus is a self-hosted, single-user AI agent platform. The system consists of two primary components:
+Opus is a self-hosted, multi-user AI agent platform. The system consists of two primary components:
 
 - **api/** — A Go backend exposing a REST + SSE API.
 - **dash/** — A Next.js 16 Progressive Web App consuming the API.
@@ -469,7 +469,7 @@ func GetDatabase() *ent.Client {
 }
 ```
 
-Both drivers are **first-class citizens**. SQLite is a valid choice for production in single-user, lightweight deployments.
+Both drivers are **first-class citizens**. SQLite is a valid choice for production in multi-user, lightweight deployments.
 
 #### EntGo Schema Location
 

@@ -348,7 +348,7 @@ test(service): add unit tests for auth service
 - `docker-compose.yml` — production configuration.
 - `docker-compose.dev.yml` — development overrides (live reload, exposed debug ports).
 - All Docker images are published to `ghcr.io/opus/`.
-- SQLite is a valid production database for single-user deployments.
+- SQLite is a valid production database for multi-user deployments.
 
 ---
 

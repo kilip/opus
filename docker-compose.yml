@@ -9,6 +9,7 @@ services:
       - "8080:8080"
     volumes:
       - opus-data:/root/.opus
+      - ./logs:/root/.opus/logs
     environment:
       - OPUS_SERVER_ENV=production
       - OPUS_DATABASE_DSN=/root/.opus/opus.db
@@ -29,9 +30,8 @@ services:
       - "3000:3000"
     environment:
       - OPUS_LOG_LEVEL=info
-      - OPUS_LOG_DIR=/var/log/opus
     volumes:
-      - ./logs:/var/log/opus
+      - ./logs:/root/.opus/logs
     depends_on:
       api:
         condition: service_healthy

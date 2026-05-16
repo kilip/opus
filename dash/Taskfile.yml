@@ -41,10 +41,14 @@ tasks:
   logs:tail:
     desc: Tail application logs
     cmds:
-      - tail -f logs/*.log
+      - tail -f {{.LOG_DIR}}/*.log
+    vars:
+      LOG_DIR: '{{default "../.opus/logs" .OPUS_LOG_DIR}}'
 
   logs:clear:
     desc: Clear application logs
     cmds:
-      - rm -rf logs/*.log
+      - rm -rf {{.LOG_DIR}}/*.log
+    vars:
+      LOG_DIR: '{{default "../.opus/logs" .OPUS_LOG_DIR}}'
 

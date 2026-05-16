@@ -48,3 +48,17 @@ tasks:
     desc: Run database migrations
     cmds:
       - task: api:migrate
+
+  logs:tail:
+    desc: Tail all logs (api + dash)
+    cmds:
+      - tail -f {{.LOG_DIR}}/*.log
+    vars:
+      LOG_DIR: '{{default ".opus/logs" .OPUS_LOG_DIR}}'
+
+  logs:clear:
+    desc: Clear all logs
+    cmds:
+      - rm -rf {{.LOG_DIR}}/*.log
+    vars:
+      LOG_DIR: '{{default ".opus/logs" .OPUS_LOG_DIR}}'

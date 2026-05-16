@@ -4,15 +4,16 @@
  */
 
 import { clientLogger } from "./logger.client";
-import { serverLogger } from "./logger.server";
 import type { Logger } from "./logger.types";
-
-const isServer = typeof window === "undefined";
-const isEdge = process.env.NEXT_RUNTIME === "edge";
 
 /**
  * Isomorphic logger instance.
+ * Uses dynamic require for serverLogger to avoid bundling node:fs/node:os into the client.
  */
-export const logger: Logger = isServer || isEdge ? serverLogger : clientLogger;
+export const logger: Logger =
+  typeof window === "undefined"
+    ? // @ts-expect-error - server-side require
+      require("./logger.server").serverLogger
+    : clientLogger;
 
 export type { Logger };
