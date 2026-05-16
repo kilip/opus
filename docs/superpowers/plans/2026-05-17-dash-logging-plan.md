@@ -316,12 +316,7 @@ git commit -m "feat(dash): implement client-side console logger with tests"
 
 **Files:**
 - Create: `dash/components/shared/ErrorBoundary.tsx`
-- Create: `dash/components/shared/ErrorBoundary.test.tsx`
-- Create: `dash/components/shared/Observability.tsx`
-- Modify: `dash/app/layout.tsx`
-- Test: `dash/components/shared/ErrorBoundary.test.tsx`
-
-- [ ] **Step 1: Write failing test for ErrorBoundary**
+- [x] **Step 1: Write failing test for ErrorBoundary**
 
 ```tsx
 // dash/components/shared/ErrorBoundary.test.tsx
@@ -417,7 +412,7 @@ export class ErrorBoundary extends Component<Props, State> {
 Run: `pnpm test dash/components/shared/ErrorBoundary.test.tsx`
 Expected: PASS
 
-- [ ] **Step 5: Implement Observability component**
+- [x] **Step 5: Implement Observability component**
 
 ```tsx
 /**

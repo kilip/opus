@@ -36,6 +36,9 @@ export const viewport = {
   themeColor: "#FFFCF5",
 };
 
+import { ErrorBoundary } from "@/components/shared/ErrorBoundary";
+import { Observability } from "@/components/shared/Observability";
+
 export default function RootLayout({
   children,
 }: {
@@ -46,9 +49,13 @@ export default function RootLayout({
       <body
         className={`${poppins.variable} ${lora.variable} font-body antialiased`}
       >
-        <AuthProvider>
-          <QueryProvider>{children}</QueryProvider>
-        </AuthProvider>
+        <ErrorBoundary>
+          <Observability>
+            <AuthProvider>
+              <QueryProvider>{children}</QueryProvider>
+            </AuthProvider>
+          </Observability>
+        </ErrorBoundary>
       </body>
     </html>
   );
