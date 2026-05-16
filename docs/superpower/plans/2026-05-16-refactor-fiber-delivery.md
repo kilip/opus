@@ -123,12 +123,10 @@ func (s *Server) setupRoutes() {
 	healthHandler := handler.NewHealthHandler()
 	sseHandler := handler.NewSSEHandler()
 
-	v1 := s.app.Group("/api/v1")
-
 	// Public Routes
-	v1.Get("/health", healthHandler.Check)
+	s.app.Get("/health", healthHandler.Check)
 
-	auth := v1.Group("/auth")
+	auth := s.app.Group("/auth")
 	auth.Post("/login", authHandler.Login)
 	auth.Post("/refresh", authHandler.Refresh)
 	auth.Post("/logout", authHandler.Logout)
@@ -136,8 +134,8 @@ func (s *Server) setupRoutes() {
 	auth.Get("/google/callback", authHandler.GoogleCallback)
 
 	// Protected Routes
-	v1.Get("/user/me", userHandler.Me, middleware.Auth(s.authService))
-	v1.Get("/stream", sseHandler.Stream, middleware.Auth(s.authService))
+	s.app.Get("/user/me", userHandler.Me, middleware.Auth(s.authService))
+	s.app.Get("/stream", sseHandler.Stream, middleware.Auth(s.authService))
 }
 
 func (s *Server) Start() error {

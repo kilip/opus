@@ -28,7 +28,7 @@ The goal is to allow every user on the Opus platform to connect their own WhatsA
 
 ## 4. API Endpoints
 All endpoints are protected by the existing JWT authentication middleware.
-Base path: `/whatsapp` (no `/api/v1` prefix).
+Base path: `/whatsapp`.
 
 - `GET /whatsapp/status`
   - Returns the current connection status and JID (if connected) for the authenticated user.

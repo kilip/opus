@@ -481,7 +481,7 @@ ent/schema/
 
 ### 4.7 API Contracts
 
-**Base URL:** `/api/v1`
+**Base URL:** `/` (Root)
 
 **Standard Response Envelope:**
 

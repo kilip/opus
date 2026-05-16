@@ -3,6 +3,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 
@@ -68,6 +69,7 @@ func GetConfig() *Config {
 
 		cfg = &Config{}
 		_ = viper.Unmarshal(cfg)
+		cfg.Database.DSN = os.ExpandEnv(cfg.Database.DSN)
 		// Mask secret for logging
 		maskedSecret := ""
 		if len(cfg.Auth.Secret) > 4 {
