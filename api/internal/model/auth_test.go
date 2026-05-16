@@ -51,8 +51,8 @@ func TestAuthResponse_Serialization(t *testing.T) {
 
 	data, err := json.Marshal(resp)
 	assert.NoError(t, err)
-	assert.Contains(t, string(data), `"access_token":"access"`)
-	assert.Contains(t, string(data), `"refresh_token":"refresh"`)
+	assert.Contains(t, string(data), `"accessToken":"access"`)
+	assert.Contains(t, string(data), `"refreshToken":"refresh"`)
 	assert.Contains(t, string(data), `"user":{`)
 
 	var decoded AuthResponse

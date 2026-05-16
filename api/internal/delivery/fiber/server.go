@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/kilip/opus/api/internal/config"
 	"github.com/kilip/opus/api/internal/delivery/fiber/handler"
 	"github.com/kilip/opus/api/internal/delivery/fiber/middleware"
@@ -53,6 +54,12 @@ func NewServer(
 }
 
 func (s *Server) setupMiddleware() {
+	s.app.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{s.cfg.Server.DashURL, "http://127.0.0.1:3000", "http://127.0.0.1"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowCredentials: true,
+	}))
 	s.app.Use(middleware.Logger())
 	s.app.Use(middleware.Recovery())
 }
@@ -73,10 +80,12 @@ func (s *Server) setupRoutes() {
 	auth.Post("/logout", authHandler.Logout)
 	auth.Get("/google", authHandler.GoogleLogin)
 	auth.Get("/google/callback", authHandler.GoogleCallback)
+	auth.Get("/github", authHandler.GitHubLogin)
+	auth.Get("/github/callback", authHandler.GitHubCallback)
 
 	// Protected Routes
-	s.app.Get("/user/me", userHandler.Me, middleware.Auth(s.authService))
-	s.app.Get("/stream", sseHandler.Stream, middleware.Auth(s.authService))
+	s.app.Get("/user/me", middleware.Auth(s.authService), userHandler.Me)
+	s.app.Get("/stream", middleware.Auth(s.authService), sseHandler.Stream)
 
 	// Queue/DLQ Routes
 	queueHandler := handler.NewQueueHandler(s.queueDriver)

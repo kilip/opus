@@ -96,6 +96,7 @@ func (h *AuthHandler) Login(c fiber.Ctx) error {
 // Refresh handles token refresh
 func (h *AuthHandler) Refresh(c fiber.Ctx) error {
 	rawRefreshToken := c.Cookies("refresh_token")
+	fmt.Printf("[DEBUG] Refresh request: cookie found=%v, len=%d\n", rawRefreshToken != "", len(rawRefreshToken))
 	if rawRefreshToken == "" {
 		return fiber.NewError(fiber.StatusUnauthorized, "Missing refresh token")
 	}
@@ -129,7 +130,13 @@ func (h *AuthHandler) Logout(c fiber.Ctx) error {
 		_ = h.authService.Logout(c.Context(), rawRefreshToken)
 	}
 
-	c.ClearCookie("refresh_token")
+	c.Cookie(&fiber.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HTTPOnly: true,
+	})
 
 	return c.JSON(fiber.Map{
 		"success": true,
@@ -171,15 +178,16 @@ func (h *AuthHandler) GoogleCallback(c fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to upsert user")
 	}
 
-	accessToken, refreshToken, err := h.authService.IssueTokens(c.Context(), user.ID)
+	_, refreshToken, err := h.authService.IssueTokens(c.Context(), user.ID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to issue tokens")
 	}
 
 	h.setRefreshTokenCookie(c, refreshToken)
 
-	// Redirect to dash with access token
-	return c.Redirect().To(fmt.Sprintf("%s/auth/callback?token=%s", h.cfg.Server.DashURL, accessToken))
+	fmt.Printf("[DEBUG] Google login successful for user %s, refresh token set\n", user.Email)
+	// Redirect to dash, AuthContext will handle silent refresh using HttpOnly cookie
+	return c.Redirect().To(h.cfg.Server.DashURL)
 }
 
 // GitHubLogin redirects to GitHub OAuth
@@ -227,14 +235,15 @@ func (h *AuthHandler) GitHubCallback(c fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to upsert user")
 	}
 
-	accessToken, refreshToken, err := h.authService.IssueTokens(c.Context(), user.ID)
+	_, refreshToken, err := h.authService.IssueTokens(c.Context(), user.ID)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "Failed to issue tokens")
 	}
 
 	h.setRefreshTokenCookie(c, refreshToken)
 
-	return c.Redirect().To(fmt.Sprintf("%s/auth/callback?token=%s", h.cfg.Server.DashURL, accessToken))
+	// Redirect to dash, AuthContext will handle silent refresh using HttpOnly cookie
+	return c.Redirect().To(h.cfg.Server.DashURL)
 }
 
 func (h *AuthHandler) setRefreshTokenCookie(c fiber.Ctx, refreshToken string) {
@@ -242,8 +251,9 @@ func (h *AuthHandler) setRefreshTokenCookie(c fiber.Ctx, refreshToken string) {
 		Name:     "refresh_token",
 		Value:    refreshToken,
 		HTTPOnly: true,
+		Path:     "/",
 		Secure:   h.cfg.Server.Env == "production",
-		SameSite: "Strict",
+		SameSite: "Lax",
 		MaxAge:   h.cfg.Auth.RefreshTokenTTL * 60,
 	})
 }

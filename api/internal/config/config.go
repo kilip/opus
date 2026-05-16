@@ -125,6 +125,16 @@ func GetConfig() *Config {
 		viper.SetDefault("queue.driver", "entgo")
 		viper.SetDefault("queue.concurrency", 5)
 		viper.SetDefault("queue.redis.addr", "localhost:6379")
+		
+		// Explicitly bind environment variables for nested keys to ensure Unmarshal picks them up
+		// when they are not present in a config file.
+		_ = viper.BindEnv("auth.secret")
+		_ = viper.BindEnv("auth.google.client_id")
+		_ = viper.BindEnv("auth.google.client_secret")
+		_ = viper.BindEnv("auth.google.redirect_url")
+		_ = viper.BindEnv("auth.github.client_id")
+		_ = viper.BindEnv("auth.github.client_secret")
+		_ = viper.BindEnv("auth.github.redirect_url")
 
 		_ = viper.ReadInConfig()
 

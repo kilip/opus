@@ -17,9 +17,15 @@ func NewUserHandler(userService service.UserServiceInterface) *UserHandler {
 
 // Me returns the currently authenticated user
 func (h *UserHandler) Me(c fiber.Ctx) error {
-	userID := c.Locals("userID").(string)
-	if userID == "" {
-		return fiber.NewError(fiber.StatusUnauthorized, "User not authenticated")
+	userID, ok := c.Locals("userID").(string)
+	if !ok || userID == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"success": false,
+			"error": fiber.Map{
+				"code":    "UNAUTHORIZED",
+				"message": "User not authenticated",
+			},
+		})
 	}
 
 	user, err := h.userService.GetUserByID(c.Context(), userID)

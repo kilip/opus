@@ -19,6 +19,12 @@ export interface User {
   updatedAt: string;
 }
 
+export interface AuthResponse {
+  accessToken: string;
+  refreshToken?: string;
+  user: User;
+}
+
 export interface AuthTokens {
   accessToken: string;
 }

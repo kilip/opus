@@ -6,13 +6,7 @@ const nextConfig: NextConfig = {
   output: "standalone",
   turbopack: {},
   async redirects() {
-    return [
-      {
-        source: "/",
-        destination: "/dashboard",
-        permanent: true,
-      },
-    ];
+    return [];
   },
 };
 

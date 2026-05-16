@@ -3,30 +3,18 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useAuthContext } from "@/lib/api/AuthContext";
-import { useRefreshToken } from "@/lib/api/auth";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const { accessToken, setAccessToken } = useAuthContext();
-  const { mutate: refresh, isPending } = useRefreshToken();
+  const { accessToken, isLoading } = useAuthContext();
 
   useEffect(() => {
-    if (!accessToken) {
-      // Attempt silent refresh via HttpOnly cookie
-      refresh(undefined, {
-        onSuccess: (data) => {
-          if (data.success && data.data) {
-            setAccessToken(data.data.accessToken);
-          } else {
-            router.push("/login");
-          }
-        },
-        onError: () => router.push("/login"),
-      });
+    if (!isLoading && !accessToken) {
+      router.push("/login");
     }
-  }, [accessToken, refresh, setAccessToken, router]);
+  }, [accessToken, isLoading, router]);
 
-  if (isPending || !accessToken) {
+  if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -37,6 +25,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     );
+  }
+
+  if (!accessToken) {
+    return null;
   }
 
   return <>{children}</>;

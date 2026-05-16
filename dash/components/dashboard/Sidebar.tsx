@@ -13,11 +13,11 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "WhatsApp", href: "/dashboard/whatsapp", icon: MessageSquare },
-  { name: "Agents", href: "/dashboard/agents", icon: Workflow },
-  { name: "Team", href: "/dashboard/team", icon: Users },
-  { name: "Settings", href: "/dashboard/settings", icon: Settings },
+  { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "WhatsApp", href: "/whatsapp", icon: MessageSquare },
+  { name: "Agents", href: "/agents", icon: Workflow },
+  { name: "Team", href: "/team", icon: Users },
+  { name: "Settings", href: "/settings", icon: Settings },
 ];
 
 export function Sidebar() {
@@ -26,7 +26,7 @@ export function Sidebar() {
   return (
     <aside className="w-64 border-r bg-opus-light/50 dark:bg-opus-dark/50 flex flex-col h-screen sticky top-0">
       <div className="p-6">
-        <Link href="/dashboard" className="flex items-center gap-3 group">
+        <Link href="/" className="flex items-center gap-3 group">
           <div className="bg-opus-terracotta text-white p-2 rounded-xl group-hover:rotate-6 transition-transform">
             <Zap className="h-6 w-6 fill-current" />
           </div>
