@@ -20,10 +20,10 @@ Opus is a self-hosted, single-user AI agent platform. Monorepo structure:
 Strict Clean Architecture. Dependency direction is inward only:
 
 ```
-handler → service → repository → model
+delivery (handler) → service → repository → model
 ```
 
-- **Never** import `handler` or `repository` from `service`
+- **Never** import `delivery` or `repository` from `service`
 - **Never** import `service` from `model`
 - Repository interfaces are defined in `service/`, implemented in `repository/`
 - All singletons (`GetConfig()`, `GetLogger()`, `GetDatabase()`) live in `internal/config/`
@@ -62,11 +62,17 @@ pnpm build        # Production build
 Config hierarchy (highest wins): `OPUS_* env vars` → `~/.opus/config.toml` → defaults
 
 Key env vars:
-```
+```bash
+# API
 OPUS_SERVER_PORT, OPUS_SERVER_ENV
 OPUS_DATABASE_DRIVER (sqlite|postgres), OPUS_DATABASE_DSN
-OPUS_AUTH_SECRET, OPUS_AUTH_GOOGLE_CLIENT_ID, OPUS_AUTH_GITHUB_CLIENT_ID
+OPUS_AUTH_SECRET, OPUS_AUTH_ACCESS_TOKEN_TTL, OPUS_AUTH_REFRESH_TOKEN_TTL
+OPUS_AUTH_GOOGLE_CLIENT_ID, OPUS_AUTH_GOOGLE_CLIENT_SECRET, OPUS_AUTH_GOOGLE_REDIRECT_URL
+OPUS_AUTH_GITHUB_CLIENT_ID, OPUS_AUTH_GITHUB_CLIENT_SECRET, OPUS_AUTH_GITHUB_REDIRECT_URL
 OPUS_AGENT_PROVIDER, OPUS_AGENT_MODEL, OPUS_AGENT_API_KEY
+
+# Dashboard
+NEXT_PUBLIC_API_URL, NEXT_PUBLIC_DEV_MODE
 ```
 
 ---
@@ -153,9 +159,10 @@ If multiple sessions occur on the same date for different topics, create separat
 
 The agent system is provider-agnostic. All providers are configured globally via `config.toml` or env vars — no provider is hardcoded.
 
-- Go implementation lives in `api/internal/agent/`
-- Provider interface must be implemented for each provider; new providers are added by implementing the interface
-- SSE streaming is the transport layer for all agent responses (`GET /stream`)
+- **Status:** Implementation in progress.
+- **Location:** Go implementation lives in `api/internal/agent/` (intended).
+- Provider interface must be implemented for each provider; new providers are added by implementing the interface.
+- SSE streaming is the transport layer for all agent responses (`GET /stream`).
 
 ---
 

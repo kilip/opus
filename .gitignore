@@ -1,5 +1,6 @@
 .agents
 .gemini
+.playwright-mcp
 
 # Go
 api/bin/
