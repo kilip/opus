@@ -19,17 +19,10 @@
 - Create: `api/ent/schema/cron_schedule.go`
 - Create: `api/ent/schema/dead_letter.go`
 
-- [ ] **Step 1: Create Go models**
-Implement the `Job`, `JobStatus`, `DeadLetter`, and `CronSchedule` structs in `api/internal/model/`.
-
-- [ ] **Step 2: Define EntGo schemas**
-Create the schema files in `api/ent/schema/` with appropriate fields and indices (e.g., index on `status` and `priority` for `Job`).
-
-- [ ] **Step 3: Generate EntGo code**
-Run: `cd api && task ent:generate`
-Expected: Successful generation of EntGo files in `api/ent/`.
-
-- [ ] **Step 4: Commit**
+- [x] **Step 1: Create Go models**
+- [x] **Step 2: Define EntGo schemas**
+- [x] **Step 3: Generate EntGo code**
+- [x] **Step 4: Commit**
 ```bash
 git add api/internal/model api/ent/schema api/ent
 git commit -m "feat: add queue and cron schemas and models"
@@ -44,13 +37,9 @@ git commit -m "feat: add queue and cron schemas and models"
 - Create: `api/internal/service/worker.go`
 - Create: `api/internal/repository/queue/driver.go`
 
-- [ ] **Step 1: Define Service interfaces**
-Implement `Queue`, `Scheduler`, and `Worker` interfaces in `api/internal/service/`.
-
-- [ ] **Step 2: Define Repository interface**
-Implement `QueueDriver` interface in `api/internal/repository/queue/driver.go`.
-
-- [ ] **Step 3: Commit**
+- [x] **Step 1: Define Service interfaces**
+- [x] **Step 2: Define Repository interface**
+- [x] **Step 3: Commit**
 ```bash
 git add api/internal/service api/internal/repository/queue/driver.go
 git commit -m "feat: define queue system interfaces"
@@ -64,17 +53,10 @@ git commit -m "feat: define queue system interfaces"
 - Create: `api/internal/repository/queue/entgo.go`
 - Create: `api/internal/repository/queue/entgo_integration_test.go`
 
-- [ ] **Step 1: Implement EntGo driver**
-Implement `Push`, `Pop`, `UpdateStatus`, and `MoveToDead` using the EntGo client. Handle SQLite mutex locking for `Pop`.
-
-- [ ] **Step 2: Write integration test**
-Write a test that performs a full cycle: Push -> Pop -> UpdateStatus.
-
-- [ ] **Step 3: Run integration test**
-Run: `cd api && task test:integration`
-Expected: PASS
-
-- [ ] **Step 4: Commit**
+- [x] **Step 1: Implement EntGo driver**
+- [x] **Step 2: Write integration test**
+- [x] **Step 3: Run integration test**
+- [x] **Step 4: Commit**
 ```bash
 git add api/internal/repository/queue/entgo.go api/internal/repository/queue/entgo_integration_test.go
 git commit -m "feat: implement EntGo queue driver"
@@ -88,20 +70,11 @@ git commit -m "feat: implement EntGo queue driver"
 - Create: `api/internal/worker/engine.go`
 - Create: `api/internal/worker/engine_test.go`
 
-- [ ] **Step 1: Implement Worker Engine**
-Implement the `Engine` struct with goroutine pool logic, job polling, and handler dispatching.
-
-- [ ] **Step 2: Implement Exponential Backoff**
-Add the `backoff` helper function as described in the spec.
-
-- [ ] **Step 3: Write unit test with mocks**
-Mock the `QueueDriver` and verify that the engine polls jobs and calls the correct handler.
-
-- [ ] **Step 4: Run tests**
-Run: `cd api && go test ./internal/worker/...`
-Expected: PASS
-
-- [ ] **Step 5: Commit**
+- [x] **Step 1: Implement Worker Engine**
+- [x] **Step 2: Implement Exponential Backoff**
+- [x] **Step 3: Write unit test with mocks**
+- [x] **Step 4: Run tests**
+- [x] **Step 5: Commit**
 ```bash
 git add api/internal/worker/engine.go api/internal/worker/engine_test.go
 git commit -m "feat: implement worker engine core"
@@ -115,17 +88,10 @@ git commit -m "feat: implement worker engine core"
 - Create: `api/internal/worker/scheduler.go`
 - Create: `api/internal/worker/scheduler_test.go`
 
-- [ ] **Step 1: Implement Cron Scheduler**
-Implement the ticker-based scheduler that polls `CronSchedule` and enqueues jobs. Use `robfig/cron/v3` for expression parsing.
-
-- [ ] **Step 2: Write unit test**
-Verify that the scheduler correctly calculates the next run time and enqueues the job.
-
-- [ ] **Step 3: Run tests**
-Run: `cd api && go test ./internal/worker/scheduler_test.go`
-Expected: PASS
-
-- [ ] **Step 4: Commit**
+- [x] **Step 1: Implement Cron Scheduler**
+- [x] **Step 2: Write unit test**
+- [x] **Step 3: Run tests**
+- [x] **Step 4: Commit**
 ```bash
 git add api/internal/worker/scheduler.go api/internal/worker/scheduler_test.go
 git commit -m "feat: implement cron scheduler"
@@ -139,13 +105,9 @@ git commit -m "feat: implement cron scheduler"
 - Create: `api/internal/repository/queue/redis.go`
 - Create: `api/internal/repository/queue/redis_test.go`
 
-- [ ] **Step 1: Implement Redis driver**
-Implement the `QueueDriver` interface using Redis sorted sets (ZSET) for priority.
-
-- [ ] **Step 2: Write unit test**
-Mock the Redis client or use a local Redis if available (miniredis is recommended if possible, or just unit test the logic).
-
-- [ ] **Step 3: Commit**
+- [x] **Step 1: Implement Redis driver**
+- [x] **Step 2: Write unit test**
+- [x] **Step 3: Commit**
 ```bash
 git add api/internal/repository/queue/redis.go api/internal/repository/queue/redis_test.go
 git commit -m "feat: implement Redis queue driver"
@@ -160,16 +122,10 @@ git commit -m "feat: implement Redis queue driver"
 - Create: `api/internal/config/queue.go`
 - Modify: `api/cmd/opus/start.go`
 
-- [ ] **Step 1: Add Queue Config**
-Add `QueueConfig` and `RedisConfig` to the main config struct.
-
-- [ ] **Step 2: Implement Driver Factory**
-Implement `GetQueueDriver()` in `api/internal/config/queue.go`.
-
-- [ ] **Step 3: Wire up in Start Command**
-Initialize the `Worker Engine` and `Scheduler` in `cmd/opus/start.go` and handle graceful shutdown.
-
-- [ ] **Step 4: Commit**
+- [x] **Step 1: Add Queue Config**
+- [x] **Step 2: Implement Driver Factory**
+- [x] **Step 3: Wire up in Start Command**
+- [x] **Step 4: Commit**
 ```bash
 git add api/internal/config api/cmd/opus/start.go
 git commit -m "feat: integrate queue system into application startup"
@@ -180,16 +136,12 @@ git commit -m "feat: integrate queue system into application startup"
 ### Task 8: Dead Letter Queue API
 
 **Files:**
-- Create: `api/internal/delivery/fiber/queue.go`
-- Modify: `api/internal/delivery/fiber/router.go`
+- Create: `api/internal/delivery/fiber/handler/queue.go`
+- Modify: `api/internal/delivery/fiber/server.go`
 
-- [ ] **Step 1: Implement Dead Letter Handlers**
-Implement `ListDeadLetters`, `RetryJob`, and `DeleteDeadLetter` handlers.
-
-- [ ] **Step 2: Register Routes**
-Add the `/api/v1/queue/dead` routes to the Fiber router.
-
-- [ ] **Step 3: Commit**
+- [x] **Step 1: Implement Dead Letter Handlers**
+- [x] **Step 2: Register Routes**
+- [x] **Step 3: Commit**
 ```bash
 git add api/internal/delivery/fiber
 git commit -m "feat: add dead letter queue API endpoints"

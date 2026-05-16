@@ -15,6 +15,7 @@ type Config struct {
 	Server   ServerConfig   `mapstructure:"server"`
 	Database DatabaseConfig `mapstructure:"database"`
 	Auth     AuthConfig     `mapstructure:"auth"`
+	Queue    QueueConfig    `mapstructure:"queue"`
 }
 
 type ServerConfig struct {
@@ -42,6 +43,18 @@ type OAuthConfig struct {
 	ClientID     string `mapstructure:"client_id"`
 	ClientSecret string `mapstructure:"client_secret"`
 	RedirectURL  string `mapstructure:"redirect_url"`
+}
+
+type QueueConfig struct {
+	Driver      string      `mapstructure:"driver"`      // "entgo" | "redis"
+	Concurrency int         `mapstructure:"concurrency"` // number of workers
+	Redis       RedisConfig `mapstructure:"redis"`
+}
+
+type RedisConfig struct {
+	Addr     string `mapstructure:"addr"`
+	Password string `mapstructure:"password"`
+	DB       int    `mapstructure:"db"`
 }
 
 var (
@@ -108,6 +121,10 @@ func GetConfig() *Config {
 		viper.SetDefault("auth.access_token_ttl", 15)
 		viper.SetDefault("auth.refresh_token_ttl", 10080)
 		viper.SetDefault("auth.secret", "")
+
+		viper.SetDefault("queue.driver", "entgo")
+		viper.SetDefault("queue.concurrency", 5)
+		viper.SetDefault("queue.redis.addr", "localhost:6379")
 
 		_ = viper.ReadInConfig()
 

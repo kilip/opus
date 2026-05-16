@@ -7,6 +7,7 @@ import (
 	"github.com/kilip/opus/api/internal/config"
 	"github.com/kilip/opus/api/internal/delivery/fiber/handler"
 	"github.com/kilip/opus/api/internal/delivery/fiber/middleware"
+	"github.com/kilip/opus/api/internal/repository/queue"
 	"github.com/kilip/opus/api/internal/service"
 )
 
@@ -16,10 +17,16 @@ type Server struct {
 	cfg         *config.Config
 	authService service.AuthServiceInterface
 	userService service.UserServiceInterface
+	queueDriver queue.QueueDriver
 }
 
 // NewServer creates a new Fiber server instance
-func NewServer(cfg *config.Config, authService service.AuthServiceInterface, userService service.UserServiceInterface) *Server {
+func NewServer(
+	cfg *config.Config,
+	authService service.AuthServiceInterface,
+	userService service.UserServiceInterface,
+	queueDriver queue.QueueDriver,
+) *Server {
 	app := fiber.New(fiber.Config{
 		AppName:      "Opus API",
 		ErrorHandler: middleware.ErrorHandler,
@@ -30,6 +37,7 @@ func NewServer(cfg *config.Config, authService service.AuthServiceInterface, use
 		cfg:         cfg,
 		authService: authService,
 		userService: userService,
+		queueDriver: queueDriver,
 	}
 
 	s.setupMiddleware()
@@ -63,6 +71,13 @@ func (s *Server) setupRoutes() {
 	// Protected Routes
 	s.app.Get("/user/me", userHandler.Me, middleware.Auth(s.authService))
 	s.app.Get("/stream", sseHandler.Stream, middleware.Auth(s.authService))
+
+	// Queue/DLQ Routes
+	queueHandler := handler.NewQueueHandler(s.queueDriver)
+	q := s.app.Group("/queue", middleware.Auth(s.authService))
+	q.Get("/dead", queueHandler.ListDeadLetters)
+	q.Post("/dead/:id/retry", queueHandler.RetryDeadLetter)
+	q.Delete("/dead/:id", queueHandler.DeleteDeadLetter)
 }
 
 // Start starts the Fiber server

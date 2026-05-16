@@ -118,7 +118,7 @@ YYYY-MM-DD-<slug>.md
 2026-05-17-goreleaser-multiarch-fix.md
 ```
 
-If multiple sessions occur on the same date for different topics, create separate files per topic. Never overwrite a file — append or create a new one with a more specific slug.
+**Create separate files per sessions**, change file name if context has changed.
 
 ### File Roles
 
@@ -278,15 +278,15 @@ The agent system is provider-agnostic. All providers are configured globally via
 
 ## Git & CI
 
-Follow **Conventional Commits** — Release Please derives versions from these:
+Follow **Conventional Commits**:
 
 | Prefix | Effect |
 |--------|--------|
 | `feat:` | minor bump |
 | `fix:` | patch bump |
 | `feat!:` / `fix!:` | major bump |
-| `chore:`, `ci:`, `refactor:` | patch, hidden in changelog |
-
+| `chore:`, `ci:`, `refactor:` | patch |
+k
 **ONLY USE THIS SCOPE**: `api`, `dash`, `installer`, `docs`, `core`, `deps`
 
 CI runs on every push to `main` and every PR:

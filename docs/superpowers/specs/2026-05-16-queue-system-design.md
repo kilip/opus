@@ -530,9 +530,9 @@ A job is moved to the dead letter store when `retries >= max_retries`. The entry
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/api/v1/queue/dead` | List all dead letter entries |
-| `POST` | `/api/v1/queue/dead/:id/retry` | Re-enqueue with `retries = 0` |
-| `DELETE` | `/api/v1/queue/dead/:id` | Permanently remove entry |
+| `GET` | `/queue/dead` | List all dead letter entries |
+| `POST` | `/queue/dead/:id/retry` | Re-enqueue with `retries = 0` |
+| `DELETE` | `/queue/dead/:id` | Permanently remove entry |
 
 ### 9.3 Storage
 
