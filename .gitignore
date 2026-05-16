@@ -1,10 +1,12 @@
 .agents
+.gemini
 
 # Go
 api/bin/
 api/tmp/
 *.exe
 *.test
+coverage*
 
 # Node.js
 dashboard/node_modules/
