@@ -1,38 +1,51 @@
 "use client";
 
+import { Loader2, MessageSquare, Send, ShieldCheck, User } from "lucide-react";
 import { useState } from "react";
-import { Send, User, MessageSquare, ShieldCheck, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export default function WhatsAppChatPage() {
   const [targetJid, setTargetJid] = useState("");
   const [message, setMessage] = useState("");
-  const [statusMsg, setStatusMsg] = useState<{ text: string, type: "info" | "success" | "error" } | null>(null);
+  const [statusMsg, setStatusMsg] = useState<{
+    text: string;
+    type: "info" | "success" | "error";
+  } | null>(null);
   const [isSending, setIsSending] = useState(false);
 
   const handleSend = async () => {
     if (!targetJid || !message) return;
     setIsSending(true);
     setStatusMsg({ text: "Sending your message...", type: "info" });
-    
+
     try {
       const res = await fetch("/api/whatsapp/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ target_jid: targetJid, message })
+        body: JSON.stringify({ target_jid: targetJid, message }),
       });
-      
+
       if (res.ok) {
         setStatusMsg({ text: "Message sent successfully!", type: "success" });
         setMessage("");
       } else {
         const data = await res.json();
-        setStatusMsg({ text: data.error || "Failed to send message.", type: "error" });
+        setStatusMsg({
+          text: data.error || "Failed to send message.",
+          type: "error",
+        });
       }
-    } catch (e) {
+    } catch (_e) {
       setStatusMsg({ text: "An error occurred while sending.", type: "error" });
     } finally {
       setIsSending(false);
@@ -44,7 +57,9 @@ export default function WhatsAppChatPage() {
       <div className="max-w-2xl mx-auto space-y-8">
         <div className="space-y-1">
           <h1 className="text-3xl font-bold tracking-tight">Quick Message</h1>
-          <p className="text-muted-foreground">Send a direct WhatsApp message to any number.</p>
+          <p className="text-muted-foreground">
+            Send a direct WhatsApp message to any number.
+          </p>
         </div>
 
         <Card className="shadow-lg border-slate-200">
@@ -59,13 +74,16 @@ export default function WhatsAppChatPage() {
           </CardHeader>
           <CardContent className="p-6 space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="target_jid" className="text-sm font-semibold flex items-center gap-2">
+              <Label
+                htmlFor="target_jid"
+                className="text-sm font-semibold flex items-center gap-2"
+              >
                 <User className="h-4 w-4" />
                 Recipient JID
               </Label>
-              <Input 
+              <Input
                 id="target_jid"
-                type="text" 
+                type="text"
                 placeholder="e.g. 628123456789@s.whatsapp.net"
                 value={targetJid}
                 onChange={(e) => setTargetJid(e.target.value)}
@@ -76,15 +94,18 @@ export default function WhatsAppChatPage() {
                 Format: [phone_number]@s.whatsapp.net
               </p>
             </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="message" className="text-sm font-semibold flex items-center gap-2">
+              <Label
+                htmlFor="message"
+                className="text-sm font-semibold flex items-center gap-2"
+              >
                 <MessageSquare className="h-4 w-4" />
                 Message Content
               </Label>
-              <textarea 
+              <textarea
                 id="message"
-                className="flex min-h-[160px] w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50" 
+                className="flex min-h-[160px] w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 placeholder="Type your message here..."
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
@@ -92,8 +113,8 @@ export default function WhatsAppChatPage() {
             </div>
           </CardContent>
           <CardFooter className="bg-slate-50/50 border-t p-4 flex flex-col gap-4">
-            <Button 
-              onClick={handleSend} 
+            <Button
+              onClick={handleSend}
               className="w-full sm:w-auto ml-auto gap-2 shadow-md px-8"
               disabled={isSending || !targetJid || !message}
             >
@@ -109,13 +130,17 @@ export default function WhatsAppChatPage() {
                 </>
               )}
             </Button>
-            
+
             {statusMsg && (
-              <div className={`w-full p-3 rounded-lg text-sm font-medium border ${
-                statusMsg.type === "success" ? "bg-green-50 text-green-700 border-green-100" :
-                statusMsg.type === "error" ? "bg-red-50 text-red-700 border-red-100" :
-                "bg-blue-50 text-blue-700 border-blue-100"
-              }`}>
+              <div
+                className={`w-full p-3 rounded-lg text-sm font-medium border ${
+                  statusMsg.type === "success"
+                    ? "bg-green-50 text-green-700 border-green-100"
+                    : statusMsg.type === "error"
+                      ? "bg-red-50 text-red-700 border-red-100"
+                      : "bg-blue-50 text-blue-700 border-blue-100"
+                }`}
+              >
                 {statusMsg.text}
               </div>
             )}
@@ -127,7 +152,10 @@ export default function WhatsAppChatPage() {
           <ShieldCheck className="h-5 w-5 shrink-0" />
           <div>
             <p className="font-semibold">Pro Tip</p>
-            <p className="opacity-90">Make sure your WhatsApp is connected in Settings before sending messages. Use international format without '+' sign.</p>
+            <p className="opacity-90">
+              Make sure your WhatsApp is connected in Settings before sending
+              messages. Use international format without '+' sign.
+            </p>
           </div>
         </div>
       </div>

@@ -185,11 +185,14 @@ Follow **Conventional Commits** — Release Please derives versions from these:
 | `feat!:` / `fix!:` | major bump |
 | `chore:`, `ci:`, `refactor:` | patch, hidden in changelog |
 
+**ONLY USE THIS SCOPE**: `api`, `dash`, `installer`, `docs`, `core`, `deps`
+
 CI runs on every push to `main` and every PR:
 - `ci.yml` — lint + unit + integration tests (api & dash)
 - `build.yml` — snapshot build + push `:edge` Docker images
 - `release-please.yml` — versioning, GoReleaser, npm publish (on release only)
 
+**ALWAYS**: `task test:all` before commit
 ---
 
 ## Do's & Don'ts
