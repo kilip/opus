@@ -1,6 +1,6 @@
-import fs from 'fs-extra';
-import path from 'path';
-import { nanoid } from 'nanoid';
+import path from "node:path";
+import fs from "fs-extra";
+import { nanoid } from "nanoid";
 
 export interface Config {
   port: number;
@@ -10,9 +10,11 @@ export interface Config {
 }
 
 export async function writeConfig(config: Config) {
-  const opusDir = process.env.OPUS_HOME || path.join(process.env.HOME || process.env.USERPROFILE || '', '.opus');
+  const opusDir =
+    process.env.OPUS_HOME ||
+    path.join(process.env.HOME || process.env.USERPROFILE || "", ".opus");
   await fs.ensureDir(opusDir);
-  const configFile = path.join(opusDir, 'config.toml');
+  const configFile = path.join(opusDir, "config.toml");
 
   const content = `
 [server]

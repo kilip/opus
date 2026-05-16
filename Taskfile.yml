@@ -12,10 +12,14 @@ includes:
     taskfile: ./dash/Taskfile.yml
     dir: ./dash
 
+  installer:
+    taskfile: ./installer/Taskfile.yml
+    dir: ./installer
+
 tasks:
   setup:
-    desc: Install all dependencies for api/ and dash/
-    deps: [setup:env, api:setup, dash:setup]
+    desc: Install all dependencies
+    deps: [setup:env, api:setup, dash:setup, installer:setup]
 
   setup:env:
     desc: Create .env from .env.example if it doesn't exist
@@ -29,16 +33,16 @@ tasks:
     deps: [setup:env, api:dev, dash:dev]
 
   build:
-    desc: Build api/ binary and dash/ production bundle
-    deps: [api:build, dash:build]
+    desc: Build all components
+    deps: [api:build, dash:build, installer:build]
 
   test:all:
-    desc: Run all tests across api/ and dash/
+    desc: Run all tests
     deps: [lint, api:test:all, dash:test]
 
   lint:
-    desc: Lint api/ and dash/
-    deps: [api:lint, dash:lint]
+    desc: Lint all components
+    deps: [api:lint, dash:lint, installer:lint]
 
   migrate:
     desc: Run database migrations

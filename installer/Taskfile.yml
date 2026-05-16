@@ -1,0 +1,23 @@
+# installer/Taskfile.yml
+version: "3"
+
+tasks:
+  setup:
+    desc: Install dependencies
+    cmds:
+      - npm install
+
+  build:
+    desc: Build the installer
+    cmds:
+      - npm run build
+
+  lint:
+    desc: Lint the installer using Biome
+    cmds:
+      - npm run lint
+
+  format:
+    desc: Format the installer using Biome
+    cmds:
+      - npm run format
