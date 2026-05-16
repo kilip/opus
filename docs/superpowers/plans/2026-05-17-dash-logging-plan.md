@@ -24,12 +24,12 @@
 - Modify: `dash/package.json`
 - Modify: `dash/.env.example`
 
-- [ ] **Step 1: Install logging dependencies**
+- [x] **Step 1: Install logging dependencies**
 
 Run: `pnpm add pino pino-roll`
 Run: `pnpm add -D pino-pretty`
 
-- [ ] **Step 2: Update .env.example**
+- [x] **Step 2: Update .env.example**
 
 Add the following to `dash/.env.example`:
 ```dotenv
@@ -38,7 +38,7 @@ OPUS_LOG_LEVEL=info
 OPUS_LOG_DIR=
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add dash/package.json dash/pnpm-lock.yaml dash/.env.example
