@@ -198,8 +198,8 @@ git commit -m "feat(api): define WhatsAppService interface and mock"
 ### Task 3: Implement WhatsApp Handler
 
 **Files:**
-- Create: `api/internal/handler/whatsapp_test.go`
-- Create: `api/internal/handler/whatsapp.go`
+- Create: `api/internal/delivery/fiber/handler/whatsapp_test.go`
+- Create: `api/internal/delivery/fiber/handler/whatsapp.go`
 
 - [ ] **Step 1: Write failing tests for WhatsApp Handler**
 ```go
@@ -213,8 +213,8 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"go.uber.org/mock/gomock"
-	"opus/api/internal/middleware"
-	"opus/api/mocks"
+	"github.com/kilip/opus/api/internal/delivery/fiber/middleware"
+	"github.com/kilip/opus/api/mocks"
 )
 
 func TestWhatsAppHandler_Status(t *testing.T) {
@@ -273,7 +273,7 @@ func TestWhatsAppHandler_Send(t *testing.T) {
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
-Run: `cd api && go test ./internal/handler -run TestWhatsAppHandler -v`
+Run: `cd api && go test ./internal/delivery/fiber/handler -run TestWhatsAppHandler -v`
 Expected: FAIL (NewWhatsAppHandler not defined)
 
 - [ ] **Step 3: Implement WhatsApp Handler**
@@ -282,7 +282,7 @@ package handler
 
 import (
 	"github.com/gofiber/fiber/v3"
-	"opus/api/internal/service"
+	"github.com/kilip/opus/api/internal/service"
 )
 
 type WhatsAppHandler struct {
@@ -369,12 +369,12 @@ func (h *WhatsAppHandler) Send(c fiber.Ctx) error {
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
-Run: `cd api && go test ./internal/handler -run TestWhatsAppHandler -v`
+Run: `cd api && go test ./internal/delivery/fiber/handler -run TestWhatsAppHandler -v`
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 ```bash
-git add api/internal/handler/whatsapp.go api/internal/handler/whatsapp_test.go
+git add api/internal/delivery/fiber/handler/whatsapp.go api/internal/delivery/fiber/handler/whatsapp_test.go
 git commit -m "feat(api): implement WhatsApp HTTP handler"
 ```
 
@@ -413,8 +413,8 @@ import (
 	"context"
 	"testing"
 	
-	"opus/api/ent/enttest"
-	"opus/api/ent/schema"
+	"github.com/kilip/opus/api/ent/enttest"
+	"github.com/kilip/opus/api/ent/schema"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -449,8 +449,8 @@ package repository
 
 import (
 	"context"
-	"opus/api/ent"
-	"opus/api/ent/wasession"
+	"github.com/kilip/opus/api/ent"
+	"github.com/kilip/opus/api/ent/wasession"
 )
 
 type WhatsAppRepository interface {

@@ -7,10 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/gofiber/fiber/v3"
 	"github.com/kilip/opus/api/internal/config"
-	"github.com/kilip/opus/api/internal/handler"
-	"github.com/kilip/opus/api/internal/middleware"
+	"github.com/kilip/opus/api/internal/delivery/fiber"
 	"github.com/kilip/opus/api/internal/repository"
 	"github.com/kilip/opus/api/internal/service"
 	"github.com/spf13/cobra"
@@ -39,43 +37,11 @@ var startCmd = &cobra.Command{
 		authService := service.NewAuthService(userRepo, sessionRepo, cfg)
 		userService := service.NewUserService(userRepo, cfg)
 
-		// Handlers
-		authHandler := handler.NewAuthHandler(authService, userService, cfg)
-		userHandler := handler.NewUserHandler(userService)
-		healthHandler := handler.NewHealthHandler()
-		sseHandler := handler.NewSSEHandler()
+		// Delivery
+		srv := fiber.NewServer(cfg, authService, userService)
 
-		// App initialization
-		app := fiber.New(fiber.Config{
-			AppName:      "Opus API",
-			ErrorHandler: middleware.ErrorHandler,
-		})
-
-		// Global Middleware
-		app.Use(middleware.Logger())
-		app.Use(middleware.Recovery())
-
-		// API Routes
-		// API Routes
-		v1 := app.Group("/api/v1")
-
-		// Public Routes
-		v1.Get("/health", healthHandler.Check)
-
-		auth := v1.Group("/auth")
-		auth.Post("/login", authHandler.Login)
-		auth.Post("/refresh", authHandler.Refresh)
-		auth.Post("/logout", authHandler.Logout)
-		auth.Get("/google", authHandler.GoogleLogin)
-		auth.Get("/google/callback", authHandler.GoogleCallback)
-
-		// Protected Routes
-		v1.Get("/user/me", userHandler.Me, middleware.Auth(authService))
-		v1.Get("/stream", sseHandler.Stream, middleware.Auth(authService))
-
-		addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
-		log.Printf("Starting server on %s", addr)
-		if err := app.Listen(addr); err != nil {
+		log.Printf("Starting server on %s:%d", cfg.Server.Host, cfg.Server.Port)
+		if err := srv.Start(); err != nil {
 			log.Fatalf("Server failed to start: %v", err)
 		}
 	},
