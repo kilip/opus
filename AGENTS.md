@@ -29,7 +29,7 @@ handler → service → repository → model
 - All singletons (`GetConfig()`, `GetLogger()`, `GetDatabase()`) live in `internal/config/`
 
 **Naming:**
-- Directories & files: singular (`model/user.go`, `service/auth.go`)
+- Directories & files: singular (`model`, `service`, `repository`)
 - Structs: singular (`User`, `Session`)
 - Go interfaces: defined in the layer that consumes them
 
