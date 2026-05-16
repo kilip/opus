@@ -4,6 +4,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -46,11 +47,42 @@ var (
 	cfgOnce sync.Once
 )
 
+func GetOpusDir() string {
+	if dir := os.Getenv("OPUS_HOME"); dir != "" {
+		return dir
+	}
+	// Default to production if OPUS_SERVER_ENV is not set
+	env := os.Getenv("OPUS_SERVER_ENV")
+	if env == "" {
+		env = "production"
+	}
+
+	// Always use local .opus in development mode
+	if env == "development" {
+		if _, err := os.Stat(".opus"); err == nil {
+			if abs, err := filepath.Abs(".opus"); err == nil {
+				return abs
+			}
+			return ".opus"
+		}
+		// Fallback to parent directory if in dev mode
+		if abs, err := filepath.Abs(".."); err == nil {
+			return filepath.Join(abs, ".opus")
+		}
+		return "../.opus"
+	}
+
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".opus")
+}
+
 func GetConfig() *Config {
 	cfgOnce.Do(func() {
+		opusDir := GetOpusDir()
 		viper.SetConfigName("config")
 		viper.SetConfigType("toml")
-		viper.AddConfigPath("$HOME/.opus")
+		viper.AddConfigPath(opusDir)
+		viper.AddConfigPath(".")
 		viper.SetEnvPrefix("OPUS")
 		viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 		viper.AutomaticEnv()
@@ -60,7 +92,7 @@ func GetConfig() *Config {
 		viper.SetDefault("server.port", 8080)
 		viper.SetDefault("server.env", "production")
 		viper.SetDefault("database.driver", "sqlite")
-		viper.SetDefault("database.dsn", "$HOME/.opus/opus.db")
+		viper.SetDefault("database.dsn", filepath.Join(opusDir, "opus.db"))
 		viper.SetDefault("auth.access_token_ttl", 15)
 		viper.SetDefault("auth.refresh_token_ttl", 10080)
 		viper.SetDefault("auth.secret", "")

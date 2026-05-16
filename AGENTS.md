@@ -59,7 +59,13 @@ pnpm build        # Production build
 
 ## Configuration
 
-Config hierarchy (highest wins): `OPUS_* env vars` → `~/.opus/config.toml` → defaults
+Config hierarchy (highest wins): `OPUS_* env vars` → `config.toml` → defaults
+
+Opus looks for `config.toml` in the following locations:
+1. `OPUS_HOME` environment variable
+2. Local `./.opus/` directory
+3. Current directory `./`
+4. Default `~/.opus/` directory
 
 Key env vars:
 ```bash

@@ -10,7 +10,7 @@ export interface Config {
 }
 
 export async function writeConfig(config: Config) {
-  const opusDir = path.join(process.env.HOME || process.env.USERPROFILE || '', '.opus');
+  const opusDir = process.env.OPUS_HOME || path.join(process.env.HOME || process.env.USERPROFILE || '', '.opus');
   await fs.ensureDir(opusDir);
   const configFile = path.join(opusDir, 'config.toml');
 

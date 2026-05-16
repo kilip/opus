@@ -6,7 +6,7 @@ tasks:
     desc: Setup Dash dependencies
     cmds:
       - pnpm install
-      - pnpm exec playwright install --with-deps
+      - pnpm exec playwright install
 
   dev:
     desc: Run Dash in dev mode

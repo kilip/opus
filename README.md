@@ -49,7 +49,11 @@ task dev
 ## Configuration
 
 Opus can be configured via environment variables or a config file. See [.env.example](.env.example) for a full list of variables.
-By default, Opus looks for configuration in `~/.opus/config.toml`.
+Opus looks for configuration in:
+1. `OPUS_HOME` environment variable
+2. Local `./.opus/config.toml`
+3. Current directory `./config.toml`
+4. Default `~/.opus/config.toml`
 
 ## Architecture
 

@@ -27,7 +27,8 @@ export async function runInstaller() {
   const s3 = spinner();
   s3.start('[3/5] Configuring...');
   const port = await text({ message: 'Server port:', initialValue: '8080' });
-  const dbPath = await text({ message: 'Database path:', initialValue: path.join(os.homedir(), '.opus', 'opus.db') });
+  const defaultOpusDir = process.env.OPUS_HOME || (await fs.pathExists('.opus') ? path.resolve('.opus') : path.join(os.homedir(), '.opus'));
+  const dbPath = await text({ message: 'Database path:', initialValue: path.join(defaultOpusDir, 'opus.db') });
   const jwtSecret = await text({ message: 'JWT Secret (blank to auto-generate):' });
   
   await writeConfig({

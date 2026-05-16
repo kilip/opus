@@ -1,6 +1,8 @@
 # opus/Taskfile.yml
 version: "3"
 
+dotenv: ['.env']
+
 includes:
   api:
     taskfile: ./api/Taskfile.yml
@@ -13,11 +15,18 @@ includes:
 tasks:
   setup:
     desc: Install all dependencies for api/ and dash/
-    deps: [api:setup, dash:setup]
+    deps: [setup:env, api:setup, dash:setup]
+
+  setup:env:
+    desc: Create .env from .env.example if it doesn't exist
+    cmds:
+      - cp .env.example .env
+    status:
+      - test -f .env
 
   dev:
     desc: Start api/ and dash/ in development mode concurrently
-    deps: [api:dev, dash:dev]
+    deps: [setup:env, api:dev, dash:dev]
 
   build:
     desc: Build api/ binary and dash/ production bundle

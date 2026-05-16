@@ -22,7 +22,7 @@ var startCmd = &cobra.Command{
 		db := config.GetDatabase()
 
 		// Ensure .opus directory exists
-		opusDir := filepath.Join(os.Getenv("HOME"), ".opus")
+		opusDir := config.GetOpusDir()
 		_ = os.MkdirAll(opusDir, 0755)
 
 		// Save PID

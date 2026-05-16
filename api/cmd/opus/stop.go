@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/kilip/opus/api/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -13,7 +14,7 @@ var stopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Stop the API server",
 	Run: func(cmd *cobra.Command, args []string) {
-		pidFile := filepath.Join(os.Getenv("HOME"), ".opus", "opus.pid")
+		pidFile := filepath.Join(config.GetOpusDir(), "opus.pid")
 		data, err := os.ReadFile(pidFile)
 		if err != nil {
 			fmt.Println("Server is not running (no PID file found)")
