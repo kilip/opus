@@ -34,7 +34,15 @@ tasks:
 
   test:all:
     desc: Run all tests
-    deps: [test, test:integration]
+    cmds:
+      - go mod tidy
+      - task: test
+      - task: test:integration
+
+  tidy:
+    desc: Tidy Go modules
+    cmds:
+      - go mod tidy
 
   ent:generate:
     desc: Regenerate EntGo code from schema
@@ -42,12 +50,15 @@ tasks:
       - go generate ./ent/...
 
   mock:generate:
-    desc: Generate mocks for all repository interfaces
+    desc: Generate mocks for all interfaces
     cmds:
       - mkdir -p mocks
       - mockgen -destination=mocks/mock_user_repo.go -package=mocks github.com/kilip/opus/api/internal/repository UserRepository
       - mockgen -destination=mocks/mock_session_repo.go -package=mocks github.com/kilip/opus/api/internal/repository SessionRepository
       - mockgen -destination=mocks/mock_auth_service.go -package=mocks github.com/kilip/opus/api/internal/service AuthServiceInterface
+      - mockgen -destination=mocks/mock_queue_driver.go -package=mocks github.com/kilip/opus/api/internal/repository/queue QueueDriver
+      - mockgen -destination=mocks/mock_user_service.go -package=mocks github.com/kilip/opus/api/internal/service UserServiceInterface
+      - mockgen -destination=mocks/mock_whatsapp_service.go -package=mocks github.com/kilip/opus/api/internal/service WhatsAppServiceInterface
 
   migrate:
     desc: Run database migrations (auto-run on startup via GetDatabase)
