@@ -12,8 +12,7 @@ import type { Logger } from "./logger.types";
  */
 export const logger: Logger =
   typeof window === "undefined"
-    ? // @ts-expect-error - server-side require
-      require("./logger.server").serverLogger
+    ? require("./logger.server").serverLogger
     : clientLogger;
 
 export type { Logger };
