@@ -54,7 +54,7 @@ git commit -m "chore(dash): add logging dependencies and env variables"
 - Create: `dash/lib/logger.test.ts`
 - Test: `dash/lib/logger.test.ts`
 
-- [ ] **Step 1: Write the failing test for interface and routing**
+- [x] **Step 1: Write the failing test for interface and routing**
 
 ```typescript
 // dash/lib/logger.test.ts
@@ -69,12 +69,12 @@ describe("isomorphic logger routing", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm test dash/lib/logger.test.ts`
 Expected: FAIL (file doesn't exist)
 
-- [ ] **Step 3: Implement the shared interface and isomorphic routing**
+- [x] **Step 3: Implement the shared interface and isomorphic routing**
 
 ```typescript
 /**
@@ -101,12 +101,12 @@ export const logger: Logger = (isServer || isEdge)
   : require("./logger.client").clientLogger;
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm test dash/lib/logger.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add dash/lib/logger.ts dash/lib/logger.test.ts
@@ -122,7 +122,7 @@ git commit -m "feat(dash): add isomorphic logger interface with tests"
 - Create: `dash/lib/logger.server.test.ts`
 - Test: `dash/lib/logger.server.test.ts`
 
-- [ ] **Step 1: Write failing test for server logging**
+- [x] **Step 1: Write failing test for server logging**
 
 ```typescript
 // dash/lib/logger.server.test.ts
@@ -137,12 +137,12 @@ describe("serverLogger", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm test dash/lib/logger.server.test.ts`
 Expected: FAIL
 
-- [ ] **Step 3: Implement the Pino server logger**
+- [x] **Step 3: Implement the Pino server logger**
 
 ```typescript
 /**
@@ -226,12 +226,12 @@ export const serverLogger: Logger = {
 };
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm test dash/lib/logger.server.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add dash/lib/logger.server.ts dash/lib/logger.server.test.ts
