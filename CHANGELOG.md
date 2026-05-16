@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.2](https://github.com/kilip/opus/compare/v0.2.1...v0.2.2) (2026-05-16)
+
+
+### New Features
+
+* add agent guidance and update project configuration ([aa3f0b0](https://github.com/kilip/opus/commit/aa3f0b0c92a2979727d8b769399fd0ab9be7c13d))
+
+
+### Bug Fixes
+
+* **ci:** fix goreleaser docker build context error ([66c5fcf](https://github.com/kilip/opus/commit/66c5fcf2a073fa4b967b7c5ada09839cde9a9e5b))
+
 ## [0.2.1](https://github.com/kilip/opus/compare/v0.2.0...v0.2.1) (2026-05-16)
 
 
