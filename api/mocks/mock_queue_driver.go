@@ -143,20 +143,6 @@ func (mr *MockQueueDriverMockRecorder) Push(ctx, job any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Push", reflect.TypeOf((*MockQueueDriver)(nil).Push), ctx, job)
 }
 
-// Reschedule mocks base method.
-func (m *MockQueueDriver) Reschedule(ctx context.Context, job *model.Job) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Reschedule", ctx, job)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Reschedule indicates an expected call of Reschedule.
-func (mr *MockQueueDriverMockRecorder) Reschedule(ctx, job any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Reschedule", reflect.TypeOf((*MockQueueDriver)(nil).Reschedule), ctx, job)
-}
-
 // RetryDeadLetter mocks base method.
 func (m *MockQueueDriver) RetryDeadLetter(ctx context.Context, id string) error {
 	m.ctrl.T.Helper()

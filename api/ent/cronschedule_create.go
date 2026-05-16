@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent/dialect"
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/kilip/opus/api/ent/cronschedule"
@@ -18,6 +20,7 @@ type CronScheduleCreate struct {
 	config
 	mutation *CronScheduleMutation
 	hooks    []Hook
+	conflict []sql.ConflictOption
 }
 
 // SetName sets the "name" field.
@@ -220,6 +223,7 @@ func (_c *CronScheduleCreate) createSpec() (*CronSchedule, *sqlgraph.CreateSpec)
 		_node = &CronSchedule{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(cronschedule.Table, sqlgraph.NewFieldSpec(cronschedule.FieldID, field.TypeString))
 	)
+	_spec.OnConflict = _c.conflict
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
 		_spec.ID.Value = id
@@ -263,11 +267,397 @@ func (_c *CronScheduleCreate) createSpec() (*CronSchedule, *sqlgraph.CreateSpec)
 	return _node, _spec
 }
 
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.CronSchedule.Create().
+//		SetName(v).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.CronScheduleUpsert) {
+//			SetName(v+v).
+//		}).
+//		Exec(ctx)
+func (_c *CronScheduleCreate) OnConflict(opts ...sql.ConflictOption) *CronScheduleUpsertOne {
+	_c.conflict = opts
+	return &CronScheduleUpsertOne{
+		create: _c,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.CronSchedule.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (_c *CronScheduleCreate) OnConflictColumns(columns ...string) *CronScheduleUpsertOne {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
+	return &CronScheduleUpsertOne{
+		create: _c,
+	}
+}
+
+type (
+	// CronScheduleUpsertOne is the builder for "upsert"-ing
+	//  one CronSchedule node.
+	CronScheduleUpsertOne struct {
+		create *CronScheduleCreate
+	}
+
+	// CronScheduleUpsert is the "OnConflict" setter.
+	CronScheduleUpsert struct {
+		*sql.UpdateSet
+	}
+)
+
+// SetName sets the "name" field.
+func (u *CronScheduleUpsert) SetName(v string) *CronScheduleUpsert {
+	u.Set(cronschedule.FieldName, v)
+	return u
+}
+
+// UpdateName sets the "name" field to the value that was provided on create.
+func (u *CronScheduleUpsert) UpdateName() *CronScheduleUpsert {
+	u.SetExcluded(cronschedule.FieldName)
+	return u
+}
+
+// SetCronExpression sets the "cron_expression" field.
+func (u *CronScheduleUpsert) SetCronExpression(v string) *CronScheduleUpsert {
+	u.Set(cronschedule.FieldCronExpression, v)
+	return u
+}
+
+// UpdateCronExpression sets the "cron_expression" field to the value that was provided on create.
+func (u *CronScheduleUpsert) UpdateCronExpression() *CronScheduleUpsert {
+	u.SetExcluded(cronschedule.FieldCronExpression)
+	return u
+}
+
+// SetJobType sets the "job_type" field.
+func (u *CronScheduleUpsert) SetJobType(v string) *CronScheduleUpsert {
+	u.Set(cronschedule.FieldJobType, v)
+	return u
+}
+
+// UpdateJobType sets the "job_type" field to the value that was provided on create.
+func (u *CronScheduleUpsert) UpdateJobType() *CronScheduleUpsert {
+	u.SetExcluded(cronschedule.FieldJobType)
+	return u
+}
+
+// SetPayload sets the "payload" field.
+func (u *CronScheduleUpsert) SetPayload(v []byte) *CronScheduleUpsert {
+	u.Set(cronschedule.FieldPayload, v)
+	return u
+}
+
+// UpdatePayload sets the "payload" field to the value that was provided on create.
+func (u *CronScheduleUpsert) UpdatePayload() *CronScheduleUpsert {
+	u.SetExcluded(cronschedule.FieldPayload)
+	return u
+}
+
+// ClearPayload clears the value of the "payload" field.
+func (u *CronScheduleUpsert) ClearPayload() *CronScheduleUpsert {
+	u.SetNull(cronschedule.FieldPayload)
+	return u
+}
+
+// SetIsActive sets the "is_active" field.
+func (u *CronScheduleUpsert) SetIsActive(v bool) *CronScheduleUpsert {
+	u.Set(cronschedule.FieldIsActive, v)
+	return u
+}
+
+// UpdateIsActive sets the "is_active" field to the value that was provided on create.
+func (u *CronScheduleUpsert) UpdateIsActive() *CronScheduleUpsert {
+	u.SetExcluded(cronschedule.FieldIsActive)
+	return u
+}
+
+// SetLastRunAt sets the "last_run_at" field.
+func (u *CronScheduleUpsert) SetLastRunAt(v time.Time) *CronScheduleUpsert {
+	u.Set(cronschedule.FieldLastRunAt, v)
+	return u
+}
+
+// UpdateLastRunAt sets the "last_run_at" field to the value that was provided on create.
+func (u *CronScheduleUpsert) UpdateLastRunAt() *CronScheduleUpsert {
+	u.SetExcluded(cronschedule.FieldLastRunAt)
+	return u
+}
+
+// ClearLastRunAt clears the value of the "last_run_at" field.
+func (u *CronScheduleUpsert) ClearLastRunAt() *CronScheduleUpsert {
+	u.SetNull(cronschedule.FieldLastRunAt)
+	return u
+}
+
+// SetNextRunAt sets the "next_run_at" field.
+func (u *CronScheduleUpsert) SetNextRunAt(v time.Time) *CronScheduleUpsert {
+	u.Set(cronschedule.FieldNextRunAt, v)
+	return u
+}
+
+// UpdateNextRunAt sets the "next_run_at" field to the value that was provided on create.
+func (u *CronScheduleUpsert) UpdateNextRunAt() *CronScheduleUpsert {
+	u.SetExcluded(cronschedule.FieldNextRunAt)
+	return u
+}
+
+// ClearNextRunAt clears the value of the "next_run_at" field.
+func (u *CronScheduleUpsert) ClearNextRunAt() *CronScheduleUpsert {
+	u.SetNull(cronschedule.FieldNextRunAt)
+	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *CronScheduleUpsert) SetUpdatedAt(v time.Time) *CronScheduleUpsert {
+	u.Set(cronschedule.FieldUpdatedAt, v)
+	return u
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *CronScheduleUpsert) UpdateUpdatedAt() *CronScheduleUpsert {
+	u.SetExcluded(cronschedule.FieldUpdatedAt)
+	return u
+}
+
+// UpdateNewValues updates the mutable fields using the new values that were set on create except the ID field.
+// Using this option is equivalent to using:
+//
+//	client.CronSchedule.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//				u.SetIgnore(cronschedule.FieldID)
+//			}),
+//		).
+//		Exec(ctx)
+func (u *CronScheduleUpsertOne) UpdateNewValues() *CronScheduleUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		if _, exists := u.create.mutation.ID(); exists {
+			s.SetIgnore(cronschedule.FieldID)
+		}
+		if _, exists := u.create.mutation.CreatedAt(); exists {
+			s.SetIgnore(cronschedule.FieldCreatedAt)
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.CronSchedule.Create().
+//	    OnConflict(sql.ResolveWithIgnore()).
+//	    Exec(ctx)
+func (u *CronScheduleUpsertOne) Ignore() *CronScheduleUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *CronScheduleUpsertOne) DoNothing() *CronScheduleUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the CronScheduleCreate.OnConflict
+// documentation for more info.
+func (u *CronScheduleUpsertOne) Update(set func(*CronScheduleUpsert)) *CronScheduleUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&CronScheduleUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetName sets the "name" field.
+func (u *CronScheduleUpsertOne) SetName(v string) *CronScheduleUpsertOne {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.SetName(v)
+	})
+}
+
+// UpdateName sets the "name" field to the value that was provided on create.
+func (u *CronScheduleUpsertOne) UpdateName() *CronScheduleUpsertOne {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.UpdateName()
+	})
+}
+
+// SetCronExpression sets the "cron_expression" field.
+func (u *CronScheduleUpsertOne) SetCronExpression(v string) *CronScheduleUpsertOne {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.SetCronExpression(v)
+	})
+}
+
+// UpdateCronExpression sets the "cron_expression" field to the value that was provided on create.
+func (u *CronScheduleUpsertOne) UpdateCronExpression() *CronScheduleUpsertOne {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.UpdateCronExpression()
+	})
+}
+
+// SetJobType sets the "job_type" field.
+func (u *CronScheduleUpsertOne) SetJobType(v string) *CronScheduleUpsertOne {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.SetJobType(v)
+	})
+}
+
+// UpdateJobType sets the "job_type" field to the value that was provided on create.
+func (u *CronScheduleUpsertOne) UpdateJobType() *CronScheduleUpsertOne {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.UpdateJobType()
+	})
+}
+
+// SetPayload sets the "payload" field.
+func (u *CronScheduleUpsertOne) SetPayload(v []byte) *CronScheduleUpsertOne {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.SetPayload(v)
+	})
+}
+
+// UpdatePayload sets the "payload" field to the value that was provided on create.
+func (u *CronScheduleUpsertOne) UpdatePayload() *CronScheduleUpsertOne {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.UpdatePayload()
+	})
+}
+
+// ClearPayload clears the value of the "payload" field.
+func (u *CronScheduleUpsertOne) ClearPayload() *CronScheduleUpsertOne {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.ClearPayload()
+	})
+}
+
+// SetIsActive sets the "is_active" field.
+func (u *CronScheduleUpsertOne) SetIsActive(v bool) *CronScheduleUpsertOne {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.SetIsActive(v)
+	})
+}
+
+// UpdateIsActive sets the "is_active" field to the value that was provided on create.
+func (u *CronScheduleUpsertOne) UpdateIsActive() *CronScheduleUpsertOne {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.UpdateIsActive()
+	})
+}
+
+// SetLastRunAt sets the "last_run_at" field.
+func (u *CronScheduleUpsertOne) SetLastRunAt(v time.Time) *CronScheduleUpsertOne {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.SetLastRunAt(v)
+	})
+}
+
+// UpdateLastRunAt sets the "last_run_at" field to the value that was provided on create.
+func (u *CronScheduleUpsertOne) UpdateLastRunAt() *CronScheduleUpsertOne {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.UpdateLastRunAt()
+	})
+}
+
+// ClearLastRunAt clears the value of the "last_run_at" field.
+func (u *CronScheduleUpsertOne) ClearLastRunAt() *CronScheduleUpsertOne {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.ClearLastRunAt()
+	})
+}
+
+// SetNextRunAt sets the "next_run_at" field.
+func (u *CronScheduleUpsertOne) SetNextRunAt(v time.Time) *CronScheduleUpsertOne {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.SetNextRunAt(v)
+	})
+}
+
+// UpdateNextRunAt sets the "next_run_at" field to the value that was provided on create.
+func (u *CronScheduleUpsertOne) UpdateNextRunAt() *CronScheduleUpsertOne {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.UpdateNextRunAt()
+	})
+}
+
+// ClearNextRunAt clears the value of the "next_run_at" field.
+func (u *CronScheduleUpsertOne) ClearNextRunAt() *CronScheduleUpsertOne {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.ClearNextRunAt()
+	})
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *CronScheduleUpsertOne) SetUpdatedAt(v time.Time) *CronScheduleUpsertOne {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *CronScheduleUpsertOne) UpdateUpdatedAt() *CronScheduleUpsertOne {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// Exec executes the query.
+func (u *CronScheduleUpsertOne) Exec(ctx context.Context) error {
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for CronScheduleCreate.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *CronScheduleUpsertOne) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Exec executes the UPSERT query and returns the inserted/updated ID.
+func (u *CronScheduleUpsertOne) ID(ctx context.Context) (id string, err error) {
+	if u.create.driver.Dialect() == dialect.MySQL {
+		// In case of "ON CONFLICT", there is no way to get back non-numeric ID
+		// fields from the database since MySQL does not support the RETURNING clause.
+		return id, errors.New("ent: CronScheduleUpsertOne.ID is not supported by MySQL driver. Use CronScheduleUpsertOne.Exec instead")
+	}
+	node, err := u.create.Save(ctx)
+	if err != nil {
+		return id, err
+	}
+	return node.ID, nil
+}
+
+// IDX is like ID, but panics if an error occurs.
+func (u *CronScheduleUpsertOne) IDX(ctx context.Context) string {
+	id, err := u.ID(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 // CronScheduleCreateBulk is the builder for creating many CronSchedule entities in bulk.
 type CronScheduleCreateBulk struct {
 	config
 	err      error
 	builders []*CronScheduleCreate
+	conflict []sql.ConflictOption
 }
 
 // Save creates the CronSchedule entities in the database.
@@ -297,6 +687,7 @@ func (_c *CronScheduleCreateBulk) Save(ctx context.Context) ([]*CronSchedule, er
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -343,6 +734,256 @@ func (_c *CronScheduleCreateBulk) Exec(ctx context.Context) error {
 // ExecX is like Exec, but panics if an error occurs.
 func (_c *CronScheduleCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.CronSchedule.CreateBulk(builders...).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.CronScheduleUpsert) {
+//			SetName(v+v).
+//		}).
+//		Exec(ctx)
+func (_c *CronScheduleCreateBulk) OnConflict(opts ...sql.ConflictOption) *CronScheduleUpsertBulk {
+	_c.conflict = opts
+	return &CronScheduleUpsertBulk{
+		create: _c,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.CronSchedule.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (_c *CronScheduleCreateBulk) OnConflictColumns(columns ...string) *CronScheduleUpsertBulk {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
+	return &CronScheduleUpsertBulk{
+		create: _c,
+	}
+}
+
+// CronScheduleUpsertBulk is the builder for "upsert"-ing
+// a bulk of CronSchedule nodes.
+type CronScheduleUpsertBulk struct {
+	create *CronScheduleCreateBulk
+}
+
+// UpdateNewValues updates the mutable fields using the new values that
+// were set on create. Using this option is equivalent to using:
+//
+//	client.CronSchedule.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//				u.SetIgnore(cronschedule.FieldID)
+//			}),
+//		).
+//		Exec(ctx)
+func (u *CronScheduleUpsertBulk) UpdateNewValues() *CronScheduleUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		for _, b := range u.create.builders {
+			if _, exists := b.mutation.ID(); exists {
+				s.SetIgnore(cronschedule.FieldID)
+			}
+			if _, exists := b.mutation.CreatedAt(); exists {
+				s.SetIgnore(cronschedule.FieldCreatedAt)
+			}
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.CronSchedule.Create().
+//		OnConflict(sql.ResolveWithIgnore()).
+//		Exec(ctx)
+func (u *CronScheduleUpsertBulk) Ignore() *CronScheduleUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *CronScheduleUpsertBulk) DoNothing() *CronScheduleUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the CronScheduleCreateBulk.OnConflict
+// documentation for more info.
+func (u *CronScheduleUpsertBulk) Update(set func(*CronScheduleUpsert)) *CronScheduleUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&CronScheduleUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetName sets the "name" field.
+func (u *CronScheduleUpsertBulk) SetName(v string) *CronScheduleUpsertBulk {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.SetName(v)
+	})
+}
+
+// UpdateName sets the "name" field to the value that was provided on create.
+func (u *CronScheduleUpsertBulk) UpdateName() *CronScheduleUpsertBulk {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.UpdateName()
+	})
+}
+
+// SetCronExpression sets the "cron_expression" field.
+func (u *CronScheduleUpsertBulk) SetCronExpression(v string) *CronScheduleUpsertBulk {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.SetCronExpression(v)
+	})
+}
+
+// UpdateCronExpression sets the "cron_expression" field to the value that was provided on create.
+func (u *CronScheduleUpsertBulk) UpdateCronExpression() *CronScheduleUpsertBulk {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.UpdateCronExpression()
+	})
+}
+
+// SetJobType sets the "job_type" field.
+func (u *CronScheduleUpsertBulk) SetJobType(v string) *CronScheduleUpsertBulk {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.SetJobType(v)
+	})
+}
+
+// UpdateJobType sets the "job_type" field to the value that was provided on create.
+func (u *CronScheduleUpsertBulk) UpdateJobType() *CronScheduleUpsertBulk {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.UpdateJobType()
+	})
+}
+
+// SetPayload sets the "payload" field.
+func (u *CronScheduleUpsertBulk) SetPayload(v []byte) *CronScheduleUpsertBulk {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.SetPayload(v)
+	})
+}
+
+// UpdatePayload sets the "payload" field to the value that was provided on create.
+func (u *CronScheduleUpsertBulk) UpdatePayload() *CronScheduleUpsertBulk {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.UpdatePayload()
+	})
+}
+
+// ClearPayload clears the value of the "payload" field.
+func (u *CronScheduleUpsertBulk) ClearPayload() *CronScheduleUpsertBulk {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.ClearPayload()
+	})
+}
+
+// SetIsActive sets the "is_active" field.
+func (u *CronScheduleUpsertBulk) SetIsActive(v bool) *CronScheduleUpsertBulk {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.SetIsActive(v)
+	})
+}
+
+// UpdateIsActive sets the "is_active" field to the value that was provided on create.
+func (u *CronScheduleUpsertBulk) UpdateIsActive() *CronScheduleUpsertBulk {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.UpdateIsActive()
+	})
+}
+
+// SetLastRunAt sets the "last_run_at" field.
+func (u *CronScheduleUpsertBulk) SetLastRunAt(v time.Time) *CronScheduleUpsertBulk {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.SetLastRunAt(v)
+	})
+}
+
+// UpdateLastRunAt sets the "last_run_at" field to the value that was provided on create.
+func (u *CronScheduleUpsertBulk) UpdateLastRunAt() *CronScheduleUpsertBulk {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.UpdateLastRunAt()
+	})
+}
+
+// ClearLastRunAt clears the value of the "last_run_at" field.
+func (u *CronScheduleUpsertBulk) ClearLastRunAt() *CronScheduleUpsertBulk {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.ClearLastRunAt()
+	})
+}
+
+// SetNextRunAt sets the "next_run_at" field.
+func (u *CronScheduleUpsertBulk) SetNextRunAt(v time.Time) *CronScheduleUpsertBulk {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.SetNextRunAt(v)
+	})
+}
+
+// UpdateNextRunAt sets the "next_run_at" field to the value that was provided on create.
+func (u *CronScheduleUpsertBulk) UpdateNextRunAt() *CronScheduleUpsertBulk {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.UpdateNextRunAt()
+	})
+}
+
+// ClearNextRunAt clears the value of the "next_run_at" field.
+func (u *CronScheduleUpsertBulk) ClearNextRunAt() *CronScheduleUpsertBulk {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.ClearNextRunAt()
+	})
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *CronScheduleUpsertBulk) SetUpdatedAt(v time.Time) *CronScheduleUpsertBulk {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *CronScheduleUpsertBulk) UpdateUpdatedAt() *CronScheduleUpsertBulk {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// Exec executes the query.
+func (u *CronScheduleUpsertBulk) Exec(ctx context.Context) error {
+	if u.create.err != nil {
+		return u.create.err
+	}
+	for i, b := range u.create.builders {
+		if len(b.conflict) != 0 {
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the CronScheduleCreateBulk instead", i)
+		}
+	}
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for CronScheduleCreateBulk.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *CronScheduleUpsertBulk) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

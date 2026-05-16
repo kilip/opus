@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent/dialect"
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/kilip/opus/api/ent/session"
@@ -19,6 +21,7 @@ type SessionCreate struct {
 	config
 	mutation *SessionMutation
 	hooks    []Hook
+	conflict []sql.ConflictOption
 }
 
 // SetTokenHash sets the "token_hash" field.
@@ -174,6 +177,7 @@ func (_c *SessionCreate) createSpec() (*Session, *sqlgraph.CreateSpec) {
 		_node = &Session{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(session.Table, sqlgraph.NewFieldSpec(session.FieldID, field.TypeString))
 	)
+	_spec.OnConflict = _c.conflict
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
 		_spec.ID.Value = id
@@ -214,11 +218,254 @@ func (_c *SessionCreate) createSpec() (*Session, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.Session.Create().
+//		SetTokenHash(v).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.SessionUpsert) {
+//			SetTokenHash(v+v).
+//		}).
+//		Exec(ctx)
+func (_c *SessionCreate) OnConflict(opts ...sql.ConflictOption) *SessionUpsertOne {
+	_c.conflict = opts
+	return &SessionUpsertOne{
+		create: _c,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.Session.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (_c *SessionCreate) OnConflictColumns(columns ...string) *SessionUpsertOne {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
+	return &SessionUpsertOne{
+		create: _c,
+	}
+}
+
+type (
+	// SessionUpsertOne is the builder for "upsert"-ing
+	//  one Session node.
+	SessionUpsertOne struct {
+		create *SessionCreate
+	}
+
+	// SessionUpsert is the "OnConflict" setter.
+	SessionUpsert struct {
+		*sql.UpdateSet
+	}
+)
+
+// SetTokenHash sets the "token_hash" field.
+func (u *SessionUpsert) SetTokenHash(v string) *SessionUpsert {
+	u.Set(session.FieldTokenHash, v)
+	return u
+}
+
+// UpdateTokenHash sets the "token_hash" field to the value that was provided on create.
+func (u *SessionUpsert) UpdateTokenHash() *SessionUpsert {
+	u.SetExcluded(session.FieldTokenHash)
+	return u
+}
+
+// SetUserID sets the "user_id" field.
+func (u *SessionUpsert) SetUserID(v string) *SessionUpsert {
+	u.Set(session.FieldUserID, v)
+	return u
+}
+
+// UpdateUserID sets the "user_id" field to the value that was provided on create.
+func (u *SessionUpsert) UpdateUserID() *SessionUpsert {
+	u.SetExcluded(session.FieldUserID)
+	return u
+}
+
+// SetExpiresAt sets the "expires_at" field.
+func (u *SessionUpsert) SetExpiresAt(v time.Time) *SessionUpsert {
+	u.Set(session.FieldExpiresAt, v)
+	return u
+}
+
+// UpdateExpiresAt sets the "expires_at" field to the value that was provided on create.
+func (u *SessionUpsert) UpdateExpiresAt() *SessionUpsert {
+	u.SetExcluded(session.FieldExpiresAt)
+	return u
+}
+
+// SetRevoked sets the "revoked" field.
+func (u *SessionUpsert) SetRevoked(v bool) *SessionUpsert {
+	u.Set(session.FieldRevoked, v)
+	return u
+}
+
+// UpdateRevoked sets the "revoked" field to the value that was provided on create.
+func (u *SessionUpsert) UpdateRevoked() *SessionUpsert {
+	u.SetExcluded(session.FieldRevoked)
+	return u
+}
+
+// UpdateNewValues updates the mutable fields using the new values that were set on create except the ID field.
+// Using this option is equivalent to using:
+//
+//	client.Session.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//				u.SetIgnore(session.FieldID)
+//			}),
+//		).
+//		Exec(ctx)
+func (u *SessionUpsertOne) UpdateNewValues() *SessionUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		if _, exists := u.create.mutation.ID(); exists {
+			s.SetIgnore(session.FieldID)
+		}
+		if _, exists := u.create.mutation.CreatedAt(); exists {
+			s.SetIgnore(session.FieldCreatedAt)
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.Session.Create().
+//	    OnConflict(sql.ResolveWithIgnore()).
+//	    Exec(ctx)
+func (u *SessionUpsertOne) Ignore() *SessionUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *SessionUpsertOne) DoNothing() *SessionUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the SessionCreate.OnConflict
+// documentation for more info.
+func (u *SessionUpsertOne) Update(set func(*SessionUpsert)) *SessionUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&SessionUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetTokenHash sets the "token_hash" field.
+func (u *SessionUpsertOne) SetTokenHash(v string) *SessionUpsertOne {
+	return u.Update(func(s *SessionUpsert) {
+		s.SetTokenHash(v)
+	})
+}
+
+// UpdateTokenHash sets the "token_hash" field to the value that was provided on create.
+func (u *SessionUpsertOne) UpdateTokenHash() *SessionUpsertOne {
+	return u.Update(func(s *SessionUpsert) {
+		s.UpdateTokenHash()
+	})
+}
+
+// SetUserID sets the "user_id" field.
+func (u *SessionUpsertOne) SetUserID(v string) *SessionUpsertOne {
+	return u.Update(func(s *SessionUpsert) {
+		s.SetUserID(v)
+	})
+}
+
+// UpdateUserID sets the "user_id" field to the value that was provided on create.
+func (u *SessionUpsertOne) UpdateUserID() *SessionUpsertOne {
+	return u.Update(func(s *SessionUpsert) {
+		s.UpdateUserID()
+	})
+}
+
+// SetExpiresAt sets the "expires_at" field.
+func (u *SessionUpsertOne) SetExpiresAt(v time.Time) *SessionUpsertOne {
+	return u.Update(func(s *SessionUpsert) {
+		s.SetExpiresAt(v)
+	})
+}
+
+// UpdateExpiresAt sets the "expires_at" field to the value that was provided on create.
+func (u *SessionUpsertOne) UpdateExpiresAt() *SessionUpsertOne {
+	return u.Update(func(s *SessionUpsert) {
+		s.UpdateExpiresAt()
+	})
+}
+
+// SetRevoked sets the "revoked" field.
+func (u *SessionUpsertOne) SetRevoked(v bool) *SessionUpsertOne {
+	return u.Update(func(s *SessionUpsert) {
+		s.SetRevoked(v)
+	})
+}
+
+// UpdateRevoked sets the "revoked" field to the value that was provided on create.
+func (u *SessionUpsertOne) UpdateRevoked() *SessionUpsertOne {
+	return u.Update(func(s *SessionUpsert) {
+		s.UpdateRevoked()
+	})
+}
+
+// Exec executes the query.
+func (u *SessionUpsertOne) Exec(ctx context.Context) error {
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for SessionCreate.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *SessionUpsertOne) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Exec executes the UPSERT query and returns the inserted/updated ID.
+func (u *SessionUpsertOne) ID(ctx context.Context) (id string, err error) {
+	if u.create.driver.Dialect() == dialect.MySQL {
+		// In case of "ON CONFLICT", there is no way to get back non-numeric ID
+		// fields from the database since MySQL does not support the RETURNING clause.
+		return id, errors.New("ent: SessionUpsertOne.ID is not supported by MySQL driver. Use SessionUpsertOne.Exec instead")
+	}
+	node, err := u.create.Save(ctx)
+	if err != nil {
+		return id, err
+	}
+	return node.ID, nil
+}
+
+// IDX is like ID, but panics if an error occurs.
+func (u *SessionUpsertOne) IDX(ctx context.Context) string {
+	id, err := u.ID(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 // SessionCreateBulk is the builder for creating many Session entities in bulk.
 type SessionCreateBulk struct {
 	config
 	err      error
 	builders []*SessionCreate
+	conflict []sql.ConflictOption
 }
 
 // Save creates the Session entities in the database.
@@ -248,6 +495,7 @@ func (_c *SessionCreateBulk) Save(ctx context.Context) ([]*Session, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -294,6 +542,179 @@ func (_c *SessionCreateBulk) Exec(ctx context.Context) error {
 // ExecX is like Exec, but panics if an error occurs.
 func (_c *SessionCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.Session.CreateBulk(builders...).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.SessionUpsert) {
+//			SetTokenHash(v+v).
+//		}).
+//		Exec(ctx)
+func (_c *SessionCreateBulk) OnConflict(opts ...sql.ConflictOption) *SessionUpsertBulk {
+	_c.conflict = opts
+	return &SessionUpsertBulk{
+		create: _c,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.Session.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (_c *SessionCreateBulk) OnConflictColumns(columns ...string) *SessionUpsertBulk {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
+	return &SessionUpsertBulk{
+		create: _c,
+	}
+}
+
+// SessionUpsertBulk is the builder for "upsert"-ing
+// a bulk of Session nodes.
+type SessionUpsertBulk struct {
+	create *SessionCreateBulk
+}
+
+// UpdateNewValues updates the mutable fields using the new values that
+// were set on create. Using this option is equivalent to using:
+//
+//	client.Session.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//				u.SetIgnore(session.FieldID)
+//			}),
+//		).
+//		Exec(ctx)
+func (u *SessionUpsertBulk) UpdateNewValues() *SessionUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		for _, b := range u.create.builders {
+			if _, exists := b.mutation.ID(); exists {
+				s.SetIgnore(session.FieldID)
+			}
+			if _, exists := b.mutation.CreatedAt(); exists {
+				s.SetIgnore(session.FieldCreatedAt)
+			}
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.Session.Create().
+//		OnConflict(sql.ResolveWithIgnore()).
+//		Exec(ctx)
+func (u *SessionUpsertBulk) Ignore() *SessionUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *SessionUpsertBulk) DoNothing() *SessionUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the SessionCreateBulk.OnConflict
+// documentation for more info.
+func (u *SessionUpsertBulk) Update(set func(*SessionUpsert)) *SessionUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&SessionUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetTokenHash sets the "token_hash" field.
+func (u *SessionUpsertBulk) SetTokenHash(v string) *SessionUpsertBulk {
+	return u.Update(func(s *SessionUpsert) {
+		s.SetTokenHash(v)
+	})
+}
+
+// UpdateTokenHash sets the "token_hash" field to the value that was provided on create.
+func (u *SessionUpsertBulk) UpdateTokenHash() *SessionUpsertBulk {
+	return u.Update(func(s *SessionUpsert) {
+		s.UpdateTokenHash()
+	})
+}
+
+// SetUserID sets the "user_id" field.
+func (u *SessionUpsertBulk) SetUserID(v string) *SessionUpsertBulk {
+	return u.Update(func(s *SessionUpsert) {
+		s.SetUserID(v)
+	})
+}
+
+// UpdateUserID sets the "user_id" field to the value that was provided on create.
+func (u *SessionUpsertBulk) UpdateUserID() *SessionUpsertBulk {
+	return u.Update(func(s *SessionUpsert) {
+		s.UpdateUserID()
+	})
+}
+
+// SetExpiresAt sets the "expires_at" field.
+func (u *SessionUpsertBulk) SetExpiresAt(v time.Time) *SessionUpsertBulk {
+	return u.Update(func(s *SessionUpsert) {
+		s.SetExpiresAt(v)
+	})
+}
+
+// UpdateExpiresAt sets the "expires_at" field to the value that was provided on create.
+func (u *SessionUpsertBulk) UpdateExpiresAt() *SessionUpsertBulk {
+	return u.Update(func(s *SessionUpsert) {
+		s.UpdateExpiresAt()
+	})
+}
+
+// SetRevoked sets the "revoked" field.
+func (u *SessionUpsertBulk) SetRevoked(v bool) *SessionUpsertBulk {
+	return u.Update(func(s *SessionUpsert) {
+		s.SetRevoked(v)
+	})
+}
+
+// UpdateRevoked sets the "revoked" field to the value that was provided on create.
+func (u *SessionUpsertBulk) UpdateRevoked() *SessionUpsertBulk {
+	return u.Update(func(s *SessionUpsert) {
+		s.UpdateRevoked()
+	})
+}
+
+// Exec executes the query.
+func (u *SessionUpsertBulk) Exec(ctx context.Context) error {
+	if u.create.err != nil {
+		return u.create.err
+	}
+	for i, b := range u.create.builders {
+		if len(b.conflict) != 0 {
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the SessionCreateBulk instead", i)
+		}
+	}
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for SessionCreateBulk.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *SessionUpsertBulk) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

@@ -49,7 +49,7 @@ func TestWorkerEngine_Process(t *testing.T) {
 		})
 		job.Type = "fail_job"
 
-		mDriver.EXPECT().Reschedule(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, j *model.Job) error {
+		mDriver.EXPECT().Push(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, j *model.Job) error {
 			assert.Equal(t, 1, j.Retries)
 			assert.Equal(t, "boom", j.Error)
 			assert.Equal(t, model.StatusPending, j.Status)

@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 
+	"entgo.io/ent/dialect"
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/kilip/opus/api/ent/user"
@@ -21,6 +23,7 @@ type WaSessionCreate struct {
 	config
 	mutation *WaSessionMutation
 	hooks    []Hook
+	conflict []sql.ConflictOption
 }
 
 // SetJid sets the "jid" field.
@@ -193,6 +196,7 @@ func (_c *WaSessionCreate) createSpec() (*WaSession, *sqlgraph.CreateSpec) {
 		_node = &WaSession{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(wasession.Table, sqlgraph.NewFieldSpec(wasession.FieldID, field.TypeString))
 	)
+	_spec.OnConflict = _c.conflict
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
 		_spec.ID.Value = id
@@ -273,11 +277,212 @@ func (_c *WaSessionCreate) createSpec() (*WaSession, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.WaSession.Create().
+//		SetJid(v).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.WaSessionUpsert) {
+//			SetJid(v+v).
+//		}).
+//		Exec(ctx)
+func (_c *WaSessionCreate) OnConflict(opts ...sql.ConflictOption) *WaSessionUpsertOne {
+	_c.conflict = opts
+	return &WaSessionUpsertOne{
+		create: _c,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.WaSession.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (_c *WaSessionCreate) OnConflictColumns(columns ...string) *WaSessionUpsertOne {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
+	return &WaSessionUpsertOne{
+		create: _c,
+	}
+}
+
+type (
+	// WaSessionUpsertOne is the builder for "upsert"-ing
+	//  one WaSession node.
+	WaSessionUpsertOne struct {
+		create *WaSessionCreate
+	}
+
+	// WaSessionUpsert is the "OnConflict" setter.
+	WaSessionUpsert struct {
+		*sql.UpdateSet
+	}
+)
+
+// SetJid sets the "jid" field.
+func (u *WaSessionUpsert) SetJid(v string) *WaSessionUpsert {
+	u.Set(wasession.FieldJid, v)
+	return u
+}
+
+// UpdateJid sets the "jid" field to the value that was provided on create.
+func (u *WaSessionUpsert) UpdateJid() *WaSessionUpsert {
+	u.SetExcluded(wasession.FieldJid)
+	return u
+}
+
+// ClearJid clears the value of the "jid" field.
+func (u *WaSessionUpsert) ClearJid() *WaSessionUpsert {
+	u.SetNull(wasession.FieldJid)
+	return u
+}
+
+// SetStatus sets the "status" field.
+func (u *WaSessionUpsert) SetStatus(v string) *WaSessionUpsert {
+	u.Set(wasession.FieldStatus, v)
+	return u
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *WaSessionUpsert) UpdateStatus() *WaSessionUpsert {
+	u.SetExcluded(wasession.FieldStatus)
+	return u
+}
+
+// UpdateNewValues updates the mutable fields using the new values that were set on create except the ID field.
+// Using this option is equivalent to using:
+//
+//	client.WaSession.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//				u.SetIgnore(wasession.FieldID)
+//			}),
+//		).
+//		Exec(ctx)
+func (u *WaSessionUpsertOne) UpdateNewValues() *WaSessionUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		if _, exists := u.create.mutation.ID(); exists {
+			s.SetIgnore(wasession.FieldID)
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.WaSession.Create().
+//	    OnConflict(sql.ResolveWithIgnore()).
+//	    Exec(ctx)
+func (u *WaSessionUpsertOne) Ignore() *WaSessionUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *WaSessionUpsertOne) DoNothing() *WaSessionUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the WaSessionCreate.OnConflict
+// documentation for more info.
+func (u *WaSessionUpsertOne) Update(set func(*WaSessionUpsert)) *WaSessionUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&WaSessionUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetJid sets the "jid" field.
+func (u *WaSessionUpsertOne) SetJid(v string) *WaSessionUpsertOne {
+	return u.Update(func(s *WaSessionUpsert) {
+		s.SetJid(v)
+	})
+}
+
+// UpdateJid sets the "jid" field to the value that was provided on create.
+func (u *WaSessionUpsertOne) UpdateJid() *WaSessionUpsertOne {
+	return u.Update(func(s *WaSessionUpsert) {
+		s.UpdateJid()
+	})
+}
+
+// ClearJid clears the value of the "jid" field.
+func (u *WaSessionUpsertOne) ClearJid() *WaSessionUpsertOne {
+	return u.Update(func(s *WaSessionUpsert) {
+		s.ClearJid()
+	})
+}
+
+// SetStatus sets the "status" field.
+func (u *WaSessionUpsertOne) SetStatus(v string) *WaSessionUpsertOne {
+	return u.Update(func(s *WaSessionUpsert) {
+		s.SetStatus(v)
+	})
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *WaSessionUpsertOne) UpdateStatus() *WaSessionUpsertOne {
+	return u.Update(func(s *WaSessionUpsert) {
+		s.UpdateStatus()
+	})
+}
+
+// Exec executes the query.
+func (u *WaSessionUpsertOne) Exec(ctx context.Context) error {
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for WaSessionCreate.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *WaSessionUpsertOne) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Exec executes the UPSERT query and returns the inserted/updated ID.
+func (u *WaSessionUpsertOne) ID(ctx context.Context) (id string, err error) {
+	if u.create.driver.Dialect() == dialect.MySQL {
+		// In case of "ON CONFLICT", there is no way to get back non-numeric ID
+		// fields from the database since MySQL does not support the RETURNING clause.
+		return id, errors.New("ent: WaSessionUpsertOne.ID is not supported by MySQL driver. Use WaSessionUpsertOne.Exec instead")
+	}
+	node, err := u.create.Save(ctx)
+	if err != nil {
+		return id, err
+	}
+	return node.ID, nil
+}
+
+// IDX is like ID, but panics if an error occurs.
+func (u *WaSessionUpsertOne) IDX(ctx context.Context) string {
+	id, err := u.ID(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 // WaSessionCreateBulk is the builder for creating many WaSession entities in bulk.
 type WaSessionCreateBulk struct {
 	config
 	err      error
 	builders []*WaSessionCreate
+	conflict []sql.ConflictOption
 }
 
 // Save creates the WaSession entities in the database.
@@ -307,6 +512,7 @@ func (_c *WaSessionCreateBulk) Save(ctx context.Context) ([]*WaSession, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -353,6 +559,155 @@ func (_c *WaSessionCreateBulk) Exec(ctx context.Context) error {
 // ExecX is like Exec, but panics if an error occurs.
 func (_c *WaSessionCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.WaSession.CreateBulk(builders...).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.WaSessionUpsert) {
+//			SetJid(v+v).
+//		}).
+//		Exec(ctx)
+func (_c *WaSessionCreateBulk) OnConflict(opts ...sql.ConflictOption) *WaSessionUpsertBulk {
+	_c.conflict = opts
+	return &WaSessionUpsertBulk{
+		create: _c,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.WaSession.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (_c *WaSessionCreateBulk) OnConflictColumns(columns ...string) *WaSessionUpsertBulk {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
+	return &WaSessionUpsertBulk{
+		create: _c,
+	}
+}
+
+// WaSessionUpsertBulk is the builder for "upsert"-ing
+// a bulk of WaSession nodes.
+type WaSessionUpsertBulk struct {
+	create *WaSessionCreateBulk
+}
+
+// UpdateNewValues updates the mutable fields using the new values that
+// were set on create. Using this option is equivalent to using:
+//
+//	client.WaSession.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//				u.SetIgnore(wasession.FieldID)
+//			}),
+//		).
+//		Exec(ctx)
+func (u *WaSessionUpsertBulk) UpdateNewValues() *WaSessionUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		for _, b := range u.create.builders {
+			if _, exists := b.mutation.ID(); exists {
+				s.SetIgnore(wasession.FieldID)
+			}
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.WaSession.Create().
+//		OnConflict(sql.ResolveWithIgnore()).
+//		Exec(ctx)
+func (u *WaSessionUpsertBulk) Ignore() *WaSessionUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *WaSessionUpsertBulk) DoNothing() *WaSessionUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the WaSessionCreateBulk.OnConflict
+// documentation for more info.
+func (u *WaSessionUpsertBulk) Update(set func(*WaSessionUpsert)) *WaSessionUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&WaSessionUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetJid sets the "jid" field.
+func (u *WaSessionUpsertBulk) SetJid(v string) *WaSessionUpsertBulk {
+	return u.Update(func(s *WaSessionUpsert) {
+		s.SetJid(v)
+	})
+}
+
+// UpdateJid sets the "jid" field to the value that was provided on create.
+func (u *WaSessionUpsertBulk) UpdateJid() *WaSessionUpsertBulk {
+	return u.Update(func(s *WaSessionUpsert) {
+		s.UpdateJid()
+	})
+}
+
+// ClearJid clears the value of the "jid" field.
+func (u *WaSessionUpsertBulk) ClearJid() *WaSessionUpsertBulk {
+	return u.Update(func(s *WaSessionUpsert) {
+		s.ClearJid()
+	})
+}
+
+// SetStatus sets the "status" field.
+func (u *WaSessionUpsertBulk) SetStatus(v string) *WaSessionUpsertBulk {
+	return u.Update(func(s *WaSessionUpsert) {
+		s.SetStatus(v)
+	})
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *WaSessionUpsertBulk) UpdateStatus() *WaSessionUpsertBulk {
+	return u.Update(func(s *WaSessionUpsert) {
+		s.UpdateStatus()
+	})
+}
+
+// Exec executes the query.
+func (u *WaSessionUpsertBulk) Exec(ctx context.Context) error {
+	if u.create.err != nil {
+		return u.create.err
+	}
+	for i, b := range u.create.builders {
+		if len(b.conflict) != 0 {
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the WaSessionCreateBulk instead", i)
+		}
+	}
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for WaSessionCreateBulk.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *WaSessionUpsertBulk) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

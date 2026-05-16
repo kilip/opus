@@ -26,9 +26,9 @@ func NewEntGoDriver(client *ent.Client, driver string) QueueDriver {
 	}
 }
 
-// Push persists a job to the queue backend.
+// Push persists a job to the database (upsert).
 func (d *entGoDriver) Push(ctx context.Context, m *model.Job) error {
-	_, err := d.client.Job.
+	err := d.client.Job.
 		Create().
 		SetID(m.ID).
 		SetType(m.Type).
@@ -39,7 +39,9 @@ func (d *entGoDriver) Push(ctx context.Context, m *model.Job) error {
 		SetMaxRetries(m.MaxRetries).
 		SetScheduledAt(m.ScheduledAt).
 		SetError(m.Error).
-		Save(ctx)
+		OnConflict().
+		UpdateNewValues().
+		Exec(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to push job: %w", err)
 	}
@@ -145,19 +147,6 @@ func (d *entGoDriver) MoveToDead(ctx context.Context, m *model.Job) error {
 	return tx.Commit()
 }
 
-// Reschedule updates a job's retry count and next execution time.
-func (d *entGoDriver) Reschedule(ctx context.Context, m *model.Job) error {
-	if _, resErr := d.client.Job.
-		UpdateOneID(m.ID).
-		SetStatus(string(m.Status)).
-		SetRetries(m.Retries).
-		SetScheduledAt(m.ScheduledAt).
-		SetError(m.Error).
-		Save(ctx); resErr != nil {
-		return fmt.Errorf("failed to reschedule job: %w", resErr)
-	}
-	return nil
-}
 
 // ListDeadLetters returns a paginated list of dead letter jobs.
 func (d *entGoDriver) ListDeadLetters(ctx context.Context, limit, offset int) ([]*model.DeadLetter, error) {

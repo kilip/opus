@@ -19,8 +19,6 @@ type QueueDriver interface {
 	UpdateStatus(ctx context.Context, id string, status model.JobStatus, errMsg string) error
 	// MoveToDead moves a failed job to the dead letter store.
 	MoveToDead(ctx context.Context, job *model.Job) error
-	// Reschedule updates a job's retry count and next execution time.
-	Reschedule(ctx context.Context, job *model.Job) error
 	// ListDeadLetters returns a paginated list of dead letter jobs.
 	ListDeadLetters(ctx context.Context, limit, offset int) ([]*model.DeadLetter, error)
 	// RetryDeadLetter moves a dead letter job back to the pending queue.

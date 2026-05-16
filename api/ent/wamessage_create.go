@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/kilip/opus/api/ent/wachat"
@@ -20,6 +21,7 @@ type WaMessageCreate struct {
 	config
 	mutation *WaMessageMutation
 	hooks    []Hook
+	conflict []sql.ConflictOption
 }
 
 // SetMessageID sets the "message_id" field.
@@ -189,6 +191,7 @@ func (_c *WaMessageCreate) createSpec() (*WaMessage, *sqlgraph.CreateSpec) {
 		_node = &WaMessage{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(wamessage.Table, sqlgraph.NewFieldSpec(wamessage.FieldID, field.TypeInt))
 	)
+	_spec.OnConflict = _c.conflict
 	if value, ok := _c.mutation.MessageID(); ok {
 		_spec.SetField(wamessage.FieldMessageID, field.TypeString, value)
 		_node.MessageID = value
@@ -246,11 +249,277 @@ func (_c *WaMessageCreate) createSpec() (*WaMessage, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.WaMessage.Create().
+//		SetMessageID(v).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.WaMessageUpsert) {
+//			SetMessageID(v+v).
+//		}).
+//		Exec(ctx)
+func (_c *WaMessageCreate) OnConflict(opts ...sql.ConflictOption) *WaMessageUpsertOne {
+	_c.conflict = opts
+	return &WaMessageUpsertOne{
+		create: _c,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.WaMessage.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (_c *WaMessageCreate) OnConflictColumns(columns ...string) *WaMessageUpsertOne {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
+	return &WaMessageUpsertOne{
+		create: _c,
+	}
+}
+
+type (
+	// WaMessageUpsertOne is the builder for "upsert"-ing
+	//  one WaMessage node.
+	WaMessageUpsertOne struct {
+		create *WaMessageCreate
+	}
+
+	// WaMessageUpsert is the "OnConflict" setter.
+	WaMessageUpsert struct {
+		*sql.UpdateSet
+	}
+)
+
+// SetMessageID sets the "message_id" field.
+func (u *WaMessageUpsert) SetMessageID(v string) *WaMessageUpsert {
+	u.Set(wamessage.FieldMessageID, v)
+	return u
+}
+
+// UpdateMessageID sets the "message_id" field to the value that was provided on create.
+func (u *WaMessageUpsert) UpdateMessageID() *WaMessageUpsert {
+	u.SetExcluded(wamessage.FieldMessageID)
+	return u
+}
+
+// SetSenderJid sets the "sender_jid" field.
+func (u *WaMessageUpsert) SetSenderJid(v string) *WaMessageUpsert {
+	u.Set(wamessage.FieldSenderJid, v)
+	return u
+}
+
+// UpdateSenderJid sets the "sender_jid" field to the value that was provided on create.
+func (u *WaMessageUpsert) UpdateSenderJid() *WaMessageUpsert {
+	u.SetExcluded(wamessage.FieldSenderJid)
+	return u
+}
+
+// SetContent sets the "content" field.
+func (u *WaMessageUpsert) SetContent(v string) *WaMessageUpsert {
+	u.Set(wamessage.FieldContent, v)
+	return u
+}
+
+// UpdateContent sets the "content" field to the value that was provided on create.
+func (u *WaMessageUpsert) UpdateContent() *WaMessageUpsert {
+	u.SetExcluded(wamessage.FieldContent)
+	return u
+}
+
+// ClearContent clears the value of the "content" field.
+func (u *WaMessageUpsert) ClearContent() *WaMessageUpsert {
+	u.SetNull(wamessage.FieldContent)
+	return u
+}
+
+// SetTimestamp sets the "timestamp" field.
+func (u *WaMessageUpsert) SetTimestamp(v time.Time) *WaMessageUpsert {
+	u.Set(wamessage.FieldTimestamp, v)
+	return u
+}
+
+// UpdateTimestamp sets the "timestamp" field to the value that was provided on create.
+func (u *WaMessageUpsert) UpdateTimestamp() *WaMessageUpsert {
+	u.SetExcluded(wamessage.FieldTimestamp)
+	return u
+}
+
+// SetIsFromMe sets the "is_from_me" field.
+func (u *WaMessageUpsert) SetIsFromMe(v bool) *WaMessageUpsert {
+	u.Set(wamessage.FieldIsFromMe, v)
+	return u
+}
+
+// UpdateIsFromMe sets the "is_from_me" field to the value that was provided on create.
+func (u *WaMessageUpsert) UpdateIsFromMe() *WaMessageUpsert {
+	u.SetExcluded(wamessage.FieldIsFromMe)
+	return u
+}
+
+// UpdateNewValues updates the mutable fields using the new values that were set on create.
+// Using this option is equivalent to using:
+//
+//	client.WaMessage.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *WaMessageUpsertOne) UpdateNewValues() *WaMessageUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.WaMessage.Create().
+//	    OnConflict(sql.ResolveWithIgnore()).
+//	    Exec(ctx)
+func (u *WaMessageUpsertOne) Ignore() *WaMessageUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *WaMessageUpsertOne) DoNothing() *WaMessageUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the WaMessageCreate.OnConflict
+// documentation for more info.
+func (u *WaMessageUpsertOne) Update(set func(*WaMessageUpsert)) *WaMessageUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&WaMessageUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetMessageID sets the "message_id" field.
+func (u *WaMessageUpsertOne) SetMessageID(v string) *WaMessageUpsertOne {
+	return u.Update(func(s *WaMessageUpsert) {
+		s.SetMessageID(v)
+	})
+}
+
+// UpdateMessageID sets the "message_id" field to the value that was provided on create.
+func (u *WaMessageUpsertOne) UpdateMessageID() *WaMessageUpsertOne {
+	return u.Update(func(s *WaMessageUpsert) {
+		s.UpdateMessageID()
+	})
+}
+
+// SetSenderJid sets the "sender_jid" field.
+func (u *WaMessageUpsertOne) SetSenderJid(v string) *WaMessageUpsertOne {
+	return u.Update(func(s *WaMessageUpsert) {
+		s.SetSenderJid(v)
+	})
+}
+
+// UpdateSenderJid sets the "sender_jid" field to the value that was provided on create.
+func (u *WaMessageUpsertOne) UpdateSenderJid() *WaMessageUpsertOne {
+	return u.Update(func(s *WaMessageUpsert) {
+		s.UpdateSenderJid()
+	})
+}
+
+// SetContent sets the "content" field.
+func (u *WaMessageUpsertOne) SetContent(v string) *WaMessageUpsertOne {
+	return u.Update(func(s *WaMessageUpsert) {
+		s.SetContent(v)
+	})
+}
+
+// UpdateContent sets the "content" field to the value that was provided on create.
+func (u *WaMessageUpsertOne) UpdateContent() *WaMessageUpsertOne {
+	return u.Update(func(s *WaMessageUpsert) {
+		s.UpdateContent()
+	})
+}
+
+// ClearContent clears the value of the "content" field.
+func (u *WaMessageUpsertOne) ClearContent() *WaMessageUpsertOne {
+	return u.Update(func(s *WaMessageUpsert) {
+		s.ClearContent()
+	})
+}
+
+// SetTimestamp sets the "timestamp" field.
+func (u *WaMessageUpsertOne) SetTimestamp(v time.Time) *WaMessageUpsertOne {
+	return u.Update(func(s *WaMessageUpsert) {
+		s.SetTimestamp(v)
+	})
+}
+
+// UpdateTimestamp sets the "timestamp" field to the value that was provided on create.
+func (u *WaMessageUpsertOne) UpdateTimestamp() *WaMessageUpsertOne {
+	return u.Update(func(s *WaMessageUpsert) {
+		s.UpdateTimestamp()
+	})
+}
+
+// SetIsFromMe sets the "is_from_me" field.
+func (u *WaMessageUpsertOne) SetIsFromMe(v bool) *WaMessageUpsertOne {
+	return u.Update(func(s *WaMessageUpsert) {
+		s.SetIsFromMe(v)
+	})
+}
+
+// UpdateIsFromMe sets the "is_from_me" field to the value that was provided on create.
+func (u *WaMessageUpsertOne) UpdateIsFromMe() *WaMessageUpsertOne {
+	return u.Update(func(s *WaMessageUpsert) {
+		s.UpdateIsFromMe()
+	})
+}
+
+// Exec executes the query.
+func (u *WaMessageUpsertOne) Exec(ctx context.Context) error {
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for WaMessageCreate.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *WaMessageUpsertOne) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Exec executes the UPSERT query and returns the inserted/updated ID.
+func (u *WaMessageUpsertOne) ID(ctx context.Context) (id int, err error) {
+	node, err := u.create.Save(ctx)
+	if err != nil {
+		return id, err
+	}
+	return node.ID, nil
+}
+
+// IDX is like ID, but panics if an error occurs.
+func (u *WaMessageUpsertOne) IDX(ctx context.Context) int {
+	id, err := u.ID(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 // WaMessageCreateBulk is the builder for creating many WaMessage entities in bulk.
 type WaMessageCreateBulk struct {
 	config
 	err      error
 	builders []*WaMessageCreate
+	conflict []sql.ConflictOption
 }
 
 // Save creates the WaMessage entities in the database.
@@ -280,6 +549,7 @@ func (_c *WaMessageCreateBulk) Save(ctx context.Context) ([]*WaMessage, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -330,6 +600,187 @@ func (_c *WaMessageCreateBulk) Exec(ctx context.Context) error {
 // ExecX is like Exec, but panics if an error occurs.
 func (_c *WaMessageCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.WaMessage.CreateBulk(builders...).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.WaMessageUpsert) {
+//			SetMessageID(v+v).
+//		}).
+//		Exec(ctx)
+func (_c *WaMessageCreateBulk) OnConflict(opts ...sql.ConflictOption) *WaMessageUpsertBulk {
+	_c.conflict = opts
+	return &WaMessageUpsertBulk{
+		create: _c,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.WaMessage.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (_c *WaMessageCreateBulk) OnConflictColumns(columns ...string) *WaMessageUpsertBulk {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
+	return &WaMessageUpsertBulk{
+		create: _c,
+	}
+}
+
+// WaMessageUpsertBulk is the builder for "upsert"-ing
+// a bulk of WaMessage nodes.
+type WaMessageUpsertBulk struct {
+	create *WaMessageCreateBulk
+}
+
+// UpdateNewValues updates the mutable fields using the new values that
+// were set on create. Using this option is equivalent to using:
+//
+//	client.WaMessage.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *WaMessageUpsertBulk) UpdateNewValues() *WaMessageUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.WaMessage.Create().
+//		OnConflict(sql.ResolveWithIgnore()).
+//		Exec(ctx)
+func (u *WaMessageUpsertBulk) Ignore() *WaMessageUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *WaMessageUpsertBulk) DoNothing() *WaMessageUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the WaMessageCreateBulk.OnConflict
+// documentation for more info.
+func (u *WaMessageUpsertBulk) Update(set func(*WaMessageUpsert)) *WaMessageUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&WaMessageUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetMessageID sets the "message_id" field.
+func (u *WaMessageUpsertBulk) SetMessageID(v string) *WaMessageUpsertBulk {
+	return u.Update(func(s *WaMessageUpsert) {
+		s.SetMessageID(v)
+	})
+}
+
+// UpdateMessageID sets the "message_id" field to the value that was provided on create.
+func (u *WaMessageUpsertBulk) UpdateMessageID() *WaMessageUpsertBulk {
+	return u.Update(func(s *WaMessageUpsert) {
+		s.UpdateMessageID()
+	})
+}
+
+// SetSenderJid sets the "sender_jid" field.
+func (u *WaMessageUpsertBulk) SetSenderJid(v string) *WaMessageUpsertBulk {
+	return u.Update(func(s *WaMessageUpsert) {
+		s.SetSenderJid(v)
+	})
+}
+
+// UpdateSenderJid sets the "sender_jid" field to the value that was provided on create.
+func (u *WaMessageUpsertBulk) UpdateSenderJid() *WaMessageUpsertBulk {
+	return u.Update(func(s *WaMessageUpsert) {
+		s.UpdateSenderJid()
+	})
+}
+
+// SetContent sets the "content" field.
+func (u *WaMessageUpsertBulk) SetContent(v string) *WaMessageUpsertBulk {
+	return u.Update(func(s *WaMessageUpsert) {
+		s.SetContent(v)
+	})
+}
+
+// UpdateContent sets the "content" field to the value that was provided on create.
+func (u *WaMessageUpsertBulk) UpdateContent() *WaMessageUpsertBulk {
+	return u.Update(func(s *WaMessageUpsert) {
+		s.UpdateContent()
+	})
+}
+
+// ClearContent clears the value of the "content" field.
+func (u *WaMessageUpsertBulk) ClearContent() *WaMessageUpsertBulk {
+	return u.Update(func(s *WaMessageUpsert) {
+		s.ClearContent()
+	})
+}
+
+// SetTimestamp sets the "timestamp" field.
+func (u *WaMessageUpsertBulk) SetTimestamp(v time.Time) *WaMessageUpsertBulk {
+	return u.Update(func(s *WaMessageUpsert) {
+		s.SetTimestamp(v)
+	})
+}
+
+// UpdateTimestamp sets the "timestamp" field to the value that was provided on create.
+func (u *WaMessageUpsertBulk) UpdateTimestamp() *WaMessageUpsertBulk {
+	return u.Update(func(s *WaMessageUpsert) {
+		s.UpdateTimestamp()
+	})
+}
+
+// SetIsFromMe sets the "is_from_me" field.
+func (u *WaMessageUpsertBulk) SetIsFromMe(v bool) *WaMessageUpsertBulk {
+	return u.Update(func(s *WaMessageUpsert) {
+		s.SetIsFromMe(v)
+	})
+}
+
+// UpdateIsFromMe sets the "is_from_me" field to the value that was provided on create.
+func (u *WaMessageUpsertBulk) UpdateIsFromMe() *WaMessageUpsertBulk {
+	return u.Update(func(s *WaMessageUpsert) {
+		s.UpdateIsFromMe()
+	})
+}
+
+// Exec executes the query.
+func (u *WaMessageUpsertBulk) Exec(ctx context.Context) error {
+	if u.create.err != nil {
+		return u.create.err
+	}
+	for i, b := range u.create.builders {
+		if len(b.conflict) != 0 {
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the WaMessageCreateBulk instead", i)
+		}
+	}
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for WaMessageCreateBulk.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *WaMessageUpsertBulk) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

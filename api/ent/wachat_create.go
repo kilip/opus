@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/kilip/opus/api/ent/wachat"
@@ -19,6 +20,7 @@ type WaChatCreate struct {
 	config
 	mutation *WaChatMutation
 	hooks    []Hook
+	conflict []sql.ConflictOption
 }
 
 // SetJid sets the "jid" field.
@@ -159,6 +161,7 @@ func (_c *WaChatCreate) createSpec() (*WaChat, *sqlgraph.CreateSpec) {
 		_node = &WaChat{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(wachat.Table, sqlgraph.NewFieldSpec(wachat.FieldID, field.TypeInt))
 	)
+	_spec.OnConflict = _c.conflict
 	if value, ok := _c.mutation.Jid(); ok {
 		_spec.SetField(wachat.FieldJid, field.TypeString, value)
 		_node.Jid = value
@@ -207,11 +210,238 @@ func (_c *WaChatCreate) createSpec() (*WaChat, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.WaChat.Create().
+//		SetJid(v).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.WaChatUpsert) {
+//			SetJid(v+v).
+//		}).
+//		Exec(ctx)
+func (_c *WaChatCreate) OnConflict(opts ...sql.ConflictOption) *WaChatUpsertOne {
+	_c.conflict = opts
+	return &WaChatUpsertOne{
+		create: _c,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.WaChat.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (_c *WaChatCreate) OnConflictColumns(columns ...string) *WaChatUpsertOne {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
+	return &WaChatUpsertOne{
+		create: _c,
+	}
+}
+
+type (
+	// WaChatUpsertOne is the builder for "upsert"-ing
+	//  one WaChat node.
+	WaChatUpsertOne struct {
+		create *WaChatCreate
+	}
+
+	// WaChatUpsert is the "OnConflict" setter.
+	WaChatUpsert struct {
+		*sql.UpdateSet
+	}
+)
+
+// SetJid sets the "jid" field.
+func (u *WaChatUpsert) SetJid(v string) *WaChatUpsert {
+	u.Set(wachat.FieldJid, v)
+	return u
+}
+
+// UpdateJid sets the "jid" field to the value that was provided on create.
+func (u *WaChatUpsert) UpdateJid() *WaChatUpsert {
+	u.SetExcluded(wachat.FieldJid)
+	return u
+}
+
+// SetName sets the "name" field.
+func (u *WaChatUpsert) SetName(v string) *WaChatUpsert {
+	u.Set(wachat.FieldName, v)
+	return u
+}
+
+// UpdateName sets the "name" field to the value that was provided on create.
+func (u *WaChatUpsert) UpdateName() *WaChatUpsert {
+	u.SetExcluded(wachat.FieldName)
+	return u
+}
+
+// ClearName clears the value of the "name" field.
+func (u *WaChatUpsert) ClearName() *WaChatUpsert {
+	u.SetNull(wachat.FieldName)
+	return u
+}
+
+// SetUnreadCount sets the "unread_count" field.
+func (u *WaChatUpsert) SetUnreadCount(v int) *WaChatUpsert {
+	u.Set(wachat.FieldUnreadCount, v)
+	return u
+}
+
+// UpdateUnreadCount sets the "unread_count" field to the value that was provided on create.
+func (u *WaChatUpsert) UpdateUnreadCount() *WaChatUpsert {
+	u.SetExcluded(wachat.FieldUnreadCount)
+	return u
+}
+
+// AddUnreadCount adds v to the "unread_count" field.
+func (u *WaChatUpsert) AddUnreadCount(v int) *WaChatUpsert {
+	u.Add(wachat.FieldUnreadCount, v)
+	return u
+}
+
+// UpdateNewValues updates the mutable fields using the new values that were set on create.
+// Using this option is equivalent to using:
+//
+//	client.WaChat.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *WaChatUpsertOne) UpdateNewValues() *WaChatUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.WaChat.Create().
+//	    OnConflict(sql.ResolveWithIgnore()).
+//	    Exec(ctx)
+func (u *WaChatUpsertOne) Ignore() *WaChatUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *WaChatUpsertOne) DoNothing() *WaChatUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the WaChatCreate.OnConflict
+// documentation for more info.
+func (u *WaChatUpsertOne) Update(set func(*WaChatUpsert)) *WaChatUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&WaChatUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetJid sets the "jid" field.
+func (u *WaChatUpsertOne) SetJid(v string) *WaChatUpsertOne {
+	return u.Update(func(s *WaChatUpsert) {
+		s.SetJid(v)
+	})
+}
+
+// UpdateJid sets the "jid" field to the value that was provided on create.
+func (u *WaChatUpsertOne) UpdateJid() *WaChatUpsertOne {
+	return u.Update(func(s *WaChatUpsert) {
+		s.UpdateJid()
+	})
+}
+
+// SetName sets the "name" field.
+func (u *WaChatUpsertOne) SetName(v string) *WaChatUpsertOne {
+	return u.Update(func(s *WaChatUpsert) {
+		s.SetName(v)
+	})
+}
+
+// UpdateName sets the "name" field to the value that was provided on create.
+func (u *WaChatUpsertOne) UpdateName() *WaChatUpsertOne {
+	return u.Update(func(s *WaChatUpsert) {
+		s.UpdateName()
+	})
+}
+
+// ClearName clears the value of the "name" field.
+func (u *WaChatUpsertOne) ClearName() *WaChatUpsertOne {
+	return u.Update(func(s *WaChatUpsert) {
+		s.ClearName()
+	})
+}
+
+// SetUnreadCount sets the "unread_count" field.
+func (u *WaChatUpsertOne) SetUnreadCount(v int) *WaChatUpsertOne {
+	return u.Update(func(s *WaChatUpsert) {
+		s.SetUnreadCount(v)
+	})
+}
+
+// AddUnreadCount adds v to the "unread_count" field.
+func (u *WaChatUpsertOne) AddUnreadCount(v int) *WaChatUpsertOne {
+	return u.Update(func(s *WaChatUpsert) {
+		s.AddUnreadCount(v)
+	})
+}
+
+// UpdateUnreadCount sets the "unread_count" field to the value that was provided on create.
+func (u *WaChatUpsertOne) UpdateUnreadCount() *WaChatUpsertOne {
+	return u.Update(func(s *WaChatUpsert) {
+		s.UpdateUnreadCount()
+	})
+}
+
+// Exec executes the query.
+func (u *WaChatUpsertOne) Exec(ctx context.Context) error {
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for WaChatCreate.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *WaChatUpsertOne) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Exec executes the UPSERT query and returns the inserted/updated ID.
+func (u *WaChatUpsertOne) ID(ctx context.Context) (id int, err error) {
+	node, err := u.create.Save(ctx)
+	if err != nil {
+		return id, err
+	}
+	return node.ID, nil
+}
+
+// IDX is like ID, but panics if an error occurs.
+func (u *WaChatUpsertOne) IDX(ctx context.Context) int {
+	id, err := u.ID(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 // WaChatCreateBulk is the builder for creating many WaChat entities in bulk.
 type WaChatCreateBulk struct {
 	config
 	err      error
 	builders []*WaChatCreate
+	conflict []sql.ConflictOption
 }
 
 // Save creates the WaChat entities in the database.
@@ -241,6 +471,7 @@ func (_c *WaChatCreateBulk) Save(ctx context.Context) ([]*WaChat, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -291,6 +522,166 @@ func (_c *WaChatCreateBulk) Exec(ctx context.Context) error {
 // ExecX is like Exec, but panics if an error occurs.
 func (_c *WaChatCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.WaChat.CreateBulk(builders...).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.WaChatUpsert) {
+//			SetJid(v+v).
+//		}).
+//		Exec(ctx)
+func (_c *WaChatCreateBulk) OnConflict(opts ...sql.ConflictOption) *WaChatUpsertBulk {
+	_c.conflict = opts
+	return &WaChatUpsertBulk{
+		create: _c,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.WaChat.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (_c *WaChatCreateBulk) OnConflictColumns(columns ...string) *WaChatUpsertBulk {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
+	return &WaChatUpsertBulk{
+		create: _c,
+	}
+}
+
+// WaChatUpsertBulk is the builder for "upsert"-ing
+// a bulk of WaChat nodes.
+type WaChatUpsertBulk struct {
+	create *WaChatCreateBulk
+}
+
+// UpdateNewValues updates the mutable fields using the new values that
+// were set on create. Using this option is equivalent to using:
+//
+//	client.WaChat.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *WaChatUpsertBulk) UpdateNewValues() *WaChatUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.WaChat.Create().
+//		OnConflict(sql.ResolveWithIgnore()).
+//		Exec(ctx)
+func (u *WaChatUpsertBulk) Ignore() *WaChatUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *WaChatUpsertBulk) DoNothing() *WaChatUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the WaChatCreateBulk.OnConflict
+// documentation for more info.
+func (u *WaChatUpsertBulk) Update(set func(*WaChatUpsert)) *WaChatUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&WaChatUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetJid sets the "jid" field.
+func (u *WaChatUpsertBulk) SetJid(v string) *WaChatUpsertBulk {
+	return u.Update(func(s *WaChatUpsert) {
+		s.SetJid(v)
+	})
+}
+
+// UpdateJid sets the "jid" field to the value that was provided on create.
+func (u *WaChatUpsertBulk) UpdateJid() *WaChatUpsertBulk {
+	return u.Update(func(s *WaChatUpsert) {
+		s.UpdateJid()
+	})
+}
+
+// SetName sets the "name" field.
+func (u *WaChatUpsertBulk) SetName(v string) *WaChatUpsertBulk {
+	return u.Update(func(s *WaChatUpsert) {
+		s.SetName(v)
+	})
+}
+
+// UpdateName sets the "name" field to the value that was provided on create.
+func (u *WaChatUpsertBulk) UpdateName() *WaChatUpsertBulk {
+	return u.Update(func(s *WaChatUpsert) {
+		s.UpdateName()
+	})
+}
+
+// ClearName clears the value of the "name" field.
+func (u *WaChatUpsertBulk) ClearName() *WaChatUpsertBulk {
+	return u.Update(func(s *WaChatUpsert) {
+		s.ClearName()
+	})
+}
+
+// SetUnreadCount sets the "unread_count" field.
+func (u *WaChatUpsertBulk) SetUnreadCount(v int) *WaChatUpsertBulk {
+	return u.Update(func(s *WaChatUpsert) {
+		s.SetUnreadCount(v)
+	})
+}
+
+// AddUnreadCount adds v to the "unread_count" field.
+func (u *WaChatUpsertBulk) AddUnreadCount(v int) *WaChatUpsertBulk {
+	return u.Update(func(s *WaChatUpsert) {
+		s.AddUnreadCount(v)
+	})
+}
+
+// UpdateUnreadCount sets the "unread_count" field to the value that was provided on create.
+func (u *WaChatUpsertBulk) UpdateUnreadCount() *WaChatUpsertBulk {
+	return u.Update(func(s *WaChatUpsert) {
+		s.UpdateUnreadCount()
+	})
+}
+
+// Exec executes the query.
+func (u *WaChatUpsertBulk) Exec(ctx context.Context) error {
+	if u.create.err != nil {
+		return u.create.err
+	}
+	for i, b := range u.create.builders {
+		if len(b.conflict) != 0 {
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the WaChatCreateBulk instead", i)
+		}
+	}
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for WaChatCreateBulk.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *WaChatUpsertBulk) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

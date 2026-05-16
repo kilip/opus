@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"time"
 
+	"entgo.io/ent/dialect"
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/kilip/opus/api/ent/job"
@@ -18,6 +20,7 @@ type JobCreate struct {
 	config
 	mutation *JobMutation
 	hooks    []Hook
+	conflict []sql.ConflictOption
 }
 
 // SetType sets the "type" field.
@@ -275,6 +278,7 @@ func (_c *JobCreate) createSpec() (*Job, *sqlgraph.CreateSpec) {
 		_node = &Job{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(job.Table, sqlgraph.NewFieldSpec(job.FieldID, field.TypeString))
 	)
+	_spec.OnConflict = _c.conflict
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
 		_spec.ID.Value = id
@@ -322,11 +326,436 @@ func (_c *JobCreate) createSpec() (*Job, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.Job.Create().
+//		SetType(v).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.JobUpsert) {
+//			SetType(v+v).
+//		}).
+//		Exec(ctx)
+func (_c *JobCreate) OnConflict(opts ...sql.ConflictOption) *JobUpsertOne {
+	_c.conflict = opts
+	return &JobUpsertOne{
+		create: _c,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.Job.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (_c *JobCreate) OnConflictColumns(columns ...string) *JobUpsertOne {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
+	return &JobUpsertOne{
+		create: _c,
+	}
+}
+
+type (
+	// JobUpsertOne is the builder for "upsert"-ing
+	//  one Job node.
+	JobUpsertOne struct {
+		create *JobCreate
+	}
+
+	// JobUpsert is the "OnConflict" setter.
+	JobUpsert struct {
+		*sql.UpdateSet
+	}
+)
+
+// SetType sets the "type" field.
+func (u *JobUpsert) SetType(v string) *JobUpsert {
+	u.Set(job.FieldType, v)
+	return u
+}
+
+// UpdateType sets the "type" field to the value that was provided on create.
+func (u *JobUpsert) UpdateType() *JobUpsert {
+	u.SetExcluded(job.FieldType)
+	return u
+}
+
+// SetPayload sets the "payload" field.
+func (u *JobUpsert) SetPayload(v []byte) *JobUpsert {
+	u.Set(job.FieldPayload, v)
+	return u
+}
+
+// UpdatePayload sets the "payload" field to the value that was provided on create.
+func (u *JobUpsert) UpdatePayload() *JobUpsert {
+	u.SetExcluded(job.FieldPayload)
+	return u
+}
+
+// SetPriority sets the "priority" field.
+func (u *JobUpsert) SetPriority(v int) *JobUpsert {
+	u.Set(job.FieldPriority, v)
+	return u
+}
+
+// UpdatePriority sets the "priority" field to the value that was provided on create.
+func (u *JobUpsert) UpdatePriority() *JobUpsert {
+	u.SetExcluded(job.FieldPriority)
+	return u
+}
+
+// AddPriority adds v to the "priority" field.
+func (u *JobUpsert) AddPriority(v int) *JobUpsert {
+	u.Add(job.FieldPriority, v)
+	return u
+}
+
+// SetStatus sets the "status" field.
+func (u *JobUpsert) SetStatus(v string) *JobUpsert {
+	u.Set(job.FieldStatus, v)
+	return u
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *JobUpsert) UpdateStatus() *JobUpsert {
+	u.SetExcluded(job.FieldStatus)
+	return u
+}
+
+// SetRetries sets the "retries" field.
+func (u *JobUpsert) SetRetries(v int) *JobUpsert {
+	u.Set(job.FieldRetries, v)
+	return u
+}
+
+// UpdateRetries sets the "retries" field to the value that was provided on create.
+func (u *JobUpsert) UpdateRetries() *JobUpsert {
+	u.SetExcluded(job.FieldRetries)
+	return u
+}
+
+// AddRetries adds v to the "retries" field.
+func (u *JobUpsert) AddRetries(v int) *JobUpsert {
+	u.Add(job.FieldRetries, v)
+	return u
+}
+
+// SetMaxRetries sets the "max_retries" field.
+func (u *JobUpsert) SetMaxRetries(v int) *JobUpsert {
+	u.Set(job.FieldMaxRetries, v)
+	return u
+}
+
+// UpdateMaxRetries sets the "max_retries" field to the value that was provided on create.
+func (u *JobUpsert) UpdateMaxRetries() *JobUpsert {
+	u.SetExcluded(job.FieldMaxRetries)
+	return u
+}
+
+// AddMaxRetries adds v to the "max_retries" field.
+func (u *JobUpsert) AddMaxRetries(v int) *JobUpsert {
+	u.Add(job.FieldMaxRetries, v)
+	return u
+}
+
+// SetScheduledAt sets the "scheduled_at" field.
+func (u *JobUpsert) SetScheduledAt(v time.Time) *JobUpsert {
+	u.Set(job.FieldScheduledAt, v)
+	return u
+}
+
+// UpdateScheduledAt sets the "scheduled_at" field to the value that was provided on create.
+func (u *JobUpsert) UpdateScheduledAt() *JobUpsert {
+	u.SetExcluded(job.FieldScheduledAt)
+	return u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *JobUpsert) SetUpdatedAt(v time.Time) *JobUpsert {
+	u.Set(job.FieldUpdatedAt, v)
+	return u
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *JobUpsert) UpdateUpdatedAt() *JobUpsert {
+	u.SetExcluded(job.FieldUpdatedAt)
+	return u
+}
+
+// SetError sets the "error" field.
+func (u *JobUpsert) SetError(v string) *JobUpsert {
+	u.Set(job.FieldError, v)
+	return u
+}
+
+// UpdateError sets the "error" field to the value that was provided on create.
+func (u *JobUpsert) UpdateError() *JobUpsert {
+	u.SetExcluded(job.FieldError)
+	return u
+}
+
+// ClearError clears the value of the "error" field.
+func (u *JobUpsert) ClearError() *JobUpsert {
+	u.SetNull(job.FieldError)
+	return u
+}
+
+// UpdateNewValues updates the mutable fields using the new values that were set on create except the ID field.
+// Using this option is equivalent to using:
+//
+//	client.Job.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//				u.SetIgnore(job.FieldID)
+//			}),
+//		).
+//		Exec(ctx)
+func (u *JobUpsertOne) UpdateNewValues() *JobUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		if _, exists := u.create.mutation.ID(); exists {
+			s.SetIgnore(job.FieldID)
+		}
+		if _, exists := u.create.mutation.CreatedAt(); exists {
+			s.SetIgnore(job.FieldCreatedAt)
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.Job.Create().
+//	    OnConflict(sql.ResolveWithIgnore()).
+//	    Exec(ctx)
+func (u *JobUpsertOne) Ignore() *JobUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *JobUpsertOne) DoNothing() *JobUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the JobCreate.OnConflict
+// documentation for more info.
+func (u *JobUpsertOne) Update(set func(*JobUpsert)) *JobUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&JobUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetType sets the "type" field.
+func (u *JobUpsertOne) SetType(v string) *JobUpsertOne {
+	return u.Update(func(s *JobUpsert) {
+		s.SetType(v)
+	})
+}
+
+// UpdateType sets the "type" field to the value that was provided on create.
+func (u *JobUpsertOne) UpdateType() *JobUpsertOne {
+	return u.Update(func(s *JobUpsert) {
+		s.UpdateType()
+	})
+}
+
+// SetPayload sets the "payload" field.
+func (u *JobUpsertOne) SetPayload(v []byte) *JobUpsertOne {
+	return u.Update(func(s *JobUpsert) {
+		s.SetPayload(v)
+	})
+}
+
+// UpdatePayload sets the "payload" field to the value that was provided on create.
+func (u *JobUpsertOne) UpdatePayload() *JobUpsertOne {
+	return u.Update(func(s *JobUpsert) {
+		s.UpdatePayload()
+	})
+}
+
+// SetPriority sets the "priority" field.
+func (u *JobUpsertOne) SetPriority(v int) *JobUpsertOne {
+	return u.Update(func(s *JobUpsert) {
+		s.SetPriority(v)
+	})
+}
+
+// AddPriority adds v to the "priority" field.
+func (u *JobUpsertOne) AddPriority(v int) *JobUpsertOne {
+	return u.Update(func(s *JobUpsert) {
+		s.AddPriority(v)
+	})
+}
+
+// UpdatePriority sets the "priority" field to the value that was provided on create.
+func (u *JobUpsertOne) UpdatePriority() *JobUpsertOne {
+	return u.Update(func(s *JobUpsert) {
+		s.UpdatePriority()
+	})
+}
+
+// SetStatus sets the "status" field.
+func (u *JobUpsertOne) SetStatus(v string) *JobUpsertOne {
+	return u.Update(func(s *JobUpsert) {
+		s.SetStatus(v)
+	})
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *JobUpsertOne) UpdateStatus() *JobUpsertOne {
+	return u.Update(func(s *JobUpsert) {
+		s.UpdateStatus()
+	})
+}
+
+// SetRetries sets the "retries" field.
+func (u *JobUpsertOne) SetRetries(v int) *JobUpsertOne {
+	return u.Update(func(s *JobUpsert) {
+		s.SetRetries(v)
+	})
+}
+
+// AddRetries adds v to the "retries" field.
+func (u *JobUpsertOne) AddRetries(v int) *JobUpsertOne {
+	return u.Update(func(s *JobUpsert) {
+		s.AddRetries(v)
+	})
+}
+
+// UpdateRetries sets the "retries" field to the value that was provided on create.
+func (u *JobUpsertOne) UpdateRetries() *JobUpsertOne {
+	return u.Update(func(s *JobUpsert) {
+		s.UpdateRetries()
+	})
+}
+
+// SetMaxRetries sets the "max_retries" field.
+func (u *JobUpsertOne) SetMaxRetries(v int) *JobUpsertOne {
+	return u.Update(func(s *JobUpsert) {
+		s.SetMaxRetries(v)
+	})
+}
+
+// AddMaxRetries adds v to the "max_retries" field.
+func (u *JobUpsertOne) AddMaxRetries(v int) *JobUpsertOne {
+	return u.Update(func(s *JobUpsert) {
+		s.AddMaxRetries(v)
+	})
+}
+
+// UpdateMaxRetries sets the "max_retries" field to the value that was provided on create.
+func (u *JobUpsertOne) UpdateMaxRetries() *JobUpsertOne {
+	return u.Update(func(s *JobUpsert) {
+		s.UpdateMaxRetries()
+	})
+}
+
+// SetScheduledAt sets the "scheduled_at" field.
+func (u *JobUpsertOne) SetScheduledAt(v time.Time) *JobUpsertOne {
+	return u.Update(func(s *JobUpsert) {
+		s.SetScheduledAt(v)
+	})
+}
+
+// UpdateScheduledAt sets the "scheduled_at" field to the value that was provided on create.
+func (u *JobUpsertOne) UpdateScheduledAt() *JobUpsertOne {
+	return u.Update(func(s *JobUpsert) {
+		s.UpdateScheduledAt()
+	})
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *JobUpsertOne) SetUpdatedAt(v time.Time) *JobUpsertOne {
+	return u.Update(func(s *JobUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *JobUpsertOne) UpdateUpdatedAt() *JobUpsertOne {
+	return u.Update(func(s *JobUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// SetError sets the "error" field.
+func (u *JobUpsertOne) SetError(v string) *JobUpsertOne {
+	return u.Update(func(s *JobUpsert) {
+		s.SetError(v)
+	})
+}
+
+// UpdateError sets the "error" field to the value that was provided on create.
+func (u *JobUpsertOne) UpdateError() *JobUpsertOne {
+	return u.Update(func(s *JobUpsert) {
+		s.UpdateError()
+	})
+}
+
+// ClearError clears the value of the "error" field.
+func (u *JobUpsertOne) ClearError() *JobUpsertOne {
+	return u.Update(func(s *JobUpsert) {
+		s.ClearError()
+	})
+}
+
+// Exec executes the query.
+func (u *JobUpsertOne) Exec(ctx context.Context) error {
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for JobCreate.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *JobUpsertOne) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Exec executes the UPSERT query and returns the inserted/updated ID.
+func (u *JobUpsertOne) ID(ctx context.Context) (id string, err error) {
+	if u.create.driver.Dialect() == dialect.MySQL {
+		// In case of "ON CONFLICT", there is no way to get back non-numeric ID
+		// fields from the database since MySQL does not support the RETURNING clause.
+		return id, errors.New("ent: JobUpsertOne.ID is not supported by MySQL driver. Use JobUpsertOne.Exec instead")
+	}
+	node, err := u.create.Save(ctx)
+	if err != nil {
+		return id, err
+	}
+	return node.ID, nil
+}
+
+// IDX is like ID, but panics if an error occurs.
+func (u *JobUpsertOne) IDX(ctx context.Context) string {
+	id, err := u.ID(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 // JobCreateBulk is the builder for creating many Job entities in bulk.
 type JobCreateBulk struct {
 	config
 	err      error
 	builders []*JobCreate
+	conflict []sql.ConflictOption
 }
 
 // Save creates the Job entities in the database.
@@ -356,6 +785,7 @@ func (_c *JobCreateBulk) Save(ctx context.Context) ([]*Job, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -402,6 +832,277 @@ func (_c *JobCreateBulk) Exec(ctx context.Context) error {
 // ExecX is like Exec, but panics if an error occurs.
 func (_c *JobCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.Job.CreateBulk(builders...).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.JobUpsert) {
+//			SetType(v+v).
+//		}).
+//		Exec(ctx)
+func (_c *JobCreateBulk) OnConflict(opts ...sql.ConflictOption) *JobUpsertBulk {
+	_c.conflict = opts
+	return &JobUpsertBulk{
+		create: _c,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.Job.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (_c *JobCreateBulk) OnConflictColumns(columns ...string) *JobUpsertBulk {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
+	return &JobUpsertBulk{
+		create: _c,
+	}
+}
+
+// JobUpsertBulk is the builder for "upsert"-ing
+// a bulk of Job nodes.
+type JobUpsertBulk struct {
+	create *JobCreateBulk
+}
+
+// UpdateNewValues updates the mutable fields using the new values that
+// were set on create. Using this option is equivalent to using:
+//
+//	client.Job.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//			sql.ResolveWith(func(u *sql.UpdateSet) {
+//				u.SetIgnore(job.FieldID)
+//			}),
+//		).
+//		Exec(ctx)
+func (u *JobUpsertBulk) UpdateNewValues() *JobUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(s *sql.UpdateSet) {
+		for _, b := range u.create.builders {
+			if _, exists := b.mutation.ID(); exists {
+				s.SetIgnore(job.FieldID)
+			}
+			if _, exists := b.mutation.CreatedAt(); exists {
+				s.SetIgnore(job.FieldCreatedAt)
+			}
+		}
+	}))
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.Job.Create().
+//		OnConflict(sql.ResolveWithIgnore()).
+//		Exec(ctx)
+func (u *JobUpsertBulk) Ignore() *JobUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *JobUpsertBulk) DoNothing() *JobUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the JobCreateBulk.OnConflict
+// documentation for more info.
+func (u *JobUpsertBulk) Update(set func(*JobUpsert)) *JobUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&JobUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetType sets the "type" field.
+func (u *JobUpsertBulk) SetType(v string) *JobUpsertBulk {
+	return u.Update(func(s *JobUpsert) {
+		s.SetType(v)
+	})
+}
+
+// UpdateType sets the "type" field to the value that was provided on create.
+func (u *JobUpsertBulk) UpdateType() *JobUpsertBulk {
+	return u.Update(func(s *JobUpsert) {
+		s.UpdateType()
+	})
+}
+
+// SetPayload sets the "payload" field.
+func (u *JobUpsertBulk) SetPayload(v []byte) *JobUpsertBulk {
+	return u.Update(func(s *JobUpsert) {
+		s.SetPayload(v)
+	})
+}
+
+// UpdatePayload sets the "payload" field to the value that was provided on create.
+func (u *JobUpsertBulk) UpdatePayload() *JobUpsertBulk {
+	return u.Update(func(s *JobUpsert) {
+		s.UpdatePayload()
+	})
+}
+
+// SetPriority sets the "priority" field.
+func (u *JobUpsertBulk) SetPriority(v int) *JobUpsertBulk {
+	return u.Update(func(s *JobUpsert) {
+		s.SetPriority(v)
+	})
+}
+
+// AddPriority adds v to the "priority" field.
+func (u *JobUpsertBulk) AddPriority(v int) *JobUpsertBulk {
+	return u.Update(func(s *JobUpsert) {
+		s.AddPriority(v)
+	})
+}
+
+// UpdatePriority sets the "priority" field to the value that was provided on create.
+func (u *JobUpsertBulk) UpdatePriority() *JobUpsertBulk {
+	return u.Update(func(s *JobUpsert) {
+		s.UpdatePriority()
+	})
+}
+
+// SetStatus sets the "status" field.
+func (u *JobUpsertBulk) SetStatus(v string) *JobUpsertBulk {
+	return u.Update(func(s *JobUpsert) {
+		s.SetStatus(v)
+	})
+}
+
+// UpdateStatus sets the "status" field to the value that was provided on create.
+func (u *JobUpsertBulk) UpdateStatus() *JobUpsertBulk {
+	return u.Update(func(s *JobUpsert) {
+		s.UpdateStatus()
+	})
+}
+
+// SetRetries sets the "retries" field.
+func (u *JobUpsertBulk) SetRetries(v int) *JobUpsertBulk {
+	return u.Update(func(s *JobUpsert) {
+		s.SetRetries(v)
+	})
+}
+
+// AddRetries adds v to the "retries" field.
+func (u *JobUpsertBulk) AddRetries(v int) *JobUpsertBulk {
+	return u.Update(func(s *JobUpsert) {
+		s.AddRetries(v)
+	})
+}
+
+// UpdateRetries sets the "retries" field to the value that was provided on create.
+func (u *JobUpsertBulk) UpdateRetries() *JobUpsertBulk {
+	return u.Update(func(s *JobUpsert) {
+		s.UpdateRetries()
+	})
+}
+
+// SetMaxRetries sets the "max_retries" field.
+func (u *JobUpsertBulk) SetMaxRetries(v int) *JobUpsertBulk {
+	return u.Update(func(s *JobUpsert) {
+		s.SetMaxRetries(v)
+	})
+}
+
+// AddMaxRetries adds v to the "max_retries" field.
+func (u *JobUpsertBulk) AddMaxRetries(v int) *JobUpsertBulk {
+	return u.Update(func(s *JobUpsert) {
+		s.AddMaxRetries(v)
+	})
+}
+
+// UpdateMaxRetries sets the "max_retries" field to the value that was provided on create.
+func (u *JobUpsertBulk) UpdateMaxRetries() *JobUpsertBulk {
+	return u.Update(func(s *JobUpsert) {
+		s.UpdateMaxRetries()
+	})
+}
+
+// SetScheduledAt sets the "scheduled_at" field.
+func (u *JobUpsertBulk) SetScheduledAt(v time.Time) *JobUpsertBulk {
+	return u.Update(func(s *JobUpsert) {
+		s.SetScheduledAt(v)
+	})
+}
+
+// UpdateScheduledAt sets the "scheduled_at" field to the value that was provided on create.
+func (u *JobUpsertBulk) UpdateScheduledAt() *JobUpsertBulk {
+	return u.Update(func(s *JobUpsert) {
+		s.UpdateScheduledAt()
+	})
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (u *JobUpsertBulk) SetUpdatedAt(v time.Time) *JobUpsertBulk {
+	return u.Update(func(s *JobUpsert) {
+		s.SetUpdatedAt(v)
+	})
+}
+
+// UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
+func (u *JobUpsertBulk) UpdateUpdatedAt() *JobUpsertBulk {
+	return u.Update(func(s *JobUpsert) {
+		s.UpdateUpdatedAt()
+	})
+}
+
+// SetError sets the "error" field.
+func (u *JobUpsertBulk) SetError(v string) *JobUpsertBulk {
+	return u.Update(func(s *JobUpsert) {
+		s.SetError(v)
+	})
+}
+
+// UpdateError sets the "error" field to the value that was provided on create.
+func (u *JobUpsertBulk) UpdateError() *JobUpsertBulk {
+	return u.Update(func(s *JobUpsert) {
+		s.UpdateError()
+	})
+}
+
+// ClearError clears the value of the "error" field.
+func (u *JobUpsertBulk) ClearError() *JobUpsertBulk {
+	return u.Update(func(s *JobUpsert) {
+		s.ClearError()
+	})
+}
+
+// Exec executes the query.
+func (u *JobUpsertBulk) Exec(ctx context.Context) error {
+	if u.create.err != nil {
+		return u.create.err
+	}
+	for i, b := range u.create.builders {
+		if len(b.conflict) != 0 {
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the JobCreateBulk instead", i)
+		}
+	}
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for JobCreateBulk.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *JobUpsertBulk) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

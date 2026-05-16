@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 
+	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/kilip/opus/api/ent/wacontact"
@@ -18,6 +19,7 @@ type WaContactCreate struct {
 	config
 	mutation *WaContactMutation
 	hooks    []Hook
+	conflict []sql.ConflictOption
 }
 
 // SetJid sets the "jid" field.
@@ -126,6 +128,7 @@ func (_c *WaContactCreate) createSpec() (*WaContact, *sqlgraph.CreateSpec) {
 		_node = &WaContact{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(wacontact.Table, sqlgraph.NewFieldSpec(wacontact.FieldID, field.TypeInt))
 	)
+	_spec.OnConflict = _c.conflict
 	if value, ok := _c.mutation.Jid(); ok {
 		_spec.SetField(wacontact.FieldJid, field.TypeString, value)
 		_node.Jid = value
@@ -158,11 +161,225 @@ func (_c *WaContactCreate) createSpec() (*WaContact, *sqlgraph.CreateSpec) {
 	return _node, _spec
 }
 
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.WaContact.Create().
+//		SetJid(v).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.WaContactUpsert) {
+//			SetJid(v+v).
+//		}).
+//		Exec(ctx)
+func (_c *WaContactCreate) OnConflict(opts ...sql.ConflictOption) *WaContactUpsertOne {
+	_c.conflict = opts
+	return &WaContactUpsertOne{
+		create: _c,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.WaContact.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (_c *WaContactCreate) OnConflictColumns(columns ...string) *WaContactUpsertOne {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
+	return &WaContactUpsertOne{
+		create: _c,
+	}
+}
+
+type (
+	// WaContactUpsertOne is the builder for "upsert"-ing
+	//  one WaContact node.
+	WaContactUpsertOne struct {
+		create *WaContactCreate
+	}
+
+	// WaContactUpsert is the "OnConflict" setter.
+	WaContactUpsert struct {
+		*sql.UpdateSet
+	}
+)
+
+// SetJid sets the "jid" field.
+func (u *WaContactUpsert) SetJid(v string) *WaContactUpsert {
+	u.Set(wacontact.FieldJid, v)
+	return u
+}
+
+// UpdateJid sets the "jid" field to the value that was provided on create.
+func (u *WaContactUpsert) UpdateJid() *WaContactUpsert {
+	u.SetExcluded(wacontact.FieldJid)
+	return u
+}
+
+// SetName sets the "name" field.
+func (u *WaContactUpsert) SetName(v string) *WaContactUpsert {
+	u.Set(wacontact.FieldName, v)
+	return u
+}
+
+// UpdateName sets the "name" field to the value that was provided on create.
+func (u *WaContactUpsert) UpdateName() *WaContactUpsert {
+	u.SetExcluded(wacontact.FieldName)
+	return u
+}
+
+// SetPushname sets the "pushname" field.
+func (u *WaContactUpsert) SetPushname(v string) *WaContactUpsert {
+	u.Set(wacontact.FieldPushname, v)
+	return u
+}
+
+// UpdatePushname sets the "pushname" field to the value that was provided on create.
+func (u *WaContactUpsert) UpdatePushname() *WaContactUpsert {
+	u.SetExcluded(wacontact.FieldPushname)
+	return u
+}
+
+// ClearPushname clears the value of the "pushname" field.
+func (u *WaContactUpsert) ClearPushname() *WaContactUpsert {
+	u.SetNull(wacontact.FieldPushname)
+	return u
+}
+
+// UpdateNewValues updates the mutable fields using the new values that were set on create.
+// Using this option is equivalent to using:
+//
+//	client.WaContact.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *WaContactUpsertOne) UpdateNewValues() *WaContactUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.WaContact.Create().
+//	    OnConflict(sql.ResolveWithIgnore()).
+//	    Exec(ctx)
+func (u *WaContactUpsertOne) Ignore() *WaContactUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *WaContactUpsertOne) DoNothing() *WaContactUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the WaContactCreate.OnConflict
+// documentation for more info.
+func (u *WaContactUpsertOne) Update(set func(*WaContactUpsert)) *WaContactUpsertOne {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&WaContactUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetJid sets the "jid" field.
+func (u *WaContactUpsertOne) SetJid(v string) *WaContactUpsertOne {
+	return u.Update(func(s *WaContactUpsert) {
+		s.SetJid(v)
+	})
+}
+
+// UpdateJid sets the "jid" field to the value that was provided on create.
+func (u *WaContactUpsertOne) UpdateJid() *WaContactUpsertOne {
+	return u.Update(func(s *WaContactUpsert) {
+		s.UpdateJid()
+	})
+}
+
+// SetName sets the "name" field.
+func (u *WaContactUpsertOne) SetName(v string) *WaContactUpsertOne {
+	return u.Update(func(s *WaContactUpsert) {
+		s.SetName(v)
+	})
+}
+
+// UpdateName sets the "name" field to the value that was provided on create.
+func (u *WaContactUpsertOne) UpdateName() *WaContactUpsertOne {
+	return u.Update(func(s *WaContactUpsert) {
+		s.UpdateName()
+	})
+}
+
+// SetPushname sets the "pushname" field.
+func (u *WaContactUpsertOne) SetPushname(v string) *WaContactUpsertOne {
+	return u.Update(func(s *WaContactUpsert) {
+		s.SetPushname(v)
+	})
+}
+
+// UpdatePushname sets the "pushname" field to the value that was provided on create.
+func (u *WaContactUpsertOne) UpdatePushname() *WaContactUpsertOne {
+	return u.Update(func(s *WaContactUpsert) {
+		s.UpdatePushname()
+	})
+}
+
+// ClearPushname clears the value of the "pushname" field.
+func (u *WaContactUpsertOne) ClearPushname() *WaContactUpsertOne {
+	return u.Update(func(s *WaContactUpsert) {
+		s.ClearPushname()
+	})
+}
+
+// Exec executes the query.
+func (u *WaContactUpsertOne) Exec(ctx context.Context) error {
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for WaContactCreate.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *WaContactUpsertOne) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// Exec executes the UPSERT query and returns the inserted/updated ID.
+func (u *WaContactUpsertOne) ID(ctx context.Context) (id int, err error) {
+	node, err := u.create.Save(ctx)
+	if err != nil {
+		return id, err
+	}
+	return node.ID, nil
+}
+
+// IDX is like ID, but panics if an error occurs.
+func (u *WaContactUpsertOne) IDX(ctx context.Context) int {
+	id, err := u.ID(ctx)
+	if err != nil {
+		panic(err)
+	}
+	return id
+}
+
 // WaContactCreateBulk is the builder for creating many WaContact entities in bulk.
 type WaContactCreateBulk struct {
 	config
 	err      error
 	builders []*WaContactCreate
+	conflict []sql.ConflictOption
 }
 
 // Save creates the WaContact entities in the database.
@@ -191,6 +408,7 @@ func (_c *WaContactCreateBulk) Save(ctx context.Context) ([]*WaContact, error) {
 					_, err = mutators[i+1].Mutate(root, _c.builders[i+1].mutation)
 				} else {
 					spec := &sqlgraph.BatchCreateSpec{Nodes: specs}
+					spec.OnConflict = _c.conflict
 					// Invoke the actual operation on the latest mutation in the chain.
 					if err = sqlgraph.BatchCreate(ctx, _c.driver, spec); err != nil {
 						if sqlgraph.IsConstraintError(err) {
@@ -241,6 +459,159 @@ func (_c *WaContactCreateBulk) Exec(ctx context.Context) error {
 // ExecX is like Exec, but panics if an error occurs.
 func (_c *WaContactCreateBulk) ExecX(ctx context.Context) {
 	if err := _c.Exec(ctx); err != nil {
+		panic(err)
+	}
+}
+
+// OnConflict allows configuring the `ON CONFLICT` / `ON DUPLICATE KEY` clause
+// of the `INSERT` statement. For example:
+//
+//	client.WaContact.CreateBulk(builders...).
+//		OnConflict(
+//			// Update the row with the new values
+//			// the was proposed for insertion.
+//			sql.ResolveWithNewValues(),
+//		).
+//		// Override some of the fields with custom
+//		// update values.
+//		Update(func(u *ent.WaContactUpsert) {
+//			SetJid(v+v).
+//		}).
+//		Exec(ctx)
+func (_c *WaContactCreateBulk) OnConflict(opts ...sql.ConflictOption) *WaContactUpsertBulk {
+	_c.conflict = opts
+	return &WaContactUpsertBulk{
+		create: _c,
+	}
+}
+
+// OnConflictColumns calls `OnConflict` and configures the columns
+// as conflict target. Using this option is equivalent to using:
+//
+//	client.WaContact.Create().
+//		OnConflict(sql.ConflictColumns(columns...)).
+//		Exec(ctx)
+func (_c *WaContactCreateBulk) OnConflictColumns(columns ...string) *WaContactUpsertBulk {
+	_c.conflict = append(_c.conflict, sql.ConflictColumns(columns...))
+	return &WaContactUpsertBulk{
+		create: _c,
+	}
+}
+
+// WaContactUpsertBulk is the builder for "upsert"-ing
+// a bulk of WaContact nodes.
+type WaContactUpsertBulk struct {
+	create *WaContactCreateBulk
+}
+
+// UpdateNewValues updates the mutable fields using the new values that
+// were set on create. Using this option is equivalent to using:
+//
+//	client.WaContact.Create().
+//		OnConflict(
+//			sql.ResolveWithNewValues(),
+//		).
+//		Exec(ctx)
+func (u *WaContactUpsertBulk) UpdateNewValues() *WaContactUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithNewValues())
+	return u
+}
+
+// Ignore sets each column to itself in case of conflict.
+// Using this option is equivalent to using:
+//
+//	client.WaContact.Create().
+//		OnConflict(sql.ResolveWithIgnore()).
+//		Exec(ctx)
+func (u *WaContactUpsertBulk) Ignore() *WaContactUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWithIgnore())
+	return u
+}
+
+// DoNothing configures the conflict_action to `DO NOTHING`.
+// Supported only by SQLite and PostgreSQL.
+func (u *WaContactUpsertBulk) DoNothing() *WaContactUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.DoNothing())
+	return u
+}
+
+// Update allows overriding fields `UPDATE` values. See the WaContactCreateBulk.OnConflict
+// documentation for more info.
+func (u *WaContactUpsertBulk) Update(set func(*WaContactUpsert)) *WaContactUpsertBulk {
+	u.create.conflict = append(u.create.conflict, sql.ResolveWith(func(update *sql.UpdateSet) {
+		set(&WaContactUpsert{UpdateSet: update})
+	}))
+	return u
+}
+
+// SetJid sets the "jid" field.
+func (u *WaContactUpsertBulk) SetJid(v string) *WaContactUpsertBulk {
+	return u.Update(func(s *WaContactUpsert) {
+		s.SetJid(v)
+	})
+}
+
+// UpdateJid sets the "jid" field to the value that was provided on create.
+func (u *WaContactUpsertBulk) UpdateJid() *WaContactUpsertBulk {
+	return u.Update(func(s *WaContactUpsert) {
+		s.UpdateJid()
+	})
+}
+
+// SetName sets the "name" field.
+func (u *WaContactUpsertBulk) SetName(v string) *WaContactUpsertBulk {
+	return u.Update(func(s *WaContactUpsert) {
+		s.SetName(v)
+	})
+}
+
+// UpdateName sets the "name" field to the value that was provided on create.
+func (u *WaContactUpsertBulk) UpdateName() *WaContactUpsertBulk {
+	return u.Update(func(s *WaContactUpsert) {
+		s.UpdateName()
+	})
+}
+
+// SetPushname sets the "pushname" field.
+func (u *WaContactUpsertBulk) SetPushname(v string) *WaContactUpsertBulk {
+	return u.Update(func(s *WaContactUpsert) {
+		s.SetPushname(v)
+	})
+}
+
+// UpdatePushname sets the "pushname" field to the value that was provided on create.
+func (u *WaContactUpsertBulk) UpdatePushname() *WaContactUpsertBulk {
+	return u.Update(func(s *WaContactUpsert) {
+		s.UpdatePushname()
+	})
+}
+
+// ClearPushname clears the value of the "pushname" field.
+func (u *WaContactUpsertBulk) ClearPushname() *WaContactUpsertBulk {
+	return u.Update(func(s *WaContactUpsert) {
+		s.ClearPushname()
+	})
+}
+
+// Exec executes the query.
+func (u *WaContactUpsertBulk) Exec(ctx context.Context) error {
+	if u.create.err != nil {
+		return u.create.err
+	}
+	for i, b := range u.create.builders {
+		if len(b.conflict) != 0 {
+			return fmt.Errorf("ent: OnConflict was set for builder %d. Set it on the WaContactCreateBulk instead", i)
+		}
+	}
+	if len(u.create.conflict) == 0 {
+		return errors.New("ent: missing options for WaContactCreateBulk.OnConflict")
+	}
+	return u.create.Exec(ctx)
+}
+
+// ExecX is like Exec, but panics if an error occurs.
+func (u *WaContactUpsertBulk) ExecX(ctx context.Context) {
+	if err := u.create.Exec(ctx); err != nil {
 		panic(err)
 	}
 }

@@ -16,11 +16,11 @@
 - Modify: `api/go.mod`
 - Create: `api/internal/config/whatsapp.go`
 
-- [ ] **Step 1: Install whatsmeow**
+- [x] **Step 1: Install whatsmeow**
 Run: `go get go.mau.fi/whatsmeow@latest`
 Expected: `go.mod` and `go.sum` updated.
 
-- [ ] **Step 2: Implement WhatsApp sqlstore factory**
+- [x] **Step 2: Implement WhatsApp sqlstore factory**
 ```go
 package config
 
@@ -48,7 +48,7 @@ func GetWhatsAppStore(cfg *Config) (*sqlstore.Container, error) {
 }
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 ```bash
 git add api/go.mod api/go.sum api/internal/config/whatsapp.go
 git commit -m "feat(api): add whatsmeow and dedicated sqlstore config"
@@ -62,7 +62,7 @@ git commit -m "feat(api): add whatsmeow and dedicated sqlstore config"
 - Modify: `api/internal/service/sse.go`
 - Test: `api/internal/service/sse_test.go`
 
-- [ ] **Step 1: Define User-Specific Interface**
+- [x] **Step 1: Define User-Specific Interface**
 ```go
 package service
 
@@ -77,7 +77,7 @@ type SSEHub interface {
 }
 ```
 
-- [ ] **Step 2: Write failing test for Publish(userID, ...)**
+- [x] **Step 2: Write failing test for Publish(userID, ...)**
 (Assuming existing hub logic uses a map of user channels)
 ```go
 func TestSSEHub_PublishToUser(t *testing.T) {
@@ -87,12 +87,12 @@ func TestSSEHub_PublishToUser(t *testing.T) {
 }
 ```
 
-- [ ] **Step 3: Implement minimal logic in `api/internal/delivery/fiber/middleware/sse.go`**
+- [x] **Step 3: Implement minimal logic in `api/internal/delivery/fiber/middleware/sse.go`**
 Update the `Hub` struct to maintain a map of `userID -> []chan SSEEvent`.
 
-- [ ] **Step 4: Run test and verify PASS**
+- [x] **Step 4: Run test and verify PASS**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 ```bash
 git add api/internal/service/sse.go api/internal/delivery/fiber/middleware/sse.go
 git commit -m "feat(api): implement user-isolated SSE publishing"
@@ -106,7 +106,7 @@ git commit -m "feat(api): implement user-isolated SSE publishing"
 - Modify: `api/internal/repository/whatsapp.go`
 - Test: `api/internal/repository/whatsapp_integration_test.go`
 
-- [ ] **Step 1: Add `GetAllActiveSessions` to interface**
+- [x] **Step 1: Add `GetAllActiveSessions` to interface**
 ```go
 type WhatsAppRepository interface {
     // ... existing
@@ -115,7 +115,7 @@ type WhatsAppRepository interface {
 }
 ```
 
-- [ ] **Step 2: Write failing integration test**
+- [x] **Step 2: Write failing integration test**
 ```go
 func TestRepo_GetAllActiveSessions(t *testing.T) {
     repo := NewWhatsAppRepository(client)
@@ -125,16 +125,16 @@ func TestRepo_GetAllActiveSessions(t *testing.T) {
 }
 ```
 
-- [ ] **Step 3: Implement minimal logic**
+- [x] **Step 3: Implement minimal logic**
 ```go
 func (r *whatsappRepo) GetAllActiveSessions(ctx context.Context) ([]*ent.WaSession, error) {
     return r.client.WaSession.Query().Where(wasession.StatusEQ("CONNECTED")).All(ctx)
 }
 ```
 
-- [ ] **Step 4: Run integration test and verify PASS**
+- [x] **Step 4: Run integration test and verify PASS**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 ```bash
 git add api/internal/repository/whatsapp.go
 git commit -m "feat(api): add session recovery methods to WhatsAppRepository"
@@ -149,7 +149,7 @@ git commit -m "feat(api): add session recovery methods to WhatsAppRepository"
 - Create: `api/internal/service/whatsapp_impl.go`
 - Test: `api/internal/service/whatsapp_test.go`
 
-- [ ] **Step 1: Define Interface and Implementation Struct**
+- [x] **Step 1: Define Interface and Implementation Struct**
 ```go
 type WhatsAppService interface {
     Initialize(ctx context.Context) error
@@ -172,7 +172,7 @@ type whatsAppService struct {
 }
 ```
 
-- [ ] **Step 2: Write failing test for Connect() QR dispatch**
+- [x] **Step 2: Write failing test for Connect() QR dispatch**
 ```go
 func TestConnect_DispatchesQR(t *testing.T) {
     ctrl := gomock.NewController(t)
@@ -186,7 +186,7 @@ func TestConnect_DispatchesQR(t *testing.T) {
 }
 ```
 
-- [ ] **Step 3: Implement minimal `Connect` logic**
+- [x] **Step 3: Implement minimal `Connect` logic**
 ```go
 func (s *whatsAppService) Connect(ctx context.Context, userID string) error {
 	device, _ := s.store.GetFirstDevice()
@@ -204,9 +204,9 @@ func (s *whatsAppService) Connect(ctx context.Context, userID string) error {
 }
 ```
 
-- [ ] **Step 4: Run test and verify PASS**
+- [x] **Step 4: Run test and verify PASS**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 ```bash
 git add api/internal/service/whatsapp*
 git commit -m "feat(api): implement Connect logic and QR event dispatch"

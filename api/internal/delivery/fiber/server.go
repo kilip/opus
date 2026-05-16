@@ -19,6 +19,7 @@ type Server struct {
 	userService service.UserServiceInterface
 	queueDriver queue.QueueDriver
 	sseHub      service.SSEHub
+	waService   service.WhatsAppService
 }
 
 // NewServer creates a new Fiber server instance
@@ -26,7 +27,9 @@ func NewServer(
 	cfg *config.Config,
 	authService service.AuthServiceInterface,
 	userService service.UserServiceInterface,
+	waService service.WhatsAppService,
 	queueDriver queue.QueueDriver,
+	sseHub service.SSEHub,
 ) *Server {
 	app := fiber.New(fiber.Config{
 		AppName:      "Opus API",
@@ -39,7 +42,8 @@ func NewServer(
 		authService: authService,
 		userService: userService,
 		queueDriver: queueDriver,
-		sseHub:      middleware.NewSSEHub(),
+		sseHub:      sseHub,
+		waService:   waService,
 	}
 
 	s.setupMiddleware()
@@ -80,6 +84,10 @@ func (s *Server) setupRoutes() {
 	q.Get("/dead", queueHandler.ListDeadLetters)
 	q.Post("/dead/:id/retry", queueHandler.RetryDeadLetter)
 	q.Delete("/dead/:id", queueHandler.DeleteDeadLetter)
+
+	// WhatsApp Routes
+	wa := s.app.Group("/whatsapp", middleware.Auth(s.authService))
+	handler.NewWhatsAppHandler(wa, s.waService)
 }
 
 // Start starts the Fiber server

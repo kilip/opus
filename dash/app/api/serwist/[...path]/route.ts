@@ -3,6 +3,7 @@ import type { NextRequest, NextResponse } from "next/server";
 
 const handler = createSerwistRoute({
   swSrc: "sw.ts",
+  // biome-ignore lint/suspicious/noExplicitAny: library type mismatch
 } as any);
 
 export const GET = async (

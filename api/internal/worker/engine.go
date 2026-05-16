@@ -138,7 +138,7 @@ func (e *workerEngine) failJob(ctx context.Context, job *model.Job, err error) {
 	job.Status = model.StatusPending
 
 	e.logger.Info("Rescheduling job for retry", "job_id", job.ID, "next_run", job.ScheduledAt, "retry", job.Retries)
-	if resErr := e.driver.Reschedule(ctx, job); resErr != nil {
+	if resErr := e.driver.Push(ctx, job); resErr != nil {
 		e.logger.Error("Failed to reschedule job", "job_id", job.ID, "error", resErr)
 	}
 }

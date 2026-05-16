@@ -131,7 +131,7 @@ func (s *cronScheduler) fireCron(ctx context.Context, c *model.CronSchedule) {
 	}
 
 	if err := s.driver.Push(ctx, job); err != nil {
-		logger.Error("Failed to push cron job", "error", err)
+		logger.Error("Failed to enqueue cron job", "error", err)
 		return
 	}
 

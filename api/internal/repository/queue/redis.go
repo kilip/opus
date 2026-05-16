@@ -26,6 +26,7 @@ func NewRedisDriver(client *redis.Client, prefix string) QueueDriver {
 	}
 }
 
+// Push persists a job to the Redis queue.
 func (d *redisDriver) Push(ctx context.Context, m *model.Job) error {
 	data, err := json.Marshal(m)
 	if err != nil {
@@ -116,22 +117,6 @@ func (d *redisDriver) MoveToDead(ctx context.Context, m *model.Job) error {
 	return err
 }
 
-func (d *redisDriver) Reschedule(ctx context.Context, m *model.Job) error {
-	data, err := json.Marshal(m)
-	if err != nil {
-		return err
-	}
-
-	pipe := d.client.Pipeline()
-	pipe.Set(ctx, d.jobKey(m.ID), data, 0)
-	pipe.ZAdd(ctx, d.pendingKey(), redis.Z{
-		Score:  float64(m.ScheduledAt.UnixNano()),
-		Member: m.ID,
-	})
-
-	_, err = pipe.Exec(ctx)
-	return err
-}
 
 func (d *redisDriver) UpsertCron(ctx context.Context, m *model.CronSchedule) error {
 	data, err := json.Marshal(m)

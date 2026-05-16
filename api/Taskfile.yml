@@ -58,7 +58,10 @@ tasks:
       - mockgen -destination=mocks/mock_auth_service.go -package=mocks github.com/kilip/opus/api/internal/service AuthServiceInterface
       - mockgen -destination=mocks/mock_queue_driver.go -package=mocks github.com/kilip/opus/api/internal/repository/queue QueueDriver
       - mockgen -destination=mocks/mock_user_service.go -package=mocks github.com/kilip/opus/api/internal/service UserServiceInterface
-      - mockgen -destination=mocks/mock_whatsapp_service.go -package=mocks github.com/kilip/opus/api/internal/service WhatsAppServiceInterface
+      - mockgen -destination=mocks/mock_whatsapp_repo.go -package=mocks github.com/kilip/opus/api/internal/repository WhatsAppRepository
+      - mockgen -destination=mocks/mock_sse_hub.go -package=mocks github.com/kilip/opus/api/internal/service SSEHub
+      - mockgen -destination=mocks/mock_queue.go -package=mocks github.com/kilip/opus/api/internal/service Queue
+      - mockgen -destination=mocks/mock_whatsapp_service.go -package=mocks github.com/kilip/opus/api/internal/service WhatsAppService
 
   migrate:
     desc: Run database migrations (auto-run on startup via GetDatabase)

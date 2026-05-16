@@ -12,6 +12,7 @@ import (
 
 	"github.com/kilip/opus/api/internal/config"
 	"github.com/kilip/opus/api/internal/delivery/fiber"
+	"github.com/kilip/opus/api/internal/delivery/fiber/middleware"
 	"github.com/kilip/opus/api/internal/repository"
 	"github.com/kilip/opus/api/internal/service"
 	"github.com/kilip/opus/api/internal/worker"
@@ -46,10 +47,22 @@ var startCmd = &cobra.Command{
 		// Services
 		authService := service.NewAuthService(userRepo, sessionRepo, cfg)
 		userService := service.NewUserService(userRepo, cfg)
+		
+		// WhatsApp Service
+		waRepo := repository.NewWhatsAppRepository(db)
+		waStore, err := config.GetWhatsAppStore(cfg)
+		if err != nil {
+			log.Fatalf("Failed to initialize WhatsApp store: %v", err)
+		}
+		sseHub := middleware.NewSSEHub()
+		waService := service.NewWhatsAppService(waRepo, sseHub, queueDriver, db, waStore, logger)
 
 		// Start Queue System
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
+
+		// Register Workers
+		workerEngine.Register(service.JobWhatsAppSyncHistory, worker.WhatsAppSyncHandler(db))
 
 		if err := workerEngine.Start(ctx); err != nil {
 			log.Fatalf("Failed to start worker engine: %v", err)
@@ -58,8 +71,13 @@ var startCmd = &cobra.Command{
 			log.Fatalf("Failed to start scheduler: %v", err)
 		}
 
+		// Initialize WhatsApp Service (recover sessions)
+		if err := waService.Initialize(ctx); err != nil {
+			logger.Error("Failed to initialize WhatsApp service", "error", err)
+		}
+
 		// Delivery
-		srv := fiber.NewServer(cfg, authService, userService, queueDriver)
+		srv := fiber.NewServer(cfg, authService, userService, waService, queueDriver, sseHub)
 
 		// Graceful Shutdown
 		go func() {

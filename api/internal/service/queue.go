@@ -8,8 +8,8 @@ import (
 
 // Queue is the entry point for enqueuing background jobs.
 type Queue interface {
-	// Enqueue submits a job to the queue for asynchronous execution.
-	Enqueue(ctx context.Context, job *model.Job) error
+	// Push submits a job to the queue for asynchronous execution.
+	Push(ctx context.Context, job *model.Job) error
 }
 
 // Scheduler manages cron-based recurring job schedules.
