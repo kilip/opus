@@ -4,6 +4,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"entgo.io/ent/schema/index"
 )
 
 // WaContact holds the schema definition for the WaContact entity.
@@ -24,5 +25,12 @@ func (WaContact) Fields() []ent.Field {
 func (WaContact) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("wa_session", WaSession.Type).Ref("contacts").Unique().Required(),
+	}
+}
+
+// Indexes of the WaContact.
+func (WaContact) Indexes() []ent.Index {
+	return []ent.Index{
+		index.Fields("jid").Edges("wa_session").Unique(),
 	}
 }

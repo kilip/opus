@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"testing"
 	"time"
@@ -27,6 +28,7 @@ func TestConnect_DispatchesQR(t *testing.T) {
 	defer ctrl.Finish()
  
 	mockHub := mocks.NewMockSSEHub(ctrl)
+	mockRepo := mocks.NewMockWhatsAppRepository(ctrl)
 	
 	// Create a real in-memory store for testing
 	container, err := sqlstore.New(context.Background(), "sqlite3", "file::memory:?cache=shared&_fk=1", nil)
@@ -34,8 +36,11 @@ func TestConnect_DispatchesQR(t *testing.T) {
 		t.Fatalf("failed to create test store: %v", err)
 	}
  
-	svc := service.NewWhatsAppService(nil, mockHub, nil, nil, container, slog.Default())
+	svc := service.NewWhatsAppService(mockRepo, mockHub, nil, nil, container, slog.Default())
  
+	// Expect session lookup
+	mockRepo.EXPECT().GetSessionByUserID(gomock.Any(), "user-1").Return(&ent.WaSession{ID: "user-1", Jid: ""}, nil)
+
 	// Expect QR dispatch
 	mockHub.EXPECT().Publish(gomock.Any(), "user-1", gomock.Any()).Return(nil).AnyTimes()
  
@@ -141,4 +146,68 @@ func TestWhatsAppService_handleHistorySync(t *testing.T) {
 	})
 
 	service.HandleHistorySync(svc, userID, evt)
+}
+
+func TestWhatsAppService_Initialize(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockRepo := mocks.NewMockWhatsAppRepository(ctrl)
+	mockHub := mocks.NewMockSSEHub(ctrl)
+	
+	// Create a real in-memory store for testing
+	container, err := sqlstore.New(context.Background(), "sqlite3", "file::memory:?cache=shared&_fk=1", nil)
+	if err != nil {
+		t.Fatalf("failed to create test store: %v", err)
+	}
+
+	svc := service.NewWhatsAppService(mockRepo, mockHub, nil, nil, container, slog.Default())
+
+	sessions := []*ent.WaSession{
+		{ID: "user-1", Jid: ""},
+		{ID: "user-2", Jid: ""},
+	}
+
+	mockRepo.EXPECT().GetAllActiveSessions(gomock.Any()).Return(sessions, nil)
+	
+	// Expect GetSessionByUserID for each session during Connect
+	mockRepo.EXPECT().GetSessionByUserID(gomock.Any(), "user-1").Return(sessions[0], nil)
+	mockRepo.EXPECT().GetSessionByUserID(gomock.Any(), "user-2").Return(sessions[1], nil)
+
+	// Connect might try to publish QR if no device exists, we'll allow it
+	mockHub.EXPECT().Publish(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+
+	err = svc.Initialize(context.Background())
+	if err != nil {
+		t.Errorf("expected no error from Initialize, got %v", err)
+	}
+}
+
+func TestWhatsAppService_Initialize_WithFailure(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockRepo := mocks.NewMockWhatsAppRepository(ctrl)
+	mockHub := mocks.NewMockSSEHub(ctrl)
+	
+	// Create a real in-memory store
+	container, err := sqlstore.New(context.Background(), "sqlite3", "file::memory:?cache=shared&_fk=1", nil)
+	if err != nil {
+		t.Fatalf("failed to create test store: %v", err)
+	}
+
+	svc := service.NewWhatsAppService(mockRepo, mockHub, nil, nil, container, slog.Default())
+
+	sessions := []*ent.WaSession{
+		{ID: "user-1", Jid: ""},
+	}
+
+	mockRepo.EXPECT().GetAllActiveSessions(gomock.Any()).Return(sessions, nil)
+	// Return error for GetSessionByUserID to simulate Connect failure
+	mockRepo.EXPECT().GetSessionByUserID(gomock.Any(), "user-1").Return(nil, fmt.Errorf("database error"))
+
+	err = svc.Initialize(context.Background())
+	if err != nil {
+		t.Errorf("Initialize should not return error even if one session fails, got %v", err)
+	}
 }

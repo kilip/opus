@@ -8,7 +8,6 @@ import (
 
 	"github.com/kilip/opus/api/ent"
 	"github.com/kilip/opus/api/ent/wasession"
-	"github.com/kilip/opus/api/ent/wachat"
 	"github.com/kilip/opus/api/internal/model"
 	"github.com/kilip/opus/api/internal/service"
 	"go.mau.fi/whatsmeow/proto/waHistorySync"
@@ -36,22 +35,66 @@ func WhatsAppSyncHandler(db *ent.Client) service.HandlerFunc {
 			return fmt.Errorf("failed to find session: %w", err)
 		}
 
+		// Sync Pushnames as Contacts
+		for _, pn := range syncData.GetPushnames() {
+			jid := pn.GetID()
+			if jid == "" {
+				continue
+			}
+			err := db.WaContact.Create().
+				SetJid(jid).
+				SetName(pn.GetPushname()).
+				SetPushname(pn.GetPushname()).
+				SetWaSession(sess).
+				OnConflict().
+				UpdateNewValues().
+				Exec(ctx)
+			if err != nil {
+				continue
+			}
+		}
+
+		// Sync InlineContacts
+		for _, ic := range syncData.GetInlineContacts() {
+			jid := ic.GetPnJID()
+			if jid == "" {
+				jid = ic.GetLidJID()
+			}
+			if jid == "" {
+				continue
+			}
+			name := ic.GetFullName()
+			if name == "" {
+				name = ic.GetFirstName()
+			}
+			err := db.WaContact.Create().
+				SetJid(jid).
+				SetName(name).
+				SetPushname(ic.GetUsername()).
+				SetWaSession(sess).
+				OnConflict().
+				UpdateNewValues().
+				Exec(ctx)
+			if err != nil {
+				continue
+			}
+		}
+
 		for _, conv := range syncData.GetConversations() {
 			chatJID := conv.GetID()
 			if chatJID == "" {
 				continue
 			}
 
-			chat, err := db.WaChat.Query().Where(wachat.JidEQ(chatJID), wachat.HasWaSessionWith(wasession.IDEQ(sess.ID))).Only(ctx)
-			if ent.IsNotFound(err) {
-				chat, err = db.WaChat.Create().
-					SetJid(chatJID).
-					SetName(conv.GetName()).
-					SetWaSession(sess).
-					Save(ctx)
-				if err != nil {
-					continue
-				}
+			chatID, err := db.WaChat.Create().
+				SetJid(chatJID).
+				SetName(conv.GetName()).
+				SetWaSession(sess).
+				OnConflict().
+				UpdateNewValues().
+				ID(ctx)
+			if err != nil {
+				continue
 			}
 
 			for _, syncMsg := range conv.GetMessages() {
@@ -59,7 +102,7 @@ func WhatsAppSyncHandler(db *ent.Client) service.HandlerFunc {
 				if webMsg == nil {
 					continue
 				}
-				
+
 				key := webMsg.GetKey()
 				if key == nil {
 					continue
@@ -77,23 +120,28 @@ func WhatsAppSyncHandler(db *ent.Client) service.HandlerFunc {
 				} else if msgContent.GetExtendedTextMessage().GetText() != "" {
 					content = msgContent.GetExtendedTextMessage().GetText()
 				}
-				
+
 				if content == "" {
 					continue
 				}
 
 				ts := time.Unix(int64(webMsg.GetMessageTimestamp()), 0)
 
-				// Upsert message (simplified check)
-				_, _ = db.WaMessage.Create().
+				// Upsert message
+				err = db.WaMessage.Create().
 					SetMessageID(msgID).
 					SetSenderJid(key.GetRemoteJID()).
 					SetContent(content).
 					SetTimestamp(ts).
 					SetIsFromMe(key.GetFromMe()).
 					SetWaSession(sess).
-					SetChat(chat).
-					Save(ctx)
+					SetChatID(chatID).
+					OnConflict().
+					UpdateNewValues().
+					Exec(ctx)
+				if err != nil {
+					continue
+				}
 			}
 		}
 

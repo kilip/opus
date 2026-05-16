@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
  
 	"github.com/kilip/opus/api/ent"
 	"github.com/kilip/opus/api/ent/wachat"
 	"github.com/kilip/opus/api/internal/model"
 	"github.com/kilip/opus/api/internal/repository"
 	"go.mau.fi/whatsmeow"
+	"go.mau.fi/whatsmeow/store"
 	"go.mau.fi/whatsmeow/store/sqlstore"
 	"go.mau.fi/whatsmeow/types"
 	"go.mau.fi/whatsmeow/types/events"
@@ -20,6 +22,21 @@ import (
 )
 
 const JobWhatsAppSyncHistory = "whatsapp.sync_history"
+
+type retryEntry struct {
+	attempts int
+	timer    *time.Timer
+	mu       sync.Mutex
+}
+
+var backoffSchedule = []time.Duration{
+	5 * time.Second,
+	15 * time.Second,
+	30 * time.Second,
+	1 * time.Minute,
+	5 * time.Minute,
+	30 * time.Minute,
+}
  
 type whatsAppService struct {
 	clients    sync.Map // map[string]*whatsmeow.Client
@@ -74,30 +91,46 @@ func (s *whatsAppService) GetStatus(ctx context.Context, userID string) (status 
 }
  
 func (s *whatsAppService) Connect(ctx context.Context, userID string) error {
-	if client, ok := s.clients.Load(userID); ok {
-		c := client.(*whatsmeow.Client)
-		if c.IsConnected() {
+	var client *whatsmeow.Client
+	if val, ok := s.clients.Load(userID); ok {
+		client = val.(*whatsmeow.Client)
+		if client.IsConnected() {
 			return nil
 		}
 	}
- 
-	device, err := s.store.GetFirstDevice(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get device from store: %w", err)
+
+	if client == nil {
+		session, err := s.repo.GetSessionByUserID(ctx, userID)
+		if err != nil {
+			return fmt.Errorf("failed to get session: %w", err)
+		}
+
+		var device *store.Device
+		if session.Jid != "" {
+			jid, err := types.ParseJID(session.Jid)
+			if err != nil {
+				return fmt.Errorf("failed to parse JID: %w", err)
+			}
+			device, err = s.store.GetDevice(ctx, jid)
+			if err != nil {
+				return fmt.Errorf("failed to get device from store: %w", err)
+			}
+		}
+
+		if device == nil {
+			device = s.store.NewDevice()
+		}
+
+		client = whatsmeow.NewClient(device, nil)
+		s.clients.Store(userID, client)
+		s.registerHandler(userID, client)
 	}
- 
-	client := whatsmeow.NewClient(device, nil)
-	s.clients.Store(userID, client)
- 
-	s.registerHandler(userID, client)
- 
-	qrChan, err := client.GetQRChannel(ctx)
-	if err != nil {
-		// If already logged in, GetQRChannel returns error
-		if !client.IsLoggedIn() {
+
+	if !client.IsLoggedIn() {
+		qrChan, err := client.GetQRChannel(ctx)
+		if err != nil {
 			return fmt.Errorf("failed to get QR channel: %w", err)
 		}
-	} else {
 		go func() {
 			for evt := range qrChan {
 				if evt.Event == "code" {
@@ -109,23 +142,104 @@ func (s *whatsAppService) Connect(ctx context.Context, userID string) error {
 			}
 		}()
 	}
- 
-	return client.Connect()
+
+	err := client.Connect()
+	if err != nil && client.IsLoggedIn() {
+		s.handleDisconnect(userID)
+	}
+	return err
 }
  
 func (s *whatsAppService) registerHandler(userID string, client *whatsmeow.Client) {
 	client.AddEventHandler(func(evt interface{}) {
 		switch v := evt.(type) {
 		case *events.Connected:
+			s.log.Info("whatsapp connected", "userID", userID)
 			_ = s.repo.UpdateStatus(context.Background(), userID, "CONNECTED", client.Store.ID.String())
 			_ = s.sseHub.Publish(context.Background(), userID, SSEEvent{
 				Type:    "wa_connected",
 				Payload: map[string]string{"jid": client.Store.ID.String()},
 			})
+			// Reset retry state on successful connection
+			if entry, ok := s.retryState.Load(userID); ok {
+				e := entry.(*retryEntry)
+				e.mu.Lock()
+				if e.timer != nil {
+					e.timer.Stop()
+					e.timer = nil
+				}
+				e.attempts = 0
+				e.mu.Unlock()
+			}
+
+		case *events.Disconnected:
+			s.log.Info("whatsapp disconnected", "userID", userID)
+			_ = s.repo.UpdateStatus(context.Background(), userID, "DISCONNECTED", "")
+			s.handleDisconnect(userID)
+
+		case *events.LoggedOut:
+			s.log.Info("whatsapp logged out", "userID", userID, "onConnect", v.OnConnect, "reason", v.Reason)
+			_ = s.repo.UpdateStatus(context.Background(), userID, "UNAUTHENTICATED", "")
+			if entry, ok := s.retryState.Load(userID); ok {
+				e := entry.(*retryEntry)
+				e.mu.Lock()
+				if e.timer != nil {
+					e.timer.Stop()
+					e.timer = nil
+				}
+				e.mu.Unlock()
+				s.retryState.Delete(userID)
+			}
+			if client, ok := s.clients.Load(userID); ok {
+				c := client.(*whatsmeow.Client)
+				if c.Store != nil {
+					_ = s.store.DeleteDevice(context.Background(), c.Store)
+				}
+				s.clients.Delete(userID)
+			}
+
 		case *events.Message:
 			s.handleNewMessage(userID, v)
 		case *events.HistorySync:
 			s.handleHistorySync(userID, v)
+		}
+	})
+}
+
+func (s *whatsAppService) getRetryEntry(userID string) *retryEntry {
+	entry, _ := s.retryState.LoadOrStore(userID, &retryEntry{})
+	return entry.(*retryEntry)
+}
+
+func (s *whatsAppService) handleDisconnect(userID string) {
+	entry := s.getRetryEntry(userID)
+	entry.mu.Lock()
+	defer entry.mu.Unlock()
+
+	if entry.timer != nil {
+		entry.timer.Stop()
+	}
+
+	backoffIdx := entry.attempts
+	if backoffIdx >= len(backoffSchedule) {
+		backoffIdx = len(backoffSchedule) - 1
+	}
+	delay := backoffSchedule[backoffIdx]
+
+	s.log.Info("scheduling whatsapp reconnection",
+		"userID", userID,
+		"attempt", entry.attempts+1,
+		"delay", delay,
+	)
+
+	entry.attempts++
+	entry.timer = time.AfterFunc(delay, func() {
+		s.log.Info("attempting to reconnect whatsapp", "userID", userID)
+		// Use background context for background reconnection
+		ctx := context.Background()
+		if err := s.Connect(ctx, userID); err != nil {
+			s.log.Error("reconnection attempt failed", "userID", userID, "error", err)
+			// handleDisconnect will be called again by registerHandler -> Disconnected
 		}
 	})
 }

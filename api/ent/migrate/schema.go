@@ -189,6 +189,13 @@ var (
 				OnDelete:   schema.NoAction,
 			},
 		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "wachat_jid_wa_session_chats",
+				Unique:  true,
+				Columns: []*schema.Column{WaChatsColumns[1], WaChatsColumns[4]},
+			},
+		},
 	}
 	// WaContactsColumns holds the columns for the "wa_contacts" table.
 	WaContactsColumns = []*schema.Column{
@@ -211,11 +218,18 @@ var (
 				OnDelete:   schema.NoAction,
 			},
 		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "wacontact_jid_wa_session_contacts",
+				Unique:  true,
+				Columns: []*schema.Column{WaContactsColumns[1], WaContactsColumns[4]},
+			},
+		},
 	}
 	// WaMessagesColumns holds the columns for the "wa_messages" table.
 	WaMessagesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "message_id", Type: field.TypeString, Unique: true},
+		{Name: "message_id", Type: field.TypeString},
 		{Name: "sender_jid", Type: field.TypeString},
 		{Name: "content", Type: field.TypeString, Nullable: true, Size: 2147483647},
 		{Name: "timestamp", Type: field.TypeTime},
@@ -240,6 +254,13 @@ var (
 				Columns:    []*schema.Column{WaMessagesColumns[7]},
 				RefColumns: []*schema.Column{WaSessionsColumns[0]},
 				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "wamessage_message_id_wa_session_messages",
+				Unique:  true,
+				Columns: []*schema.Column{WaMessagesColumns[1], WaMessagesColumns[7]},
 			},
 		},
 	}
