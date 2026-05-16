@@ -30,8 +30,9 @@ jobs:
           cache-dependency-path: api/go.sum
 
       - name: Install golangci-lint
-        uses: golangci/golangci-lint-action@v9
+        uses: golangci/golangci-lint-action@v8
         with:
+          version: v2.12
           working-directory: ./api
 
       - name: Run Unit Tests

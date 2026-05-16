@@ -41,7 +41,7 @@ jobs:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
 
   build-push-images:
-    name: Build & Push Docker Images (latest)
+    name: Build & Push Docker Images (edge)
     runs-on: ubuntu-latest
     steps:
       - name: Generate GitHub App Token
@@ -56,9 +56,6 @@ jobs:
         with:
           token: ${{ steps.app-token.outputs.token }}
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -70,17 +67,21 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and Push API Image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@v6
         with:
           context: ./api
           push: true
           platforms: linux/amd64
           tags: ghcr.io/kilip/opus-api:edge
+          cache-from: type=registry,ref=ghcr.io/kilip/opus-api:buildcache
+          cache-to: type=registry,ref=ghcr.io/kilip/opus-api:buildcache,mode=max
 
       - name: Build and Push Dash Image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@v6
         with:
           context: ./dash
           push: true
           platforms: linux/amd64
           tags: ghcr.io/kilip/opus-dash:edge
+          cache-from: type=registry,ref=ghcr.io/kilip/opus-dash:buildcache
+          cache-to: type=registry,ref=ghcr.io/kilip/opus-dash:buildcache,mode=max
