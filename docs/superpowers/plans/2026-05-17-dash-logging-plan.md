@@ -247,7 +247,7 @@ git commit -m "feat(dash): implement server-side pino logger with tests"
 - Create: `dash/lib/logger.client.test.ts`
 - Test: `dash/lib/logger.client.test.ts`
 
-- [ ] **Step 1: Write failing test for browser logging**
+- [x] **Step 1: Write failing test for browser logging**
 
 ```typescript
 // dash/lib/logger.client.test.ts
@@ -266,12 +266,12 @@ describe("clientLogger", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm test dash/lib/logger.client.test.ts`
 Expected: FAIL
 
-- [ ] **Step 3: Implement the browser console logger**
+- [x] **Step 3: Implement the browser console logger**
 
 ```typescript
 /**
@@ -298,12 +298,12 @@ export const clientLogger: Logger = {
 };
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm test dash/lib/logger.client.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add dash/lib/logger.client.ts dash/lib/logger.client.test.ts
