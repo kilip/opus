@@ -37,5 +37,6 @@ func (User) Indexes() []ent.Index {
 func (User) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("sessions", Session.Type),
+		edge.To("wa_session", WaSession.Type).Unique(),
 	}
 }
