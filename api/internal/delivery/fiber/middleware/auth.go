@@ -11,6 +11,14 @@ func Auth(authService service.AuthServiceInterface) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {
+			// Support token in query parameter for SSE (EventSource doesn't support headers)
+			authHeader = c.Query("token")
+			if authHeader != "" {
+				authHeader = "Bearer " + authHeader
+			}
+		}
+
+		if authHeader == "" {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"success": false,
 				"data":    nil,

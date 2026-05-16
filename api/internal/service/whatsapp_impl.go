@@ -85,6 +85,9 @@ func (s *whatsAppService) Initialize(ctx context.Context) error {
 func (s *whatsAppService) GetStatus(ctx context.Context, userID string) (status string, jid string, err error) {
 	session, err := s.repo.GetSessionByUserID(ctx, userID)
 	if err != nil {
+		if ent.IsNotFound(err) {
+			return "UNAUTHENTICATED", "", nil
+		}
 		return "", "", err
 	}
 	return session.Status, session.Jid, nil
@@ -102,7 +105,15 @@ func (s *whatsAppService) Connect(ctx context.Context, userID string) error {
 	if client == nil {
 		session, err := s.repo.GetSessionByUserID(ctx, userID)
 		if err != nil {
-			return fmt.Errorf("failed to get session: %w", err)
+			if ent.IsNotFound(err) {
+				// Create a new session if not found
+				session, err = s.repo.UpsertSession(ctx, userID, "UNAUTHENTICATED", "")
+				if err != nil {
+					return fmt.Errorf("failed to create initial session: %w", err)
+				}
+			} else {
+				return fmt.Errorf("failed to get session: %w", err)
+			}
 		}
 
 		var device *store.Device
@@ -127,25 +138,44 @@ func (s *whatsAppService) Connect(ctx context.Context, userID string) error {
 	}
 
 	if !client.IsLoggedIn() {
+		s.log.Info("Client not logged in, getting QR channel", "userID", userID)
 		qrChan, err := client.GetQRChannel(ctx)
 		if err != nil {
+			s.log.Error("Failed to get QR channel", "userID", userID, "error", err)
 			return fmt.Errorf("failed to get QR channel: %w", err)
 		}
 		go func() {
+			s.log.Info("Starting QR channel listener", "userID", userID)
 			for evt := range qrChan {
+				s.log.Debug("Received QR event", "userID", userID, "event", evt.Event)
 				if evt.Event == "code" {
+					s.log.Info("New QR code generated, publishing to SSE", "userID", userID)
 					_ = s.sseHub.Publish(context.Background(), userID, SSEEvent{
 						Type:    "wa_qr_update",
 						Payload: map[string]string{"qr": evt.Code},
 					})
+				} else {
+					// Notify frontend that QR state changed (e.g. expired, waiting for next)
+					s.log.Info("QR event received", "userID", userID, "event", evt.Event)
+					_ = s.sseHub.Publish(context.Background(), userID, SSEEvent{
+						Type:    "wa_qr_event",
+						Payload: map[string]string{"event": evt.Event},
+					})
 				}
 			}
+			s.log.Info("QR channel listener stopped", "userID", userID)
 		}()
 	}
 
+	s.log.Info("Initiating client connection", "userID", userID)
 	err := client.Connect()
-	if err != nil && client.IsLoggedIn() {
-		s.handleDisconnect(userID)
+	if err != nil {
+		s.log.Error("Failed to connect client", "userID", userID, "error", err)
+		if client.IsLoggedIn() {
+			s.handleDisconnect(userID)
+		}
+	} else {
+		s.log.Info("Client connection call completed", "userID", userID)
 	}
 	return err
 }

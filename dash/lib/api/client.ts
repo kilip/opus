@@ -21,7 +21,10 @@ async function request<T>(
     headers.Authorization = `Bearer ${inMemoryToken}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const url = `${API_BASE_URL}${path}`;
+  // logger.debug(`[API] Request: ${options.method || "GET"} ${url}`);
+
+  const response = await fetch(url, {
     ...options,
     headers,
     credentials: "include",

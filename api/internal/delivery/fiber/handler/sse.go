@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bufio"
+	"log/slog"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -11,14 +12,15 @@ import (
 
 type SSEHandler struct {
 	hub service.SSEHub
+	log *slog.Logger
 }
 
-func NewSSEHandler(hub service.SSEHub) *SSEHandler {
-	return &SSEHandler{hub: hub}
+func NewSSEHandler(hub service.SSEHub, log *slog.Logger) *SSEHandler {
+	return &SSEHandler{hub: hub, log: log}
 }
 
 func (h *SSEHandler) Stream(c fiber.Ctx) error {
-	userID := c.Locals("user_id").(string)
+	userID := c.Locals("userID").(string)
 	if userID == "" {
 		return fiber.ErrUnauthorized
 	}
@@ -34,16 +36,23 @@ func (h *SSEHandler) Stream(c fiber.Ctx) error {
 		Unregister(string, chan service.SSEEvent)
 	})
 
-	ch := hub.Register(userID)
-	defer hub.Unregister(userID, ch)
-
 	return c.SendStreamWriter(func(w *bufio.Writer) {
+		ch := hub.Register(userID)
+		defer hub.Unregister(userID, ch)
+
 		// Initial connection event
-		_ = middleware.WriteEvent(w, service.SSEEvent{
+		err := middleware.WriteEvent(w, service.SSEEvent{
 			Type:    "connected",
 			Payload: map[string]string{"time": time.Now().Format(time.RFC3339)},
 		})
-		_ = w.Flush()
+		if err != nil {
+			h.log.Error("Failed to write initial connection event", "userID", userID, "error", err)
+			return
+		}
+		if err := w.Flush(); err != nil {
+			h.log.Error("Failed to flush initial connection event", "userID", userID, "error", err)
+			return
+		}
 
 		ticker := time.NewTicker(30 * time.Second) // Heartbeat
 		defer ticker.Stop()
@@ -54,10 +63,13 @@ func (h *SSEHandler) Stream(c fiber.Ctx) error {
 				return
 			case event, ok := <-ch:
 				if !ok {
+					h.log.Debug("SSE event channel closed", "userID", userID)
 					return
 				}
+				h.log.Debug("Sending SSE event", "userID", userID, "type", event.Type)
 				_ = middleware.WriteEvent(w, event)
 				if err := w.Flush(); err != nil {
+					h.log.Error("Failed to flush event", "userID", userID, "error", err)
 					return
 				}
 			case <-ticker.C:

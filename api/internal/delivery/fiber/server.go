@@ -69,7 +69,7 @@ func (s *Server) setupRoutes() {
 	authHandler := handler.NewAuthHandler(s.authService, s.userService, s.cfg)
 	userHandler := handler.NewUserHandler(s.userService)
 	healthHandler := handler.NewHealthHandler()
-	sseHandler := handler.NewSSEHandler(s.sseHub)
+	sseHandler := handler.NewSSEHandler(s.sseHub, config.GetLogger())
 
 	// Public Routes
 	s.app.Get("/health", healthHandler.Check)

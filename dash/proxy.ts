@@ -8,11 +8,10 @@ import { logger } from "@/lib/logger";
  */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const refreshToken = request.cookies.get("refresh_token")?.value;
 
-  // 1. Get the refresh token from cookies
-  const refreshToken = request.cookies.get("refresh_token");
+  logger.info(`[Proxy] Request: ${pathname} | Has Token: ${!!refreshToken}`);
 
-  // 2. Define paths
   const isAuthRoute = pathname === "/login" || pathname.startsWith("/auth");
   const isPublicFile =
     pathname.startsWith("/_next") ||
@@ -22,15 +21,13 @@ export function proxy(request: NextRequest) {
 
   // 3. Logic: If trying to access protected route without a session, go to login
   if (!isAuthRoute && !isPublicFile && !refreshToken) {
-    logger.info(
-      `[Proxy] Unauthorized access to ${pathname}, redirecting to /login`,
-    );
+    logger.info(`[Proxy] Redirecting to /login from ${pathname} (No Token)`);
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
   // 4. Logic: If already logged in, don't show login page
   if (pathname === "/login" && refreshToken) {
-    logger.info(`[Proxy] Already logged in, redirecting from /login to /`);
+    logger.info(`[Proxy] Redirecting to / from /login (Token present)`);
     return NextResponse.redirect(new URL("/", request.url));
   }
 
