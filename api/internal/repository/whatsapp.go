@@ -12,6 +12,8 @@ import (
 type WhatsAppRepository interface {
 	UpsertSession(ctx context.Context, userID string, status string, jid string) (*ent.WaSession, error)
 	GetSessionByUserID(ctx context.Context, userID string) (*ent.WaSession, error)
+	GetAllActiveSessions(ctx context.Context) ([]*ent.WaSession, error)
+	UpdateStatus(ctx context.Context, userID string, status string, jid string) error
 }
 
 type whatsappRepo struct {
@@ -58,4 +60,26 @@ func (r *whatsappRepo) GetSessionByUserID(ctx context.Context, userID string) (*
 	return r.client.WaSession.Query().
 		Where(wasession.HasUserWith(user.IDEQ(userID))).
 		Only(ctx)
+}
+
+// GetAllActiveSessions retrieves all sessions with status CONNECTED.
+func (r *whatsappRepo) GetAllActiveSessions(ctx context.Context) ([]*ent.WaSession, error) {
+	return r.client.WaSession.Query().
+		Where(wasession.StatusEQ("CONNECTED")).
+		All(ctx)
+}
+
+// UpdateStatus updates the status and JID of a user's WhatsApp session.
+func (r *whatsappRepo) UpdateStatus(ctx context.Context, userID string, status string, jid string) error {
+	session, err := r.GetSessionByUserID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	update := session.Update().SetStatus(status)
+	if jid != "" {
+		update.SetJid(jid)
+	}
+	_, err = update.Save(ctx)
+	return err
 }

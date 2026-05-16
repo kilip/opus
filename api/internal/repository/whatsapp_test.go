@@ -7,6 +7,7 @@ import (
 	"testing"
 	
 	"github.com/kilip/opus/api/ent/enttest"
+	"github.com/stretchr/testify/assert"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -33,4 +34,14 @@ func TestWhatsAppRepository(t *testing.T) {
 	if session.Status != "UNAUTHENTICATED" {
 		t.Errorf("expected UNAUTHENTICATED, got %s", session.Status)
 	}
+
+	// Test UpdateStatus
+	err = repo.UpdateStatus(ctx, user.ID, "CONNECTED", "jid-123")
+	assert.NoError(t, err)
+
+	// Test GetAllActiveSessions
+	sessions, err := repo.GetAllActiveSessions(ctx)
+	assert.NoError(t, err)
+	assert.Len(t, sessions, 1)
+	assert.Equal(t, "jid-123", sessions[0].Jid)
 }
