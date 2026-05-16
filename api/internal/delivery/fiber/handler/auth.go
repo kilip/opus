@@ -179,7 +179,7 @@ func (h *AuthHandler) GoogleCallback(c fiber.Ctx) error {
 	h.setRefreshTokenCookie(c, refreshToken)
 
 	// Redirect to dash with access token
-	return c.Redirect().To(fmt.Sprintf("%s/auth/callback?token=%s", "http://localhost:3000", accessToken))
+	return c.Redirect().To(fmt.Sprintf("%s/auth/callback?token=%s", h.cfg.Server.DashURL, accessToken))
 }
 
 // GitHubLogin redirects to GitHub OAuth
@@ -234,7 +234,7 @@ func (h *AuthHandler) GitHubCallback(c fiber.Ctx) error {
 
 	h.setRefreshTokenCookie(c, refreshToken)
 
-	return c.Redirect().To(fmt.Sprintf("%s/auth/callback?token=%s", "http://localhost:3000", accessToken))
+	return c.Redirect().To(fmt.Sprintf("%s/auth/callback?token=%s", h.cfg.Server.DashURL, accessToken))
 }
 
 func (h *AuthHandler) setRefreshTokenCookie(c fiber.Ctx, refreshToken string) {

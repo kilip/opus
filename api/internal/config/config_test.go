@@ -62,6 +62,8 @@ func TestGetConfig_Defaults(t *testing.T) {
 	assert.Equal(t, "0.0.0.0", c.Server.Host)
 	assert.Equal(t, 8080, c.Server.Port)
 	assert.Equal(t, "production", c.Server.Env)
+	assert.Equal(t, "http://localhost:8080", c.Server.ApiURL)
+	assert.Equal(t, "http://localhost:3000", c.Server.DashURL)
 	assert.Equal(t, "sqlite", c.Database.Driver)
 }
 
@@ -86,4 +88,17 @@ func TestGetConfig_Singleton(t *testing.T) {
 	c2 := GetConfig()
 
 	assert.Same(t, c1, c2)
+}
+
+func TestGetConfig_AutoConfig(t *testing.T) {
+	resetConfig()
+	defer resetConfig()
+
+	t.Setenv("OPUS_SERVER_API_URL", "https://api.opus.com")
+	// Leave OPUS_AUTH_GOOGLE_REDIRECT_URL empty
+
+	c := GetConfig()
+
+	assert.Equal(t, "https://api.opus.com/auth/google/callback", c.Auth.Google.RedirectURL)
+	assert.Equal(t, "https://api.opus.com/auth/github/callback", c.Auth.GitHub.RedirectURL)
 }

@@ -18,9 +18,11 @@ type Config struct {
 }
 
 type ServerConfig struct {
-	Host string `mapstructure:"host"`
-	Port int    `mapstructure:"port"`
-	Env  string `mapstructure:"env"`
+	Host    string `mapstructure:"host"`
+	Port    int    `mapstructure:"port"`
+	Env     string `mapstructure:"env"`
+	ApiURL  string `mapstructure:"api_url"`
+	DashURL string `mapstructure:"dash_url"`
 }
 
 type DatabaseConfig struct {
@@ -91,6 +93,10 @@ func GetConfig() *Config {
 		viper.SetDefault("server.host", "0.0.0.0")
 		viper.SetDefault("server.port", 8080)
 		viper.SetDefault("server.env", "production")
+
+		port := viper.GetInt("server.port")
+		viper.SetDefault("server.api_url", fmt.Sprintf("http://localhost:%d", port))
+		viper.SetDefault("server.dash_url", "http://localhost:3000")
 		viper.SetDefault("database.driver", "sqlite")
 		viper.SetDefault("database.dsn", filepath.Join(opusDir, "opus.db"))
 		viper.SetDefault("auth.access_token_ttl", 15)
@@ -102,6 +108,14 @@ func GetConfig() *Config {
 		cfg = &Config{}
 		_ = viper.Unmarshal(cfg)
 		cfg.Database.DSN = os.ExpandEnv(cfg.Database.DSN)
+
+		// Auto-config OAuth redirect URLs if empty
+		if cfg.Auth.Google.RedirectURL == "" {
+			cfg.Auth.Google.RedirectURL = fmt.Sprintf("%s/auth/google/callback", cfg.Server.ApiURL)
+		}
+		if cfg.Auth.GitHub.RedirectURL == "" {
+			cfg.Auth.GitHub.RedirectURL = fmt.Sprintf("%s/auth/github/callback", cfg.Server.ApiURL)
+		}
 		// Mask secret for logging
 		maskedSecret := ""
 		if len(cfg.Auth.Secret) > 4 {
