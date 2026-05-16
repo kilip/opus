@@ -18,6 +18,7 @@ type Server struct {
 	authService service.AuthServiceInterface
 	userService service.UserServiceInterface
 	queueDriver queue.QueueDriver
+	sseHub      service.SSEHub
 }
 
 // NewServer creates a new Fiber server instance
@@ -38,6 +39,7 @@ func NewServer(
 		authService: authService,
 		userService: userService,
 		queueDriver: queueDriver,
+		sseHub:      middleware.NewSSEHub(),
 	}
 
 	s.setupMiddleware()
@@ -56,7 +58,7 @@ func (s *Server) setupRoutes() {
 	authHandler := handler.NewAuthHandler(s.authService, s.userService, s.cfg)
 	userHandler := handler.NewUserHandler(s.userService)
 	healthHandler := handler.NewHealthHandler()
-	sseHandler := handler.NewSSEHandler()
+	sseHandler := handler.NewSSEHandler(s.sseHub)
 
 	// Public Routes
 	s.app.Get("/health", healthHandler.Check)
