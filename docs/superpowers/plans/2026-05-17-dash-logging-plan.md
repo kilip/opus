@@ -522,7 +522,7 @@ git commit -m "feat(dash): add global error boundary and observability with test
 **Files:**
 - Modify: `dash/.eslintrc.json`
 
-- [ ] **Step 1: Enforce no-console rule**
+- [x] **Step 1: Enforce no-console rule**
 
 ```json
 {
@@ -535,7 +535,7 @@ git commit -m "feat(dash): add global error boundary and observability with test
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add dash/.eslintrc.json
@@ -550,7 +550,7 @@ git commit -m "chore(dash): enforce no-console lint rule"
 - Modify: `docker-compose.yml`
 - Modify: `dash/Taskfile.yml`
 
-- [ ] **Step 1: Update docker-compose**
+- [x] **Step 1: Update docker-compose**
 
 ```yaml
 # docker-compose.yml
@@ -574,7 +574,7 @@ git commit -m "chore(dash): enforce no-console lint rule"
     restart: always
 ```
 
-- [ ] **Step 2: Add Taskfile commands**
+- [x] **Step 2: Add Taskfile commands**
 
 ```yaml
 # dash/Taskfile.yml
@@ -591,7 +591,7 @@ git commit -m "chore(dash): enforce no-console lint rule"
       - 'tail -f $(ls -t ${OPUS_LOG_DIR:-./logs}/dash-*.log | head -1)'
 ```
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add docker-compose.yml dash/Taskfile.yml
@@ -602,13 +602,13 @@ git commit -m "chore: update infrastructure for logging support"
 
 ### Task 8: Verification
 
-- [ ] **Step 1: Final verification run**
+- [x] **Step 1: Final verification run**
 
 Run: `pnpm test`
 Run: `pnpm lint`
 Check: `dash/logs/` content after `task dev`
 
-- [ ] **Step 2: Final commit**
+- [x] **Step 2: Final commit**
 
 ```bash
 git commit --allow-empty -m "docs: finalized dashboard logging implementation"
