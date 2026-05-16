@@ -8,9 +8,16 @@ import { logger } from "@/lib/logger";
  */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const refreshToken = request.cookies.get("refresh_token")?.value;
+  const refreshToken = request.cookies.get("refresh_token");
 
-  logger.info(`[Proxy] Request: ${pathname} | Has Token: ${!!refreshToken}`);
+  // Debug: Cek semua cookie yang ada
+  const allCookies = request.cookies
+    .getAll()
+    .map((c) => c.name)
+    .join(", ");
+  logger.info(
+    `[Proxy] Request: ${pathname} | Has refresh_token: ${!!refreshToken} | All Cookies: [${allCookies}]`,
+  );
 
   const isAuthRoute = pathname === "/login" || pathname.startsWith("/auth");
   const isPublicFile =
@@ -19,16 +26,20 @@ export function proxy(request: NextRequest) {
     pathname.includes(".") ||
     pathname === "/favicon.ico";
 
-  // 3. Logic: If trying to access protected route without a session, go to login
+  // 1. Jika user di halaman login
+  if (pathname === "/login") {
+    // Jika sudah punya token, arahkan ke home
+    if (refreshToken) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+    // Jika belum, biarkan (untuk menampilkan halaman login)
+    return NextResponse.next();
+  }
+
+  // 2. Jika bukan route auth/public, dan tidak ada token, arahkan ke login
   if (!isAuthRoute && !isPublicFile && !refreshToken) {
     logger.info(`[Proxy] Redirecting to /login from ${pathname} (No Token)`);
     return NextResponse.redirect(new URL("/login", request.url));
-  }
-
-  // 4. Logic: If already logged in, don't show login page
-  if (pathname === "/login" && refreshToken) {
-    logger.info(`[Proxy] Redirecting to / from /login (Token present)`);
-    return NextResponse.redirect(new URL("/", request.url));
   }
 
   return NextResponse.next();
@@ -43,6 +54,6 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+    "/((?!api|login|_next/static|_next/image|favicon.ico).*)",
   ],
 };

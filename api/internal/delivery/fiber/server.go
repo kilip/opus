@@ -55,7 +55,7 @@ func NewServer(
 
 func (s *Server) setupMiddleware() {
 	s.app.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{s.cfg.Server.DashURL, "http://127.0.0.1:3000", "http://127.0.0.1"},
+		AllowOrigins:     []string{s.cfg.Server.DashURL, "http://localhost:3000", "http://127.0.0.1:3000", "http://127.0.0.1"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowCredentials: true,
