@@ -1,10 +1,22 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Lora, Poppins } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/components/shared/QueryProvider";
 import { AuthProvider } from "@/lib/api/AuthContext";
 
-const inter = Inter({ subsets: ["latin"] });
+const poppins = Poppins({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-poppins",
+  weight: ["400", "500", "600", "700"],
+});
+
+const lora = Lora({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-lora",
+  weight: ["400", "500"],
+});
 
 export const metadata: Metadata = {
   title: "Opus",
@@ -21,7 +33,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
-  themeColor: "#000000",
+  themeColor: "#FFFCF5",
 };
 
 export default function RootLayout({
@@ -31,7 +43,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body
+        className={`${poppins.variable} ${lora.variable} font-body antialiased`}
+      >
         <AuthProvider>
           <QueryProvider>{children}</QueryProvider>
         </AuthProvider>
