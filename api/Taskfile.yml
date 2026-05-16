@@ -45,8 +45,9 @@ tasks:
     desc: Generate mocks for all repository interfaces
     cmds:
       - mkdir -p mocks
-      - mockgen -source=internal/repository/user.go -destination=mocks/mock_user_repo.go -package=mocks
-      - mockgen -source=internal/repository/session.go -destination=mocks/mock_session_repo.go -package=mocks
+      - mockgen -destination=mocks/mock_user_repo.go -package=mocks github.com/kilip/opus/api/internal/repository UserRepository
+      - mockgen -destination=mocks/mock_session_repo.go -package=mocks github.com/kilip/opus/api/internal/repository SessionRepository
+      - mockgen -destination=mocks/mock_auth_service.go -package=mocks github.com/kilip/opus/api/internal/service AuthServiceInterface
 
   migrate:
     desc: Run database migrations (auto-run on startup via GetDatabase)

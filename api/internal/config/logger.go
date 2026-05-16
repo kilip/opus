@@ -29,3 +29,16 @@ func GetLogger() *slog.Logger {
 	})
 	return logger
 }
+
+// SetLogger sets the logger singleton. This is mainly used for testing.
+func SetLogger(l *slog.Logger) {
+	logger = l
+	loggerOnce.Do(func() {}) // Ensure loggerOnce is marked as done
+}
+
+// ResetLogger resets the logger singleton and its sync.Once.
+// This is mainly used for testing to force re-initialization.
+func ResetLogger() {
+	logger = nil
+	loggerOnce = sync.Once{}
+}
