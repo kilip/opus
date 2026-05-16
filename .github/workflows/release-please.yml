@@ -87,6 +87,9 @@ jobs:
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write   # required for OIDC trusted publishing
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -101,11 +104,10 @@ jobs:
         working-directory: installer
         run: npm install
 
-      - name: Publish to NPM
+      - name: Publish to NPM (OIDC)
         working-directory: installer
-        run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public --provenance
+        # No NODE_AUTH_TOKEN needed — authentication is handled via OIDC
 
   build-dash-image:
     name: Build & Push Dash Docker Image

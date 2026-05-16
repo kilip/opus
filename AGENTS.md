@@ -73,18 +73,79 @@ OPUS_AGENT_PROVIDER, OPUS_AGENT_MODEL, OPUS_AGENT_API_KEY
 
 ## Memory System
 
-Agents working on this project **must** read and update the memory files.
+Agents working on this project **must** read and update the memory files at the start and end of every session.
+
+### File Structure
+
+```
+.agents/
+├── MEMORY.md                          # Long-term memory — persistent decisions, user profile, project context
+└── memory/
+    ├── YYYY-MM-DD-<slug>.md           # Date-based session memory files
+    ├── 2026-05-15-auth-implementation.md
+    ├── 2026-05-16-ent-schema-refactor.md
+    └── ...
+```
+
+### Naming Convention
+
+Memory files under `.agents/memory/` **must** follow this format:
+
+```
+YYYY-MM-DD-<slug>.md
+```
+
+- `YYYY-MM-DD` — ISO 8601 date of the session (e.g., `2026-05-16`)
+- `<slug>` — short kebab-case descriptor of the session topic (e.g., `auth-refactor`, `ent-migration`, `ci-fix`)
+
+**Examples:**
+```
+2026-05-16-oauth2-google-setup.md
+2026-05-16-ent-schema-session.md
+2026-05-17-goreleaser-multiarch-fix.md
+```
+
+If multiple sessions occur on the same date for different topics, create separate files per topic. Never overwrite a file — append or create a new one with a more specific slug.
+
+### File Roles
 
 | File | Purpose |
 |------|---------|
-| `.agents/MEMORY.md` | Long-term memory — user profile, project decisions, persistent context |
-| `.agents/memory/[timestamp].md` | Short-term memory — per-session context, task progress, intermediate findings |
+| `.agents/MEMORY.md` | Long-term memory — user preferences, architectural decisions, persistent context that survives across sessions |
+| `.agents/memory/YYYY-MM-DD-<slug>.md` | Short-term session memory — task progress, intermediate findings, decisions made during this session |
 
-**Rules:**
-- Read `.agents/MEMORY.md` at the start of every session
-- Write a new `.agents/memory/[timestamp].md` at session start; update as work progresses
-- Promote important findings/decisions to `.agents/MEMORY.md` at session end
-- Short-term files use ISO 8601 timestamp format: `20260515T083000.md`
+### Session Workflow
+
+**At session start:**
+1. Read `.agents/MEMORY.md` in full
+2. Scan `.agents/memory/` for the most recent files (last 3–5) to understand recent context
+3. Create a new file `.agents/memory/YYYY-MM-DD-<slug>.md` for the current session
+4. Write initial context: goal, relevant prior decisions, any open questions
+
+**During session:**
+- Update the current session file as work progresses
+- Log decisions, discoveries, and blockers as they happen
+
+**At session end:**
+1. Finalize the session file with a summary of what was done and what remains
+2. Promote any decisions or findings that affect future sessions to `.agents/MEMORY.md`
+3. Do **not** delete old session files — they serve as an audit trail
+
+### What Belongs Where
+
+**`.agents/MEMORY.md` (long-term):**
+- User identity and preferences
+- Confirmed architectural decisions
+- Agreed-upon conventions that deviate from defaults
+- Known constraints or non-negotiables
+- Status of major features (done / in progress / blocked)
+
+**`.agents/memory/YYYY-MM-DD-<slug>.md` (short-term):**
+- Task description and acceptance criteria for this session
+- Steps taken and their outcomes
+- Intermediate findings (e.g., "discovered EntGo does not support X")
+- Open questions to resolve in a follow-up session
+- What was left incomplete and why
 
 ---
 
@@ -138,9 +199,11 @@ CI runs on every push to `main` and every PR:
 - Update `.agents/MEMORY.md` with decisions that affect future sessions
 - Follow the existing file/struct naming conventions strictly
 - Use `internal/config` singletons — never instantiate config/db/logger directly
+- Name session memory files as `YYYY-MM-DD-<slug>.md` — always
 
 **Don't:**
 - Edit files under `ent/` manually — always use `task ent:generate`
 - Add `handler` or framework imports into `service/` or `model/`
 - Hardcode any provider, secret, or environment-specific value
 - Skip tests or comments — both are required, not optional
+- Delete or overwrite existing files under `.agents/memory/`
