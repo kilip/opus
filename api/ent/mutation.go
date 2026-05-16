@@ -14,6 +14,10 @@ import (
 	"github.com/kilip/opus/api/ent/predicate"
 	"github.com/kilip/opus/api/ent/session"
 	"github.com/kilip/opus/api/ent/user"
+	"github.com/kilip/opus/api/ent/wachat"
+	"github.com/kilip/opus/api/ent/wacontact"
+	"github.com/kilip/opus/api/ent/wamessage"
+	"github.com/kilip/opus/api/ent/wasession"
 )
 
 const (
@@ -25,8 +29,12 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeSession = "Session"
-	TypeUser    = "User"
+	TypeSession   = "Session"
+	TypeUser      = "User"
+	TypeWaChat    = "WaChat"
+	TypeWaContact = "WaContact"
+	TypeWaMessage = "WaMessage"
+	TypeWaSession = "WaSession"
 )
 
 // SessionMutation represents an operation that mutates the Session nodes in the graph.
@@ -634,23 +642,25 @@ func (m *SessionMutation) ResetEdge(name string) error {
 // UserMutation represents an operation that mutates the User nodes in the graph.
 type UserMutation struct {
 	config
-	op              Op
-	typ             string
-	id              *string
-	email           *string
-	name            *string
-	avatar_url      *string
-	provider        *string
-	provider_id     *string
-	created_at      *time.Time
-	updated_at      *time.Time
-	clearedFields   map[string]struct{}
-	sessions        map[string]struct{}
-	removedsessions map[string]struct{}
-	clearedsessions bool
-	done            bool
-	oldValue        func(context.Context) (*User, error)
-	predicates      []predicate.User
+	op                Op
+	typ               string
+	id                *string
+	email             *string
+	name              *string
+	avatar_url        *string
+	provider          *string
+	provider_id       *string
+	created_at        *time.Time
+	updated_at        *time.Time
+	clearedFields     map[string]struct{}
+	sessions          map[string]struct{}
+	removedsessions   map[string]struct{}
+	clearedsessions   bool
+	wa_session        *string
+	clearedwa_session bool
+	done              bool
+	oldValue          func(context.Context) (*User, error)
+	predicates        []predicate.User
 }
 
 var _ ent.Mutation = (*UserMutation)(nil)
@@ -1089,6 +1099,45 @@ func (m *UserMutation) ResetSessions() {
 	m.removedsessions = nil
 }
 
+// SetWaSessionID sets the "wa_session" edge to the WaSession entity by id.
+func (m *UserMutation) SetWaSessionID(id string) {
+	m.wa_session = &id
+}
+
+// ClearWaSession clears the "wa_session" edge to the WaSession entity.
+func (m *UserMutation) ClearWaSession() {
+	m.clearedwa_session = true
+}
+
+// WaSessionCleared reports if the "wa_session" edge to the WaSession entity was cleared.
+func (m *UserMutation) WaSessionCleared() bool {
+	return m.clearedwa_session
+}
+
+// WaSessionID returns the "wa_session" edge ID in the mutation.
+func (m *UserMutation) WaSessionID() (id string, exists bool) {
+	if m.wa_session != nil {
+		return *m.wa_session, true
+	}
+	return
+}
+
+// WaSessionIDs returns the "wa_session" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// WaSessionID instead. It exists only for internal usage by the builders.
+func (m *UserMutation) WaSessionIDs() (ids []string) {
+	if id := m.wa_session; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetWaSession resets all changes to the "wa_session" edge.
+func (m *UserMutation) ResetWaSession() {
+	m.wa_session = nil
+	m.clearedwa_session = false
+}
+
 // Where appends a list predicates to the UserMutation builder.
 func (m *UserMutation) Where(ps ...predicate.User) {
 	m.predicates = append(m.predicates, ps...)
@@ -1339,9 +1388,12 @@ func (m *UserMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UserMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.sessions != nil {
 		edges = append(edges, user.EdgeSessions)
+	}
+	if m.wa_session != nil {
+		edges = append(edges, user.EdgeWaSession)
 	}
 	return edges
 }
@@ -1356,13 +1408,17 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeWaSession:
+		if id := m.wa_session; id != nil {
+			return []ent.Value{*id}
+		}
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UserMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.removedsessions != nil {
 		edges = append(edges, user.EdgeSessions)
 	}
@@ -1385,9 +1441,12 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UserMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.clearedsessions {
 		edges = append(edges, user.EdgeSessions)
+	}
+	if m.clearedwa_session {
+		edges = append(edges, user.EdgeWaSession)
 	}
 	return edges
 }
@@ -1398,6 +1457,8 @@ func (m *UserMutation) EdgeCleared(name string) bool {
 	switch name {
 	case user.EdgeSessions:
 		return m.clearedsessions
+	case user.EdgeWaSession:
+		return m.clearedwa_session
 	}
 	return false
 }
@@ -1406,6 +1467,9 @@ func (m *UserMutation) EdgeCleared(name string) bool {
 // if that edge is not defined in the schema.
 func (m *UserMutation) ClearEdge(name string) error {
 	switch name {
+	case user.EdgeWaSession:
+		m.ClearWaSession()
+		return nil
 	}
 	return fmt.Errorf("unknown User unique edge %s", name)
 }
@@ -1417,6 +1481,2592 @@ func (m *UserMutation) ResetEdge(name string) error {
 	case user.EdgeSessions:
 		m.ResetSessions()
 		return nil
+	case user.EdgeWaSession:
+		m.ResetWaSession()
+		return nil
 	}
 	return fmt.Errorf("unknown User edge %s", name)
+}
+
+// WaChatMutation represents an operation that mutates the WaChat nodes in the graph.
+type WaChatMutation struct {
+	config
+	op                Op
+	typ               string
+	id                *int
+	jid               *string
+	name              *string
+	unread_count      *int
+	addunread_count   *int
+	clearedFields     map[string]struct{}
+	wa_session        *string
+	clearedwa_session bool
+	messages          map[int]struct{}
+	removedmessages   map[int]struct{}
+	clearedmessages   bool
+	done              bool
+	oldValue          func(context.Context) (*WaChat, error)
+	predicates        []predicate.WaChat
+}
+
+var _ ent.Mutation = (*WaChatMutation)(nil)
+
+// wachatOption allows management of the mutation configuration using functional options.
+type wachatOption func(*WaChatMutation)
+
+// newWaChatMutation creates new mutation for the WaChat entity.
+func newWaChatMutation(c config, op Op, opts ...wachatOption) *WaChatMutation {
+	m := &WaChatMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeWaChat,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withWaChatID sets the ID field of the mutation.
+func withWaChatID(id int) wachatOption {
+	return func(m *WaChatMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *WaChat
+		)
+		m.oldValue = func(ctx context.Context) (*WaChat, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().WaChat.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withWaChat sets the old WaChat of the mutation.
+func withWaChat(node *WaChat) wachatOption {
+	return func(m *WaChatMutation) {
+		m.oldValue = func(context.Context) (*WaChat, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m WaChatMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m WaChatMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *WaChatMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *WaChatMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().WaChat.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetJid sets the "jid" field.
+func (m *WaChatMutation) SetJid(s string) {
+	m.jid = &s
+}
+
+// Jid returns the value of the "jid" field in the mutation.
+func (m *WaChatMutation) Jid() (r string, exists bool) {
+	v := m.jid
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldJid returns the old "jid" field's value of the WaChat entity.
+// If the WaChat object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WaChatMutation) OldJid(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldJid is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldJid requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldJid: %w", err)
+	}
+	return oldValue.Jid, nil
+}
+
+// ResetJid resets all changes to the "jid" field.
+func (m *WaChatMutation) ResetJid() {
+	m.jid = nil
+}
+
+// SetName sets the "name" field.
+func (m *WaChatMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *WaChatMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the WaChat entity.
+// If the WaChat object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WaChatMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ClearName clears the value of the "name" field.
+func (m *WaChatMutation) ClearName() {
+	m.name = nil
+	m.clearedFields[wachat.FieldName] = struct{}{}
+}
+
+// NameCleared returns if the "name" field was cleared in this mutation.
+func (m *WaChatMutation) NameCleared() bool {
+	_, ok := m.clearedFields[wachat.FieldName]
+	return ok
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *WaChatMutation) ResetName() {
+	m.name = nil
+	delete(m.clearedFields, wachat.FieldName)
+}
+
+// SetUnreadCount sets the "unread_count" field.
+func (m *WaChatMutation) SetUnreadCount(i int) {
+	m.unread_count = &i
+	m.addunread_count = nil
+}
+
+// UnreadCount returns the value of the "unread_count" field in the mutation.
+func (m *WaChatMutation) UnreadCount() (r int, exists bool) {
+	v := m.unread_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUnreadCount returns the old "unread_count" field's value of the WaChat entity.
+// If the WaChat object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WaChatMutation) OldUnreadCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUnreadCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUnreadCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUnreadCount: %w", err)
+	}
+	return oldValue.UnreadCount, nil
+}
+
+// AddUnreadCount adds i to the "unread_count" field.
+func (m *WaChatMutation) AddUnreadCount(i int) {
+	if m.addunread_count != nil {
+		*m.addunread_count += i
+	} else {
+		m.addunread_count = &i
+	}
+}
+
+// AddedUnreadCount returns the value that was added to the "unread_count" field in this mutation.
+func (m *WaChatMutation) AddedUnreadCount() (r int, exists bool) {
+	v := m.addunread_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetUnreadCount resets all changes to the "unread_count" field.
+func (m *WaChatMutation) ResetUnreadCount() {
+	m.unread_count = nil
+	m.addunread_count = nil
+}
+
+// SetWaSessionID sets the "wa_session" edge to the WaSession entity by id.
+func (m *WaChatMutation) SetWaSessionID(id string) {
+	m.wa_session = &id
+}
+
+// ClearWaSession clears the "wa_session" edge to the WaSession entity.
+func (m *WaChatMutation) ClearWaSession() {
+	m.clearedwa_session = true
+}
+
+// WaSessionCleared reports if the "wa_session" edge to the WaSession entity was cleared.
+func (m *WaChatMutation) WaSessionCleared() bool {
+	return m.clearedwa_session
+}
+
+// WaSessionID returns the "wa_session" edge ID in the mutation.
+func (m *WaChatMutation) WaSessionID() (id string, exists bool) {
+	if m.wa_session != nil {
+		return *m.wa_session, true
+	}
+	return
+}
+
+// WaSessionIDs returns the "wa_session" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// WaSessionID instead. It exists only for internal usage by the builders.
+func (m *WaChatMutation) WaSessionIDs() (ids []string) {
+	if id := m.wa_session; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetWaSession resets all changes to the "wa_session" edge.
+func (m *WaChatMutation) ResetWaSession() {
+	m.wa_session = nil
+	m.clearedwa_session = false
+}
+
+// AddMessageIDs adds the "messages" edge to the WaMessage entity by ids.
+func (m *WaChatMutation) AddMessageIDs(ids ...int) {
+	if m.messages == nil {
+		m.messages = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.messages[ids[i]] = struct{}{}
+	}
+}
+
+// ClearMessages clears the "messages" edge to the WaMessage entity.
+func (m *WaChatMutation) ClearMessages() {
+	m.clearedmessages = true
+}
+
+// MessagesCleared reports if the "messages" edge to the WaMessage entity was cleared.
+func (m *WaChatMutation) MessagesCleared() bool {
+	return m.clearedmessages
+}
+
+// RemoveMessageIDs removes the "messages" edge to the WaMessage entity by IDs.
+func (m *WaChatMutation) RemoveMessageIDs(ids ...int) {
+	if m.removedmessages == nil {
+		m.removedmessages = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.messages, ids[i])
+		m.removedmessages[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedMessages returns the removed IDs of the "messages" edge to the WaMessage entity.
+func (m *WaChatMutation) RemovedMessagesIDs() (ids []int) {
+	for id := range m.removedmessages {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// MessagesIDs returns the "messages" edge IDs in the mutation.
+func (m *WaChatMutation) MessagesIDs() (ids []int) {
+	for id := range m.messages {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetMessages resets all changes to the "messages" edge.
+func (m *WaChatMutation) ResetMessages() {
+	m.messages = nil
+	m.clearedmessages = false
+	m.removedmessages = nil
+}
+
+// Where appends a list predicates to the WaChatMutation builder.
+func (m *WaChatMutation) Where(ps ...predicate.WaChat) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the WaChatMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *WaChatMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.WaChat, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *WaChatMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *WaChatMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (WaChat).
+func (m *WaChatMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *WaChatMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.jid != nil {
+		fields = append(fields, wachat.FieldJid)
+	}
+	if m.name != nil {
+		fields = append(fields, wachat.FieldName)
+	}
+	if m.unread_count != nil {
+		fields = append(fields, wachat.FieldUnreadCount)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *WaChatMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case wachat.FieldJid:
+		return m.Jid()
+	case wachat.FieldName:
+		return m.Name()
+	case wachat.FieldUnreadCount:
+		return m.UnreadCount()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *WaChatMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case wachat.FieldJid:
+		return m.OldJid(ctx)
+	case wachat.FieldName:
+		return m.OldName(ctx)
+	case wachat.FieldUnreadCount:
+		return m.OldUnreadCount(ctx)
+	}
+	return nil, fmt.Errorf("unknown WaChat field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WaChatMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case wachat.FieldJid:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetJid(v)
+		return nil
+	case wachat.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case wachat.FieldUnreadCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUnreadCount(v)
+		return nil
+	}
+	return fmt.Errorf("unknown WaChat field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *WaChatMutation) AddedFields() []string {
+	var fields []string
+	if m.addunread_count != nil {
+		fields = append(fields, wachat.FieldUnreadCount)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *WaChatMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case wachat.FieldUnreadCount:
+		return m.AddedUnreadCount()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WaChatMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case wachat.FieldUnreadCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddUnreadCount(v)
+		return nil
+	}
+	return fmt.Errorf("unknown WaChat numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *WaChatMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(wachat.FieldName) {
+		fields = append(fields, wachat.FieldName)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *WaChatMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *WaChatMutation) ClearField(name string) error {
+	switch name {
+	case wachat.FieldName:
+		m.ClearName()
+		return nil
+	}
+	return fmt.Errorf("unknown WaChat nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *WaChatMutation) ResetField(name string) error {
+	switch name {
+	case wachat.FieldJid:
+		m.ResetJid()
+		return nil
+	case wachat.FieldName:
+		m.ResetName()
+		return nil
+	case wachat.FieldUnreadCount:
+		m.ResetUnreadCount()
+		return nil
+	}
+	return fmt.Errorf("unknown WaChat field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *WaChatMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.wa_session != nil {
+		edges = append(edges, wachat.EdgeWaSession)
+	}
+	if m.messages != nil {
+		edges = append(edges, wachat.EdgeMessages)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *WaChatMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case wachat.EdgeWaSession:
+		if id := m.wa_session; id != nil {
+			return []ent.Value{*id}
+		}
+	case wachat.EdgeMessages:
+		ids := make([]ent.Value, 0, len(m.messages))
+		for id := range m.messages {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *WaChatMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.removedmessages != nil {
+		edges = append(edges, wachat.EdgeMessages)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *WaChatMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case wachat.EdgeMessages:
+		ids := make([]ent.Value, 0, len(m.removedmessages))
+		for id := range m.removedmessages {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *WaChatMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedwa_session {
+		edges = append(edges, wachat.EdgeWaSession)
+	}
+	if m.clearedmessages {
+		edges = append(edges, wachat.EdgeMessages)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *WaChatMutation) EdgeCleared(name string) bool {
+	switch name {
+	case wachat.EdgeWaSession:
+		return m.clearedwa_session
+	case wachat.EdgeMessages:
+		return m.clearedmessages
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *WaChatMutation) ClearEdge(name string) error {
+	switch name {
+	case wachat.EdgeWaSession:
+		m.ClearWaSession()
+		return nil
+	}
+	return fmt.Errorf("unknown WaChat unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *WaChatMutation) ResetEdge(name string) error {
+	switch name {
+	case wachat.EdgeWaSession:
+		m.ResetWaSession()
+		return nil
+	case wachat.EdgeMessages:
+		m.ResetMessages()
+		return nil
+	}
+	return fmt.Errorf("unknown WaChat edge %s", name)
+}
+
+// WaContactMutation represents an operation that mutates the WaContact nodes in the graph.
+type WaContactMutation struct {
+	config
+	op                Op
+	typ               string
+	id                *int
+	jid               *string
+	name              *string
+	pushname          *string
+	clearedFields     map[string]struct{}
+	wa_session        *string
+	clearedwa_session bool
+	done              bool
+	oldValue          func(context.Context) (*WaContact, error)
+	predicates        []predicate.WaContact
+}
+
+var _ ent.Mutation = (*WaContactMutation)(nil)
+
+// wacontactOption allows management of the mutation configuration using functional options.
+type wacontactOption func(*WaContactMutation)
+
+// newWaContactMutation creates new mutation for the WaContact entity.
+func newWaContactMutation(c config, op Op, opts ...wacontactOption) *WaContactMutation {
+	m := &WaContactMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeWaContact,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withWaContactID sets the ID field of the mutation.
+func withWaContactID(id int) wacontactOption {
+	return func(m *WaContactMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *WaContact
+		)
+		m.oldValue = func(ctx context.Context) (*WaContact, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().WaContact.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withWaContact sets the old WaContact of the mutation.
+func withWaContact(node *WaContact) wacontactOption {
+	return func(m *WaContactMutation) {
+		m.oldValue = func(context.Context) (*WaContact, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m WaContactMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m WaContactMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *WaContactMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *WaContactMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().WaContact.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetJid sets the "jid" field.
+func (m *WaContactMutation) SetJid(s string) {
+	m.jid = &s
+}
+
+// Jid returns the value of the "jid" field in the mutation.
+func (m *WaContactMutation) Jid() (r string, exists bool) {
+	v := m.jid
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldJid returns the old "jid" field's value of the WaContact entity.
+// If the WaContact object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WaContactMutation) OldJid(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldJid is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldJid requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldJid: %w", err)
+	}
+	return oldValue.Jid, nil
+}
+
+// ResetJid resets all changes to the "jid" field.
+func (m *WaContactMutation) ResetJid() {
+	m.jid = nil
+}
+
+// SetName sets the "name" field.
+func (m *WaContactMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *WaContactMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the WaContact entity.
+// If the WaContact object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WaContactMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *WaContactMutation) ResetName() {
+	m.name = nil
+}
+
+// SetPushname sets the "pushname" field.
+func (m *WaContactMutation) SetPushname(s string) {
+	m.pushname = &s
+}
+
+// Pushname returns the value of the "pushname" field in the mutation.
+func (m *WaContactMutation) Pushname() (r string, exists bool) {
+	v := m.pushname
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPushname returns the old "pushname" field's value of the WaContact entity.
+// If the WaContact object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WaContactMutation) OldPushname(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPushname is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPushname requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPushname: %w", err)
+	}
+	return oldValue.Pushname, nil
+}
+
+// ClearPushname clears the value of the "pushname" field.
+func (m *WaContactMutation) ClearPushname() {
+	m.pushname = nil
+	m.clearedFields[wacontact.FieldPushname] = struct{}{}
+}
+
+// PushnameCleared returns if the "pushname" field was cleared in this mutation.
+func (m *WaContactMutation) PushnameCleared() bool {
+	_, ok := m.clearedFields[wacontact.FieldPushname]
+	return ok
+}
+
+// ResetPushname resets all changes to the "pushname" field.
+func (m *WaContactMutation) ResetPushname() {
+	m.pushname = nil
+	delete(m.clearedFields, wacontact.FieldPushname)
+}
+
+// SetWaSessionID sets the "wa_session" edge to the WaSession entity by id.
+func (m *WaContactMutation) SetWaSessionID(id string) {
+	m.wa_session = &id
+}
+
+// ClearWaSession clears the "wa_session" edge to the WaSession entity.
+func (m *WaContactMutation) ClearWaSession() {
+	m.clearedwa_session = true
+}
+
+// WaSessionCleared reports if the "wa_session" edge to the WaSession entity was cleared.
+func (m *WaContactMutation) WaSessionCleared() bool {
+	return m.clearedwa_session
+}
+
+// WaSessionID returns the "wa_session" edge ID in the mutation.
+func (m *WaContactMutation) WaSessionID() (id string, exists bool) {
+	if m.wa_session != nil {
+		return *m.wa_session, true
+	}
+	return
+}
+
+// WaSessionIDs returns the "wa_session" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// WaSessionID instead. It exists only for internal usage by the builders.
+func (m *WaContactMutation) WaSessionIDs() (ids []string) {
+	if id := m.wa_session; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetWaSession resets all changes to the "wa_session" edge.
+func (m *WaContactMutation) ResetWaSession() {
+	m.wa_session = nil
+	m.clearedwa_session = false
+}
+
+// Where appends a list predicates to the WaContactMutation builder.
+func (m *WaContactMutation) Where(ps ...predicate.WaContact) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the WaContactMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *WaContactMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.WaContact, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *WaContactMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *WaContactMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (WaContact).
+func (m *WaContactMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *WaContactMutation) Fields() []string {
+	fields := make([]string, 0, 3)
+	if m.jid != nil {
+		fields = append(fields, wacontact.FieldJid)
+	}
+	if m.name != nil {
+		fields = append(fields, wacontact.FieldName)
+	}
+	if m.pushname != nil {
+		fields = append(fields, wacontact.FieldPushname)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *WaContactMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case wacontact.FieldJid:
+		return m.Jid()
+	case wacontact.FieldName:
+		return m.Name()
+	case wacontact.FieldPushname:
+		return m.Pushname()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *WaContactMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case wacontact.FieldJid:
+		return m.OldJid(ctx)
+	case wacontact.FieldName:
+		return m.OldName(ctx)
+	case wacontact.FieldPushname:
+		return m.OldPushname(ctx)
+	}
+	return nil, fmt.Errorf("unknown WaContact field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WaContactMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case wacontact.FieldJid:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetJid(v)
+		return nil
+	case wacontact.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case wacontact.FieldPushname:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPushname(v)
+		return nil
+	}
+	return fmt.Errorf("unknown WaContact field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *WaContactMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *WaContactMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WaContactMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown WaContact numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *WaContactMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(wacontact.FieldPushname) {
+		fields = append(fields, wacontact.FieldPushname)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *WaContactMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *WaContactMutation) ClearField(name string) error {
+	switch name {
+	case wacontact.FieldPushname:
+		m.ClearPushname()
+		return nil
+	}
+	return fmt.Errorf("unknown WaContact nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *WaContactMutation) ResetField(name string) error {
+	switch name {
+	case wacontact.FieldJid:
+		m.ResetJid()
+		return nil
+	case wacontact.FieldName:
+		m.ResetName()
+		return nil
+	case wacontact.FieldPushname:
+		m.ResetPushname()
+		return nil
+	}
+	return fmt.Errorf("unknown WaContact field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *WaContactMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.wa_session != nil {
+		edges = append(edges, wacontact.EdgeWaSession)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *WaContactMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case wacontact.EdgeWaSession:
+		if id := m.wa_session; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *WaContactMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *WaContactMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *WaContactMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedwa_session {
+		edges = append(edges, wacontact.EdgeWaSession)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *WaContactMutation) EdgeCleared(name string) bool {
+	switch name {
+	case wacontact.EdgeWaSession:
+		return m.clearedwa_session
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *WaContactMutation) ClearEdge(name string) error {
+	switch name {
+	case wacontact.EdgeWaSession:
+		m.ClearWaSession()
+		return nil
+	}
+	return fmt.Errorf("unknown WaContact unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *WaContactMutation) ResetEdge(name string) error {
+	switch name {
+	case wacontact.EdgeWaSession:
+		m.ResetWaSession()
+		return nil
+	}
+	return fmt.Errorf("unknown WaContact edge %s", name)
+}
+
+// WaMessageMutation represents an operation that mutates the WaMessage nodes in the graph.
+type WaMessageMutation struct {
+	config
+	op                Op
+	typ               string
+	id                *int
+	message_id        *string
+	sender_jid        *string
+	content           *string
+	timestamp         *time.Time
+	is_from_me        *bool
+	clearedFields     map[string]struct{}
+	wa_session        *string
+	clearedwa_session bool
+	chat              *int
+	clearedchat       bool
+	done              bool
+	oldValue          func(context.Context) (*WaMessage, error)
+	predicates        []predicate.WaMessage
+}
+
+var _ ent.Mutation = (*WaMessageMutation)(nil)
+
+// wamessageOption allows management of the mutation configuration using functional options.
+type wamessageOption func(*WaMessageMutation)
+
+// newWaMessageMutation creates new mutation for the WaMessage entity.
+func newWaMessageMutation(c config, op Op, opts ...wamessageOption) *WaMessageMutation {
+	m := &WaMessageMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeWaMessage,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withWaMessageID sets the ID field of the mutation.
+func withWaMessageID(id int) wamessageOption {
+	return func(m *WaMessageMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *WaMessage
+		)
+		m.oldValue = func(ctx context.Context) (*WaMessage, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().WaMessage.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withWaMessage sets the old WaMessage of the mutation.
+func withWaMessage(node *WaMessage) wamessageOption {
+	return func(m *WaMessageMutation) {
+		m.oldValue = func(context.Context) (*WaMessage, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m WaMessageMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m WaMessageMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *WaMessageMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *WaMessageMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().WaMessage.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetMessageID sets the "message_id" field.
+func (m *WaMessageMutation) SetMessageID(s string) {
+	m.message_id = &s
+}
+
+// MessageID returns the value of the "message_id" field in the mutation.
+func (m *WaMessageMutation) MessageID() (r string, exists bool) {
+	v := m.message_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMessageID returns the old "message_id" field's value of the WaMessage entity.
+// If the WaMessage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WaMessageMutation) OldMessageID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMessageID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMessageID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMessageID: %w", err)
+	}
+	return oldValue.MessageID, nil
+}
+
+// ResetMessageID resets all changes to the "message_id" field.
+func (m *WaMessageMutation) ResetMessageID() {
+	m.message_id = nil
+}
+
+// SetSenderJid sets the "sender_jid" field.
+func (m *WaMessageMutation) SetSenderJid(s string) {
+	m.sender_jid = &s
+}
+
+// SenderJid returns the value of the "sender_jid" field in the mutation.
+func (m *WaMessageMutation) SenderJid() (r string, exists bool) {
+	v := m.sender_jid
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSenderJid returns the old "sender_jid" field's value of the WaMessage entity.
+// If the WaMessage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WaMessageMutation) OldSenderJid(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSenderJid is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSenderJid requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSenderJid: %w", err)
+	}
+	return oldValue.SenderJid, nil
+}
+
+// ResetSenderJid resets all changes to the "sender_jid" field.
+func (m *WaMessageMutation) ResetSenderJid() {
+	m.sender_jid = nil
+}
+
+// SetContent sets the "content" field.
+func (m *WaMessageMutation) SetContent(s string) {
+	m.content = &s
+}
+
+// Content returns the value of the "content" field in the mutation.
+func (m *WaMessageMutation) Content() (r string, exists bool) {
+	v := m.content
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldContent returns the old "content" field's value of the WaMessage entity.
+// If the WaMessage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WaMessageMutation) OldContent(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldContent is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldContent requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldContent: %w", err)
+	}
+	return oldValue.Content, nil
+}
+
+// ClearContent clears the value of the "content" field.
+func (m *WaMessageMutation) ClearContent() {
+	m.content = nil
+	m.clearedFields[wamessage.FieldContent] = struct{}{}
+}
+
+// ContentCleared returns if the "content" field was cleared in this mutation.
+func (m *WaMessageMutation) ContentCleared() bool {
+	_, ok := m.clearedFields[wamessage.FieldContent]
+	return ok
+}
+
+// ResetContent resets all changes to the "content" field.
+func (m *WaMessageMutation) ResetContent() {
+	m.content = nil
+	delete(m.clearedFields, wamessage.FieldContent)
+}
+
+// SetTimestamp sets the "timestamp" field.
+func (m *WaMessageMutation) SetTimestamp(t time.Time) {
+	m.timestamp = &t
+}
+
+// Timestamp returns the value of the "timestamp" field in the mutation.
+func (m *WaMessageMutation) Timestamp() (r time.Time, exists bool) {
+	v := m.timestamp
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTimestamp returns the old "timestamp" field's value of the WaMessage entity.
+// If the WaMessage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WaMessageMutation) OldTimestamp(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTimestamp is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTimestamp requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTimestamp: %w", err)
+	}
+	return oldValue.Timestamp, nil
+}
+
+// ResetTimestamp resets all changes to the "timestamp" field.
+func (m *WaMessageMutation) ResetTimestamp() {
+	m.timestamp = nil
+}
+
+// SetIsFromMe sets the "is_from_me" field.
+func (m *WaMessageMutation) SetIsFromMe(b bool) {
+	m.is_from_me = &b
+}
+
+// IsFromMe returns the value of the "is_from_me" field in the mutation.
+func (m *WaMessageMutation) IsFromMe() (r bool, exists bool) {
+	v := m.is_from_me
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIsFromMe returns the old "is_from_me" field's value of the WaMessage entity.
+// If the WaMessage object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WaMessageMutation) OldIsFromMe(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIsFromMe is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIsFromMe requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIsFromMe: %w", err)
+	}
+	return oldValue.IsFromMe, nil
+}
+
+// ResetIsFromMe resets all changes to the "is_from_me" field.
+func (m *WaMessageMutation) ResetIsFromMe() {
+	m.is_from_me = nil
+}
+
+// SetWaSessionID sets the "wa_session" edge to the WaSession entity by id.
+func (m *WaMessageMutation) SetWaSessionID(id string) {
+	m.wa_session = &id
+}
+
+// ClearWaSession clears the "wa_session" edge to the WaSession entity.
+func (m *WaMessageMutation) ClearWaSession() {
+	m.clearedwa_session = true
+}
+
+// WaSessionCleared reports if the "wa_session" edge to the WaSession entity was cleared.
+func (m *WaMessageMutation) WaSessionCleared() bool {
+	return m.clearedwa_session
+}
+
+// WaSessionID returns the "wa_session" edge ID in the mutation.
+func (m *WaMessageMutation) WaSessionID() (id string, exists bool) {
+	if m.wa_session != nil {
+		return *m.wa_session, true
+	}
+	return
+}
+
+// WaSessionIDs returns the "wa_session" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// WaSessionID instead. It exists only for internal usage by the builders.
+func (m *WaMessageMutation) WaSessionIDs() (ids []string) {
+	if id := m.wa_session; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetWaSession resets all changes to the "wa_session" edge.
+func (m *WaMessageMutation) ResetWaSession() {
+	m.wa_session = nil
+	m.clearedwa_session = false
+}
+
+// SetChatID sets the "chat" edge to the WaChat entity by id.
+func (m *WaMessageMutation) SetChatID(id int) {
+	m.chat = &id
+}
+
+// ClearChat clears the "chat" edge to the WaChat entity.
+func (m *WaMessageMutation) ClearChat() {
+	m.clearedchat = true
+}
+
+// ChatCleared reports if the "chat" edge to the WaChat entity was cleared.
+func (m *WaMessageMutation) ChatCleared() bool {
+	return m.clearedchat
+}
+
+// ChatID returns the "chat" edge ID in the mutation.
+func (m *WaMessageMutation) ChatID() (id int, exists bool) {
+	if m.chat != nil {
+		return *m.chat, true
+	}
+	return
+}
+
+// ChatIDs returns the "chat" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ChatID instead. It exists only for internal usage by the builders.
+func (m *WaMessageMutation) ChatIDs() (ids []int) {
+	if id := m.chat; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetChat resets all changes to the "chat" edge.
+func (m *WaMessageMutation) ResetChat() {
+	m.chat = nil
+	m.clearedchat = false
+}
+
+// Where appends a list predicates to the WaMessageMutation builder.
+func (m *WaMessageMutation) Where(ps ...predicate.WaMessage) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the WaMessageMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *WaMessageMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.WaMessage, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *WaMessageMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *WaMessageMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (WaMessage).
+func (m *WaMessageMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *WaMessageMutation) Fields() []string {
+	fields := make([]string, 0, 5)
+	if m.message_id != nil {
+		fields = append(fields, wamessage.FieldMessageID)
+	}
+	if m.sender_jid != nil {
+		fields = append(fields, wamessage.FieldSenderJid)
+	}
+	if m.content != nil {
+		fields = append(fields, wamessage.FieldContent)
+	}
+	if m.timestamp != nil {
+		fields = append(fields, wamessage.FieldTimestamp)
+	}
+	if m.is_from_me != nil {
+		fields = append(fields, wamessage.FieldIsFromMe)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *WaMessageMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case wamessage.FieldMessageID:
+		return m.MessageID()
+	case wamessage.FieldSenderJid:
+		return m.SenderJid()
+	case wamessage.FieldContent:
+		return m.Content()
+	case wamessage.FieldTimestamp:
+		return m.Timestamp()
+	case wamessage.FieldIsFromMe:
+		return m.IsFromMe()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *WaMessageMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case wamessage.FieldMessageID:
+		return m.OldMessageID(ctx)
+	case wamessage.FieldSenderJid:
+		return m.OldSenderJid(ctx)
+	case wamessage.FieldContent:
+		return m.OldContent(ctx)
+	case wamessage.FieldTimestamp:
+		return m.OldTimestamp(ctx)
+	case wamessage.FieldIsFromMe:
+		return m.OldIsFromMe(ctx)
+	}
+	return nil, fmt.Errorf("unknown WaMessage field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WaMessageMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case wamessage.FieldMessageID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMessageID(v)
+		return nil
+	case wamessage.FieldSenderJid:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSenderJid(v)
+		return nil
+	case wamessage.FieldContent:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetContent(v)
+		return nil
+	case wamessage.FieldTimestamp:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTimestamp(v)
+		return nil
+	case wamessage.FieldIsFromMe:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIsFromMe(v)
+		return nil
+	}
+	return fmt.Errorf("unknown WaMessage field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *WaMessageMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *WaMessageMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WaMessageMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown WaMessage numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *WaMessageMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(wamessage.FieldContent) {
+		fields = append(fields, wamessage.FieldContent)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *WaMessageMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *WaMessageMutation) ClearField(name string) error {
+	switch name {
+	case wamessage.FieldContent:
+		m.ClearContent()
+		return nil
+	}
+	return fmt.Errorf("unknown WaMessage nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *WaMessageMutation) ResetField(name string) error {
+	switch name {
+	case wamessage.FieldMessageID:
+		m.ResetMessageID()
+		return nil
+	case wamessage.FieldSenderJid:
+		m.ResetSenderJid()
+		return nil
+	case wamessage.FieldContent:
+		m.ResetContent()
+		return nil
+	case wamessage.FieldTimestamp:
+		m.ResetTimestamp()
+		return nil
+	case wamessage.FieldIsFromMe:
+		m.ResetIsFromMe()
+		return nil
+	}
+	return fmt.Errorf("unknown WaMessage field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *WaMessageMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.wa_session != nil {
+		edges = append(edges, wamessage.EdgeWaSession)
+	}
+	if m.chat != nil {
+		edges = append(edges, wamessage.EdgeChat)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *WaMessageMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case wamessage.EdgeWaSession:
+		if id := m.wa_session; id != nil {
+			return []ent.Value{*id}
+		}
+	case wamessage.EdgeChat:
+		if id := m.chat; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *WaMessageMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *WaMessageMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *WaMessageMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedwa_session {
+		edges = append(edges, wamessage.EdgeWaSession)
+	}
+	if m.clearedchat {
+		edges = append(edges, wamessage.EdgeChat)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *WaMessageMutation) EdgeCleared(name string) bool {
+	switch name {
+	case wamessage.EdgeWaSession:
+		return m.clearedwa_session
+	case wamessage.EdgeChat:
+		return m.clearedchat
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *WaMessageMutation) ClearEdge(name string) error {
+	switch name {
+	case wamessage.EdgeWaSession:
+		m.ClearWaSession()
+		return nil
+	case wamessage.EdgeChat:
+		m.ClearChat()
+		return nil
+	}
+	return fmt.Errorf("unknown WaMessage unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *WaMessageMutation) ResetEdge(name string) error {
+	switch name {
+	case wamessage.EdgeWaSession:
+		m.ResetWaSession()
+		return nil
+	case wamessage.EdgeChat:
+		m.ResetChat()
+		return nil
+	}
+	return fmt.Errorf("unknown WaMessage edge %s", name)
+}
+
+// WaSessionMutation represents an operation that mutates the WaSession nodes in the graph.
+type WaSessionMutation struct {
+	config
+	op              Op
+	typ             string
+	id              *string
+	jid             *string
+	status          *string
+	clearedFields   map[string]struct{}
+	user            *string
+	cleareduser     bool
+	contacts        map[int]struct{}
+	removedcontacts map[int]struct{}
+	clearedcontacts bool
+	chats           map[int]struct{}
+	removedchats    map[int]struct{}
+	clearedchats    bool
+	messages        map[int]struct{}
+	removedmessages map[int]struct{}
+	clearedmessages bool
+	done            bool
+	oldValue        func(context.Context) (*WaSession, error)
+	predicates      []predicate.WaSession
+}
+
+var _ ent.Mutation = (*WaSessionMutation)(nil)
+
+// wasessionOption allows management of the mutation configuration using functional options.
+type wasessionOption func(*WaSessionMutation)
+
+// newWaSessionMutation creates new mutation for the WaSession entity.
+func newWaSessionMutation(c config, op Op, opts ...wasessionOption) *WaSessionMutation {
+	m := &WaSessionMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeWaSession,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withWaSessionID sets the ID field of the mutation.
+func withWaSessionID(id string) wasessionOption {
+	return func(m *WaSessionMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *WaSession
+		)
+		m.oldValue = func(ctx context.Context) (*WaSession, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().WaSession.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withWaSession sets the old WaSession of the mutation.
+func withWaSession(node *WaSession) wasessionOption {
+	return func(m *WaSessionMutation) {
+		m.oldValue = func(context.Context) (*WaSession, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m WaSessionMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m WaSessionMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of WaSession entities.
+func (m *WaSessionMutation) SetID(id string) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *WaSessionMutation) ID() (id string, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *WaSessionMutation) IDs(ctx context.Context) ([]string, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []string{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().WaSession.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetJid sets the "jid" field.
+func (m *WaSessionMutation) SetJid(s string) {
+	m.jid = &s
+}
+
+// Jid returns the value of the "jid" field in the mutation.
+func (m *WaSessionMutation) Jid() (r string, exists bool) {
+	v := m.jid
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldJid returns the old "jid" field's value of the WaSession entity.
+// If the WaSession object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WaSessionMutation) OldJid(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldJid is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldJid requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldJid: %w", err)
+	}
+	return oldValue.Jid, nil
+}
+
+// ClearJid clears the value of the "jid" field.
+func (m *WaSessionMutation) ClearJid() {
+	m.jid = nil
+	m.clearedFields[wasession.FieldJid] = struct{}{}
+}
+
+// JidCleared returns if the "jid" field was cleared in this mutation.
+func (m *WaSessionMutation) JidCleared() bool {
+	_, ok := m.clearedFields[wasession.FieldJid]
+	return ok
+}
+
+// ResetJid resets all changes to the "jid" field.
+func (m *WaSessionMutation) ResetJid() {
+	m.jid = nil
+	delete(m.clearedFields, wasession.FieldJid)
+}
+
+// SetStatus sets the "status" field.
+func (m *WaSessionMutation) SetStatus(s string) {
+	m.status = &s
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *WaSessionMutation) Status() (r string, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the WaSession entity.
+// If the WaSession object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *WaSessionMutation) OldStatus(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *WaSessionMutation) ResetStatus() {
+	m.status = nil
+}
+
+// SetUserID sets the "user" edge to the User entity by id.
+func (m *WaSessionMutation) SetUserID(id string) {
+	m.user = &id
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (m *WaSessionMutation) ClearUser() {
+	m.cleareduser = true
+}
+
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *WaSessionMutation) UserCleared() bool {
+	return m.cleareduser
+}
+
+// UserID returns the "user" edge ID in the mutation.
+func (m *WaSessionMutation) UserID() (id string, exists bool) {
+	if m.user != nil {
+		return *m.user, true
+	}
+	return
+}
+
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *WaSessionMutation) UserIDs() (ids []string) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUser resets all changes to the "user" edge.
+func (m *WaSessionMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
+}
+
+// AddContactIDs adds the "contacts" edge to the WaContact entity by ids.
+func (m *WaSessionMutation) AddContactIDs(ids ...int) {
+	if m.contacts == nil {
+		m.contacts = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.contacts[ids[i]] = struct{}{}
+	}
+}
+
+// ClearContacts clears the "contacts" edge to the WaContact entity.
+func (m *WaSessionMutation) ClearContacts() {
+	m.clearedcontacts = true
+}
+
+// ContactsCleared reports if the "contacts" edge to the WaContact entity was cleared.
+func (m *WaSessionMutation) ContactsCleared() bool {
+	return m.clearedcontacts
+}
+
+// RemoveContactIDs removes the "contacts" edge to the WaContact entity by IDs.
+func (m *WaSessionMutation) RemoveContactIDs(ids ...int) {
+	if m.removedcontacts == nil {
+		m.removedcontacts = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.contacts, ids[i])
+		m.removedcontacts[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedContacts returns the removed IDs of the "contacts" edge to the WaContact entity.
+func (m *WaSessionMutation) RemovedContactsIDs() (ids []int) {
+	for id := range m.removedcontacts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ContactsIDs returns the "contacts" edge IDs in the mutation.
+func (m *WaSessionMutation) ContactsIDs() (ids []int) {
+	for id := range m.contacts {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetContacts resets all changes to the "contacts" edge.
+func (m *WaSessionMutation) ResetContacts() {
+	m.contacts = nil
+	m.clearedcontacts = false
+	m.removedcontacts = nil
+}
+
+// AddChatIDs adds the "chats" edge to the WaChat entity by ids.
+func (m *WaSessionMutation) AddChatIDs(ids ...int) {
+	if m.chats == nil {
+		m.chats = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.chats[ids[i]] = struct{}{}
+	}
+}
+
+// ClearChats clears the "chats" edge to the WaChat entity.
+func (m *WaSessionMutation) ClearChats() {
+	m.clearedchats = true
+}
+
+// ChatsCleared reports if the "chats" edge to the WaChat entity was cleared.
+func (m *WaSessionMutation) ChatsCleared() bool {
+	return m.clearedchats
+}
+
+// RemoveChatIDs removes the "chats" edge to the WaChat entity by IDs.
+func (m *WaSessionMutation) RemoveChatIDs(ids ...int) {
+	if m.removedchats == nil {
+		m.removedchats = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.chats, ids[i])
+		m.removedchats[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedChats returns the removed IDs of the "chats" edge to the WaChat entity.
+func (m *WaSessionMutation) RemovedChatsIDs() (ids []int) {
+	for id := range m.removedchats {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ChatsIDs returns the "chats" edge IDs in the mutation.
+func (m *WaSessionMutation) ChatsIDs() (ids []int) {
+	for id := range m.chats {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetChats resets all changes to the "chats" edge.
+func (m *WaSessionMutation) ResetChats() {
+	m.chats = nil
+	m.clearedchats = false
+	m.removedchats = nil
+}
+
+// AddMessageIDs adds the "messages" edge to the WaMessage entity by ids.
+func (m *WaSessionMutation) AddMessageIDs(ids ...int) {
+	if m.messages == nil {
+		m.messages = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.messages[ids[i]] = struct{}{}
+	}
+}
+
+// ClearMessages clears the "messages" edge to the WaMessage entity.
+func (m *WaSessionMutation) ClearMessages() {
+	m.clearedmessages = true
+}
+
+// MessagesCleared reports if the "messages" edge to the WaMessage entity was cleared.
+func (m *WaSessionMutation) MessagesCleared() bool {
+	return m.clearedmessages
+}
+
+// RemoveMessageIDs removes the "messages" edge to the WaMessage entity by IDs.
+func (m *WaSessionMutation) RemoveMessageIDs(ids ...int) {
+	if m.removedmessages == nil {
+		m.removedmessages = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.messages, ids[i])
+		m.removedmessages[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedMessages returns the removed IDs of the "messages" edge to the WaMessage entity.
+func (m *WaSessionMutation) RemovedMessagesIDs() (ids []int) {
+	for id := range m.removedmessages {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// MessagesIDs returns the "messages" edge IDs in the mutation.
+func (m *WaSessionMutation) MessagesIDs() (ids []int) {
+	for id := range m.messages {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetMessages resets all changes to the "messages" edge.
+func (m *WaSessionMutation) ResetMessages() {
+	m.messages = nil
+	m.clearedmessages = false
+	m.removedmessages = nil
+}
+
+// Where appends a list predicates to the WaSessionMutation builder.
+func (m *WaSessionMutation) Where(ps ...predicate.WaSession) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the WaSessionMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *WaSessionMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.WaSession, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *WaSessionMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *WaSessionMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (WaSession).
+func (m *WaSessionMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *WaSessionMutation) Fields() []string {
+	fields := make([]string, 0, 2)
+	if m.jid != nil {
+		fields = append(fields, wasession.FieldJid)
+	}
+	if m.status != nil {
+		fields = append(fields, wasession.FieldStatus)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *WaSessionMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case wasession.FieldJid:
+		return m.Jid()
+	case wasession.FieldStatus:
+		return m.Status()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *WaSessionMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case wasession.FieldJid:
+		return m.OldJid(ctx)
+	case wasession.FieldStatus:
+		return m.OldStatus(ctx)
+	}
+	return nil, fmt.Errorf("unknown WaSession field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WaSessionMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case wasession.FieldJid:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetJid(v)
+		return nil
+	case wasession.FieldStatus:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	}
+	return fmt.Errorf("unknown WaSession field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *WaSessionMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *WaSessionMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *WaSessionMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown WaSession numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *WaSessionMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(wasession.FieldJid) {
+		fields = append(fields, wasession.FieldJid)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *WaSessionMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *WaSessionMutation) ClearField(name string) error {
+	switch name {
+	case wasession.FieldJid:
+		m.ClearJid()
+		return nil
+	}
+	return fmt.Errorf("unknown WaSession nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *WaSessionMutation) ResetField(name string) error {
+	switch name {
+	case wasession.FieldJid:
+		m.ResetJid()
+		return nil
+	case wasession.FieldStatus:
+		m.ResetStatus()
+		return nil
+	}
+	return fmt.Errorf("unknown WaSession field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *WaSessionMutation) AddedEdges() []string {
+	edges := make([]string, 0, 4)
+	if m.user != nil {
+		edges = append(edges, wasession.EdgeUser)
+	}
+	if m.contacts != nil {
+		edges = append(edges, wasession.EdgeContacts)
+	}
+	if m.chats != nil {
+		edges = append(edges, wasession.EdgeChats)
+	}
+	if m.messages != nil {
+		edges = append(edges, wasession.EdgeMessages)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *WaSessionMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case wasession.EdgeUser:
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
+	case wasession.EdgeContacts:
+		ids := make([]ent.Value, 0, len(m.contacts))
+		for id := range m.contacts {
+			ids = append(ids, id)
+		}
+		return ids
+	case wasession.EdgeChats:
+		ids := make([]ent.Value, 0, len(m.chats))
+		for id := range m.chats {
+			ids = append(ids, id)
+		}
+		return ids
+	case wasession.EdgeMessages:
+		ids := make([]ent.Value, 0, len(m.messages))
+		for id := range m.messages {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *WaSessionMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 4)
+	if m.removedcontacts != nil {
+		edges = append(edges, wasession.EdgeContacts)
+	}
+	if m.removedchats != nil {
+		edges = append(edges, wasession.EdgeChats)
+	}
+	if m.removedmessages != nil {
+		edges = append(edges, wasession.EdgeMessages)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *WaSessionMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case wasession.EdgeContacts:
+		ids := make([]ent.Value, 0, len(m.removedcontacts))
+		for id := range m.removedcontacts {
+			ids = append(ids, id)
+		}
+		return ids
+	case wasession.EdgeChats:
+		ids := make([]ent.Value, 0, len(m.removedchats))
+		for id := range m.removedchats {
+			ids = append(ids, id)
+		}
+		return ids
+	case wasession.EdgeMessages:
+		ids := make([]ent.Value, 0, len(m.removedmessages))
+		for id := range m.removedmessages {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *WaSessionMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 4)
+	if m.cleareduser {
+		edges = append(edges, wasession.EdgeUser)
+	}
+	if m.clearedcontacts {
+		edges = append(edges, wasession.EdgeContacts)
+	}
+	if m.clearedchats {
+		edges = append(edges, wasession.EdgeChats)
+	}
+	if m.clearedmessages {
+		edges = append(edges, wasession.EdgeMessages)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *WaSessionMutation) EdgeCleared(name string) bool {
+	switch name {
+	case wasession.EdgeUser:
+		return m.cleareduser
+	case wasession.EdgeContacts:
+		return m.clearedcontacts
+	case wasession.EdgeChats:
+		return m.clearedchats
+	case wasession.EdgeMessages:
+		return m.clearedmessages
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *WaSessionMutation) ClearEdge(name string) error {
+	switch name {
+	case wasession.EdgeUser:
+		m.ClearUser()
+		return nil
+	}
+	return fmt.Errorf("unknown WaSession unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *WaSessionMutation) ResetEdge(name string) error {
+	switch name {
+	case wasession.EdgeUser:
+		m.ResetUser()
+		return nil
+	case wasession.EdgeContacts:
+		m.ResetContacts()
+		return nil
+	case wasession.EdgeChats:
+		m.ResetChats()
+		return nil
+	case wasession.EdgeMessages:
+		m.ResetMessages()
+		return nil
+	}
+	return fmt.Errorf("unknown WaSession edge %s", name)
 }

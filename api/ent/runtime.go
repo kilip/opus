@@ -8,6 +8,9 @@ import (
 	"github.com/kilip/opus/api/ent/schema"
 	"github.com/kilip/opus/api/ent/session"
 	"github.com/kilip/opus/api/ent/user"
+	"github.com/kilip/opus/api/ent/wachat"
+	"github.com/kilip/opus/api/ent/wamessage"
+	"github.com/kilip/opus/api/ent/wasession"
 )
 
 // The init function reads all schema descriptors with runtime code
@@ -36,4 +39,26 @@ func init() {
 	user.DefaultUpdatedAt = userDescUpdatedAt.Default.(func() time.Time)
 	// user.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	user.UpdateDefaultUpdatedAt = userDescUpdatedAt.UpdateDefault.(func() time.Time)
+	wachatFields := schema.WaChat{}.Fields()
+	_ = wachatFields
+	// wachatDescUnreadCount is the schema descriptor for unread_count field.
+	wachatDescUnreadCount := wachatFields[2].Descriptor()
+	// wachat.DefaultUnreadCount holds the default value on creation for the unread_count field.
+	wachat.DefaultUnreadCount = wachatDescUnreadCount.Default.(int)
+	wamessageFields := schema.WaMessage{}.Fields()
+	_ = wamessageFields
+	// wamessageDescTimestamp is the schema descriptor for timestamp field.
+	wamessageDescTimestamp := wamessageFields[3].Descriptor()
+	// wamessage.DefaultTimestamp holds the default value on creation for the timestamp field.
+	wamessage.DefaultTimestamp = wamessageDescTimestamp.Default.(func() time.Time)
+	// wamessageDescIsFromMe is the schema descriptor for is_from_me field.
+	wamessageDescIsFromMe := wamessageFields[4].Descriptor()
+	// wamessage.DefaultIsFromMe holds the default value on creation for the is_from_me field.
+	wamessage.DefaultIsFromMe = wamessageDescIsFromMe.Default.(bool)
+	wasessionFields := schema.WaSession{}.Fields()
+	_ = wasessionFields
+	// wasessionDescStatus is the schema descriptor for status field.
+	wasessionDescStatus := wasessionFields[2].Descriptor()
+	// wasession.DefaultStatus holds the default value on creation for the status field.
+	wasession.DefaultStatus = wasessionDescStatus.Default.(string)
 }

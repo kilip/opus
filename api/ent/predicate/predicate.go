@@ -11,3 +11,15 @@ type Session func(*sql.Selector)
 
 // User is the predicate function for user builders.
 type User func(*sql.Selector)
+
+// WaChat is the predicate function for wachat builders.
+type WaChat func(*sql.Selector)
+
+// WaContact is the predicate function for wacontact builders.
+type WaContact func(*sql.Selector)
+
+// WaMessage is the predicate function for wamessage builders.
+type WaMessage func(*sql.Selector)
+
+// WaSession is the predicate function for wasession builders.
+type WaSession func(*sql.Selector)

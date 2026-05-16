@@ -19,7 +19,7 @@ The backend will use `go.mau.fi/whatsmeow` with its built-in `sqlstore` for What
 - Create: `api/ent/schema/wachat.go`
 - Create: `api/ent/schema/wamessage.go`
 
-- [ ] **Step 1: Create `WaSession` schema**
+- [x] **Step 1: Create `WaSession` schema**
 ```go
 package schema
 
@@ -51,13 +51,13 @@ func (WaSession) Edges() []ent.Edge {
 }
 ```
 
-- [ ] **Step 2: Update `User` schema (`api/ent/schema/user.go`) to add Edge**
+- [x] **Step 2: Update `User` schema (`api/ent/schema/user.go`) to add Edge**
 ```go
 // Add to Edges()
 edge.To("wa_session", WaSession.Type).Unique(),
 ```
 
-- [ ] **Step 3: Create `WaContact` schema**
+- [x] **Step 3: Create `WaContact` schema**
 ```go
 package schema
 
@@ -86,7 +86,7 @@ func (WaContact) Edges() []ent.Edge {
 }
 ```
 
-- [ ] **Step 4: Create `WaChat` schema**
+- [x] **Step 4: Create `WaChat` schema**
 ```go
 package schema
 
@@ -116,7 +116,7 @@ func (WaChat) Edges() []ent.Edge {
 }
 ```
 
-- [ ] **Step 5: Create `WaMessage` schema**
+- [x] **Step 5: Create `WaMessage` schema**
 ```go
 package schema
 
@@ -149,11 +149,11 @@ func (WaMessage) Edges() []ent.Edge {
 }
 ```
 
-- [ ] **Step 6: Run Ent code generation**
+- [x] **Step 6: Run Ent code generation**
 Run: `cd api && task ent:generate`
 Expected: Code generation completes successfully.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 ```bash
 git add api/ent/
 git commit -m "feat(api): add whatsapp ent schemas for session, contact, chat, and message"
@@ -167,7 +167,7 @@ git commit -m "feat(api): add whatsapp ent schemas for session, contact, chat, a
 - Create: `api/internal/service/whatsapp.go`
 - Create: `api/mocks/mock_whatsapp_service.go`
 
-- [ ] **Step 1: Define `WhatsAppService` interface**
+- [x] **Step 1: Define `WhatsAppService` interface**
 ```go
 package service
 
@@ -183,11 +183,11 @@ type WhatsAppService interface {
 }
 ```
 
-- [ ] **Step 2: Generate mock for WhatsAppService**
+- [x] **Step 2: Generate mock for WhatsAppService**
 Run: `cd api && mockgen -source=internal/service/whatsapp.go -destination=mocks/mock_whatsapp_service.go -package=mocks`
 Expected: Mock file generated successfully.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 ```bash
 git add api/internal/service/whatsapp.go api/mocks/mock_whatsapp_service.go
 git commit -m "feat(api): define WhatsAppService interface and mock"
@@ -201,7 +201,7 @@ git commit -m "feat(api): define WhatsAppService interface and mock"
 - Create: `api/internal/delivery/fiber/handler/whatsapp_test.go`
 - Create: `api/internal/delivery/fiber/handler/whatsapp.go`
 
-- [ ] **Step 1: Write failing tests for WhatsApp Handler**
+- [x] **Step 1: Write failing tests for WhatsApp Handler**
 ```go
 package handler
 
@@ -272,11 +272,11 @@ func TestWhatsAppHandler_Send(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 Run: `cd api && go test ./internal/delivery/fiber/handler -run TestWhatsAppHandler -v`
 Expected: FAIL (NewWhatsAppHandler not defined)
 
-- [ ] **Step 3: Implement WhatsApp Handler**
+- [x] **Step 3: Implement WhatsApp Handler**
 ```go
 package handler
 
@@ -368,11 +368,11 @@ func (h *WhatsAppHandler) Send(c fiber.Ctx) error {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 Run: `cd api && go test ./internal/delivery/fiber/handler -run TestWhatsAppHandler -v`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 ```bash
 git add api/internal/delivery/fiber/handler/whatsapp.go api/internal/delivery/fiber/handler/whatsapp_test.go
 git commit -m "feat(api): implement WhatsApp HTTP handler"
@@ -385,11 +385,11 @@ git commit -m "feat(api): implement WhatsApp HTTP handler"
 **Files:**
 - Modify: `api/go.mod`
 
-- [ ] **Step 1: Install `whatsmeow` and `go-sqlite3` (for sqlstore)**
+- [x] **Step 1: Install `whatsmeow` and `go-sqlite3` (for sqlstore)**
 Run: `cd api && go get go.mau.fi/whatsmeow@latest && go get github.com/mattn/go-sqlite3@latest`
 Expected: Dependencies downloaded.
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 ```bash
 git add api/go.mod api/go.sum
 git commit -m "chore(api): add whatsmeow dependencies"
@@ -403,7 +403,7 @@ git commit -m "chore(api): add whatsmeow dependencies"
 - Create: `api/internal/repository/whatsapp_test.go`
 - Create: `api/internal/repository/whatsapp.go`
 
-- [ ] **Step 1: Write failing integration test for Repository**
+- [x] **Step 1: Write failing integration test for Repository**
 ```go
 // +build integration
 
@@ -439,11 +439,11 @@ func TestWhatsAppRepository(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 Run: `cd api && go test ./internal/repository -tags=integration -run TestWhatsAppRepository -v`
 Expected: FAIL (NewWhatsAppRepository not defined)
 
-- [ ] **Step 3: Implement WhatsApp Repository**
+- [x] **Step 3: Implement WhatsApp Repository**
 ```go
 package repository
 
@@ -507,11 +507,11 @@ func (r *whatsappRepo) GetSessionByUserID(ctx context.Context, userID string) (*
 ```
 *(Note: Minor ent syntax adjustments might be needed depending on the exact generated code for edge querying/setting).*
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 Run: `cd api && go test ./internal/repository -tags=integration -run TestWhatsAppRepository -v`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 ```bash
 git add api/internal/repository/whatsapp.go api/internal/repository/whatsapp_test.go
 git commit -m "feat(api): implement WhatsApp repository for session state"
@@ -525,7 +525,7 @@ git commit -m "feat(api): implement WhatsApp repository for session state"
 - Create: `dash/app/(dashboard)/settings/whatsapp/page.tsx`
 - Modify: `dash/components/ui/button.tsx` (ensure it exists, or create simple stub if needed - assumed exists via shadcn)
 
-- [ ] **Step 1: Write the React component**
+- [x] **Step 1: Write the React component**
 ```tsx
 "use client";
 
@@ -612,7 +612,7 @@ export default function WhatsAppSettingsPage() {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 ```bash
 git add dash/app/\(dashboard\)/settings/whatsapp/page.tsx
 git commit -m "feat(dash): add WhatsApp settings page for connecting"
@@ -625,7 +625,7 @@ git commit -m "feat(dash): add WhatsApp settings page for connecting"
 **Files:**
 - Create: `dash/app/(dashboard)/whatsapp/chat/page.tsx`
 
-- [ ] **Step 1: Write the Chat component**
+- [x] **Step 1: Write the Chat component**
 ```tsx
 "use client";
 
@@ -694,7 +694,7 @@ export default function WhatsAppChatPage() {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 ```bash
 git add dash/app/\(dashboard\)/whatsapp/chat/page.tsx
 git commit -m "feat(dash): add basic WhatsApp message sending UI"

@@ -33,6 +33,54 @@ func (f UserFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error)
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.UserMutation", m)
 }
 
+// The WaChatFunc type is an adapter to allow the use of ordinary
+// function as WaChat mutator.
+type WaChatFunc func(context.Context, *ent.WaChatMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f WaChatFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.WaChatMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.WaChatMutation", m)
+}
+
+// The WaContactFunc type is an adapter to allow the use of ordinary
+// function as WaContact mutator.
+type WaContactFunc func(context.Context, *ent.WaContactMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f WaContactFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.WaContactMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.WaContactMutation", m)
+}
+
+// The WaMessageFunc type is an adapter to allow the use of ordinary
+// function as WaMessage mutator.
+type WaMessageFunc func(context.Context, *ent.WaMessageMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f WaMessageFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.WaMessageMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.WaMessageMutation", m)
+}
+
+// The WaSessionFunc type is an adapter to allow the use of ordinary
+// function as WaSession mutator.
+type WaSessionFunc func(context.Context, *ent.WaSessionMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f WaSessionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.WaSessionMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.WaSessionMutation", m)
+}
+
 // Condition is a hook condition function.
 type Condition func(context.Context, ent.Mutation) bool
 

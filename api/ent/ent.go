@@ -14,6 +14,10 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/kilip/opus/api/ent/session"
 	"github.com/kilip/opus/api/ent/user"
+	"github.com/kilip/opus/api/ent/wachat"
+	"github.com/kilip/opus/api/ent/wacontact"
+	"github.com/kilip/opus/api/ent/wamessage"
+	"github.com/kilip/opus/api/ent/wasession"
 )
 
 // ent aliases to avoid import conflicts in user's code.
@@ -74,8 +78,12 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			session.Table: session.ValidColumn,
-			user.Table:    user.ValidColumn,
+			session.Table:   session.ValidColumn,
+			user.Table:      user.ValidColumn,
+			wachat.Table:    wachat.ValidColumn,
+			wacontact.Table: wacontact.ValidColumn,
+			wamessage.Table: wamessage.ValidColumn,
+			wasession.Table: wasession.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

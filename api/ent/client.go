@@ -17,6 +17,10 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/kilip/opus/api/ent/session"
 	"github.com/kilip/opus/api/ent/user"
+	"github.com/kilip/opus/api/ent/wachat"
+	"github.com/kilip/opus/api/ent/wacontact"
+	"github.com/kilip/opus/api/ent/wamessage"
+	"github.com/kilip/opus/api/ent/wasession"
 )
 
 // Client is the client that holds all ent builders.
@@ -28,6 +32,14 @@ type Client struct {
 	Session *SessionClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
+	// WaChat is the client for interacting with the WaChat builders.
+	WaChat *WaChatClient
+	// WaContact is the client for interacting with the WaContact builders.
+	WaContact *WaContactClient
+	// WaMessage is the client for interacting with the WaMessage builders.
+	WaMessage *WaMessageClient
+	// WaSession is the client for interacting with the WaSession builders.
+	WaSession *WaSessionClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -41,6 +53,10 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Session = NewSessionClient(c.config)
 	c.User = NewUserClient(c.config)
+	c.WaChat = NewWaChatClient(c.config)
+	c.WaContact = NewWaContactClient(c.config)
+	c.WaMessage = NewWaMessageClient(c.config)
+	c.WaSession = NewWaSessionClient(c.config)
 }
 
 type (
@@ -131,10 +147,14 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:     ctx,
-		config:  cfg,
-		Session: NewSessionClient(cfg),
-		User:    NewUserClient(cfg),
+		ctx:       ctx,
+		config:    cfg,
+		Session:   NewSessionClient(cfg),
+		User:      NewUserClient(cfg),
+		WaChat:    NewWaChatClient(cfg),
+		WaContact: NewWaContactClient(cfg),
+		WaMessage: NewWaMessageClient(cfg),
+		WaSession: NewWaSessionClient(cfg),
 	}, nil
 }
 
@@ -152,10 +172,14 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:     ctx,
-		config:  cfg,
-		Session: NewSessionClient(cfg),
-		User:    NewUserClient(cfg),
+		ctx:       ctx,
+		config:    cfg,
+		Session:   NewSessionClient(cfg),
+		User:      NewUserClient(cfg),
+		WaChat:    NewWaChatClient(cfg),
+		WaContact: NewWaContactClient(cfg),
+		WaMessage: NewWaMessageClient(cfg),
+		WaSession: NewWaSessionClient(cfg),
 	}, nil
 }
 
@@ -184,15 +208,21 @@ func (c *Client) Close() error {
 // Use adds the mutation hooks to all the entity clients.
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
-	c.Session.Use(hooks...)
-	c.User.Use(hooks...)
+	for _, n := range []interface{ Use(...Hook) }{
+		c.Session, c.User, c.WaChat, c.WaContact, c.WaMessage, c.WaSession,
+	} {
+		n.Use(hooks...)
+	}
 }
 
 // Intercept adds the query interceptors to all the entity clients.
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
-	c.Session.Intercept(interceptors...)
-	c.User.Intercept(interceptors...)
+	for _, n := range []interface{ Intercept(...Interceptor) }{
+		c.Session, c.User, c.WaChat, c.WaContact, c.WaMessage, c.WaSession,
+	} {
+		n.Intercept(interceptors...)
+	}
 }
 
 // Mutate implements the ent.Mutator interface.
@@ -202,6 +232,14 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Session.mutate(ctx, m)
 	case *UserMutation:
 		return c.User.mutate(ctx, m)
+	case *WaChatMutation:
+		return c.WaChat.mutate(ctx, m)
+	case *WaContactMutation:
+		return c.WaContact.mutate(ctx, m)
+	case *WaMessageMutation:
+		return c.WaMessage.mutate(ctx, m)
+	case *WaSessionMutation:
+		return c.WaSession.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
 	}
@@ -480,6 +518,22 @@ func (c *UserClient) QuerySessions(_m *User) *SessionQuery {
 	return query
 }
 
+// QueryWaSession queries the wa_session edge of a User.
+func (c *UserClient) QueryWaSession(_m *User) *WaSessionQuery {
+	query := (&WaSessionClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(wasession.Table, wasession.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, user.WaSessionTable, user.WaSessionColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *UserClient) Hooks() []Hook {
 	return c.hooks.User
@@ -505,12 +559,688 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 	}
 }
 
+// WaChatClient is a client for the WaChat schema.
+type WaChatClient struct {
+	config
+}
+
+// NewWaChatClient returns a client for the WaChat from the given config.
+func NewWaChatClient(c config) *WaChatClient {
+	return &WaChatClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `wachat.Hooks(f(g(h())))`.
+func (c *WaChatClient) Use(hooks ...Hook) {
+	c.hooks.WaChat = append(c.hooks.WaChat, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `wachat.Intercept(f(g(h())))`.
+func (c *WaChatClient) Intercept(interceptors ...Interceptor) {
+	c.inters.WaChat = append(c.inters.WaChat, interceptors...)
+}
+
+// Create returns a builder for creating a WaChat entity.
+func (c *WaChatClient) Create() *WaChatCreate {
+	mutation := newWaChatMutation(c.config, OpCreate)
+	return &WaChatCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of WaChat entities.
+func (c *WaChatClient) CreateBulk(builders ...*WaChatCreate) *WaChatCreateBulk {
+	return &WaChatCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *WaChatClient) MapCreateBulk(slice any, setFunc func(*WaChatCreate, int)) *WaChatCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &WaChatCreateBulk{err: fmt.Errorf("calling to WaChatClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*WaChatCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &WaChatCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for WaChat.
+func (c *WaChatClient) Update() *WaChatUpdate {
+	mutation := newWaChatMutation(c.config, OpUpdate)
+	return &WaChatUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *WaChatClient) UpdateOne(_m *WaChat) *WaChatUpdateOne {
+	mutation := newWaChatMutation(c.config, OpUpdateOne, withWaChat(_m))
+	return &WaChatUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *WaChatClient) UpdateOneID(id int) *WaChatUpdateOne {
+	mutation := newWaChatMutation(c.config, OpUpdateOne, withWaChatID(id))
+	return &WaChatUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for WaChat.
+func (c *WaChatClient) Delete() *WaChatDelete {
+	mutation := newWaChatMutation(c.config, OpDelete)
+	return &WaChatDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *WaChatClient) DeleteOne(_m *WaChat) *WaChatDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *WaChatClient) DeleteOneID(id int) *WaChatDeleteOne {
+	builder := c.Delete().Where(wachat.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &WaChatDeleteOne{builder}
+}
+
+// Query returns a query builder for WaChat.
+func (c *WaChatClient) Query() *WaChatQuery {
+	return &WaChatQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeWaChat},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a WaChat entity by its id.
+func (c *WaChatClient) Get(ctx context.Context, id int) (*WaChat, error) {
+	return c.Query().Where(wachat.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *WaChatClient) GetX(ctx context.Context, id int) *WaChat {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryWaSession queries the wa_session edge of a WaChat.
+func (c *WaChatClient) QueryWaSession(_m *WaChat) *WaSessionQuery {
+	query := (&WaSessionClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(wachat.Table, wachat.FieldID, id),
+			sqlgraph.To(wasession.Table, wasession.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, wachat.WaSessionTable, wachat.WaSessionColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryMessages queries the messages edge of a WaChat.
+func (c *WaChatClient) QueryMessages(_m *WaChat) *WaMessageQuery {
+	query := (&WaMessageClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(wachat.Table, wachat.FieldID, id),
+			sqlgraph.To(wamessage.Table, wamessage.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, wachat.MessagesTable, wachat.MessagesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *WaChatClient) Hooks() []Hook {
+	return c.hooks.WaChat
+}
+
+// Interceptors returns the client interceptors.
+func (c *WaChatClient) Interceptors() []Interceptor {
+	return c.inters.WaChat
+}
+
+func (c *WaChatClient) mutate(ctx context.Context, m *WaChatMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&WaChatCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&WaChatUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&WaChatUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&WaChatDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown WaChat mutation op: %q", m.Op())
+	}
+}
+
+// WaContactClient is a client for the WaContact schema.
+type WaContactClient struct {
+	config
+}
+
+// NewWaContactClient returns a client for the WaContact from the given config.
+func NewWaContactClient(c config) *WaContactClient {
+	return &WaContactClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `wacontact.Hooks(f(g(h())))`.
+func (c *WaContactClient) Use(hooks ...Hook) {
+	c.hooks.WaContact = append(c.hooks.WaContact, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `wacontact.Intercept(f(g(h())))`.
+func (c *WaContactClient) Intercept(interceptors ...Interceptor) {
+	c.inters.WaContact = append(c.inters.WaContact, interceptors...)
+}
+
+// Create returns a builder for creating a WaContact entity.
+func (c *WaContactClient) Create() *WaContactCreate {
+	mutation := newWaContactMutation(c.config, OpCreate)
+	return &WaContactCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of WaContact entities.
+func (c *WaContactClient) CreateBulk(builders ...*WaContactCreate) *WaContactCreateBulk {
+	return &WaContactCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *WaContactClient) MapCreateBulk(slice any, setFunc func(*WaContactCreate, int)) *WaContactCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &WaContactCreateBulk{err: fmt.Errorf("calling to WaContactClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*WaContactCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &WaContactCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for WaContact.
+func (c *WaContactClient) Update() *WaContactUpdate {
+	mutation := newWaContactMutation(c.config, OpUpdate)
+	return &WaContactUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *WaContactClient) UpdateOne(_m *WaContact) *WaContactUpdateOne {
+	mutation := newWaContactMutation(c.config, OpUpdateOne, withWaContact(_m))
+	return &WaContactUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *WaContactClient) UpdateOneID(id int) *WaContactUpdateOne {
+	mutation := newWaContactMutation(c.config, OpUpdateOne, withWaContactID(id))
+	return &WaContactUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for WaContact.
+func (c *WaContactClient) Delete() *WaContactDelete {
+	mutation := newWaContactMutation(c.config, OpDelete)
+	return &WaContactDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *WaContactClient) DeleteOne(_m *WaContact) *WaContactDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *WaContactClient) DeleteOneID(id int) *WaContactDeleteOne {
+	builder := c.Delete().Where(wacontact.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &WaContactDeleteOne{builder}
+}
+
+// Query returns a query builder for WaContact.
+func (c *WaContactClient) Query() *WaContactQuery {
+	return &WaContactQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeWaContact},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a WaContact entity by its id.
+func (c *WaContactClient) Get(ctx context.Context, id int) (*WaContact, error) {
+	return c.Query().Where(wacontact.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *WaContactClient) GetX(ctx context.Context, id int) *WaContact {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryWaSession queries the wa_session edge of a WaContact.
+func (c *WaContactClient) QueryWaSession(_m *WaContact) *WaSessionQuery {
+	query := (&WaSessionClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(wacontact.Table, wacontact.FieldID, id),
+			sqlgraph.To(wasession.Table, wasession.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, wacontact.WaSessionTable, wacontact.WaSessionColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *WaContactClient) Hooks() []Hook {
+	return c.hooks.WaContact
+}
+
+// Interceptors returns the client interceptors.
+func (c *WaContactClient) Interceptors() []Interceptor {
+	return c.inters.WaContact
+}
+
+func (c *WaContactClient) mutate(ctx context.Context, m *WaContactMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&WaContactCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&WaContactUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&WaContactUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&WaContactDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown WaContact mutation op: %q", m.Op())
+	}
+}
+
+// WaMessageClient is a client for the WaMessage schema.
+type WaMessageClient struct {
+	config
+}
+
+// NewWaMessageClient returns a client for the WaMessage from the given config.
+func NewWaMessageClient(c config) *WaMessageClient {
+	return &WaMessageClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `wamessage.Hooks(f(g(h())))`.
+func (c *WaMessageClient) Use(hooks ...Hook) {
+	c.hooks.WaMessage = append(c.hooks.WaMessage, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `wamessage.Intercept(f(g(h())))`.
+func (c *WaMessageClient) Intercept(interceptors ...Interceptor) {
+	c.inters.WaMessage = append(c.inters.WaMessage, interceptors...)
+}
+
+// Create returns a builder for creating a WaMessage entity.
+func (c *WaMessageClient) Create() *WaMessageCreate {
+	mutation := newWaMessageMutation(c.config, OpCreate)
+	return &WaMessageCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of WaMessage entities.
+func (c *WaMessageClient) CreateBulk(builders ...*WaMessageCreate) *WaMessageCreateBulk {
+	return &WaMessageCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *WaMessageClient) MapCreateBulk(slice any, setFunc func(*WaMessageCreate, int)) *WaMessageCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &WaMessageCreateBulk{err: fmt.Errorf("calling to WaMessageClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*WaMessageCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &WaMessageCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for WaMessage.
+func (c *WaMessageClient) Update() *WaMessageUpdate {
+	mutation := newWaMessageMutation(c.config, OpUpdate)
+	return &WaMessageUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *WaMessageClient) UpdateOne(_m *WaMessage) *WaMessageUpdateOne {
+	mutation := newWaMessageMutation(c.config, OpUpdateOne, withWaMessage(_m))
+	return &WaMessageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *WaMessageClient) UpdateOneID(id int) *WaMessageUpdateOne {
+	mutation := newWaMessageMutation(c.config, OpUpdateOne, withWaMessageID(id))
+	return &WaMessageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for WaMessage.
+func (c *WaMessageClient) Delete() *WaMessageDelete {
+	mutation := newWaMessageMutation(c.config, OpDelete)
+	return &WaMessageDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *WaMessageClient) DeleteOne(_m *WaMessage) *WaMessageDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *WaMessageClient) DeleteOneID(id int) *WaMessageDeleteOne {
+	builder := c.Delete().Where(wamessage.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &WaMessageDeleteOne{builder}
+}
+
+// Query returns a query builder for WaMessage.
+func (c *WaMessageClient) Query() *WaMessageQuery {
+	return &WaMessageQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeWaMessage},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a WaMessage entity by its id.
+func (c *WaMessageClient) Get(ctx context.Context, id int) (*WaMessage, error) {
+	return c.Query().Where(wamessage.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *WaMessageClient) GetX(ctx context.Context, id int) *WaMessage {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryWaSession queries the wa_session edge of a WaMessage.
+func (c *WaMessageClient) QueryWaSession(_m *WaMessage) *WaSessionQuery {
+	query := (&WaSessionClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(wamessage.Table, wamessage.FieldID, id),
+			sqlgraph.To(wasession.Table, wasession.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, wamessage.WaSessionTable, wamessage.WaSessionColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryChat queries the chat edge of a WaMessage.
+func (c *WaMessageClient) QueryChat(_m *WaMessage) *WaChatQuery {
+	query := (&WaChatClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(wamessage.Table, wamessage.FieldID, id),
+			sqlgraph.To(wachat.Table, wachat.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, wamessage.ChatTable, wamessage.ChatColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *WaMessageClient) Hooks() []Hook {
+	return c.hooks.WaMessage
+}
+
+// Interceptors returns the client interceptors.
+func (c *WaMessageClient) Interceptors() []Interceptor {
+	return c.inters.WaMessage
+}
+
+func (c *WaMessageClient) mutate(ctx context.Context, m *WaMessageMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&WaMessageCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&WaMessageUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&WaMessageUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&WaMessageDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown WaMessage mutation op: %q", m.Op())
+	}
+}
+
+// WaSessionClient is a client for the WaSession schema.
+type WaSessionClient struct {
+	config
+}
+
+// NewWaSessionClient returns a client for the WaSession from the given config.
+func NewWaSessionClient(c config) *WaSessionClient {
+	return &WaSessionClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `wasession.Hooks(f(g(h())))`.
+func (c *WaSessionClient) Use(hooks ...Hook) {
+	c.hooks.WaSession = append(c.hooks.WaSession, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `wasession.Intercept(f(g(h())))`.
+func (c *WaSessionClient) Intercept(interceptors ...Interceptor) {
+	c.inters.WaSession = append(c.inters.WaSession, interceptors...)
+}
+
+// Create returns a builder for creating a WaSession entity.
+func (c *WaSessionClient) Create() *WaSessionCreate {
+	mutation := newWaSessionMutation(c.config, OpCreate)
+	return &WaSessionCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of WaSession entities.
+func (c *WaSessionClient) CreateBulk(builders ...*WaSessionCreate) *WaSessionCreateBulk {
+	return &WaSessionCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *WaSessionClient) MapCreateBulk(slice any, setFunc func(*WaSessionCreate, int)) *WaSessionCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &WaSessionCreateBulk{err: fmt.Errorf("calling to WaSessionClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*WaSessionCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &WaSessionCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for WaSession.
+func (c *WaSessionClient) Update() *WaSessionUpdate {
+	mutation := newWaSessionMutation(c.config, OpUpdate)
+	return &WaSessionUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *WaSessionClient) UpdateOne(_m *WaSession) *WaSessionUpdateOne {
+	mutation := newWaSessionMutation(c.config, OpUpdateOne, withWaSession(_m))
+	return &WaSessionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *WaSessionClient) UpdateOneID(id string) *WaSessionUpdateOne {
+	mutation := newWaSessionMutation(c.config, OpUpdateOne, withWaSessionID(id))
+	return &WaSessionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for WaSession.
+func (c *WaSessionClient) Delete() *WaSessionDelete {
+	mutation := newWaSessionMutation(c.config, OpDelete)
+	return &WaSessionDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *WaSessionClient) DeleteOne(_m *WaSession) *WaSessionDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *WaSessionClient) DeleteOneID(id string) *WaSessionDeleteOne {
+	builder := c.Delete().Where(wasession.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &WaSessionDeleteOne{builder}
+}
+
+// Query returns a query builder for WaSession.
+func (c *WaSessionClient) Query() *WaSessionQuery {
+	return &WaSessionQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeWaSession},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a WaSession entity by its id.
+func (c *WaSessionClient) Get(ctx context.Context, id string) (*WaSession, error) {
+	return c.Query().Where(wasession.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *WaSessionClient) GetX(ctx context.Context, id string) *WaSession {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a WaSession.
+func (c *WaSessionClient) QueryUser(_m *WaSession) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(wasession.Table, wasession.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, true, wasession.UserTable, wasession.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryContacts queries the contacts edge of a WaSession.
+func (c *WaSessionClient) QueryContacts(_m *WaSession) *WaContactQuery {
+	query := (&WaContactClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(wasession.Table, wasession.FieldID, id),
+			sqlgraph.To(wacontact.Table, wacontact.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, wasession.ContactsTable, wasession.ContactsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryChats queries the chats edge of a WaSession.
+func (c *WaSessionClient) QueryChats(_m *WaSession) *WaChatQuery {
+	query := (&WaChatClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(wasession.Table, wasession.FieldID, id),
+			sqlgraph.To(wachat.Table, wachat.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, wasession.ChatsTable, wasession.ChatsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryMessages queries the messages edge of a WaSession.
+func (c *WaSessionClient) QueryMessages(_m *WaSession) *WaMessageQuery {
+	query := (&WaMessageClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(wasession.Table, wasession.FieldID, id),
+			sqlgraph.To(wamessage.Table, wamessage.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, wasession.MessagesTable, wasession.MessagesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *WaSessionClient) Hooks() []Hook {
+	return c.hooks.WaSession
+}
+
+// Interceptors returns the client interceptors.
+func (c *WaSessionClient) Interceptors() []Interceptor {
+	return c.inters.WaSession
+}
+
+func (c *WaSessionClient) mutate(ctx context.Context, m *WaSessionMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&WaSessionCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&WaSessionUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&WaSessionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&WaSessionDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown WaSession mutation op: %q", m.Op())
+	}
+}
+
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Session, User []ent.Hook
+		Session, User, WaChat, WaContact, WaMessage, WaSession []ent.Hook
 	}
 	inters struct {
-		Session, User []ent.Interceptor
+		Session, User, WaChat, WaContact, WaMessage, WaSession []ent.Interceptor
 	}
 )

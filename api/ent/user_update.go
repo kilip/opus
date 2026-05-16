@@ -14,6 +14,7 @@ import (
 	"github.com/kilip/opus/api/ent/predicate"
 	"github.com/kilip/opus/api/ent/session"
 	"github.com/kilip/opus/api/ent/user"
+	"github.com/kilip/opus/api/ent/wasession"
 )
 
 // UserUpdate is the builder for updating User entities.
@@ -132,6 +133,25 @@ func (_u *UserUpdate) AddSessions(v ...*Session) *UserUpdate {
 	return _u.AddSessionIDs(ids...)
 }
 
+// SetWaSessionID sets the "wa_session" edge to the WaSession entity by ID.
+func (_u *UserUpdate) SetWaSessionID(id string) *UserUpdate {
+	_u.mutation.SetWaSessionID(id)
+	return _u
+}
+
+// SetNillableWaSessionID sets the "wa_session" edge to the WaSession entity by ID if the given value is not nil.
+func (_u *UserUpdate) SetNillableWaSessionID(id *string) *UserUpdate {
+	if id != nil {
+		_u = _u.SetWaSessionID(*id)
+	}
+	return _u
+}
+
+// SetWaSession sets the "wa_session" edge to the WaSession entity.
+func (_u *UserUpdate) SetWaSession(v *WaSession) *UserUpdate {
+	return _u.SetWaSessionID(v.ID)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdate) Mutation() *UserMutation {
 	return _u.mutation
@@ -156,6 +176,12 @@ func (_u *UserUpdate) RemoveSessions(v ...*Session) *UserUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveSessionIDs(ids...)
+}
+
+// ClearWaSession clears the "wa_session" edge to the WaSession entity.
+func (_u *UserUpdate) ClearWaSession() *UserUpdate {
+	_u.mutation.ClearWaSession()
+	return _u
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -265,6 +291,35 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(session.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.WaSessionCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   user.WaSessionTable,
+			Columns: []string{user.WaSessionColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(wasession.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.WaSessionIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   user.WaSessionTable,
+			Columns: []string{user.WaSessionColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(wasession.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {
@@ -395,6 +450,25 @@ func (_u *UserUpdateOne) AddSessions(v ...*Session) *UserUpdateOne {
 	return _u.AddSessionIDs(ids...)
 }
 
+// SetWaSessionID sets the "wa_session" edge to the WaSession entity by ID.
+func (_u *UserUpdateOne) SetWaSessionID(id string) *UserUpdateOne {
+	_u.mutation.SetWaSessionID(id)
+	return _u
+}
+
+// SetNillableWaSessionID sets the "wa_session" edge to the WaSession entity by ID if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableWaSessionID(id *string) *UserUpdateOne {
+	if id != nil {
+		_u = _u.SetWaSessionID(*id)
+	}
+	return _u
+}
+
+// SetWaSession sets the "wa_session" edge to the WaSession entity.
+func (_u *UserUpdateOne) SetWaSession(v *WaSession) *UserUpdateOne {
+	return _u.SetWaSessionID(v.ID)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdateOne) Mutation() *UserMutation {
 	return _u.mutation
@@ -419,6 +493,12 @@ func (_u *UserUpdateOne) RemoveSessions(v ...*Session) *UserUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveSessionIDs(ids...)
+}
+
+// ClearWaSession clears the "wa_session" edge to the WaSession entity.
+func (_u *UserUpdateOne) ClearWaSession() *UserUpdateOne {
+	_u.mutation.ClearWaSession()
+	return _u
 }
 
 // Where appends a list predicates to the UserUpdate builder.
@@ -558,6 +638,35 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(session.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.WaSessionCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   user.WaSessionTable,
+			Columns: []string{user.WaSessionColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(wasession.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.WaSessionIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   user.WaSessionTable,
+			Columns: []string{user.WaSessionColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(wasession.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

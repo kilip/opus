@@ -30,6 +30,8 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// EdgeSessions holds the string denoting the sessions edge name in mutations.
 	EdgeSessions = "sessions"
+	// EdgeWaSession holds the string denoting the wa_session edge name in mutations.
+	EdgeWaSession = "wa_session"
 	// Table holds the table name of the user in the database.
 	Table = "users"
 	// SessionsTable is the table that holds the sessions relation/edge.
@@ -39,6 +41,13 @@ const (
 	SessionsInverseTable = "sessions"
 	// SessionsColumn is the table column denoting the sessions relation/edge.
 	SessionsColumn = "user_id"
+	// WaSessionTable is the table that holds the wa_session relation/edge.
+	WaSessionTable = "wa_sessions"
+	// WaSessionInverseTable is the table name for the WaSession entity.
+	// It exists in this package in order to avoid circular dependency with the "wasession" package.
+	WaSessionInverseTable = "wa_sessions"
+	// WaSessionColumn is the table column denoting the wa_session relation/edge.
+	WaSessionColumn = "user_wa_session"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -128,10 +137,24 @@ func BySessions(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newSessionsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByWaSessionField orders the results by wa_session field.
+func ByWaSessionField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newWaSessionStep(), sql.OrderByField(field, opts...))
+	}
+}
 func newSessionsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(SessionsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, SessionsTable, SessionsColumn),
+	)
+}
+func newWaSessionStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(WaSessionInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2O, false, WaSessionTable, WaSessionColumn),
 	)
 }

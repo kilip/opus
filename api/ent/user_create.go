@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/kilip/opus/api/ent/session"
 	"github.com/kilip/opus/api/ent/user"
+	"github.com/kilip/opus/api/ent/wasession"
 )
 
 // UserCreate is the builder for creating a User entity.
@@ -114,6 +115,25 @@ func (_c *UserCreate) AddSessions(v ...*Session) *UserCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddSessionIDs(ids...)
+}
+
+// SetWaSessionID sets the "wa_session" edge to the WaSession entity by ID.
+func (_c *UserCreate) SetWaSessionID(id string) *UserCreate {
+	_c.mutation.SetWaSessionID(id)
+	return _c
+}
+
+// SetNillableWaSessionID sets the "wa_session" edge to the WaSession entity by ID if the given value is not nil.
+func (_c *UserCreate) SetNillableWaSessionID(id *string) *UserCreate {
+	if id != nil {
+		_c = _c.SetWaSessionID(*id)
+	}
+	return _c
+}
+
+// SetWaSession sets the "wa_session" edge to the WaSession entity.
+func (_c *UserCreate) SetWaSession(v *WaSession) *UserCreate {
+	return _c.SetWaSessionID(v.ID)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -250,6 +270,22 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(session.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.WaSessionIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   user.WaSessionTable,
+			Columns: []string{user.WaSessionColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(wasession.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

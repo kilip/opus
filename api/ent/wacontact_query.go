@@ -4,7 +4,6 @@ package ent
 
 import (
 	"context"
-	"database/sql/driver"
 	"fmt"
 	"math"
 
@@ -13,80 +12,57 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/kilip/opus/api/ent/predicate"
-	"github.com/kilip/opus/api/ent/session"
-	"github.com/kilip/opus/api/ent/user"
+	"github.com/kilip/opus/api/ent/wacontact"
 	"github.com/kilip/opus/api/ent/wasession"
 )
 
-// UserQuery is the builder for querying User entities.
-type UserQuery struct {
+// WaContactQuery is the builder for querying WaContact entities.
+type WaContactQuery struct {
 	config
 	ctx           *QueryContext
-	order         []user.OrderOption
+	order         []wacontact.OrderOption
 	inters        []Interceptor
-	predicates    []predicate.User
-	withSessions  *SessionQuery
+	predicates    []predicate.WaContact
 	withWaSession *WaSessionQuery
+	withFKs       bool
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
 }
 
-// Where adds a new predicate for the UserQuery builder.
-func (_q *UserQuery) Where(ps ...predicate.User) *UserQuery {
+// Where adds a new predicate for the WaContactQuery builder.
+func (_q *WaContactQuery) Where(ps ...predicate.WaContact) *WaContactQuery {
 	_q.predicates = append(_q.predicates, ps...)
 	return _q
 }
 
 // Limit the number of records to be returned by this query.
-func (_q *UserQuery) Limit(limit int) *UserQuery {
+func (_q *WaContactQuery) Limit(limit int) *WaContactQuery {
 	_q.ctx.Limit = &limit
 	return _q
 }
 
 // Offset to start from.
-func (_q *UserQuery) Offset(offset int) *UserQuery {
+func (_q *WaContactQuery) Offset(offset int) *WaContactQuery {
 	_q.ctx.Offset = &offset
 	return _q
 }
 
 // Unique configures the query builder to filter duplicate records on query.
 // By default, unique is set to true, and can be disabled using this method.
-func (_q *UserQuery) Unique(unique bool) *UserQuery {
+func (_q *WaContactQuery) Unique(unique bool) *WaContactQuery {
 	_q.ctx.Unique = &unique
 	return _q
 }
 
 // Order specifies how the records should be ordered.
-func (_q *UserQuery) Order(o ...user.OrderOption) *UserQuery {
+func (_q *WaContactQuery) Order(o ...wacontact.OrderOption) *WaContactQuery {
 	_q.order = append(_q.order, o...)
 	return _q
 }
 
-// QuerySessions chains the current query on the "sessions" edge.
-func (_q *UserQuery) QuerySessions() *SessionQuery {
-	query := (&SessionClient{config: _q.config}).Query()
-	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := _q.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		selector := _q.sqlQuery(ctx)
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
-		step := sqlgraph.NewStep(
-			sqlgraph.From(user.Table, user.FieldID, selector),
-			sqlgraph.To(session.Table, session.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, user.SessionsTable, user.SessionsColumn),
-		)
-		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
-		return fromU, nil
-	}
-	return query
-}
-
 // QueryWaSession chains the current query on the "wa_session" edge.
-func (_q *UserQuery) QueryWaSession() *WaSessionQuery {
+func (_q *WaContactQuery) QueryWaSession() *WaSessionQuery {
 	query := (&WaSessionClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
@@ -97,9 +73,9 @@ func (_q *UserQuery) QueryWaSession() *WaSessionQuery {
 			return nil, err
 		}
 		step := sqlgraph.NewStep(
-			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.From(wacontact.Table, wacontact.FieldID, selector),
 			sqlgraph.To(wasession.Table, wasession.FieldID),
-			sqlgraph.Edge(sqlgraph.O2O, false, user.WaSessionTable, user.WaSessionColumn),
+			sqlgraph.Edge(sqlgraph.M2O, true, wacontact.WaSessionTable, wacontact.WaSessionColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -107,21 +83,21 @@ func (_q *UserQuery) QueryWaSession() *WaSessionQuery {
 	return query
 }
 
-// First returns the first User entity from the query.
-// Returns a *NotFoundError when no User was found.
-func (_q *UserQuery) First(ctx context.Context) (*User, error) {
+// First returns the first WaContact entity from the query.
+// Returns a *NotFoundError when no WaContact was found.
+func (_q *WaContactQuery) First(ctx context.Context) (*WaContact, error) {
 	nodes, err := _q.Limit(1).All(setContextOp(ctx, _q.ctx, ent.OpQueryFirst))
 	if err != nil {
 		return nil, err
 	}
 	if len(nodes) == 0 {
-		return nil, &NotFoundError{user.Label}
+		return nil, &NotFoundError{wacontact.Label}
 	}
 	return nodes[0], nil
 }
 
 // FirstX is like First, but panics if an error occurs.
-func (_q *UserQuery) FirstX(ctx context.Context) *User {
+func (_q *WaContactQuery) FirstX(ctx context.Context) *WaContact {
 	node, err := _q.First(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -129,22 +105,22 @@ func (_q *UserQuery) FirstX(ctx context.Context) *User {
 	return node
 }
 
-// FirstID returns the first User ID from the query.
-// Returns a *NotFoundError when no User ID was found.
-func (_q *UserQuery) FirstID(ctx context.Context) (id string, err error) {
-	var ids []string
+// FirstID returns the first WaContact ID from the query.
+// Returns a *NotFoundError when no WaContact ID was found.
+func (_q *WaContactQuery) FirstID(ctx context.Context) (id int, err error) {
+	var ids []int
 	if ids, err = _q.Limit(1).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
 	if len(ids) == 0 {
-		err = &NotFoundError{user.Label}
+		err = &NotFoundError{wacontact.Label}
 		return
 	}
 	return ids[0], nil
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (_q *UserQuery) FirstIDX(ctx context.Context) string {
+func (_q *WaContactQuery) FirstIDX(ctx context.Context) int {
 	id, err := _q.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -152,10 +128,10 @@ func (_q *UserQuery) FirstIDX(ctx context.Context) string {
 	return id
 }
 
-// Only returns a single User entity found by the query, ensuring it only returns one.
-// Returns a *NotSingularError when more than one User entity is found.
-// Returns a *NotFoundError when no User entities are found.
-func (_q *UserQuery) Only(ctx context.Context) (*User, error) {
+// Only returns a single WaContact entity found by the query, ensuring it only returns one.
+// Returns a *NotSingularError when more than one WaContact entity is found.
+// Returns a *NotFoundError when no WaContact entities are found.
+func (_q *WaContactQuery) Only(ctx context.Context) (*WaContact, error) {
 	nodes, err := _q.Limit(2).All(setContextOp(ctx, _q.ctx, ent.OpQueryOnly))
 	if err != nil {
 		return nil, err
@@ -164,14 +140,14 @@ func (_q *UserQuery) Only(ctx context.Context) (*User, error) {
 	case 1:
 		return nodes[0], nil
 	case 0:
-		return nil, &NotFoundError{user.Label}
+		return nil, &NotFoundError{wacontact.Label}
 	default:
-		return nil, &NotSingularError{user.Label}
+		return nil, &NotSingularError{wacontact.Label}
 	}
 }
 
 // OnlyX is like Only, but panics if an error occurs.
-func (_q *UserQuery) OnlyX(ctx context.Context) *User {
+func (_q *WaContactQuery) OnlyX(ctx context.Context) *WaContact {
 	node, err := _q.Only(ctx)
 	if err != nil {
 		panic(err)
@@ -179,11 +155,11 @@ func (_q *UserQuery) OnlyX(ctx context.Context) *User {
 	return node
 }
 
-// OnlyID is like Only, but returns the only User ID in the query.
-// Returns a *NotSingularError when more than one User ID is found.
+// OnlyID is like Only, but returns the only WaContact ID in the query.
+// Returns a *NotSingularError when more than one WaContact ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (_q *UserQuery) OnlyID(ctx context.Context) (id string, err error) {
-	var ids []string
+func (_q *WaContactQuery) OnlyID(ctx context.Context) (id int, err error) {
+	var ids []int
 	if ids, err = _q.Limit(2).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
 	}
@@ -191,15 +167,15 @@ func (_q *UserQuery) OnlyID(ctx context.Context) (id string, err error) {
 	case 1:
 		id = ids[0]
 	case 0:
-		err = &NotFoundError{user.Label}
+		err = &NotFoundError{wacontact.Label}
 	default:
-		err = &NotSingularError{user.Label}
+		err = &NotSingularError{wacontact.Label}
 	}
 	return
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (_q *UserQuery) OnlyIDX(ctx context.Context) string {
+func (_q *WaContactQuery) OnlyIDX(ctx context.Context) int {
 	id, err := _q.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -207,18 +183,18 @@ func (_q *UserQuery) OnlyIDX(ctx context.Context) string {
 	return id
 }
 
-// All executes the query and returns a list of Users.
-func (_q *UserQuery) All(ctx context.Context) ([]*User, error) {
+// All executes the query and returns a list of WaContacts.
+func (_q *WaContactQuery) All(ctx context.Context) ([]*WaContact, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryAll)
 	if err := _q.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
-	qr := querierAll[[]*User, *UserQuery]()
-	return withInterceptors[[]*User](ctx, _q, qr, _q.inters)
+	qr := querierAll[[]*WaContact, *WaContactQuery]()
+	return withInterceptors[[]*WaContact](ctx, _q, qr, _q.inters)
 }
 
 // AllX is like All, but panics if an error occurs.
-func (_q *UserQuery) AllX(ctx context.Context) []*User {
+func (_q *WaContactQuery) AllX(ctx context.Context) []*WaContact {
 	nodes, err := _q.All(ctx)
 	if err != nil {
 		panic(err)
@@ -226,20 +202,20 @@ func (_q *UserQuery) AllX(ctx context.Context) []*User {
 	return nodes
 }
 
-// IDs executes the query and returns a list of User IDs.
-func (_q *UserQuery) IDs(ctx context.Context) (ids []string, err error) {
+// IDs executes the query and returns a list of WaContact IDs.
+func (_q *WaContactQuery) IDs(ctx context.Context) (ids []int, err error) {
 	if _q.ctx.Unique == nil && _q.path != nil {
 		_q.Unique(true)
 	}
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryIDs)
-	if err = _q.Select(user.FieldID).Scan(ctx, &ids); err != nil {
+	if err = _q.Select(wacontact.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (_q *UserQuery) IDsX(ctx context.Context) []string {
+func (_q *WaContactQuery) IDsX(ctx context.Context) []int {
 	ids, err := _q.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -248,16 +224,16 @@ func (_q *UserQuery) IDsX(ctx context.Context) []string {
 }
 
 // Count returns the count of the given query.
-func (_q *UserQuery) Count(ctx context.Context) (int, error) {
+func (_q *WaContactQuery) Count(ctx context.Context) (int, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryCount)
 	if err := _q.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
-	return withInterceptors[int](ctx, _q, querierCount[*UserQuery](), _q.inters)
+	return withInterceptors[int](ctx, _q, querierCount[*WaContactQuery](), _q.inters)
 }
 
 // CountX is like Count, but panics if an error occurs.
-func (_q *UserQuery) CountX(ctx context.Context) int {
+func (_q *WaContactQuery) CountX(ctx context.Context) int {
 	count, err := _q.Count(ctx)
 	if err != nil {
 		panic(err)
@@ -266,7 +242,7 @@ func (_q *UserQuery) CountX(ctx context.Context) int {
 }
 
 // Exist returns true if the query has elements in the graph.
-func (_q *UserQuery) Exist(ctx context.Context) (bool, error) {
+func (_q *WaContactQuery) Exist(ctx context.Context) (bool, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryExist)
 	switch _, err := _q.FirstID(ctx); {
 	case IsNotFound(err):
@@ -279,7 +255,7 @@ func (_q *UserQuery) Exist(ctx context.Context) (bool, error) {
 }
 
 // ExistX is like Exist, but panics if an error occurs.
-func (_q *UserQuery) ExistX(ctx context.Context) bool {
+func (_q *WaContactQuery) ExistX(ctx context.Context) bool {
 	exist, err := _q.Exist(ctx)
 	if err != nil {
 		panic(err)
@@ -287,19 +263,18 @@ func (_q *UserQuery) ExistX(ctx context.Context) bool {
 	return exist
 }
 
-// Clone returns a duplicate of the UserQuery builder, including all associated steps. It can be
+// Clone returns a duplicate of the WaContactQuery builder, including all associated steps. It can be
 // used to prepare common query builders and use them differently after the clone is made.
-func (_q *UserQuery) Clone() *UserQuery {
+func (_q *WaContactQuery) Clone() *WaContactQuery {
 	if _q == nil {
 		return nil
 	}
-	return &UserQuery{
+	return &WaContactQuery{
 		config:        _q.config,
 		ctx:           _q.ctx.Clone(),
-		order:         append([]user.OrderOption{}, _q.order...),
+		order:         append([]wacontact.OrderOption{}, _q.order...),
 		inters:        append([]Interceptor{}, _q.inters...),
-		predicates:    append([]predicate.User{}, _q.predicates...),
-		withSessions:  _q.withSessions.Clone(),
+		predicates:    append([]predicate.WaContact{}, _q.predicates...),
 		withWaSession: _q.withWaSession.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
@@ -307,20 +282,9 @@ func (_q *UserQuery) Clone() *UserQuery {
 	}
 }
 
-// WithSessions tells the query-builder to eager-load the nodes that are connected to
-// the "sessions" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *UserQuery) WithSessions(opts ...func(*SessionQuery)) *UserQuery {
-	query := (&SessionClient{config: _q.config}).Query()
-	for _, opt := range opts {
-		opt(query)
-	}
-	_q.withSessions = query
-	return _q
-}
-
 // WithWaSession tells the query-builder to eager-load the nodes that are connected to
 // the "wa_session" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *UserQuery) WithWaSession(opts ...func(*WaSessionQuery)) *UserQuery {
+func (_q *WaContactQuery) WithWaSession(opts ...func(*WaSessionQuery)) *WaContactQuery {
 	query := (&WaSessionClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
@@ -335,19 +299,19 @@ func (_q *UserQuery) WithWaSession(opts ...func(*WaSessionQuery)) *UserQuery {
 // Example:
 //
 //	var v []struct {
-//		Email string `json:"email,omitempty"`
+//		Jid string `json:"jid,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
-//	client.User.Query().
-//		GroupBy(user.FieldEmail).
+//	client.WaContact.Query().
+//		GroupBy(wacontact.FieldJid).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
-func (_q *UserQuery) GroupBy(field string, fields ...string) *UserGroupBy {
+func (_q *WaContactQuery) GroupBy(field string, fields ...string) *WaContactGroupBy {
 	_q.ctx.Fields = append([]string{field}, fields...)
-	grbuild := &UserGroupBy{build: _q}
+	grbuild := &WaContactGroupBy{build: _q}
 	grbuild.flds = &_q.ctx.Fields
-	grbuild.label = user.Label
+	grbuild.label = wacontact.Label
 	grbuild.scan = grbuild.Scan
 	return grbuild
 }
@@ -358,26 +322,26 @@ func (_q *UserQuery) GroupBy(field string, fields ...string) *UserGroupBy {
 // Example:
 //
 //	var v []struct {
-//		Email string `json:"email,omitempty"`
+//		Jid string `json:"jid,omitempty"`
 //	}
 //
-//	client.User.Query().
-//		Select(user.FieldEmail).
+//	client.WaContact.Query().
+//		Select(wacontact.FieldJid).
 //		Scan(ctx, &v)
-func (_q *UserQuery) Select(fields ...string) *UserSelect {
+func (_q *WaContactQuery) Select(fields ...string) *WaContactSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)
-	sbuild := &UserSelect{UserQuery: _q}
-	sbuild.label = user.Label
+	sbuild := &WaContactSelect{WaContactQuery: _q}
+	sbuild.label = wacontact.Label
 	sbuild.flds, sbuild.scan = &_q.ctx.Fields, sbuild.Scan
 	return sbuild
 }
 
-// Aggregate returns a UserSelect configured with the given aggregations.
-func (_q *UserQuery) Aggregate(fns ...AggregateFunc) *UserSelect {
+// Aggregate returns a WaContactSelect configured with the given aggregations.
+func (_q *WaContactQuery) Aggregate(fns ...AggregateFunc) *WaContactSelect {
 	return _q.Select().Aggregate(fns...)
 }
 
-func (_q *UserQuery) prepareQuery(ctx context.Context) error {
+func (_q *WaContactQuery) prepareQuery(ctx context.Context) error {
 	for _, inter := range _q.inters {
 		if inter == nil {
 			return fmt.Errorf("ent: uninitialized interceptor (forgotten import ent/runtime?)")
@@ -389,7 +353,7 @@ func (_q *UserQuery) prepareQuery(ctx context.Context) error {
 		}
 	}
 	for _, f := range _q.ctx.Fields {
-		if !user.ValidColumn(f) {
+		if !wacontact.ValidColumn(f) {
 			return &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
 		}
 	}
@@ -403,20 +367,26 @@ func (_q *UserQuery) prepareQuery(ctx context.Context) error {
 	return nil
 }
 
-func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, error) {
+func (_q *WaContactQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*WaContact, error) {
 	var (
-		nodes       = []*User{}
+		nodes       = []*WaContact{}
+		withFKs     = _q.withFKs
 		_spec       = _q.querySpec()
-		loadedTypes = [2]bool{
-			_q.withSessions != nil,
+		loadedTypes = [1]bool{
 			_q.withWaSession != nil,
 		}
 	)
+	if _q.withWaSession != nil {
+		withFKs = true
+	}
+	if withFKs {
+		_spec.Node.Columns = append(_spec.Node.Columns, wacontact.ForeignKeys...)
+	}
 	_spec.ScanValues = func(columns []string) ([]any, error) {
-		return (*User).scanValues(nil, columns)
+		return (*WaContact).scanValues(nil, columns)
 	}
 	_spec.Assign = func(columns []string, values []any) error {
-		node := &User{config: _q.config}
+		node := &WaContact{config: _q.config}
 		nodes = append(nodes, node)
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
@@ -430,82 +400,49 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
-	if query := _q.withSessions; query != nil {
-		if err := _q.loadSessions(ctx, query, nodes,
-			func(n *User) { n.Edges.Sessions = []*Session{} },
-			func(n *User, e *Session) { n.Edges.Sessions = append(n.Edges.Sessions, e) }); err != nil {
-			return nil, err
-		}
-	}
 	if query := _q.withWaSession; query != nil {
 		if err := _q.loadWaSession(ctx, query, nodes, nil,
-			func(n *User, e *WaSession) { n.Edges.WaSession = e }); err != nil {
+			func(n *WaContact, e *WaSession) { n.Edges.WaSession = e }); err != nil {
 			return nil, err
 		}
 	}
 	return nodes, nil
 }
 
-func (_q *UserQuery) loadSessions(ctx context.Context, query *SessionQuery, nodes []*User, init func(*User), assign func(*User, *Session)) error {
-	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[string]*User)
+func (_q *WaContactQuery) loadWaSession(ctx context.Context, query *WaSessionQuery, nodes []*WaContact, init func(*WaContact), assign func(*WaContact, *WaSession)) error {
+	ids := make([]string, 0, len(nodes))
+	nodeids := make(map[string][]*WaContact)
 	for i := range nodes {
-		fks = append(fks, nodes[i].ID)
-		nodeids[nodes[i].ID] = nodes[i]
-		if init != nil {
-			init(nodes[i])
+		if nodes[i].wa_session_contacts == nil {
+			continue
 		}
+		fk := *nodes[i].wa_session_contacts
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
 	}
-	if len(query.ctx.Fields) > 0 {
-		query.ctx.AppendFieldOnce(session.FieldUserID)
+	if len(ids) == 0 {
+		return nil
 	}
-	query.Where(predicate.Session(func(s *sql.Selector) {
-		s.Where(sql.InValues(s.C(user.SessionsColumn), fks...))
-	}))
+	query.Where(wasession.IDIn(ids...))
 	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
-		fk := n.UserID
-		node, ok := nodeids[fk]
+		nodes, ok := nodeids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "wa_session_contacts" returned %v`, n.ID)
 		}
-		assign(node, n)
-	}
-	return nil
-}
-func (_q *UserQuery) loadWaSession(ctx context.Context, query *WaSessionQuery, nodes []*User, init func(*User), assign func(*User, *WaSession)) error {
-	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[string]*User)
-	for i := range nodes {
-		fks = append(fks, nodes[i].ID)
-		nodeids[nodes[i].ID] = nodes[i]
-	}
-	query.withFKs = true
-	query.Where(predicate.WaSession(func(s *sql.Selector) {
-		s.Where(sql.InValues(s.C(user.WaSessionColumn), fks...))
-	}))
-	neighbors, err := query.All(ctx)
-	if err != nil {
-		return err
-	}
-	for _, n := range neighbors {
-		fk := n.user_wa_session
-		if fk == nil {
-			return fmt.Errorf(`foreign-key "user_wa_session" is nil for node %v`, n.ID)
+		for i := range nodes {
+			assign(nodes[i], n)
 		}
-		node, ok := nodeids[*fk]
-		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "user_wa_session" returned %v for node %v`, *fk, n.ID)
-		}
-		assign(node, n)
 	}
 	return nil
 }
 
-func (_q *UserQuery) sqlCount(ctx context.Context) (int, error) {
+func (_q *WaContactQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
 	_spec.Node.Columns = _q.ctx.Fields
 	if len(_q.ctx.Fields) > 0 {
@@ -514,8 +451,8 @@ func (_q *UserQuery) sqlCount(ctx context.Context) (int, error) {
 	return sqlgraph.CountNodes(ctx, _q.driver, _spec)
 }
 
-func (_q *UserQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(user.Table, user.Columns, sqlgraph.NewFieldSpec(user.FieldID, field.TypeString))
+func (_q *WaContactQuery) querySpec() *sqlgraph.QuerySpec {
+	_spec := sqlgraph.NewQuerySpec(wacontact.Table, wacontact.Columns, sqlgraph.NewFieldSpec(wacontact.FieldID, field.TypeInt))
 	_spec.From = _q.sql
 	if unique := _q.ctx.Unique; unique != nil {
 		_spec.Unique = *unique
@@ -524,9 +461,9 @@ func (_q *UserQuery) querySpec() *sqlgraph.QuerySpec {
 	}
 	if fields := _q.ctx.Fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
-		_spec.Node.Columns = append(_spec.Node.Columns, user.FieldID)
+		_spec.Node.Columns = append(_spec.Node.Columns, wacontact.FieldID)
 		for i := range fields {
-			if fields[i] != user.FieldID {
+			if fields[i] != wacontact.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
 		}
@@ -554,12 +491,12 @@ func (_q *UserQuery) querySpec() *sqlgraph.QuerySpec {
 	return _spec
 }
 
-func (_q *UserQuery) sqlQuery(ctx context.Context) *sql.Selector {
+func (_q *WaContactQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(_q.driver.Dialect())
-	t1 := builder.Table(user.Table)
+	t1 := builder.Table(wacontact.Table)
 	columns := _q.ctx.Fields
 	if len(columns) == 0 {
-		columns = user.Columns
+		columns = wacontact.Columns
 	}
 	selector := builder.Select(t1.Columns(columns...)...).From(t1)
 	if _q.sql != nil {
@@ -586,28 +523,28 @@ func (_q *UserQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	return selector
 }
 
-// UserGroupBy is the group-by builder for User entities.
-type UserGroupBy struct {
+// WaContactGroupBy is the group-by builder for WaContact entities.
+type WaContactGroupBy struct {
 	selector
-	build *UserQuery
+	build *WaContactQuery
 }
 
 // Aggregate adds the given aggregation functions to the group-by query.
-func (_g *UserGroupBy) Aggregate(fns ...AggregateFunc) *UserGroupBy {
+func (_g *WaContactGroupBy) Aggregate(fns ...AggregateFunc) *WaContactGroupBy {
 	_g.fns = append(_g.fns, fns...)
 	return _g
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (_g *UserGroupBy) Scan(ctx context.Context, v any) error {
+func (_g *WaContactGroupBy) Scan(ctx context.Context, v any) error {
 	ctx = setContextOp(ctx, _g.build.ctx, ent.OpQueryGroupBy)
 	if err := _g.build.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*UserQuery, *UserGroupBy](ctx, _g.build, _g, _g.build.inters, v)
+	return scanWithInterceptors[*WaContactQuery, *WaContactGroupBy](ctx, _g.build, _g, _g.build.inters, v)
 }
 
-func (_g *UserGroupBy) sqlScan(ctx context.Context, root *UserQuery, v any) error {
+func (_g *WaContactGroupBy) sqlScan(ctx context.Context, root *WaContactQuery, v any) error {
 	selector := root.sqlQuery(ctx).Select()
 	aggregation := make([]string, 0, len(_g.fns))
 	for _, fn := range _g.fns {
@@ -634,28 +571,28 @@ func (_g *UserGroupBy) sqlScan(ctx context.Context, root *UserQuery, v any) erro
 	return sql.ScanSlice(rows, v)
 }
 
-// UserSelect is the builder for selecting fields of User entities.
-type UserSelect struct {
-	*UserQuery
+// WaContactSelect is the builder for selecting fields of WaContact entities.
+type WaContactSelect struct {
+	*WaContactQuery
 	selector
 }
 
 // Aggregate adds the given aggregation functions to the selector query.
-func (_s *UserSelect) Aggregate(fns ...AggregateFunc) *UserSelect {
+func (_s *WaContactSelect) Aggregate(fns ...AggregateFunc) *WaContactSelect {
 	_s.fns = append(_s.fns, fns...)
 	return _s
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (_s *UserSelect) Scan(ctx context.Context, v any) error {
+func (_s *WaContactSelect) Scan(ctx context.Context, v any) error {
 	ctx = setContextOp(ctx, _s.ctx, ent.OpQuerySelect)
 	if err := _s.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*UserQuery, *UserSelect](ctx, _s.UserQuery, _s, _s.inters, v)
+	return scanWithInterceptors[*WaContactQuery, *WaContactSelect](ctx, _s.WaContactQuery, _s, _s.inters, v)
 }
 
-func (_s *UserSelect) sqlScan(ctx context.Context, root *UserQuery, v any) error {
+func (_s *WaContactSelect) sqlScan(ctx context.Context, root *WaContactQuery, v any) error {
 	selector := root.sqlQuery(ctx)
 	aggregation := make([]string, 0, len(_s.fns))
 	for _, fn := range _s.fns {

@@ -16,6 +16,14 @@ type Tx struct {
 	Session *SessionClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
+	// WaChat is the client for interacting with the WaChat builders.
+	WaChat *WaChatClient
+	// WaContact is the client for interacting with the WaContact builders.
+	WaContact *WaContactClient
+	// WaMessage is the client for interacting with the WaMessage builders.
+	WaMessage *WaMessageClient
+	// WaSession is the client for interacting with the WaSession builders.
+	WaSession *WaSessionClient
 
 	// lazily loaded.
 	client     *Client
@@ -149,6 +157,10 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.Session = NewSessionClient(tx.config)
 	tx.User = NewUserClient(tx.config)
+	tx.WaChat = NewWaChatClient(tx.config)
+	tx.WaContact = NewWaContactClient(tx.config)
+	tx.WaMessage = NewWaMessageClient(tx.config)
+	tx.WaSession = NewWaSessionClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.

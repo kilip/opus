@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/kilip/opus/api/ent/user"
+	"github.com/kilip/opus/api/ent/wasession"
 )
 
 // User is the model entity for the User schema.
@@ -41,9 +42,11 @@ type User struct {
 type UserEdges struct {
 	// Sessions holds the value of the sessions edge.
 	Sessions []*Session `json:"sessions,omitempty"`
+	// WaSession holds the value of the wa_session edge.
+	WaSession *WaSession `json:"wa_session,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // SessionsOrErr returns the Sessions value or an error if the edge
@@ -53,6 +56,17 @@ func (e UserEdges) SessionsOrErr() ([]*Session, error) {
 		return e.Sessions, nil
 	}
 	return nil, &NotLoadedError{edge: "sessions"}
+}
+
+// WaSessionOrErr returns the WaSession value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e UserEdges) WaSessionOrErr() (*WaSession, error) {
+	if e.WaSession != nil {
+		return e.WaSession, nil
+	} else if e.loadedTypes[1] {
+		return nil, &NotFoundError{label: wasession.Label}
+	}
+	return nil, &NotLoadedError{edge: "wa_session"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -143,6 +157,11 @@ func (_m *User) Value(name string) (ent.Value, error) {
 // QuerySessions queries the "sessions" edge of the User entity.
 func (_m *User) QuerySessions() *SessionQuery {
 	return NewUserClient(_m.config).QuerySessions(_m)
+}
+
+// QueryWaSession queries the "wa_session" edge of the User entity.
+func (_m *User) QueryWaSession() *WaSessionQuery {
+	return NewUserClient(_m.config).QueryWaSession(_m)
 }
 
 // Update returns a builder for updating this User.

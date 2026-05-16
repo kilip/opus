@@ -72,13 +72,118 @@ var (
 			},
 		},
 	}
+	// WaChatsColumns holds the columns for the "wa_chats" table.
+	WaChatsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "jid", Type: field.TypeString},
+		{Name: "name", Type: field.TypeString, Nullable: true},
+		{Name: "unread_count", Type: field.TypeInt, Default: 0},
+		{Name: "wa_session_chats", Type: field.TypeString},
+	}
+	// WaChatsTable holds the schema information for the "wa_chats" table.
+	WaChatsTable = &schema.Table{
+		Name:       "wa_chats",
+		Columns:    WaChatsColumns,
+		PrimaryKey: []*schema.Column{WaChatsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "wa_chats_wa_sessions_chats",
+				Columns:    []*schema.Column{WaChatsColumns[4]},
+				RefColumns: []*schema.Column{WaSessionsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
+	// WaContactsColumns holds the columns for the "wa_contacts" table.
+	WaContactsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "jid", Type: field.TypeString},
+		{Name: "name", Type: field.TypeString},
+		{Name: "pushname", Type: field.TypeString, Nullable: true},
+		{Name: "wa_session_contacts", Type: field.TypeString},
+	}
+	// WaContactsTable holds the schema information for the "wa_contacts" table.
+	WaContactsTable = &schema.Table{
+		Name:       "wa_contacts",
+		Columns:    WaContactsColumns,
+		PrimaryKey: []*schema.Column{WaContactsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "wa_contacts_wa_sessions_contacts",
+				Columns:    []*schema.Column{WaContactsColumns[4]},
+				RefColumns: []*schema.Column{WaSessionsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
+	// WaMessagesColumns holds the columns for the "wa_messages" table.
+	WaMessagesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "message_id", Type: field.TypeString, Unique: true},
+		{Name: "sender_jid", Type: field.TypeString},
+		{Name: "content", Type: field.TypeString, Nullable: true, Size: 2147483647},
+		{Name: "timestamp", Type: field.TypeTime},
+		{Name: "is_from_me", Type: field.TypeBool, Default: false},
+		{Name: "wa_chat_messages", Type: field.TypeInt},
+		{Name: "wa_session_messages", Type: field.TypeString},
+	}
+	// WaMessagesTable holds the schema information for the "wa_messages" table.
+	WaMessagesTable = &schema.Table{
+		Name:       "wa_messages",
+		Columns:    WaMessagesColumns,
+		PrimaryKey: []*schema.Column{WaMessagesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "wa_messages_wa_chats_messages",
+				Columns:    []*schema.Column{WaMessagesColumns[6]},
+				RefColumns: []*schema.Column{WaChatsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "wa_messages_wa_sessions_messages",
+				Columns:    []*schema.Column{WaMessagesColumns[7]},
+				RefColumns: []*schema.Column{WaSessionsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
+	// WaSessionsColumns holds the columns for the "wa_sessions" table.
+	WaSessionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, Unique: true},
+		{Name: "jid", Type: field.TypeString, Nullable: true},
+		{Name: "status", Type: field.TypeString, Default: "UNAUTHENTICATED"},
+		{Name: "user_wa_session", Type: field.TypeString, Unique: true},
+	}
+	// WaSessionsTable holds the schema information for the "wa_sessions" table.
+	WaSessionsTable = &schema.Table{
+		Name:       "wa_sessions",
+		Columns:    WaSessionsColumns,
+		PrimaryKey: []*schema.Column{WaSessionsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "wa_sessions_users_wa_session",
+				Columns:    []*schema.Column{WaSessionsColumns[3]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		SessionsTable,
 		UsersTable,
+		WaChatsTable,
+		WaContactsTable,
+		WaMessagesTable,
+		WaSessionsTable,
 	}
 )
 
 func init() {
 	SessionsTable.ForeignKeys[0].RefTable = UsersTable
+	WaChatsTable.ForeignKeys[0].RefTable = WaSessionsTable
+	WaContactsTable.ForeignKeys[0].RefTable = WaSessionsTable
+	WaMessagesTable.ForeignKeys[0].RefTable = WaChatsTable
+	WaMessagesTable.ForeignKeys[1].RefTable = WaSessionsTable
+	WaSessionsTable.ForeignKeys[0].RefTable = UsersTable
 }
