@@ -22,7 +22,8 @@ func (h *QueueHandler) ListDeadLetters(c fiber.Ctx) error {
 	limit, _ := strconv.Atoi(c.Query("limit", "10"))
 	offset, _ := strconv.Atoi(c.Query("offset", "0"))
 
-	items, err := h.driver.ListDeadLetters(c.Context(), limit, offset)
+	userID := c.Locals("userID").(string)
+	items, err := h.driver.ListDeadLetters(c.Context(), userID, limit, offset)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -41,7 +42,8 @@ func (h *QueueHandler) RetryDeadLetter(c fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Missing job ID")
 	}
 
-	if err := h.driver.RetryDeadLetter(c.Context(), id); err != nil {
+	userID := c.Locals("userID").(string)
+	if err := h.driver.RetryDeadLetter(c.Context(), userID, id); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
@@ -59,7 +61,8 @@ func (h *QueueHandler) DeleteDeadLetter(c fiber.Ctx) error {
 		return fiber.NewError(fiber.StatusBadRequest, "Missing job ID")
 	}
 
-	if err := h.driver.DeleteDeadLetter(c.Context(), id); err != nil {
+	userID := c.Locals("userID").(string)
+	if err := h.driver.DeleteDeadLetter(c.Context(), userID, id); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 

@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/kilip/opus/api/ent/job"
+	"github.com/kilip/opus/api/ent/user"
 )
 
 // JobCreate is the builder for creating a Job entity.
@@ -147,10 +148,21 @@ func (_c *JobCreate) SetNillableError(v *string) *JobCreate {
 	return _c
 }
 
+// SetUserID sets the "user_id" field.
+func (_c *JobCreate) SetUserID(v string) *JobCreate {
+	_c.mutation.SetUserID(v)
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *JobCreate) SetID(v string) *JobCreate {
 	_c.mutation.SetID(v)
 	return _c
+}
+
+// SetUser sets the "user" edge to the User entity.
+func (_c *JobCreate) SetUser(v *User) *JobCreate {
+	return _c.SetUserID(v.ID)
 }
 
 // Mutation returns the JobMutation object of the builder.
@@ -247,6 +259,12 @@ func (_c *JobCreate) check() error {
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Job.updated_at"`)}
 	}
+	if _, ok := _c.mutation.UserID(); !ok {
+		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "Job.user_id"`)}
+	}
+	if len(_c.mutation.UserIDs()) == 0 {
+		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "Job.user"`)}
+	}
 	return nil
 }
 
@@ -322,6 +340,23 @@ func (_c *JobCreate) createSpec() (*Job, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Error(); ok {
 		_spec.SetField(job.FieldError, field.TypeString, value)
 		_node.Error = value
+	}
+	if nodes := _c.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   job.UserTable,
+			Columns: []string{job.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.UserID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }
@@ -504,6 +539,18 @@ func (u *JobUpsert) UpdateError() *JobUpsert {
 // ClearError clears the value of the "error" field.
 func (u *JobUpsert) ClearError() *JobUpsert {
 	u.SetNull(job.FieldError)
+	return u
+}
+
+// SetUserID sets the "user_id" field.
+func (u *JobUpsert) SetUserID(v string) *JobUpsert {
+	u.Set(job.FieldUserID, v)
+	return u
+}
+
+// UpdateUserID sets the "user_id" field to the value that was provided on create.
+func (u *JobUpsert) UpdateUserID() *JobUpsert {
+	u.SetExcluded(job.FieldUserID)
 	return u
 }
 
@@ -709,6 +756,20 @@ func (u *JobUpsertOne) UpdateError() *JobUpsertOne {
 func (u *JobUpsertOne) ClearError() *JobUpsertOne {
 	return u.Update(func(s *JobUpsert) {
 		s.ClearError()
+	})
+}
+
+// SetUserID sets the "user_id" field.
+func (u *JobUpsertOne) SetUserID(v string) *JobUpsertOne {
+	return u.Update(func(s *JobUpsert) {
+		s.SetUserID(v)
+	})
+}
+
+// UpdateUserID sets the "user_id" field to the value that was provided on create.
+func (u *JobUpsertOne) UpdateUserID() *JobUpsertOne {
+	return u.Update(func(s *JobUpsert) {
+		s.UpdateUserID()
 	})
 }
 
@@ -1081,6 +1142,20 @@ func (u *JobUpsertBulk) UpdateError() *JobUpsertBulk {
 func (u *JobUpsertBulk) ClearError() *JobUpsertBulk {
 	return u.Update(func(s *JobUpsert) {
 		s.ClearError()
+	})
+}
+
+// SetUserID sets the "user_id" field.
+func (u *JobUpsertBulk) SetUserID(v string) *JobUpsertBulk {
+	return u.Update(func(s *JobUpsert) {
+		s.SetUserID(v)
+	})
+}
+
+// UpdateUserID sets the "user_id" field to the value that was provided on create.
+func (u *JobUpsertBulk) UpdateUserID() *JobUpsertBulk {
+	return u.Update(func(s *JobUpsert) {
+		s.UpdateUserID()
 	})
 }
 

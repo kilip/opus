@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/kilip/opus/api/ent/cronschedule"
 	"github.com/kilip/opus/api/ent/predicate"
+	"github.com/kilip/opus/api/ent/user"
 )
 
 // CronScheduleUpdate is the builder for updating CronSchedule entities.
@@ -142,9 +143,34 @@ func (_u *CronScheduleUpdate) SetUpdatedAt(v time.Time) *CronScheduleUpdate {
 	return _u
 }
 
+// SetUserID sets the "user_id" field.
+func (_u *CronScheduleUpdate) SetUserID(v string) *CronScheduleUpdate {
+	_u.mutation.SetUserID(v)
+	return _u
+}
+
+// SetNillableUserID sets the "user_id" field if the given value is not nil.
+func (_u *CronScheduleUpdate) SetNillableUserID(v *string) *CronScheduleUpdate {
+	if v != nil {
+		_u.SetUserID(*v)
+	}
+	return _u
+}
+
+// SetUser sets the "user" edge to the User entity.
+func (_u *CronScheduleUpdate) SetUser(v *User) *CronScheduleUpdate {
+	return _u.SetUserID(v.ID)
+}
+
 // Mutation returns the CronScheduleMutation object of the builder.
 func (_u *CronScheduleUpdate) Mutation() *CronScheduleMutation {
 	return _u.mutation
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (_u *CronScheduleUpdate) ClearUser() *CronScheduleUpdate {
+	_u.mutation.ClearUser()
+	return _u
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -183,7 +209,18 @@ func (_u *CronScheduleUpdate) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *CronScheduleUpdate) check() error {
+	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "CronSchedule.user"`)
+	}
+	return nil
+}
+
 func (_u *CronScheduleUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(cronschedule.Table, cronschedule.Columns, sqlgraph.NewFieldSpec(cronschedule.FieldID, field.TypeString))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -224,6 +261,35 @@ func (_u *CronScheduleUpdate) sqlSave(ctx context.Context) (_node int, err error
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(cronschedule.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if _u.mutation.UserCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   cronschedule.UserTable,
+			Columns: []string{cronschedule.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   cronschedule.UserTable,
+			Columns: []string{cronschedule.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -359,9 +425,34 @@ func (_u *CronScheduleUpdateOne) SetUpdatedAt(v time.Time) *CronScheduleUpdateOn
 	return _u
 }
 
+// SetUserID sets the "user_id" field.
+func (_u *CronScheduleUpdateOne) SetUserID(v string) *CronScheduleUpdateOne {
+	_u.mutation.SetUserID(v)
+	return _u
+}
+
+// SetNillableUserID sets the "user_id" field if the given value is not nil.
+func (_u *CronScheduleUpdateOne) SetNillableUserID(v *string) *CronScheduleUpdateOne {
+	if v != nil {
+		_u.SetUserID(*v)
+	}
+	return _u
+}
+
+// SetUser sets the "user" edge to the User entity.
+func (_u *CronScheduleUpdateOne) SetUser(v *User) *CronScheduleUpdateOne {
+	return _u.SetUserID(v.ID)
+}
+
 // Mutation returns the CronScheduleMutation object of the builder.
 func (_u *CronScheduleUpdateOne) Mutation() *CronScheduleMutation {
 	return _u.mutation
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (_u *CronScheduleUpdateOne) ClearUser() *CronScheduleUpdateOne {
+	_u.mutation.ClearUser()
+	return _u
 }
 
 // Where appends a list predicates to the CronScheduleUpdate builder.
@@ -413,7 +504,18 @@ func (_u *CronScheduleUpdateOne) defaults() {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *CronScheduleUpdateOne) check() error {
+	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "CronSchedule.user"`)
+	}
+	return nil
+}
+
 func (_u *CronScheduleUpdateOne) sqlSave(ctx context.Context) (_node *CronSchedule, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(cronschedule.Table, cronschedule.Columns, sqlgraph.NewFieldSpec(cronschedule.FieldID, field.TypeString))
 	id, ok := _u.mutation.ID()
 	if !ok {
@@ -471,6 +573,35 @@ func (_u *CronScheduleUpdateOne) sqlSave(ctx context.Context) (_node *CronSchedu
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(cronschedule.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if _u.mutation.UserCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   cronschedule.UserTable,
+			Columns: []string{cronschedule.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   cronschedule.UserTable,
+			Columns: []string{cronschedule.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &CronSchedule{config: _u.config}
 	_spec.Assign = _node.assignValues

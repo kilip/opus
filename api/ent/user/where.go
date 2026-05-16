@@ -571,6 +571,75 @@ func HasWaSessionWith(preds ...predicate.WaSession) predicate.User {
 	})
 }
 
+// HasJobs applies the HasEdge predicate on the "jobs" edge.
+func HasJobs() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, JobsTable, JobsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasJobsWith applies the HasEdge predicate on the "jobs" edge with a given conditions (other predicates).
+func HasJobsWith(preds ...predicate.Job) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newJobsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasDeadLetters applies the HasEdge predicate on the "dead_letters" edge.
+func HasDeadLetters() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, DeadLettersTable, DeadLettersColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasDeadLettersWith applies the HasEdge predicate on the "dead_letters" edge with a given conditions (other predicates).
+func HasDeadLettersWith(preds ...predicate.DeadLetter) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newDeadLettersStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasCronSchedules applies the HasEdge predicate on the "cron_schedules" edge.
+func HasCronSchedules() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, CronSchedulesTable, CronSchedulesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasCronSchedulesWith applies the HasEdge predicate on the "cron_schedules" edge with a given conditions (other predicates).
+func HasCronSchedulesWith(preds ...predicate.CronSchedule) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newCronSchedulesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.User) predicate.User {
 	return predicate.User(sql.AndPredicates(predicates...))

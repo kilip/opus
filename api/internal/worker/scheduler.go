@@ -128,6 +128,7 @@ func (s *cronScheduler) fireCron(ctx context.Context, c *model.CronSchedule) {
 		Status:      model.StatusPending,
 		MaxRetries:  3,
 		ScheduledAt: now,
+		UserID:      c.UserID,
 	}
 
 	if err := s.driver.Push(ctx, job); err != nil {

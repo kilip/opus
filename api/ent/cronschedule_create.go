@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/kilip/opus/api/ent/cronschedule"
+	"github.com/kilip/opus/api/ent/user"
 )
 
 // CronScheduleCreate is the builder for creating a CronSchedule entity.
@@ -117,10 +118,21 @@ func (_c *CronScheduleCreate) SetNillableUpdatedAt(v *time.Time) *CronScheduleCr
 	return _c
 }
 
+// SetUserID sets the "user_id" field.
+func (_c *CronScheduleCreate) SetUserID(v string) *CronScheduleCreate {
+	_c.mutation.SetUserID(v)
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *CronScheduleCreate) SetID(v string) *CronScheduleCreate {
 	_c.mutation.SetID(v)
 	return _c
+}
+
+// SetUser sets the "user" edge to the User entity.
+func (_c *CronScheduleCreate) SetUser(v *User) *CronScheduleCreate {
+	return _c.SetUserID(v.ID)
 }
 
 // Mutation returns the CronScheduleMutation object of the builder.
@@ -191,6 +203,12 @@ func (_c *CronScheduleCreate) check() error {
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "CronSchedule.updated_at"`)}
+	}
+	if _, ok := _c.mutation.UserID(); !ok {
+		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "CronSchedule.user_id"`)}
+	}
+	if len(_c.mutation.UserIDs()) == 0 {
+		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "CronSchedule.user"`)}
 	}
 	return nil
 }
@@ -263,6 +281,23 @@ func (_c *CronScheduleCreate) createSpec() (*CronSchedule, *sqlgraph.CreateSpec)
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(cronschedule.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
+	}
+	if nodes := _c.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   cronschedule.UserTable,
+			Columns: []string{cronschedule.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.UserID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }
@@ -427,6 +462,18 @@ func (u *CronScheduleUpsert) SetUpdatedAt(v time.Time) *CronScheduleUpsert {
 // UpdateUpdatedAt sets the "updated_at" field to the value that was provided on create.
 func (u *CronScheduleUpsert) UpdateUpdatedAt() *CronScheduleUpsert {
 	u.SetExcluded(cronschedule.FieldUpdatedAt)
+	return u
+}
+
+// SetUserID sets the "user_id" field.
+func (u *CronScheduleUpsert) SetUserID(v string) *CronScheduleUpsert {
+	u.Set(cronschedule.FieldUserID, v)
+	return u
+}
+
+// UpdateUserID sets the "user_id" field to the value that was provided on create.
+func (u *CronScheduleUpsert) UpdateUserID() *CronScheduleUpsert {
+	u.SetExcluded(cronschedule.FieldUserID)
 	return u
 }
 
@@ -611,6 +658,20 @@ func (u *CronScheduleUpsertOne) SetUpdatedAt(v time.Time) *CronScheduleUpsertOne
 func (u *CronScheduleUpsertOne) UpdateUpdatedAt() *CronScheduleUpsertOne {
 	return u.Update(func(s *CronScheduleUpsert) {
 		s.UpdateUpdatedAt()
+	})
+}
+
+// SetUserID sets the "user_id" field.
+func (u *CronScheduleUpsertOne) SetUserID(v string) *CronScheduleUpsertOne {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.SetUserID(v)
+	})
+}
+
+// UpdateUserID sets the "user_id" field to the value that was provided on create.
+func (u *CronScheduleUpsertOne) UpdateUserID() *CronScheduleUpsertOne {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.UpdateUserID()
 	})
 }
 
@@ -962,6 +1023,20 @@ func (u *CronScheduleUpsertBulk) SetUpdatedAt(v time.Time) *CronScheduleUpsertBu
 func (u *CronScheduleUpsertBulk) UpdateUpdatedAt() *CronScheduleUpsertBulk {
 	return u.Update(func(s *CronScheduleUpsert) {
 		s.UpdateUpdatedAt()
+	})
+}
+
+// SetUserID sets the "user_id" field.
+func (u *CronScheduleUpsertBulk) SetUserID(v string) *CronScheduleUpsertBulk {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.SetUserID(v)
+	})
+}
+
+// UpdateUserID sets the "user_id" field to the value that was provided on create.
+func (u *CronScheduleUpsertBulk) UpdateUserID() *CronScheduleUpsertBulk {
+	return u.Update(func(s *CronScheduleUpsert) {
+		s.UpdateUserID()
 	})
 }
 

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 )
@@ -27,6 +28,18 @@ func (Job) Fields() []ent.Field {
 		field.Time("created_at").Default(time.Now).Immutable(),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
 		field.String("error").Optional(),
+		field.String("user_id"),
+	}
+}
+
+// Edges of the Job.
+func (Job) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.From("user", User.Type).
+			Ref("jobs").
+			Unique().
+			Field("user_id").
+			Required(),
 	}
 }
 
@@ -37,5 +50,6 @@ func (Job) Indexes() []ent.Index {
 		index.Fields("priority"),
 		index.Fields("scheduled_at"),
 		index.Fields("status", "priority", "scheduled_at"),
+		index.Fields("user_id"),
 	}
 }

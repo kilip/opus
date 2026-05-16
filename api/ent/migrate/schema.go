@@ -11,7 +11,7 @@ var (
 	// CronSchedulesColumns holds the columns for the "cron_schedules" table.
 	CronSchedulesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeString, Unique: true},
-		{Name: "name", Type: field.TypeString, Unique: true},
+		{Name: "name", Type: field.TypeString},
 		{Name: "cron_expression", Type: field.TypeString},
 		{Name: "job_type", Type: field.TypeString},
 		{Name: "payload", Type: field.TypeBytes, Nullable: true},
@@ -20,12 +20,21 @@ var (
 		{Name: "next_run_at", Type: field.TypeTime, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "user_id", Type: field.TypeString},
 	}
 	// CronSchedulesTable holds the schema information for the "cron_schedules" table.
 	CronSchedulesTable = &schema.Table{
 		Name:       "cron_schedules",
 		Columns:    CronSchedulesColumns,
 		PrimaryKey: []*schema.Column{CronSchedulesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "cron_schedules_users_cron_schedules",
+				Columns:    []*schema.Column{CronSchedulesColumns[10]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
 		Indexes: []*schema.Index{
 			{
 				Name:    "cronschedule_is_active",
@@ -36,6 +45,11 @@ var (
 				Name:    "cronschedule_next_run_at",
 				Unique:  false,
 				Columns: []*schema.Column{CronSchedulesColumns[7]},
+			},
+			{
+				Name:    "cronschedule_user_id_name",
+				Unique:  true,
+				Columns: []*schema.Column{CronSchedulesColumns[10], CronSchedulesColumns[1]},
 			},
 		},
 	}
@@ -48,17 +62,31 @@ var (
 		{Name: "last_error", Type: field.TypeString, Nullable: true},
 		{Name: "retries", Type: field.TypeInt},
 		{Name: "created_at", Type: field.TypeTime},
+		{Name: "user_id", Type: field.TypeString},
 	}
 	// DeadLettersTable holds the schema information for the "dead_letters" table.
 	DeadLettersTable = &schema.Table{
 		Name:       "dead_letters",
 		Columns:    DeadLettersColumns,
 		PrimaryKey: []*schema.Column{DeadLettersColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "dead_letters_users_dead_letters",
+				Columns:    []*schema.Column{DeadLettersColumns[7]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
 		Indexes: []*schema.Index{
 			{
 				Name:    "deadletter_job_id",
 				Unique:  false,
 				Columns: []*schema.Column{DeadLettersColumns[1]},
+			},
+			{
+				Name:    "deadletter_user_id",
+				Unique:  false,
+				Columns: []*schema.Column{DeadLettersColumns[7]},
 			},
 		},
 	}
@@ -75,12 +103,21 @@ var (
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "error", Type: field.TypeString, Nullable: true},
+		{Name: "user_id", Type: field.TypeString},
 	}
 	// JobsTable holds the schema information for the "jobs" table.
 	JobsTable = &schema.Table{
 		Name:       "jobs",
 		Columns:    JobsColumns,
 		PrimaryKey: []*schema.Column{JobsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "jobs_users_jobs",
+				Columns:    []*schema.Column{JobsColumns[11]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
 		Indexes: []*schema.Index{
 			{
 				Name:    "job_status",
@@ -101,6 +138,11 @@ var (
 				Name:    "job_status_priority_scheduled_at",
 				Unique:  false,
 				Columns: []*schema.Column{JobsColumns[4], JobsColumns[3], JobsColumns[7]},
+			},
+			{
+				Name:    "job_user_id",
+				Unique:  false,
+				Columns: []*schema.Column{JobsColumns[11]},
 			},
 		},
 	}
@@ -300,6 +342,9 @@ var (
 )
 
 func init() {
+	CronSchedulesTable.ForeignKeys[0].RefTable = UsersTable
+	DeadLettersTable.ForeignKeys[0].RefTable = UsersTable
+	JobsTable.ForeignKeys[0].RefTable = UsersTable
 	SessionsTable.ForeignKeys[0].RefTable = UsersTable
 	WaChatsTable.ForeignKeys[0].RefTable = WaSessionsTable
 	WaContactsTable.ForeignKeys[0].RefTable = WaSessionsTable

@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/kilip/opus/api/ent/cronschedule"
+	"github.com/kilip/opus/api/ent/user"
 )
 
 // CronSchedule is the model entity for the CronSchedule schema.
@@ -34,8 +35,33 @@ type CronSchedule struct {
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
-	UpdatedAt    time.Time `json:"updated_at,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	// UserID holds the value of the "user_id" field.
+	UserID string `json:"user_id,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the CronScheduleQuery when eager-loading is set.
+	Edges        CronScheduleEdges `json:"edges"`
 	selectValues sql.SelectValues
+}
+
+// CronScheduleEdges holds the relations/edges for other nodes in the graph.
+type CronScheduleEdges struct {
+	// User holds the value of the user edge.
+	User *User `json:"user,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+}
+
+// UserOrErr returns the User value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e CronScheduleEdges) UserOrErr() (*User, error) {
+	if e.User != nil {
+		return e.User, nil
+	} else if e.loadedTypes[0] {
+		return nil, &NotFoundError{label: user.Label}
+	}
+	return nil, &NotLoadedError{edge: "user"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -47,7 +73,7 @@ func (*CronSchedule) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case cronschedule.FieldIsActive:
 			values[i] = new(sql.NullBool)
-		case cronschedule.FieldID, cronschedule.FieldName, cronschedule.FieldCronExpression, cronschedule.FieldJobType:
+		case cronschedule.FieldID, cronschedule.FieldName, cronschedule.FieldCronExpression, cronschedule.FieldJobType, cronschedule.FieldUserID:
 			values[i] = new(sql.NullString)
 		case cronschedule.FieldLastRunAt, cronschedule.FieldNextRunAt, cronschedule.FieldCreatedAt, cronschedule.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -126,6 +152,12 @@ func (_m *CronSchedule) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.UpdatedAt = value.Time
 			}
+		case cronschedule.FieldUserID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field user_id", values[i])
+			} else if value.Valid {
+				_m.UserID = value.String
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -137,6 +169,11 @@ func (_m *CronSchedule) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (_m *CronSchedule) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
+}
+
+// QueryUser queries the "user" edge of the CronSchedule entity.
+func (_m *CronSchedule) QueryUser() *UserQuery {
+	return NewCronScheduleClient(_m.config).QueryUser(_m)
 }
 
 // Update returns a builder for updating this CronSchedule.
@@ -188,6 +225,9 @@ func (_m *CronSchedule) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
 	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("user_id=")
+	builder.WriteString(_m.UserID)
 	builder.WriteByte(')')
 	return builder.String()
 }

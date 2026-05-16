@@ -12,6 +12,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/kilip/opus/api/ent/cronschedule"
+	"github.com/kilip/opus/api/ent/deadletter"
+	"github.com/kilip/opus/api/ent/job"
 	"github.com/kilip/opus/api/ent/session"
 	"github.com/kilip/opus/api/ent/user"
 	"github.com/kilip/opus/api/ent/wasession"
@@ -137,6 +140,51 @@ func (_c *UserCreate) SetNillableWaSessionID(id *string) *UserCreate {
 // SetWaSession sets the "wa_session" edge to the WaSession entity.
 func (_c *UserCreate) SetWaSession(v *WaSession) *UserCreate {
 	return _c.SetWaSessionID(v.ID)
+}
+
+// AddJobIDs adds the "jobs" edge to the Job entity by IDs.
+func (_c *UserCreate) AddJobIDs(ids ...string) *UserCreate {
+	_c.mutation.AddJobIDs(ids...)
+	return _c
+}
+
+// AddJobs adds the "jobs" edges to the Job entity.
+func (_c *UserCreate) AddJobs(v ...*Job) *UserCreate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddJobIDs(ids...)
+}
+
+// AddDeadLetterIDs adds the "dead_letters" edge to the DeadLetter entity by IDs.
+func (_c *UserCreate) AddDeadLetterIDs(ids ...string) *UserCreate {
+	_c.mutation.AddDeadLetterIDs(ids...)
+	return _c
+}
+
+// AddDeadLetters adds the "dead_letters" edges to the DeadLetter entity.
+func (_c *UserCreate) AddDeadLetters(v ...*DeadLetter) *UserCreate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddDeadLetterIDs(ids...)
+}
+
+// AddCronScheduleIDs adds the "cron_schedules" edge to the CronSchedule entity by IDs.
+func (_c *UserCreate) AddCronScheduleIDs(ids ...string) *UserCreate {
+	_c.mutation.AddCronScheduleIDs(ids...)
+	return _c
+}
+
+// AddCronSchedules adds the "cron_schedules" edges to the CronSchedule entity.
+func (_c *UserCreate) AddCronSchedules(v ...*CronSchedule) *UserCreate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddCronScheduleIDs(ids...)
 }
 
 // Mutation returns the UserMutation object of the builder.
@@ -290,6 +338,54 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(wasession.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.JobsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.JobsTable,
+			Columns: []string{user.JobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(job.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.DeadLettersIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DeadLettersTable,
+			Columns: []string{user.DeadLettersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(deadletter.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.CronSchedulesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.CronSchedulesTable,
+			Columns: []string{user.CronSchedulesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(cronschedule.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

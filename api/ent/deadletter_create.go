@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/kilip/opus/api/ent/deadletter"
+	"github.com/kilip/opus/api/ent/user"
 )
 
 // DeadLetterCreate is the builder for creating a DeadLetter entity.
@@ -75,10 +76,21 @@ func (_c *DeadLetterCreate) SetNillableCreatedAt(v *time.Time) *DeadLetterCreate
 	return _c
 }
 
+// SetUserID sets the "user_id" field.
+func (_c *DeadLetterCreate) SetUserID(v string) *DeadLetterCreate {
+	_c.mutation.SetUserID(v)
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *DeadLetterCreate) SetID(v string) *DeadLetterCreate {
 	_c.mutation.SetID(v)
 	return _c
+}
+
+// SetUser sets the "user" edge to the User entity.
+func (_c *DeadLetterCreate) SetUser(v *User) *DeadLetterCreate {
+	return _c.SetUserID(v.ID)
 }
 
 // Mutation returns the DeadLetterMutation object of the builder.
@@ -139,6 +151,12 @@ func (_c *DeadLetterCreate) check() error {
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "DeadLetter.created_at"`)}
 	}
+	if _, ok := _c.mutation.UserID(); !ok {
+		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "DeadLetter.user_id"`)}
+	}
+	if len(_c.mutation.UserIDs()) == 0 {
+		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "DeadLetter.user"`)}
+	}
 	return nil
 }
 
@@ -198,6 +216,23 @@ func (_c *DeadLetterCreate) createSpec() (*DeadLetter, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(deadletter.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
+	}
+	if nodes := _c.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   deadletter.UserTable,
+			Columns: []string{deadletter.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.UserID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }
@@ -320,6 +355,18 @@ func (u *DeadLetterUpsert) UpdateRetries() *DeadLetterUpsert {
 // AddRetries adds v to the "retries" field.
 func (u *DeadLetterUpsert) AddRetries(v int) *DeadLetterUpsert {
 	u.Add(deadletter.FieldRetries, v)
+	return u
+}
+
+// SetUserID sets the "user_id" field.
+func (u *DeadLetterUpsert) SetUserID(v string) *DeadLetterUpsert {
+	u.Set(deadletter.FieldUserID, v)
+	return u
+}
+
+// UpdateUserID sets the "user_id" field to the value that was provided on create.
+func (u *DeadLetterUpsert) UpdateUserID() *DeadLetterUpsert {
+	u.SetExcluded(deadletter.FieldUserID)
 	return u
 }
 
@@ -455,6 +502,20 @@ func (u *DeadLetterUpsertOne) AddRetries(v int) *DeadLetterUpsertOne {
 func (u *DeadLetterUpsertOne) UpdateRetries() *DeadLetterUpsertOne {
 	return u.Update(func(s *DeadLetterUpsert) {
 		s.UpdateRetries()
+	})
+}
+
+// SetUserID sets the "user_id" field.
+func (u *DeadLetterUpsertOne) SetUserID(v string) *DeadLetterUpsertOne {
+	return u.Update(func(s *DeadLetterUpsert) {
+		s.SetUserID(v)
+	})
+}
+
+// UpdateUserID sets the "user_id" field to the value that was provided on create.
+func (u *DeadLetterUpsertOne) UpdateUserID() *DeadLetterUpsertOne {
+	return u.Update(func(s *DeadLetterUpsert) {
+		s.UpdateUserID()
 	})
 }
 
@@ -757,6 +818,20 @@ func (u *DeadLetterUpsertBulk) AddRetries(v int) *DeadLetterUpsertBulk {
 func (u *DeadLetterUpsertBulk) UpdateRetries() *DeadLetterUpsertBulk {
 	return u.Update(func(s *DeadLetterUpsert) {
 		s.UpdateRetries()
+	})
+}
+
+// SetUserID sets the "user_id" field.
+func (u *DeadLetterUpsertBulk) SetUserID(v string) *DeadLetterUpsertBulk {
+	return u.Update(func(s *DeadLetterUpsert) {
+		s.SetUserID(v)
+	})
+}
+
+// UpdateUserID sets the "user_id" field to the value that was provided on create.
+func (u *DeadLetterUpsertBulk) UpdateUserID() *DeadLetterUpsertBulk {
+	return u.Update(func(s *DeadLetterUpsert) {
+		s.UpdateUserID()
 	})
 }
 

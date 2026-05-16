@@ -57,32 +57,32 @@ func (mr *MockQueueDriverMockRecorder) DeleteCron(ctx, id any) *gomock.Call {
 }
 
 // DeleteDeadLetter mocks base method.
-func (m *MockQueueDriver) DeleteDeadLetter(ctx context.Context, id string) error {
+func (m *MockQueueDriver) DeleteDeadLetter(ctx context.Context, userID, id string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteDeadLetter", ctx, id)
+	ret := m.ctrl.Call(m, "DeleteDeadLetter", ctx, userID, id)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteDeadLetter indicates an expected call of DeleteDeadLetter.
-func (mr *MockQueueDriverMockRecorder) DeleteDeadLetter(ctx, id any) *gomock.Call {
+func (mr *MockQueueDriverMockRecorder) DeleteDeadLetter(ctx, userID, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDeadLetter", reflect.TypeOf((*MockQueueDriver)(nil).DeleteDeadLetter), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteDeadLetter", reflect.TypeOf((*MockQueueDriver)(nil).DeleteDeadLetter), ctx, userID, id)
 }
 
 // ListDeadLetters mocks base method.
-func (m *MockQueueDriver) ListDeadLetters(ctx context.Context, limit, offset int) ([]*model.DeadLetter, error) {
+func (m *MockQueueDriver) ListDeadLetters(ctx context.Context, userID string, limit, offset int) ([]*model.DeadLetter, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListDeadLetters", ctx, limit, offset)
+	ret := m.ctrl.Call(m, "ListDeadLetters", ctx, userID, limit, offset)
 	ret0, _ := ret[0].([]*model.DeadLetter)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListDeadLetters indicates an expected call of ListDeadLetters.
-func (mr *MockQueueDriverMockRecorder) ListDeadLetters(ctx, limit, offset any) *gomock.Call {
+func (mr *MockQueueDriverMockRecorder) ListDeadLetters(ctx, userID, limit, offset any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListDeadLetters", reflect.TypeOf((*MockQueueDriver)(nil).ListDeadLetters), ctx, limit, offset)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListDeadLetters", reflect.TypeOf((*MockQueueDriver)(nil).ListDeadLetters), ctx, userID, limit, offset)
 }
 
 // ListPendingCrons mocks base method.
@@ -144,17 +144,17 @@ func (mr *MockQueueDriverMockRecorder) Push(ctx, job any) *gomock.Call {
 }
 
 // RetryDeadLetter mocks base method.
-func (m *MockQueueDriver) RetryDeadLetter(ctx context.Context, id string) error {
+func (m *MockQueueDriver) RetryDeadLetter(ctx context.Context, userID, id string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "RetryDeadLetter", ctx, id)
+	ret := m.ctrl.Call(m, "RetryDeadLetter", ctx, userID, id)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // RetryDeadLetter indicates an expected call of RetryDeadLetter.
-func (mr *MockQueueDriverMockRecorder) RetryDeadLetter(ctx, id any) *gomock.Call {
+func (mr *MockQueueDriverMockRecorder) RetryDeadLetter(ctx, userID, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryDeadLetter", reflect.TypeOf((*MockQueueDriver)(nil).RetryDeadLetter), ctx, id)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RetryDeadLetter", reflect.TypeOf((*MockQueueDriver)(nil).RetryDeadLetter), ctx, userID, id)
 }
 
 // UpdateCronNextRun mocks base method.

@@ -379,6 +379,22 @@ func (c *CronScheduleClient) GetX(ctx context.Context, id string) *CronSchedule 
 	return obj
 }
 
+// QueryUser queries the user edge of a CronSchedule.
+func (c *CronScheduleClient) QueryUser(_m *CronSchedule) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(cronschedule.Table, cronschedule.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, cronschedule.UserTable, cronschedule.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *CronScheduleClient) Hooks() []Hook {
 	return c.hooks.CronSchedule
@@ -512,6 +528,22 @@ func (c *DeadLetterClient) GetX(ctx context.Context, id string) *DeadLetter {
 	return obj
 }
 
+// QueryUser queries the user edge of a DeadLetter.
+func (c *DeadLetterClient) QueryUser(_m *DeadLetter) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(deadletter.Table, deadletter.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, deadletter.UserTable, deadletter.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *DeadLetterClient) Hooks() []Hook {
 	return c.hooks.DeadLetter
@@ -643,6 +675,22 @@ func (c *JobClient) GetX(ctx context.Context, id string) *Job {
 		panic(err)
 	}
 	return obj
+}
+
+// QueryUser queries the user edge of a Job.
+func (c *JobClient) QueryUser(_m *Job) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(job.Table, job.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, job.UserTable, job.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
 }
 
 // Hooks returns the client hooks.
@@ -952,6 +1000,54 @@ func (c *UserClient) QueryWaSession(_m *User) *WaSessionQuery {
 			sqlgraph.From(user.Table, user.FieldID, id),
 			sqlgraph.To(wasession.Table, wasession.FieldID),
 			sqlgraph.Edge(sqlgraph.O2O, false, user.WaSessionTable, user.WaSessionColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryJobs queries the jobs edge of a User.
+func (c *UserClient) QueryJobs(_m *User) *JobQuery {
+	query := (&JobClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(job.Table, job.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.JobsTable, user.JobsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryDeadLetters queries the dead_letters edge of a User.
+func (c *UserClient) QueryDeadLetters(_m *User) *DeadLetterQuery {
+	query := (&DeadLetterClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(deadletter.Table, deadletter.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.DeadLettersTable, user.DeadLettersColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryCronSchedules queries the cron_schedules edge of a User.
+func (c *UserClient) QueryCronSchedules(_m *User) *CronScheduleQuery {
+	query := (&CronScheduleClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(cronschedule.Table, cronschedule.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.CronSchedulesTable, user.CronSchedulesColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil

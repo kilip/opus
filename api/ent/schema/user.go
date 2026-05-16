@@ -38,5 +38,8 @@ func (User) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("sessions", Session.Type),
 		edge.To("wa_session", WaSession.Type).Unique(),
+		edge.To("jobs", Job.Type),
+		edge.To("dead_letters", DeadLetter.Type),
+		edge.To("cron_schedules", CronSchedule.Type),
 	}
 }

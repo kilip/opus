@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/kilip/opus/api/ent/job"
+	"github.com/kilip/opus/api/ent/user"
 )
 
 // Job is the model entity for the Job schema.
@@ -36,8 +37,33 @@ type Job struct {
 	// UpdatedAt holds the value of the "updated_at" field.
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// Error holds the value of the "error" field.
-	Error        string `json:"error,omitempty"`
+	Error string `json:"error,omitempty"`
+	// UserID holds the value of the "user_id" field.
+	UserID string `json:"user_id,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the JobQuery when eager-loading is set.
+	Edges        JobEdges `json:"edges"`
 	selectValues sql.SelectValues
+}
+
+// JobEdges holds the relations/edges for other nodes in the graph.
+type JobEdges struct {
+	// User holds the value of the user edge.
+	User *User `json:"user,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+}
+
+// UserOrErr returns the User value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e JobEdges) UserOrErr() (*User, error) {
+	if e.User != nil {
+		return e.User, nil
+	} else if e.loadedTypes[0] {
+		return nil, &NotFoundError{label: user.Label}
+	}
+	return nil, &NotLoadedError{edge: "user"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -49,7 +75,7 @@ func (*Job) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case job.FieldPriority, job.FieldRetries, job.FieldMaxRetries:
 			values[i] = new(sql.NullInt64)
-		case job.FieldID, job.FieldType, job.FieldStatus, job.FieldError:
+		case job.FieldID, job.FieldType, job.FieldStatus, job.FieldError, job.FieldUserID:
 			values[i] = new(sql.NullString)
 		case job.FieldScheduledAt, job.FieldCreatedAt, job.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -134,6 +160,12 @@ func (_m *Job) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Error = value.String
 			}
+		case job.FieldUserID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field user_id", values[i])
+			} else if value.Valid {
+				_m.UserID = value.String
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -145,6 +177,11 @@ func (_m *Job) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (_m *Job) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
+}
+
+// QueryUser queries the "user" edge of the Job entity.
+func (_m *Job) QueryUser() *UserQuery {
+	return NewJobClient(_m.config).QueryUser(_m)
 }
 
 // Update returns a builder for updating this Job.
@@ -199,6 +236,9 @@ func (_m *Job) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("error=")
 	builder.WriteString(_m.Error)
+	builder.WriteString(", ")
+	builder.WriteString("user_id=")
+	builder.WriteString(_m.UserID)
 	builder.WriteByte(')')
 	return builder.String()
 }

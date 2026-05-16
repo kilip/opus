@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/kilip/opus/api/ent/deadletter"
 	"github.com/kilip/opus/api/ent/predicate"
+	"github.com/kilip/opus/api/ent/user"
 )
 
 // DeadLetterUpdate is the builder for updating DeadLetter entities.
@@ -102,9 +103,34 @@ func (_u *DeadLetterUpdate) AddRetries(v int) *DeadLetterUpdate {
 	return _u
 }
 
+// SetUserID sets the "user_id" field.
+func (_u *DeadLetterUpdate) SetUserID(v string) *DeadLetterUpdate {
+	_u.mutation.SetUserID(v)
+	return _u
+}
+
+// SetNillableUserID sets the "user_id" field if the given value is not nil.
+func (_u *DeadLetterUpdate) SetNillableUserID(v *string) *DeadLetterUpdate {
+	if v != nil {
+		_u.SetUserID(*v)
+	}
+	return _u
+}
+
+// SetUser sets the "user" edge to the User entity.
+func (_u *DeadLetterUpdate) SetUser(v *User) *DeadLetterUpdate {
+	return _u.SetUserID(v.ID)
+}
+
 // Mutation returns the DeadLetterMutation object of the builder.
 func (_u *DeadLetterUpdate) Mutation() *DeadLetterMutation {
 	return _u.mutation
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (_u *DeadLetterUpdate) ClearUser() *DeadLetterUpdate {
+	_u.mutation.ClearUser()
+	return _u
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -134,7 +160,18 @@ func (_u *DeadLetterUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *DeadLetterUpdate) check() error {
+	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "DeadLetter.user"`)
+	}
+	return nil
+}
+
 func (_u *DeadLetterUpdate) sqlSave(ctx context.Context) (_node int, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(deadletter.Table, deadletter.Columns, sqlgraph.NewFieldSpec(deadletter.FieldID, field.TypeString))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -163,6 +200,35 @@ func (_u *DeadLetterUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 	}
 	if value, ok := _u.mutation.AddedRetries(); ok {
 		_spec.AddField(deadletter.FieldRetries, field.TypeInt, value)
+	}
+	if _u.mutation.UserCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   deadletter.UserTable,
+			Columns: []string{deadletter.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   deadletter.UserTable,
+			Columns: []string{deadletter.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -259,9 +325,34 @@ func (_u *DeadLetterUpdateOne) AddRetries(v int) *DeadLetterUpdateOne {
 	return _u
 }
 
+// SetUserID sets the "user_id" field.
+func (_u *DeadLetterUpdateOne) SetUserID(v string) *DeadLetterUpdateOne {
+	_u.mutation.SetUserID(v)
+	return _u
+}
+
+// SetNillableUserID sets the "user_id" field if the given value is not nil.
+func (_u *DeadLetterUpdateOne) SetNillableUserID(v *string) *DeadLetterUpdateOne {
+	if v != nil {
+		_u.SetUserID(*v)
+	}
+	return _u
+}
+
+// SetUser sets the "user" edge to the User entity.
+func (_u *DeadLetterUpdateOne) SetUser(v *User) *DeadLetterUpdateOne {
+	return _u.SetUserID(v.ID)
+}
+
 // Mutation returns the DeadLetterMutation object of the builder.
 func (_u *DeadLetterUpdateOne) Mutation() *DeadLetterMutation {
 	return _u.mutation
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (_u *DeadLetterUpdateOne) ClearUser() *DeadLetterUpdateOne {
+	_u.mutation.ClearUser()
+	return _u
 }
 
 // Where appends a list predicates to the DeadLetterUpdate builder.
@@ -304,7 +395,18 @@ func (_u *DeadLetterUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// check runs all checks and user-defined validators on the builder.
+func (_u *DeadLetterUpdateOne) check() error {
+	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "DeadLetter.user"`)
+	}
+	return nil
+}
+
 func (_u *DeadLetterUpdateOne) sqlSave(ctx context.Context) (_node *DeadLetter, err error) {
+	if err := _u.check(); err != nil {
+		return _node, err
+	}
 	_spec := sqlgraph.NewUpdateSpec(deadletter.Table, deadletter.Columns, sqlgraph.NewFieldSpec(deadletter.FieldID, field.TypeString))
 	id, ok := _u.mutation.ID()
 	if !ok {
@@ -350,6 +452,35 @@ func (_u *DeadLetterUpdateOne) sqlSave(ctx context.Context) (_node *DeadLetter, 
 	}
 	if value, ok := _u.mutation.AddedRetries(); ok {
 		_spec.AddField(deadletter.FieldRetries, field.TypeInt, value)
+	}
+	if _u.mutation.UserCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   deadletter.UserTable,
+			Columns: []string{deadletter.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.UserIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   deadletter.UserTable,
+			Columns: []string{deadletter.UserColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &DeadLetter{config: _u.config}
 	_spec.Assign = _node.assignValues

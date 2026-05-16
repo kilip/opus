@@ -29,6 +29,28 @@ func TestEntGoDriver_Integration(t *testing.T) {
 	}
 
 	driver := NewEntGoDriver(client, "sqlite")
+	
+	// Create test user
+	_, err = client.User.Create().
+		SetID("user-1").
+		SetEmail("test@example.com").
+		SetName("Test User").
+		SetProvider("email").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("failed creating test user: %v", err)
+	}
+	
+	// Create user for special dead letter test
+	_, err = client.User.Create().
+		SetID("user-special").
+		SetEmail("special@example.com").
+		SetName("Special User").
+		SetProvider("email").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("failed creating special test user: %v", err)
+	}
 
 	t.Run("Push and Pop Job", func(t *testing.T) {
 		jobID := "job-1"
@@ -39,6 +61,7 @@ func TestEntGoDriver_Integration(t *testing.T) {
 			Priority:    10,
 			Status:      model.StatusPending,
 			ScheduledAt: time.Now().Add(-1 * time.Minute),
+			UserID:      "user-1",
 		}
 
 		err := driver.Push(ctx, m)
@@ -62,6 +85,7 @@ func TestEntGoDriver_Integration(t *testing.T) {
 			Priority:    5,
 			Status:      model.StatusPending,
 			ScheduledAt: time.Now(),
+			UserID:      "user-1",
 		}
 
 		_ = driver.Push(ctx, m)
@@ -88,6 +112,7 @@ func TestEntGoDriver_Integration(t *testing.T) {
 			Retries:     3,
 			Error:       "max retries exceeded",
 			ScheduledAt: time.Now(),
+			UserID:      "user-1",
 		}
 
 		// Push first so we have a job to "move"
@@ -115,6 +140,7 @@ func TestEntGoDriver_Integration(t *testing.T) {
 			CronExpr: "0 0 * * *",
 			JobType:  "cleanup",
 			IsActive: true,
+			UserID:   "user-1",
 		}
 
 		err := driver.UpsertCron(ctx, m)
@@ -125,5 +151,79 @@ func TestEntGoDriver_Integration(t *testing.T) {
 		assert.Len(t, crons, 1)
 		assert.Equal(t, cronID, crons[0].ID)
 		assert.Equal(t, "daily_cleanup", crons[0].Name)
+	})
+
+	t.Run("List Dead Letters with UserID", func(t *testing.T) {
+		jobID := "job-dl-1"
+		m := &model.Job{
+			ID:          jobID,
+			Type:        "test_task",
+			Payload:     []byte(`{}`),
+			UserID:      "user-special",
+			Status:      model.StatusFailed,
+			Retries:     3,
+			ScheduledAt: time.Now(),
+		}
+		_ = driver.Push(ctx, m)
+		_ = driver.MoveToDead(ctx, m)
+
+		// List for user-special
+		dl, err := driver.ListDeadLetters(ctx, "user-special", 10, 0)
+		assert.NoError(t, err)
+		assert.Len(t, dl, 1)
+		assert.Equal(t, jobID, dl[0].JobID)
+
+		// List for other user
+		dl, err = driver.ListDeadLetters(ctx, "other-user", 10, 0)
+		assert.NoError(t, err)
+		assert.Len(t, dl, 0)
+	})
+
+	t.Run("Retry and Delete Dead Letter with UserID", func(t *testing.T) {
+		jobID := "job-dl-2"
+		m := &model.Job{
+			ID:          jobID,
+			Type:        "test_task",
+			Payload:     []byte("{}"),
+			UserID:      "user-special",
+			Status:      model.StatusFailed,
+			Retries:     3,
+			ScheduledAt: time.Now(),
+		}
+		err := driver.Push(ctx, m)
+		assert.NoError(t, err)
+		
+		err = driver.MoveToDead(ctx, m)
+		assert.NoError(t, err)
+
+		// Try retry with wrong user
+		err = driver.RetryDeadLetter(ctx, "wrong-user", jobID)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "unauthorized")
+
+		// Try delete with wrong user
+		err = driver.DeleteDeadLetter(ctx, "wrong-user", jobID)
+		assert.NoError(t, err) // EntGo Delete doesn't error if nothing deleted
+		
+		dl, err := client.DeadLetter.Get(ctx, jobID)
+		assert.NoError(t, err)
+		assert.NotNil(t, dl, "should still exist for original user")
+
+		// Success retry
+		err = driver.RetryDeadLetter(ctx, "user-special", jobID)
+		assert.NoError(t, err)
+
+		// Check job is back in pending
+		j, err := client.Job.Get(ctx, jobID)
+		assert.NoError(t, err)
+		assert.Equal(t, "pending", j.Status)
+
+		// Success delete
+		_ = driver.MoveToDead(ctx, m)
+		err = driver.DeleteDeadLetter(ctx, "user-special", jobID)
+		assert.NoError(t, err)
+
+		_, err = client.DeadLetter.Get(ctx, jobID)
+		assert.True(t, ent.IsNotFound(err))
 	})
 }

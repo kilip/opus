@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/kilip/opus/api/ent/deadletter"
+	"github.com/kilip/opus/api/ent/user"
 )
 
 // DeadLetter is the model entity for the DeadLetter schema.
@@ -28,8 +29,33 @@ type DeadLetter struct {
 	// Retries holds the value of the "retries" field.
 	Retries int `json:"retries,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
-	CreatedAt    time.Time `json:"created_at,omitempty"`
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	// UserID holds the value of the "user_id" field.
+	UserID string `json:"user_id,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the DeadLetterQuery when eager-loading is set.
+	Edges        DeadLetterEdges `json:"edges"`
 	selectValues sql.SelectValues
+}
+
+// DeadLetterEdges holds the relations/edges for other nodes in the graph.
+type DeadLetterEdges struct {
+	// User holds the value of the user edge.
+	User *User `json:"user,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+}
+
+// UserOrErr returns the User value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e DeadLetterEdges) UserOrErr() (*User, error) {
+	if e.User != nil {
+		return e.User, nil
+	} else if e.loadedTypes[0] {
+		return nil, &NotFoundError{label: user.Label}
+	}
+	return nil, &NotLoadedError{edge: "user"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -41,7 +67,7 @@ func (*DeadLetter) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case deadletter.FieldRetries:
 			values[i] = new(sql.NullInt64)
-		case deadletter.FieldID, deadletter.FieldJobID, deadletter.FieldType, deadletter.FieldLastError:
+		case deadletter.FieldID, deadletter.FieldJobID, deadletter.FieldType, deadletter.FieldLastError, deadletter.FieldUserID:
 			values[i] = new(sql.NullString)
 		case deadletter.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -102,6 +128,12 @@ func (_m *DeadLetter) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.CreatedAt = value.Time
 			}
+		case deadletter.FieldUserID:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field user_id", values[i])
+			} else if value.Valid {
+				_m.UserID = value.String
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -113,6 +145,11 @@ func (_m *DeadLetter) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (_m *DeadLetter) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
+}
+
+// QueryUser queries the "user" edge of the DeadLetter entity.
+func (_m *DeadLetter) QueryUser() *UserQuery {
+	return NewDeadLetterClient(_m.config).QueryUser(_m)
 }
 
 // Update returns a builder for updating this DeadLetter.
@@ -155,6 +192,9 @@ func (_m *DeadLetter) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("user_id=")
+	builder.WriteString(_m.UserID)
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -27,6 +27,7 @@ func TestWorkerEngine_Process(t *testing.T) {
 		ID:         "job-1",
 		Type:       "test_job",
 		MaxRetries: 3,
+		UserID:     "user-1",
 	}
 
 	t.Run("Success Path", func(t *testing.T) {

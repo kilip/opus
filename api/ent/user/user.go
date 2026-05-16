@@ -32,6 +32,12 @@ const (
 	EdgeSessions = "sessions"
 	// EdgeWaSession holds the string denoting the wa_session edge name in mutations.
 	EdgeWaSession = "wa_session"
+	// EdgeJobs holds the string denoting the jobs edge name in mutations.
+	EdgeJobs = "jobs"
+	// EdgeDeadLetters holds the string denoting the dead_letters edge name in mutations.
+	EdgeDeadLetters = "dead_letters"
+	// EdgeCronSchedules holds the string denoting the cron_schedules edge name in mutations.
+	EdgeCronSchedules = "cron_schedules"
 	// Table holds the table name of the user in the database.
 	Table = "users"
 	// SessionsTable is the table that holds the sessions relation/edge.
@@ -48,6 +54,27 @@ const (
 	WaSessionInverseTable = "wa_sessions"
 	// WaSessionColumn is the table column denoting the wa_session relation/edge.
 	WaSessionColumn = "user_wa_session"
+	// JobsTable is the table that holds the jobs relation/edge.
+	JobsTable = "jobs"
+	// JobsInverseTable is the table name for the Job entity.
+	// It exists in this package in order to avoid circular dependency with the "job" package.
+	JobsInverseTable = "jobs"
+	// JobsColumn is the table column denoting the jobs relation/edge.
+	JobsColumn = "user_id"
+	// DeadLettersTable is the table that holds the dead_letters relation/edge.
+	DeadLettersTable = "dead_letters"
+	// DeadLettersInverseTable is the table name for the DeadLetter entity.
+	// It exists in this package in order to avoid circular dependency with the "deadletter" package.
+	DeadLettersInverseTable = "dead_letters"
+	// DeadLettersColumn is the table column denoting the dead_letters relation/edge.
+	DeadLettersColumn = "user_id"
+	// CronSchedulesTable is the table that holds the cron_schedules relation/edge.
+	CronSchedulesTable = "cron_schedules"
+	// CronSchedulesInverseTable is the table name for the CronSchedule entity.
+	// It exists in this package in order to avoid circular dependency with the "cronschedule" package.
+	CronSchedulesInverseTable = "cron_schedules"
+	// CronSchedulesColumn is the table column denoting the cron_schedules relation/edge.
+	CronSchedulesColumn = "user_id"
 )
 
 // Columns holds all SQL columns for user fields.
@@ -144,6 +171,48 @@ func ByWaSessionField(field string, opts ...sql.OrderTermOption) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newWaSessionStep(), sql.OrderByField(field, opts...))
 	}
 }
+
+// ByJobsCount orders the results by jobs count.
+func ByJobsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newJobsStep(), opts...)
+	}
+}
+
+// ByJobs orders the results by jobs terms.
+func ByJobs(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newJobsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByDeadLettersCount orders the results by dead_letters count.
+func ByDeadLettersCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newDeadLettersStep(), opts...)
+	}
+}
+
+// ByDeadLetters orders the results by dead_letters terms.
+func ByDeadLetters(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newDeadLettersStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByCronSchedulesCount orders the results by cron_schedules count.
+func ByCronSchedulesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newCronSchedulesStep(), opts...)
+	}
+}
+
+// ByCronSchedules orders the results by cron_schedules terms.
+func ByCronSchedules(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newCronSchedulesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newSessionsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -156,5 +225,26 @@ func newWaSessionStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(WaSessionInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2O, false, WaSessionTable, WaSessionColumn),
+	)
+}
+func newJobsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(JobsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, JobsTable, JobsColumn),
+	)
+}
+func newDeadLettersStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(DeadLettersInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, DeadLettersTable, DeadLettersColumn),
+	)
+}
+func newCronSchedulesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(CronSchedulesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, CronSchedulesTable, CronSchedulesColumn),
 	)
 }

@@ -59,6 +59,8 @@ type CronScheduleMutation struct {
 	created_at      *time.Time
 	updated_at      *time.Time
 	clearedFields   map[string]struct{}
+	user            *string
+	cleareduser     bool
 	done            bool
 	oldValue        func(context.Context) (*CronSchedule, error)
 	predicates      []predicate.CronSchedule
@@ -531,6 +533,69 @@ func (m *CronScheduleMutation) ResetUpdatedAt() {
 	m.updated_at = nil
 }
 
+// SetUserID sets the "user_id" field.
+func (m *CronScheduleMutation) SetUserID(s string) {
+	m.user = &s
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *CronScheduleMutation) UserID() (r string, exists bool) {
+	v := m.user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the CronSchedule entity.
+// If the CronSchedule object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CronScheduleMutation) OldUserID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *CronScheduleMutation) ResetUserID() {
+	m.user = nil
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (m *CronScheduleMutation) ClearUser() {
+	m.cleareduser = true
+	m.clearedFields[cronschedule.FieldUserID] = struct{}{}
+}
+
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *CronScheduleMutation) UserCleared() bool {
+	return m.cleareduser
+}
+
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *CronScheduleMutation) UserIDs() (ids []string) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUser resets all changes to the "user" edge.
+func (m *CronScheduleMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
+}
+
 // Where appends a list predicates to the CronScheduleMutation builder.
 func (m *CronScheduleMutation) Where(ps ...predicate.CronSchedule) {
 	m.predicates = append(m.predicates, ps...)
@@ -565,7 +630,7 @@ func (m *CronScheduleMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *CronScheduleMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 10)
 	if m.name != nil {
 		fields = append(fields, cronschedule.FieldName)
 	}
@@ -593,6 +658,9 @@ func (m *CronScheduleMutation) Fields() []string {
 	if m.updated_at != nil {
 		fields = append(fields, cronschedule.FieldUpdatedAt)
 	}
+	if m.user != nil {
+		fields = append(fields, cronschedule.FieldUserID)
+	}
 	return fields
 }
 
@@ -619,6 +687,8 @@ func (m *CronScheduleMutation) Field(name string) (ent.Value, bool) {
 		return m.CreatedAt()
 	case cronschedule.FieldUpdatedAt:
 		return m.UpdatedAt()
+	case cronschedule.FieldUserID:
+		return m.UserID()
 	}
 	return nil, false
 }
@@ -646,6 +716,8 @@ func (m *CronScheduleMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldCreatedAt(ctx)
 	case cronschedule.FieldUpdatedAt:
 		return m.OldUpdatedAt(ctx)
+	case cronschedule.FieldUserID:
+		return m.OldUserID(ctx)
 	}
 	return nil, fmt.Errorf("unknown CronSchedule field %s", name)
 }
@@ -717,6 +789,13 @@ func (m *CronScheduleMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetUpdatedAt(v)
+		return nil
+	case cronschedule.FieldUserID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
 		return nil
 	}
 	return fmt.Errorf("unknown CronSchedule field %s", name)
@@ -815,25 +894,37 @@ func (m *CronScheduleMutation) ResetField(name string) error {
 	case cronschedule.FieldUpdatedAt:
 		m.ResetUpdatedAt()
 		return nil
+	case cronschedule.FieldUserID:
+		m.ResetUserID()
+		return nil
 	}
 	return fmt.Errorf("unknown CronSchedule field %s", name)
 }
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *CronScheduleMutation) AddedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.user != nil {
+		edges = append(edges, cronschedule.EdgeUser)
+	}
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *CronScheduleMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case cronschedule.EdgeUser:
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
+	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *CronScheduleMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
 	return edges
 }
 
@@ -845,25 +936,42 @@ func (m *CronScheduleMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *CronScheduleMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.cleareduser {
+		edges = append(edges, cronschedule.EdgeUser)
+	}
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *CronScheduleMutation) EdgeCleared(name string) bool {
+	switch name {
+	case cronschedule.EdgeUser:
+		return m.cleareduser
+	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *CronScheduleMutation) ClearEdge(name string) error {
+	switch name {
+	case cronschedule.EdgeUser:
+		m.ClearUser()
+		return nil
+	}
 	return fmt.Errorf("unknown CronSchedule unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *CronScheduleMutation) ResetEdge(name string) error {
+	switch name {
+	case cronschedule.EdgeUser:
+		m.ResetUser()
+		return nil
+	}
 	return fmt.Errorf("unknown CronSchedule edge %s", name)
 }
 
@@ -881,6 +989,8 @@ type DeadLetterMutation struct {
 	addretries    *int
 	created_at    *time.Time
 	clearedFields map[string]struct{}
+	user          *string
+	cleareduser   bool
 	done          bool
 	oldValue      func(context.Context) (*DeadLetter, error)
 	predicates    []predicate.DeadLetter
@@ -1239,6 +1349,69 @@ func (m *DeadLetterMutation) ResetCreatedAt() {
 	m.created_at = nil
 }
 
+// SetUserID sets the "user_id" field.
+func (m *DeadLetterMutation) SetUserID(s string) {
+	m.user = &s
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *DeadLetterMutation) UserID() (r string, exists bool) {
+	v := m.user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the DeadLetter entity.
+// If the DeadLetter object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *DeadLetterMutation) OldUserID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *DeadLetterMutation) ResetUserID() {
+	m.user = nil
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (m *DeadLetterMutation) ClearUser() {
+	m.cleareduser = true
+	m.clearedFields[deadletter.FieldUserID] = struct{}{}
+}
+
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *DeadLetterMutation) UserCleared() bool {
+	return m.cleareduser
+}
+
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *DeadLetterMutation) UserIDs() (ids []string) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUser resets all changes to the "user" edge.
+func (m *DeadLetterMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
+}
+
 // Where appends a list predicates to the DeadLetterMutation builder.
 func (m *DeadLetterMutation) Where(ps ...predicate.DeadLetter) {
 	m.predicates = append(m.predicates, ps...)
@@ -1273,7 +1446,7 @@ func (m *DeadLetterMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *DeadLetterMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 7)
 	if m.job_id != nil {
 		fields = append(fields, deadletter.FieldJobID)
 	}
@@ -1291,6 +1464,9 @@ func (m *DeadLetterMutation) Fields() []string {
 	}
 	if m.created_at != nil {
 		fields = append(fields, deadletter.FieldCreatedAt)
+	}
+	if m.user != nil {
+		fields = append(fields, deadletter.FieldUserID)
 	}
 	return fields
 }
@@ -1312,6 +1488,8 @@ func (m *DeadLetterMutation) Field(name string) (ent.Value, bool) {
 		return m.Retries()
 	case deadletter.FieldCreatedAt:
 		return m.CreatedAt()
+	case deadletter.FieldUserID:
+		return m.UserID()
 	}
 	return nil, false
 }
@@ -1333,6 +1511,8 @@ func (m *DeadLetterMutation) OldField(ctx context.Context, name string) (ent.Val
 		return m.OldRetries(ctx)
 	case deadletter.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
+	case deadletter.FieldUserID:
+		return m.OldUserID(ctx)
 	}
 	return nil, fmt.Errorf("unknown DeadLetter field %s", name)
 }
@@ -1383,6 +1563,13 @@ func (m *DeadLetterMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetCreatedAt(v)
+		return nil
+	case deadletter.FieldUserID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
 		return nil
 	}
 	return fmt.Errorf("unknown DeadLetter field %s", name)
@@ -1475,25 +1662,37 @@ func (m *DeadLetterMutation) ResetField(name string) error {
 	case deadletter.FieldCreatedAt:
 		m.ResetCreatedAt()
 		return nil
+	case deadletter.FieldUserID:
+		m.ResetUserID()
+		return nil
 	}
 	return fmt.Errorf("unknown DeadLetter field %s", name)
 }
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *DeadLetterMutation) AddedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.user != nil {
+		edges = append(edges, deadletter.EdgeUser)
+	}
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *DeadLetterMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case deadletter.EdgeUser:
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
+	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *DeadLetterMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
 	return edges
 }
 
@@ -1505,25 +1704,42 @@ func (m *DeadLetterMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *DeadLetterMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.cleareduser {
+		edges = append(edges, deadletter.EdgeUser)
+	}
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *DeadLetterMutation) EdgeCleared(name string) bool {
+	switch name {
+	case deadletter.EdgeUser:
+		return m.cleareduser
+	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *DeadLetterMutation) ClearEdge(name string) error {
+	switch name {
+	case deadletter.EdgeUser:
+		m.ClearUser()
+		return nil
+	}
 	return fmt.Errorf("unknown DeadLetter unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *DeadLetterMutation) ResetEdge(name string) error {
+	switch name {
+	case deadletter.EdgeUser:
+		m.ResetUser()
+		return nil
+	}
 	return fmt.Errorf("unknown DeadLetter edge %s", name)
 }
 
@@ -1547,6 +1763,8 @@ type JobMutation struct {
 	updated_at     *time.Time
 	error          *string
 	clearedFields  map[string]struct{}
+	user           *string
+	cleareduser    bool
 	done           bool
 	oldValue       func(context.Context) (*Job, error)
 	predicates     []predicate.Job
@@ -2089,6 +2307,69 @@ func (m *JobMutation) ResetError() {
 	delete(m.clearedFields, job.FieldError)
 }
 
+// SetUserID sets the "user_id" field.
+func (m *JobMutation) SetUserID(s string) {
+	m.user = &s
+}
+
+// UserID returns the value of the "user_id" field in the mutation.
+func (m *JobMutation) UserID() (r string, exists bool) {
+	v := m.user
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUserID returns the old "user_id" field's value of the Job entity.
+// If the Job object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *JobMutation) OldUserID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUserID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUserID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUserID: %w", err)
+	}
+	return oldValue.UserID, nil
+}
+
+// ResetUserID resets all changes to the "user_id" field.
+func (m *JobMutation) ResetUserID() {
+	m.user = nil
+}
+
+// ClearUser clears the "user" edge to the User entity.
+func (m *JobMutation) ClearUser() {
+	m.cleareduser = true
+	m.clearedFields[job.FieldUserID] = struct{}{}
+}
+
+// UserCleared reports if the "user" edge to the User entity was cleared.
+func (m *JobMutation) UserCleared() bool {
+	return m.cleareduser
+}
+
+// UserIDs returns the "user" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// UserID instead. It exists only for internal usage by the builders.
+func (m *JobMutation) UserIDs() (ids []string) {
+	if id := m.user; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetUser resets all changes to the "user" edge.
+func (m *JobMutation) ResetUser() {
+	m.user = nil
+	m.cleareduser = false
+}
+
 // Where appends a list predicates to the JobMutation builder.
 func (m *JobMutation) Where(ps ...predicate.Job) {
 	m.predicates = append(m.predicates, ps...)
@@ -2123,7 +2404,7 @@ func (m *JobMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *JobMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 11)
 	if m._type != nil {
 		fields = append(fields, job.FieldType)
 	}
@@ -2154,6 +2435,9 @@ func (m *JobMutation) Fields() []string {
 	if m.error != nil {
 		fields = append(fields, job.FieldError)
 	}
+	if m.user != nil {
+		fields = append(fields, job.FieldUserID)
+	}
 	return fields
 }
 
@@ -2182,6 +2466,8 @@ func (m *JobMutation) Field(name string) (ent.Value, bool) {
 		return m.UpdatedAt()
 	case job.FieldError:
 		return m.Error()
+	case job.FieldUserID:
+		return m.UserID()
 	}
 	return nil, false
 }
@@ -2211,6 +2497,8 @@ func (m *JobMutation) OldField(ctx context.Context, name string) (ent.Value, err
 		return m.OldUpdatedAt(ctx)
 	case job.FieldError:
 		return m.OldError(ctx)
+	case job.FieldUserID:
+		return m.OldUserID(ctx)
 	}
 	return nil, fmt.Errorf("unknown Job field %s", name)
 }
@@ -2289,6 +2577,13 @@ func (m *JobMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetError(v)
+		return nil
+	case job.FieldUserID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUserID(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Job field %s", name)
@@ -2417,25 +2712,37 @@ func (m *JobMutation) ResetField(name string) error {
 	case job.FieldError:
 		m.ResetError()
 		return nil
+	case job.FieldUserID:
+		m.ResetUserID()
+		return nil
 	}
 	return fmt.Errorf("unknown Job field %s", name)
 }
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *JobMutation) AddedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.user != nil {
+		edges = append(edges, job.EdgeUser)
+	}
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *JobMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case job.EdgeUser:
+		if id := m.user; id != nil {
+			return []ent.Value{*id}
+		}
+	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *JobMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
 	return edges
 }
 
@@ -2447,25 +2754,42 @@ func (m *JobMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *JobMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.cleareduser {
+		edges = append(edges, job.EdgeUser)
+	}
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *JobMutation) EdgeCleared(name string) bool {
+	switch name {
+	case job.EdgeUser:
+		return m.cleareduser
+	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *JobMutation) ClearEdge(name string) error {
+	switch name {
+	case job.EdgeUser:
+		m.ClearUser()
+		return nil
+	}
 	return fmt.Errorf("unknown Job unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *JobMutation) ResetEdge(name string) error {
+	switch name {
+	case job.EdgeUser:
+		m.ResetUser()
+		return nil
+	}
 	return fmt.Errorf("unknown Job edge %s", name)
 }
 
@@ -3074,25 +3398,34 @@ func (m *SessionMutation) ResetEdge(name string) error {
 // UserMutation represents an operation that mutates the User nodes in the graph.
 type UserMutation struct {
 	config
-	op                Op
-	typ               string
-	id                *string
-	email             *string
-	name              *string
-	avatar_url        *string
-	provider          *string
-	provider_id       *string
-	created_at        *time.Time
-	updated_at        *time.Time
-	clearedFields     map[string]struct{}
-	sessions          map[string]struct{}
-	removedsessions   map[string]struct{}
-	clearedsessions   bool
-	wa_session        *string
-	clearedwa_session bool
-	done              bool
-	oldValue          func(context.Context) (*User, error)
-	predicates        []predicate.User
+	op                    Op
+	typ                   string
+	id                    *string
+	email                 *string
+	name                  *string
+	avatar_url            *string
+	provider              *string
+	provider_id           *string
+	created_at            *time.Time
+	updated_at            *time.Time
+	clearedFields         map[string]struct{}
+	sessions              map[string]struct{}
+	removedsessions       map[string]struct{}
+	clearedsessions       bool
+	wa_session            *string
+	clearedwa_session     bool
+	jobs                  map[string]struct{}
+	removedjobs           map[string]struct{}
+	clearedjobs           bool
+	dead_letters          map[string]struct{}
+	removeddead_letters   map[string]struct{}
+	cleareddead_letters   bool
+	cron_schedules        map[string]struct{}
+	removedcron_schedules map[string]struct{}
+	clearedcron_schedules bool
+	done                  bool
+	oldValue              func(context.Context) (*User, error)
+	predicates            []predicate.User
 }
 
 var _ ent.Mutation = (*UserMutation)(nil)
@@ -3570,6 +3903,168 @@ func (m *UserMutation) ResetWaSession() {
 	m.clearedwa_session = false
 }
 
+// AddJobIDs adds the "jobs" edge to the Job entity by ids.
+func (m *UserMutation) AddJobIDs(ids ...string) {
+	if m.jobs == nil {
+		m.jobs = make(map[string]struct{})
+	}
+	for i := range ids {
+		m.jobs[ids[i]] = struct{}{}
+	}
+}
+
+// ClearJobs clears the "jobs" edge to the Job entity.
+func (m *UserMutation) ClearJobs() {
+	m.clearedjobs = true
+}
+
+// JobsCleared reports if the "jobs" edge to the Job entity was cleared.
+func (m *UserMutation) JobsCleared() bool {
+	return m.clearedjobs
+}
+
+// RemoveJobIDs removes the "jobs" edge to the Job entity by IDs.
+func (m *UserMutation) RemoveJobIDs(ids ...string) {
+	if m.removedjobs == nil {
+		m.removedjobs = make(map[string]struct{})
+	}
+	for i := range ids {
+		delete(m.jobs, ids[i])
+		m.removedjobs[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedJobs returns the removed IDs of the "jobs" edge to the Job entity.
+func (m *UserMutation) RemovedJobsIDs() (ids []string) {
+	for id := range m.removedjobs {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// JobsIDs returns the "jobs" edge IDs in the mutation.
+func (m *UserMutation) JobsIDs() (ids []string) {
+	for id := range m.jobs {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetJobs resets all changes to the "jobs" edge.
+func (m *UserMutation) ResetJobs() {
+	m.jobs = nil
+	m.clearedjobs = false
+	m.removedjobs = nil
+}
+
+// AddDeadLetterIDs adds the "dead_letters" edge to the DeadLetter entity by ids.
+func (m *UserMutation) AddDeadLetterIDs(ids ...string) {
+	if m.dead_letters == nil {
+		m.dead_letters = make(map[string]struct{})
+	}
+	for i := range ids {
+		m.dead_letters[ids[i]] = struct{}{}
+	}
+}
+
+// ClearDeadLetters clears the "dead_letters" edge to the DeadLetter entity.
+func (m *UserMutation) ClearDeadLetters() {
+	m.cleareddead_letters = true
+}
+
+// DeadLettersCleared reports if the "dead_letters" edge to the DeadLetter entity was cleared.
+func (m *UserMutation) DeadLettersCleared() bool {
+	return m.cleareddead_letters
+}
+
+// RemoveDeadLetterIDs removes the "dead_letters" edge to the DeadLetter entity by IDs.
+func (m *UserMutation) RemoveDeadLetterIDs(ids ...string) {
+	if m.removeddead_letters == nil {
+		m.removeddead_letters = make(map[string]struct{})
+	}
+	for i := range ids {
+		delete(m.dead_letters, ids[i])
+		m.removeddead_letters[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedDeadLetters returns the removed IDs of the "dead_letters" edge to the DeadLetter entity.
+func (m *UserMutation) RemovedDeadLettersIDs() (ids []string) {
+	for id := range m.removeddead_letters {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// DeadLettersIDs returns the "dead_letters" edge IDs in the mutation.
+func (m *UserMutation) DeadLettersIDs() (ids []string) {
+	for id := range m.dead_letters {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetDeadLetters resets all changes to the "dead_letters" edge.
+func (m *UserMutation) ResetDeadLetters() {
+	m.dead_letters = nil
+	m.cleareddead_letters = false
+	m.removeddead_letters = nil
+}
+
+// AddCronScheduleIDs adds the "cron_schedules" edge to the CronSchedule entity by ids.
+func (m *UserMutation) AddCronScheduleIDs(ids ...string) {
+	if m.cron_schedules == nil {
+		m.cron_schedules = make(map[string]struct{})
+	}
+	for i := range ids {
+		m.cron_schedules[ids[i]] = struct{}{}
+	}
+}
+
+// ClearCronSchedules clears the "cron_schedules" edge to the CronSchedule entity.
+func (m *UserMutation) ClearCronSchedules() {
+	m.clearedcron_schedules = true
+}
+
+// CronSchedulesCleared reports if the "cron_schedules" edge to the CronSchedule entity was cleared.
+func (m *UserMutation) CronSchedulesCleared() bool {
+	return m.clearedcron_schedules
+}
+
+// RemoveCronScheduleIDs removes the "cron_schedules" edge to the CronSchedule entity by IDs.
+func (m *UserMutation) RemoveCronScheduleIDs(ids ...string) {
+	if m.removedcron_schedules == nil {
+		m.removedcron_schedules = make(map[string]struct{})
+	}
+	for i := range ids {
+		delete(m.cron_schedules, ids[i])
+		m.removedcron_schedules[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedCronSchedules returns the removed IDs of the "cron_schedules" edge to the CronSchedule entity.
+func (m *UserMutation) RemovedCronSchedulesIDs() (ids []string) {
+	for id := range m.removedcron_schedules {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// CronSchedulesIDs returns the "cron_schedules" edge IDs in the mutation.
+func (m *UserMutation) CronSchedulesIDs() (ids []string) {
+	for id := range m.cron_schedules {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetCronSchedules resets all changes to the "cron_schedules" edge.
+func (m *UserMutation) ResetCronSchedules() {
+	m.cron_schedules = nil
+	m.clearedcron_schedules = false
+	m.removedcron_schedules = nil
+}
+
 // Where appends a list predicates to the UserMutation builder.
 func (m *UserMutation) Where(ps ...predicate.User) {
 	m.predicates = append(m.predicates, ps...)
@@ -3820,12 +4315,21 @@ func (m *UserMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *UserMutation) AddedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 5)
 	if m.sessions != nil {
 		edges = append(edges, user.EdgeSessions)
 	}
 	if m.wa_session != nil {
 		edges = append(edges, user.EdgeWaSession)
+	}
+	if m.jobs != nil {
+		edges = append(edges, user.EdgeJobs)
+	}
+	if m.dead_letters != nil {
+		edges = append(edges, user.EdgeDeadLetters)
+	}
+	if m.cron_schedules != nil {
+		edges = append(edges, user.EdgeCronSchedules)
 	}
 	return edges
 }
@@ -3844,15 +4348,42 @@ func (m *UserMutation) AddedIDs(name string) []ent.Value {
 		if id := m.wa_session; id != nil {
 			return []ent.Value{*id}
 		}
+	case user.EdgeJobs:
+		ids := make([]ent.Value, 0, len(m.jobs))
+		for id := range m.jobs {
+			ids = append(ids, id)
+		}
+		return ids
+	case user.EdgeDeadLetters:
+		ids := make([]ent.Value, 0, len(m.dead_letters))
+		for id := range m.dead_letters {
+			ids = append(ids, id)
+		}
+		return ids
+	case user.EdgeCronSchedules:
+		ids := make([]ent.Value, 0, len(m.cron_schedules))
+		for id := range m.cron_schedules {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *UserMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 5)
 	if m.removedsessions != nil {
 		edges = append(edges, user.EdgeSessions)
+	}
+	if m.removedjobs != nil {
+		edges = append(edges, user.EdgeJobs)
+	}
+	if m.removeddead_letters != nil {
+		edges = append(edges, user.EdgeDeadLetters)
+	}
+	if m.removedcron_schedules != nil {
+		edges = append(edges, user.EdgeCronSchedules)
 	}
 	return edges
 }
@@ -3867,18 +4398,45 @@ func (m *UserMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case user.EdgeJobs:
+		ids := make([]ent.Value, 0, len(m.removedjobs))
+		for id := range m.removedjobs {
+			ids = append(ids, id)
+		}
+		return ids
+	case user.EdgeDeadLetters:
+		ids := make([]ent.Value, 0, len(m.removeddead_letters))
+		for id := range m.removeddead_letters {
+			ids = append(ids, id)
+		}
+		return ids
+	case user.EdgeCronSchedules:
+		ids := make([]ent.Value, 0, len(m.removedcron_schedules))
+		for id := range m.removedcron_schedules {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *UserMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 5)
 	if m.clearedsessions {
 		edges = append(edges, user.EdgeSessions)
 	}
 	if m.clearedwa_session {
 		edges = append(edges, user.EdgeWaSession)
+	}
+	if m.clearedjobs {
+		edges = append(edges, user.EdgeJobs)
+	}
+	if m.cleareddead_letters {
+		edges = append(edges, user.EdgeDeadLetters)
+	}
+	if m.clearedcron_schedules {
+		edges = append(edges, user.EdgeCronSchedules)
 	}
 	return edges
 }
@@ -3891,6 +4449,12 @@ func (m *UserMutation) EdgeCleared(name string) bool {
 		return m.clearedsessions
 	case user.EdgeWaSession:
 		return m.clearedwa_session
+	case user.EdgeJobs:
+		return m.clearedjobs
+	case user.EdgeDeadLetters:
+		return m.cleareddead_letters
+	case user.EdgeCronSchedules:
+		return m.clearedcron_schedules
 	}
 	return false
 }
@@ -3915,6 +4479,15 @@ func (m *UserMutation) ResetEdge(name string) error {
 		return nil
 	case user.EdgeWaSession:
 		m.ResetWaSession()
+		return nil
+	case user.EdgeJobs:
+		m.ResetJobs()
+		return nil
+	case user.EdgeDeadLetters:
+		m.ResetDeadLetters()
+		return nil
+	case user.EdgeCronSchedules:
+		m.ResetCronSchedules()
 		return nil
 	}
 	return fmt.Errorf("unknown User edge %s", name)

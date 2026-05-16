@@ -8,6 +8,7 @@ import (
 
 	"github.com/kilip/opus/api/ent"
 	"github.com/kilip/opus/api/ent/cronschedule"
+	"github.com/kilip/opus/api/ent/deadletter"
 	"github.com/kilip/opus/api/ent/job"
 	"github.com/kilip/opus/api/internal/model"
 )
@@ -39,6 +40,7 @@ func (d *entGoDriver) Push(ctx context.Context, m *model.Job) error {
 		SetMaxRetries(m.MaxRetries).
 		SetScheduledAt(m.ScheduledAt).
 		SetError(m.Error).
+		SetUserID(m.UserID).
 		OnConflict().
 		UpdateNewValues().
 		Exec(ctx)
@@ -129,6 +131,7 @@ func (d *entGoDriver) MoveToDead(ctx context.Context, m *model.Job) error {
 		SetPayload(m.Payload).
 		SetLastError(m.Error).
 		SetRetries(m.Retries).
+		SetUserID(m.UserID).
 		Save(ctx)
 	if err != nil {
 		_ = tx.Rollback()
@@ -149,9 +152,12 @@ func (d *entGoDriver) MoveToDead(ctx context.Context, m *model.Job) error {
 
 
 // ListDeadLetters returns a paginated list of dead letter jobs.
-func (d *entGoDriver) ListDeadLetters(ctx context.Context, limit, offset int) ([]*model.DeadLetter, error) {
-	dl, err := d.client.DeadLetter.
-		Query().
+func (d *entGoDriver) ListDeadLetters(ctx context.Context, userID string, limit, offset int) ([]*model.DeadLetter, error) {
+	query := d.client.DeadLetter.Query()
+	if userID != "" {
+		query = query.Where(deadletter.UserID(userID))
+	}
+	dl, err := query.
 		Limit(limit).
 		Offset(offset).
 		All(ctx)
@@ -168,6 +174,7 @@ func (d *entGoDriver) ListDeadLetters(ctx context.Context, limit, offset int) ([
 			Payload:   item.Payload,
 			LastError: item.LastError,
 			Retries:   item.Retries,
+			UserID:    item.UserID,
 			CreatedAt: item.CreatedAt,
 		}
 	}
@@ -175,15 +182,23 @@ func (d *entGoDriver) ListDeadLetters(ctx context.Context, limit, offset int) ([
 }
 
 // RetryDeadLetter moves a dead letter job back to the pending queue.
-func (d *entGoDriver) RetryDeadLetter(ctx context.Context, id string) error {
+func (d *entGoDriver) RetryDeadLetter(ctx context.Context, userID string, id string) error {
 	tx, err := d.client.Tx(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to start transaction: %w", err)
 	}
 
-	dl, err := tx.DeadLetter.Get(ctx, id)
+	dl, err := tx.DeadLetter.Query().
+		Where(
+			deadletter.ID(id),
+			deadletter.UserID(userID),
+		).
+		Only(ctx)
 	if err != nil {
 		_ = tx.Rollback()
+		if ent.IsNotFound(err) {
+			return fmt.Errorf("dead letter not found or unauthorized")
+		}
 		return fmt.Errorf("failed to get dead letter: %w", err)
 	}
 
@@ -197,6 +212,7 @@ func (d *entGoDriver) RetryDeadLetter(ctx context.Context, id string) error {
 		SetRetries(0).
 		SetMaxRetries(3). // Default to 3 for now
 		SetScheduledAt(time.Now()).
+		SetUserID(dl.UserID).
 		Save(ctx)
 	if err != nil {
 		_ = tx.Rollback()
@@ -213,8 +229,13 @@ func (d *entGoDriver) RetryDeadLetter(ctx context.Context, id string) error {
 }
 
 // DeleteDeadLetter removes a dead letter job without retrying.
-func (d *entGoDriver) DeleteDeadLetter(ctx context.Context, id string) error {
-	err := d.client.DeadLetter.DeleteOneID(id).Exec(ctx)
+func (d *entGoDriver) DeleteDeadLetter(ctx context.Context, userID string, id string) error {
+	_, err := d.client.DeadLetter.Delete().
+		Where(
+			deadletter.ID(id),
+			deadletter.UserID(userID),
+		).
+		Exec(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to delete dead letter: %w", err)
 	}
@@ -226,7 +247,10 @@ func (d *entGoDriver) UpsertCron(ctx context.Context, m *model.CronSchedule) err
 	// Manual upsert since OnConflict extension is not enabled
 	exist, err := d.client.CronSchedule.
 		Query().
-		Where(cronschedule.Name(m.Name)).
+		Where(
+			cronschedule.Name(m.Name),
+			cronschedule.UserID(m.UserID),
+		).
 		Exist(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to check cron existence: %w", err)
@@ -235,7 +259,10 @@ func (d *entGoDriver) UpsertCron(ctx context.Context, m *model.CronSchedule) err
 	if exist {
 		_, err = d.client.CronSchedule.
 			Update().
-			Where(cronschedule.Name(m.Name)).
+			Where(
+				cronschedule.Name(m.Name),
+				cronschedule.UserID(m.UserID),
+			).
 			SetCronExpression(m.CronExpr).
 			SetJobType(m.JobType).
 			SetPayload(m.Payload).
@@ -250,6 +277,7 @@ func (d *entGoDriver) UpsertCron(ctx context.Context, m *model.CronSchedule) err
 			SetJobType(m.JobType).
 			SetPayload(m.Payload).
 			SetIsActive(m.IsActive).
+			SetUserID(m.UserID).
 			Save(ctx)
 	}
 
@@ -318,6 +346,7 @@ func (d *entGoDriver) mapJob(j *ent.Job) *model.Job {
 		ScheduledAt: j.ScheduledAt,
 		CreatedAt:   j.CreatedAt,
 		UpdatedAt:   j.UpdatedAt,
+		UserID:      j.UserID,
 		Error:       j.Error,
 	}
 }
@@ -332,6 +361,7 @@ func (d *entGoDriver) mapCron(c *ent.CronSchedule) *model.CronSchedule {
 		IsActive:  c.IsActive,
 		LastRunAt: c.LastRunAt,
 		NextRunAt: c.NextRunAt,
+		UserID:    c.UserID,
 		CreatedAt: c.CreatedAt,
 		UpdatedAt: c.UpdatedAt,
 	}

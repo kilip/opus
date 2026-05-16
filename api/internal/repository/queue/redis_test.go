@@ -60,4 +60,55 @@ func TestRedisDriver(t *testing.T) {
 		assert.Len(t, crons, 1)
 		assert.Equal(t, "daily", crons[0].Name)
 	})
+
+	t.Run("Dead Letter and Multi-User Isolation", func(t *testing.T) {
+		jobID := "job-dl"
+		m := &model.Job{
+			ID:      jobID,
+			Type:    "test",
+			UserID:  "user-1",
+			Payload: []byte("{}"),
+		}
+
+		// Move to dead
+		err := driver.MoveToDead(ctx, m)
+		assert.NoError(t, err)
+
+		// List for user-1
+		dl, err := driver.ListDeadLetters(ctx, "user-1", 10, 0)
+		assert.NoError(t, err)
+		assert.Len(t, dl, 1)
+		assert.Equal(t, jobID, dl[0].JobID)
+
+		// List for user-2
+		dl, err = driver.ListDeadLetters(ctx, "user-2", 10, 0)
+		assert.NoError(t, err)
+		assert.Len(t, dl, 0)
+
+		// Retry with wrong user
+		err = driver.RetryDeadLetter(ctx, "user-2", "dl-"+jobID)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "unauthorized")
+
+		// Retry with correct user
+		err = driver.RetryDeadLetter(ctx, "user-1", "dl-"+jobID)
+		assert.NoError(t, err)
+
+		// Verify popped
+		popped, _ := driver.Pop(ctx)
+		assert.NotNil(t, popped)
+		assert.Equal(t, jobID, popped.ID)
+
+		// Move back to dead then delete
+		_ = driver.MoveToDead(ctx, m)
+		err = driver.DeleteDeadLetter(ctx, "user-2", "dl-"+jobID)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "unauthorized")
+
+		err = driver.DeleteDeadLetter(ctx, "user-1", "dl-"+jobID)
+		assert.NoError(t, err)
+
+		dl, _ = driver.ListDeadLetters(ctx, "user-1", 10, 0)
+		assert.Len(t, dl, 0)
+	})
 }

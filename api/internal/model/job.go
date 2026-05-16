@@ -24,6 +24,7 @@ type Job struct {
 	ScheduledAt time.Time `json:"scheduled_at"`    // zero = immediate
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+	UserID      string    `json:"user_id"`
 	Error       string    `json:"error,omitempty"` // last error message
 }
 
@@ -35,5 +36,6 @@ type DeadLetter struct {
 	Payload   []byte    `json:"payload"`
 	LastError string    `json:"last_error"`
 	Retries   int       `json:"retries"`
+	UserID    string    `json:"user_id"`
 	CreatedAt time.Time `json:"created_at"`
 }

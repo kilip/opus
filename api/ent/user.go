@@ -44,9 +44,15 @@ type UserEdges struct {
 	Sessions []*Session `json:"sessions,omitempty"`
 	// WaSession holds the value of the wa_session edge.
 	WaSession *WaSession `json:"wa_session,omitempty"`
+	// Jobs holds the value of the jobs edge.
+	Jobs []*Job `json:"jobs,omitempty"`
+	// DeadLetters holds the value of the dead_letters edge.
+	DeadLetters []*DeadLetter `json:"dead_letters,omitempty"`
+	// CronSchedules holds the value of the cron_schedules edge.
+	CronSchedules []*CronSchedule `json:"cron_schedules,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [5]bool
 }
 
 // SessionsOrErr returns the Sessions value or an error if the edge
@@ -67,6 +73,33 @@ func (e UserEdges) WaSessionOrErr() (*WaSession, error) {
 		return nil, &NotFoundError{label: wasession.Label}
 	}
 	return nil, &NotLoadedError{edge: "wa_session"}
+}
+
+// JobsOrErr returns the Jobs value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) JobsOrErr() ([]*Job, error) {
+	if e.loadedTypes[2] {
+		return e.Jobs, nil
+	}
+	return nil, &NotLoadedError{edge: "jobs"}
+}
+
+// DeadLettersOrErr returns the DeadLetters value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) DeadLettersOrErr() ([]*DeadLetter, error) {
+	if e.loadedTypes[3] {
+		return e.DeadLetters, nil
+	}
+	return nil, &NotLoadedError{edge: "dead_letters"}
+}
+
+// CronSchedulesOrErr returns the CronSchedules value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) CronSchedulesOrErr() ([]*CronSchedule, error) {
+	if e.loadedTypes[4] {
+		return e.CronSchedules, nil
+	}
+	return nil, &NotLoadedError{edge: "cron_schedules"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -162,6 +195,21 @@ func (_m *User) QuerySessions() *SessionQuery {
 // QueryWaSession queries the "wa_session" edge of the User entity.
 func (_m *User) QueryWaSession() *WaSessionQuery {
 	return NewUserClient(_m.config).QueryWaSession(_m)
+}
+
+// QueryJobs queries the "jobs" edge of the User entity.
+func (_m *User) QueryJobs() *JobQuery {
+	return NewUserClient(_m.config).QueryJobs(_m)
+}
+
+// QueryDeadLetters queries the "dead_letters" edge of the User entity.
+func (_m *User) QueryDeadLetters() *DeadLetterQuery {
+	return NewUserClient(_m.config).QueryDeadLetters(_m)
+}
+
+// QueryCronSchedules queries the "cron_schedules" edge of the User entity.
+func (_m *User) QueryCronSchedules() *CronScheduleQuery {
+	return NewUserClient(_m.config).QueryCronSchedules(_m)
 }
 
 // Update returns a builder for updating this User.

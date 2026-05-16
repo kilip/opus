@@ -173,22 +173,32 @@ func (d *redisDriver) UpdateCronNextRun(ctx context.Context, id string, lastRun,
 	return d.client.HSet(ctx, d.cronKey(), id, newData).Err()
 }
 
-func (d *redisDriver) ListDeadLetters(ctx context.Context, limit, offset int) ([]*model.DeadLetter, error) {
-	start := int64(offset)
-	stop := int64(offset + limit - 1)
-
-	items, err := d.client.LRange(ctx, d.deadKey(), start, stop).Result()
+func (d *redisDriver) ListDeadLetters(ctx context.Context, userID string, limit, offset int) ([]*model.DeadLetter, error) {
+	items, err := d.client.LRange(ctx, d.deadKey(), 0, -1).Result()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list dead letters: %w", err)
 	}
 
-	result := make([]*model.DeadLetter, len(items))
-	for i, data := range items {
+	var result []*model.DeadLetter
+	count := 0
+	for _, data := range items {
 		var m model.Job
 		if err := json.Unmarshal([]byte(data), &m); err != nil {
 			continue
 		}
-		result[i] = &model.DeadLetter{
+		if m.UserID != userID {
+			continue
+		}
+		
+		count++
+		if count <= offset {
+			continue
+		}
+		if len(result) >= limit {
+			break
+		}
+
+		result = append(result, &model.DeadLetter{
 			ID:        fmt.Sprintf("dl-%s", m.ID),
 			JobID:     m.ID,
 			Type:      m.Type,
@@ -196,12 +206,12 @@ func (d *redisDriver) ListDeadLetters(ctx context.Context, limit, offset int) ([
 			LastError: m.Error,
 			Retries:   m.Retries,
 			CreatedAt: m.CreatedAt,
-		}
+		})
 	}
 	return result, nil
 }
 
-func (d *redisDriver) RetryDeadLetter(ctx context.Context, id string) error {
+func (d *redisDriver) RetryDeadLetter(ctx context.Context, userID string, id string) error {
 	// For Redis, the id passed here is actually the job ID (stripped of prefix)
 	// or we need to find it in the list.
 	// Simpler implementation: we find the job in dead list by ID and move it back.
@@ -222,6 +232,9 @@ func (d *redisDriver) RetryDeadLetter(ctx context.Context, id string) error {
 			continue
 		}
 		if m.ID == jobID {
+			if m.UserID != userID {
+				return fmt.Errorf("unauthorized")
+			}
 			// Found it. Move back to pending.
 			m.Status = model.StatusPending
 			m.Retries = 0
@@ -246,7 +259,7 @@ func (d *redisDriver) RetryDeadLetter(ctx context.Context, id string) error {
 }
 
 // DeleteDeadLetter removes a dead letter job without retrying.
-func (d *redisDriver) DeleteDeadLetter(ctx context.Context, id string) error {
+func (d *redisDriver) DeleteDeadLetter(ctx context.Context, userID string, id string) error {
 	jobID := id
 	if len(id) > 3 && id[:3] == "dl-" {
 		jobID = id[3:]
@@ -263,6 +276,9 @@ func (d *redisDriver) DeleteDeadLetter(ctx context.Context, id string) error {
 			continue
 		}
 		if m.ID == jobID {
+			if m.UserID != userID {
+				return fmt.Errorf("unauthorized")
+			}
 			return d.client.LRem(ctx, d.deadKey(), 1, data).Err()
 		}
 	}

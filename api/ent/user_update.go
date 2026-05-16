@@ -11,6 +11,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/kilip/opus/api/ent/cronschedule"
+	"github.com/kilip/opus/api/ent/deadletter"
+	"github.com/kilip/opus/api/ent/job"
 	"github.com/kilip/opus/api/ent/predicate"
 	"github.com/kilip/opus/api/ent/session"
 	"github.com/kilip/opus/api/ent/user"
@@ -152,6 +155,51 @@ func (_u *UserUpdate) SetWaSession(v *WaSession) *UserUpdate {
 	return _u.SetWaSessionID(v.ID)
 }
 
+// AddJobIDs adds the "jobs" edge to the Job entity by IDs.
+func (_u *UserUpdate) AddJobIDs(ids ...string) *UserUpdate {
+	_u.mutation.AddJobIDs(ids...)
+	return _u
+}
+
+// AddJobs adds the "jobs" edges to the Job entity.
+func (_u *UserUpdate) AddJobs(v ...*Job) *UserUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddJobIDs(ids...)
+}
+
+// AddDeadLetterIDs adds the "dead_letters" edge to the DeadLetter entity by IDs.
+func (_u *UserUpdate) AddDeadLetterIDs(ids ...string) *UserUpdate {
+	_u.mutation.AddDeadLetterIDs(ids...)
+	return _u
+}
+
+// AddDeadLetters adds the "dead_letters" edges to the DeadLetter entity.
+func (_u *UserUpdate) AddDeadLetters(v ...*DeadLetter) *UserUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddDeadLetterIDs(ids...)
+}
+
+// AddCronScheduleIDs adds the "cron_schedules" edge to the CronSchedule entity by IDs.
+func (_u *UserUpdate) AddCronScheduleIDs(ids ...string) *UserUpdate {
+	_u.mutation.AddCronScheduleIDs(ids...)
+	return _u
+}
+
+// AddCronSchedules adds the "cron_schedules" edges to the CronSchedule entity.
+func (_u *UserUpdate) AddCronSchedules(v ...*CronSchedule) *UserUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddCronScheduleIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdate) Mutation() *UserMutation {
 	return _u.mutation
@@ -182,6 +230,69 @@ func (_u *UserUpdate) RemoveSessions(v ...*Session) *UserUpdate {
 func (_u *UserUpdate) ClearWaSession() *UserUpdate {
 	_u.mutation.ClearWaSession()
 	return _u
+}
+
+// ClearJobs clears all "jobs" edges to the Job entity.
+func (_u *UserUpdate) ClearJobs() *UserUpdate {
+	_u.mutation.ClearJobs()
+	return _u
+}
+
+// RemoveJobIDs removes the "jobs" edge to Job entities by IDs.
+func (_u *UserUpdate) RemoveJobIDs(ids ...string) *UserUpdate {
+	_u.mutation.RemoveJobIDs(ids...)
+	return _u
+}
+
+// RemoveJobs removes "jobs" edges to Job entities.
+func (_u *UserUpdate) RemoveJobs(v ...*Job) *UserUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveJobIDs(ids...)
+}
+
+// ClearDeadLetters clears all "dead_letters" edges to the DeadLetter entity.
+func (_u *UserUpdate) ClearDeadLetters() *UserUpdate {
+	_u.mutation.ClearDeadLetters()
+	return _u
+}
+
+// RemoveDeadLetterIDs removes the "dead_letters" edge to DeadLetter entities by IDs.
+func (_u *UserUpdate) RemoveDeadLetterIDs(ids ...string) *UserUpdate {
+	_u.mutation.RemoveDeadLetterIDs(ids...)
+	return _u
+}
+
+// RemoveDeadLetters removes "dead_letters" edges to DeadLetter entities.
+func (_u *UserUpdate) RemoveDeadLetters(v ...*DeadLetter) *UserUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveDeadLetterIDs(ids...)
+}
+
+// ClearCronSchedules clears all "cron_schedules" edges to the CronSchedule entity.
+func (_u *UserUpdate) ClearCronSchedules() *UserUpdate {
+	_u.mutation.ClearCronSchedules()
+	return _u
+}
+
+// RemoveCronScheduleIDs removes the "cron_schedules" edge to CronSchedule entities by IDs.
+func (_u *UserUpdate) RemoveCronScheduleIDs(ids ...string) *UserUpdate {
+	_u.mutation.RemoveCronScheduleIDs(ids...)
+	return _u
+}
+
+// RemoveCronSchedules removes "cron_schedules" edges to CronSchedule entities.
+func (_u *UserUpdate) RemoveCronSchedules(v ...*CronSchedule) *UserUpdate {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveCronScheduleIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -320,6 +431,141 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(wasession.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.JobsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.JobsTable,
+			Columns: []string{user.JobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(job.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedJobsIDs(); len(nodes) > 0 && !_u.mutation.JobsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.JobsTable,
+			Columns: []string{user.JobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(job.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.JobsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.JobsTable,
+			Columns: []string{user.JobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(job.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.DeadLettersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DeadLettersTable,
+			Columns: []string{user.DeadLettersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(deadletter.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedDeadLettersIDs(); len(nodes) > 0 && !_u.mutation.DeadLettersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DeadLettersTable,
+			Columns: []string{user.DeadLettersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(deadletter.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DeadLettersIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DeadLettersTable,
+			Columns: []string{user.DeadLettersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(deadletter.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.CronSchedulesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.CronSchedulesTable,
+			Columns: []string{user.CronSchedulesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(cronschedule.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedCronSchedulesIDs(); len(nodes) > 0 && !_u.mutation.CronSchedulesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.CronSchedulesTable,
+			Columns: []string{user.CronSchedulesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(cronschedule.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.CronSchedulesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.CronSchedulesTable,
+			Columns: []string{user.CronSchedulesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(cronschedule.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {
@@ -469,6 +715,51 @@ func (_u *UserUpdateOne) SetWaSession(v *WaSession) *UserUpdateOne {
 	return _u.SetWaSessionID(v.ID)
 }
 
+// AddJobIDs adds the "jobs" edge to the Job entity by IDs.
+func (_u *UserUpdateOne) AddJobIDs(ids ...string) *UserUpdateOne {
+	_u.mutation.AddJobIDs(ids...)
+	return _u
+}
+
+// AddJobs adds the "jobs" edges to the Job entity.
+func (_u *UserUpdateOne) AddJobs(v ...*Job) *UserUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddJobIDs(ids...)
+}
+
+// AddDeadLetterIDs adds the "dead_letters" edge to the DeadLetter entity by IDs.
+func (_u *UserUpdateOne) AddDeadLetterIDs(ids ...string) *UserUpdateOne {
+	_u.mutation.AddDeadLetterIDs(ids...)
+	return _u
+}
+
+// AddDeadLetters adds the "dead_letters" edges to the DeadLetter entity.
+func (_u *UserUpdateOne) AddDeadLetters(v ...*DeadLetter) *UserUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddDeadLetterIDs(ids...)
+}
+
+// AddCronScheduleIDs adds the "cron_schedules" edge to the CronSchedule entity by IDs.
+func (_u *UserUpdateOne) AddCronScheduleIDs(ids ...string) *UserUpdateOne {
+	_u.mutation.AddCronScheduleIDs(ids...)
+	return _u
+}
+
+// AddCronSchedules adds the "cron_schedules" edges to the CronSchedule entity.
+func (_u *UserUpdateOne) AddCronSchedules(v ...*CronSchedule) *UserUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddCronScheduleIDs(ids...)
+}
+
 // Mutation returns the UserMutation object of the builder.
 func (_u *UserUpdateOne) Mutation() *UserMutation {
 	return _u.mutation
@@ -499,6 +790,69 @@ func (_u *UserUpdateOne) RemoveSessions(v ...*Session) *UserUpdateOne {
 func (_u *UserUpdateOne) ClearWaSession() *UserUpdateOne {
 	_u.mutation.ClearWaSession()
 	return _u
+}
+
+// ClearJobs clears all "jobs" edges to the Job entity.
+func (_u *UserUpdateOne) ClearJobs() *UserUpdateOne {
+	_u.mutation.ClearJobs()
+	return _u
+}
+
+// RemoveJobIDs removes the "jobs" edge to Job entities by IDs.
+func (_u *UserUpdateOne) RemoveJobIDs(ids ...string) *UserUpdateOne {
+	_u.mutation.RemoveJobIDs(ids...)
+	return _u
+}
+
+// RemoveJobs removes "jobs" edges to Job entities.
+func (_u *UserUpdateOne) RemoveJobs(v ...*Job) *UserUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveJobIDs(ids...)
+}
+
+// ClearDeadLetters clears all "dead_letters" edges to the DeadLetter entity.
+func (_u *UserUpdateOne) ClearDeadLetters() *UserUpdateOne {
+	_u.mutation.ClearDeadLetters()
+	return _u
+}
+
+// RemoveDeadLetterIDs removes the "dead_letters" edge to DeadLetter entities by IDs.
+func (_u *UserUpdateOne) RemoveDeadLetterIDs(ids ...string) *UserUpdateOne {
+	_u.mutation.RemoveDeadLetterIDs(ids...)
+	return _u
+}
+
+// RemoveDeadLetters removes "dead_letters" edges to DeadLetter entities.
+func (_u *UserUpdateOne) RemoveDeadLetters(v ...*DeadLetter) *UserUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveDeadLetterIDs(ids...)
+}
+
+// ClearCronSchedules clears all "cron_schedules" edges to the CronSchedule entity.
+func (_u *UserUpdateOne) ClearCronSchedules() *UserUpdateOne {
+	_u.mutation.ClearCronSchedules()
+	return _u
+}
+
+// RemoveCronScheduleIDs removes the "cron_schedules" edge to CronSchedule entities by IDs.
+func (_u *UserUpdateOne) RemoveCronScheduleIDs(ids ...string) *UserUpdateOne {
+	_u.mutation.RemoveCronScheduleIDs(ids...)
+	return _u
+}
+
+// RemoveCronSchedules removes "cron_schedules" edges to CronSchedule entities.
+func (_u *UserUpdateOne) RemoveCronSchedules(v ...*CronSchedule) *UserUpdateOne {
+	ids := make([]string, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveCronScheduleIDs(ids...)
 }
 
 // Where appends a list predicates to the UserUpdate builder.
@@ -667,6 +1021,141 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(wasession.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.JobsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.JobsTable,
+			Columns: []string{user.JobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(job.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedJobsIDs(); len(nodes) > 0 && !_u.mutation.JobsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.JobsTable,
+			Columns: []string{user.JobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(job.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.JobsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.JobsTable,
+			Columns: []string{user.JobsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(job.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.DeadLettersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DeadLettersTable,
+			Columns: []string{user.DeadLettersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(deadletter.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedDeadLettersIDs(); len(nodes) > 0 && !_u.mutation.DeadLettersCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DeadLettersTable,
+			Columns: []string{user.DeadLettersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(deadletter.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.DeadLettersIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.DeadLettersTable,
+			Columns: []string{user.DeadLettersColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(deadletter.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.CronSchedulesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.CronSchedulesTable,
+			Columns: []string{user.CronSchedulesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(cronschedule.FieldID, field.TypeString),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedCronSchedulesIDs(); len(nodes) > 0 && !_u.mutation.CronSchedulesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.CronSchedulesTable,
+			Columns: []string{user.CronSchedulesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(cronschedule.FieldID, field.TypeString),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.CronSchedulesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.CronSchedulesTable,
+			Columns: []string{user.CronSchedulesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(cronschedule.FieldID, field.TypeString),
 			},
 		}
 		for _, k := range nodes {

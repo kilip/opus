@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"entgo.io/ent/schema/index"
 )
@@ -17,7 +18,7 @@ type CronSchedule struct {
 func (CronSchedule) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("id").Unique().Immutable(),
-		field.String("name").Unique(),
+		field.String("name"),
 		field.String("cron_expression"),
 		field.String("job_type"),
 		field.Bytes("payload").Optional(),
@@ -26,6 +27,18 @@ func (CronSchedule) Fields() []ent.Field {
 		field.Time("next_run_at").Optional(),
 		field.Time("created_at").Default(time.Now).Immutable(),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
+		field.String("user_id"),
+	}
+}
+
+// Edges of the CronSchedule.
+func (CronSchedule) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.From("user", User.Type).
+			Ref("cron_schedules").
+			Unique().
+			Field("user_id").
+			Required(),
 	}
 }
 
@@ -34,5 +47,6 @@ func (CronSchedule) Indexes() []ent.Index {
 	return []ent.Index{
 		index.Fields("is_active"),
 		index.Fields("next_run_at"),
+		index.Fields("user_id", "name").Unique(),
 	}
 }

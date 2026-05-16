@@ -12,6 +12,7 @@ type CronSchedule struct {
 	IsActive  bool      `json:"is_active"`
 	LastRunAt time.Time `json:"last_run_at"`
 	NextRunAt time.Time `json:"next_run_at"`
+	UserID    string    `json:"user_id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }

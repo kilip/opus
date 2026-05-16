@@ -27,12 +27,14 @@ func TestCronScheduler_FireCron(t *testing.T) {
 		CronExpr: "*/5 * * * *",
 		JobType:  "scheduled_task",
 		IsActive: true,
+		UserID:   "user-1",
 	}
 
 	t.Run("Fire and Reschedule", func(t *testing.T) {
 		mDriver.EXPECT().Push(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, j *model.Job) error {
 			assert.Equal(t, "scheduled_task", j.Type)
 			assert.Equal(t, model.StatusPending, j.Status)
+			assert.Equal(t, "user-1", j.UserID)
 			return nil
 		})
 

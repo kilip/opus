@@ -20,11 +20,12 @@ type QueueDriver interface {
 	// MoveToDead moves a failed job to the dead letter store.
 	MoveToDead(ctx context.Context, job *model.Job) error
 	// ListDeadLetters returns a paginated list of dead letter jobs.
-	ListDeadLetters(ctx context.Context, limit, offset int) ([]*model.DeadLetter, error)
+	// If userID is provided, it filters by user.
+	ListDeadLetters(ctx context.Context, userID string, limit, offset int) ([]*model.DeadLetter, error)
 	// RetryDeadLetter moves a dead letter job back to the pending queue.
-	RetryDeadLetter(ctx context.Context, id string) error
+	RetryDeadLetter(ctx context.Context, userID string, id string) error
 	// DeleteDeadLetter removes a dead letter job without retrying.
-	DeleteDeadLetter(ctx context.Context, id string) error
+	DeleteDeadLetter(ctx context.Context, userID string, id string) error
 
 	// UpsertCron creates or updates a cron schedule.
 	UpsertCron(ctx context.Context, cron *model.CronSchedule) error
