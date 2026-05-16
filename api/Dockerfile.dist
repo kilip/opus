@@ -1,0 +1,15 @@
+FROM alpine:latest
+
+WORKDIR /app
+
+RUN apk add --no-cache ca-certificates tzdata curl
+
+# Copy the pre-built binary from GoReleaser
+COPY opus .
+
+# Create directory for config and db
+RUN mkdir -p /root/.opus
+
+EXPOSE 8080
+
+ENTRYPOINT ["./opus", "start"]

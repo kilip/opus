@@ -113,7 +113,7 @@ dockers:
       - "ghcr.io/kilip/opus-api:latest-amd64"
     ids:
       - opus
-    dockerfile: api/Dockerfile
+    dockerfile: api/Dockerfile.dist
     build_flag_templates:
       - "--platform=linux/amd64"
       - "--label=org.opencontainers.image.title=opus-api"
@@ -127,7 +127,7 @@ dockers:
       - "ghcr.io/kilip/opus-api:latest-arm64"
     ids:
       - opus
-    dockerfile: api/Dockerfile
+    dockerfile: api/Dockerfile.dist
     build_flag_templates:
       - "--platform=linux/arm64"
       - "--label=org.opencontainers.image.title=opus-api"
