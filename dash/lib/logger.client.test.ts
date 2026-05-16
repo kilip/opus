@@ -16,6 +16,7 @@ describe("clientLogger", () => {
   it("should log info to console", () => {
     clientLogger.info("test message");
     // This will fail with the stub because it doesn't call console.info
+    // biome-ignore lint/suspicious/noConsole: Testing console output
     expect(console.info).toHaveBeenCalled();
   });
 });

@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 /**
  * Proxy middleware for Next.js 16.
@@ -21,7 +22,7 @@ export function proxy(request: NextRequest) {
 
   // 3. Logic: If trying to access protected route without a session, go to login
   if (!isAuthRoute && !isPublicFile && !refreshToken) {
-    console.log(
+    logger.info(
       `[Proxy] Unauthorized access to ${pathname}, redirecting to /login`,
     );
     return NextResponse.redirect(new URL("/login", request.url));
@@ -29,7 +30,7 @@ export function proxy(request: NextRequest) {
 
   // 4. Logic: If already logged in, don't show login page
   if (pathname === "/login" && refreshToken) {
-    console.log(`[Proxy] Already logged in, redirecting from /login to /`);
+    logger.info(`[Proxy] Already logged in, redirecting from /login to /`);
     return NextResponse.redirect(new URL("/", request.url));
   }
 

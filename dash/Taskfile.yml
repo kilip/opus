@@ -38,3 +38,13 @@ tasks:
     cmds:
       - pnpm exec biome format . --write
 
+  logs:tail:
+    desc: Tail application logs
+    cmds:
+      - tail -f logs/*.log
+
+  logs:clear:
+    desc: Clear application logs
+    cmds:
+      - rm -rf logs/*.log
+

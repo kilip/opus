@@ -27,6 +27,11 @@ services:
         - NEXT_PUBLIC_API_URL=http://localhost:8080
     ports:
       - "3000:3000"
+    environment:
+      - OPUS_LOG_LEVEL=info
+      - OPUS_LOG_DIR=/var/log/opus
+    volumes:
+      - ./logs:/var/log/opus
     depends_on:
       api:
         condition: service_healthy

@@ -6,6 +6,7 @@ import {
   useEffect,
   useState,
 } from "react";
+import { logger } from "@/lib/logger";
 import { apiClient, setAuthToken } from "./client";
 import type { AuthResponse } from "./types";
 
@@ -35,7 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setAccessToken(response.data.accessToken);
         }
       } catch (error) {
-        console.error("Silent refresh error:", error);
+        logger.error("Silent refresh error", error);
       } finally {
         setIsLoading(false);
       }
