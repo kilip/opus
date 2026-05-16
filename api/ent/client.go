@@ -15,6 +15,9 @@ import (
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/kilip/opus/api/ent/cronschedule"
+	"github.com/kilip/opus/api/ent/deadletter"
+	"github.com/kilip/opus/api/ent/job"
 	"github.com/kilip/opus/api/ent/session"
 	"github.com/kilip/opus/api/ent/user"
 	"github.com/kilip/opus/api/ent/wachat"
@@ -28,6 +31,12 @@ type Client struct {
 	config
 	// Schema is the client for creating, migrating and dropping schema.
 	Schema *migrate.Schema
+	// CronSchedule is the client for interacting with the CronSchedule builders.
+	CronSchedule *CronScheduleClient
+	// DeadLetter is the client for interacting with the DeadLetter builders.
+	DeadLetter *DeadLetterClient
+	// Job is the client for interacting with the Job builders.
+	Job *JobClient
 	// Session is the client for interacting with the Session builders.
 	Session *SessionClient
 	// User is the client for interacting with the User builders.
@@ -51,6 +60,9 @@ func NewClient(opts ...Option) *Client {
 
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
+	c.CronSchedule = NewCronScheduleClient(c.config)
+	c.DeadLetter = NewDeadLetterClient(c.config)
+	c.Job = NewJobClient(c.config)
 	c.Session = NewSessionClient(c.config)
 	c.User = NewUserClient(c.config)
 	c.WaChat = NewWaChatClient(c.config)
@@ -147,14 +159,17 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:       ctx,
-		config:    cfg,
-		Session:   NewSessionClient(cfg),
-		User:      NewUserClient(cfg),
-		WaChat:    NewWaChatClient(cfg),
-		WaContact: NewWaContactClient(cfg),
-		WaMessage: NewWaMessageClient(cfg),
-		WaSession: NewWaSessionClient(cfg),
+		ctx:          ctx,
+		config:       cfg,
+		CronSchedule: NewCronScheduleClient(cfg),
+		DeadLetter:   NewDeadLetterClient(cfg),
+		Job:          NewJobClient(cfg),
+		Session:      NewSessionClient(cfg),
+		User:         NewUserClient(cfg),
+		WaChat:       NewWaChatClient(cfg),
+		WaContact:    NewWaContactClient(cfg),
+		WaMessage:    NewWaMessageClient(cfg),
+		WaSession:    NewWaSessionClient(cfg),
 	}, nil
 }
 
@@ -172,21 +187,24 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:       ctx,
-		config:    cfg,
-		Session:   NewSessionClient(cfg),
-		User:      NewUserClient(cfg),
-		WaChat:    NewWaChatClient(cfg),
-		WaContact: NewWaContactClient(cfg),
-		WaMessage: NewWaMessageClient(cfg),
-		WaSession: NewWaSessionClient(cfg),
+		ctx:          ctx,
+		config:       cfg,
+		CronSchedule: NewCronScheduleClient(cfg),
+		DeadLetter:   NewDeadLetterClient(cfg),
+		Job:          NewJobClient(cfg),
+		Session:      NewSessionClient(cfg),
+		User:         NewUserClient(cfg),
+		WaChat:       NewWaChatClient(cfg),
+		WaContact:    NewWaContactClient(cfg),
+		WaMessage:    NewWaMessageClient(cfg),
+		WaSession:    NewWaSessionClient(cfg),
 	}, nil
 }
 
 // Debug returns a new debug-client. It's used to get verbose logging on specific operations.
 //
 //	client.Debug().
-//		Session.
+//		CronSchedule.
 //		Query().
 //		Count(ctx)
 func (c *Client) Debug() *Client {
@@ -209,7 +227,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Session, c.User, c.WaChat, c.WaContact, c.WaMessage, c.WaSession,
+		c.CronSchedule, c.DeadLetter, c.Job, c.Session, c.User, c.WaChat, c.WaContact,
+		c.WaMessage, c.WaSession,
 	} {
 		n.Use(hooks...)
 	}
@@ -219,7 +238,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Session, c.User, c.WaChat, c.WaContact, c.WaMessage, c.WaSession,
+		c.CronSchedule, c.DeadLetter, c.Job, c.Session, c.User, c.WaChat, c.WaContact,
+		c.WaMessage, c.WaSession,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -228,6 +248,12 @@ func (c *Client) Intercept(interceptors ...Interceptor) {
 // Mutate implements the ent.Mutator interface.
 func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
+	case *CronScheduleMutation:
+		return c.CronSchedule.mutate(ctx, m)
+	case *DeadLetterMutation:
+		return c.DeadLetter.mutate(ctx, m)
+	case *JobMutation:
+		return c.Job.mutate(ctx, m)
 	case *SessionMutation:
 		return c.Session.mutate(ctx, m)
 	case *UserMutation:
@@ -242,6 +268,405 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.WaSession.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
+	}
+}
+
+// CronScheduleClient is a client for the CronSchedule schema.
+type CronScheduleClient struct {
+	config
+}
+
+// NewCronScheduleClient returns a client for the CronSchedule from the given config.
+func NewCronScheduleClient(c config) *CronScheduleClient {
+	return &CronScheduleClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `cronschedule.Hooks(f(g(h())))`.
+func (c *CronScheduleClient) Use(hooks ...Hook) {
+	c.hooks.CronSchedule = append(c.hooks.CronSchedule, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `cronschedule.Intercept(f(g(h())))`.
+func (c *CronScheduleClient) Intercept(interceptors ...Interceptor) {
+	c.inters.CronSchedule = append(c.inters.CronSchedule, interceptors...)
+}
+
+// Create returns a builder for creating a CronSchedule entity.
+func (c *CronScheduleClient) Create() *CronScheduleCreate {
+	mutation := newCronScheduleMutation(c.config, OpCreate)
+	return &CronScheduleCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of CronSchedule entities.
+func (c *CronScheduleClient) CreateBulk(builders ...*CronScheduleCreate) *CronScheduleCreateBulk {
+	return &CronScheduleCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *CronScheduleClient) MapCreateBulk(slice any, setFunc func(*CronScheduleCreate, int)) *CronScheduleCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &CronScheduleCreateBulk{err: fmt.Errorf("calling to CronScheduleClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*CronScheduleCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &CronScheduleCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for CronSchedule.
+func (c *CronScheduleClient) Update() *CronScheduleUpdate {
+	mutation := newCronScheduleMutation(c.config, OpUpdate)
+	return &CronScheduleUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *CronScheduleClient) UpdateOne(_m *CronSchedule) *CronScheduleUpdateOne {
+	mutation := newCronScheduleMutation(c.config, OpUpdateOne, withCronSchedule(_m))
+	return &CronScheduleUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *CronScheduleClient) UpdateOneID(id string) *CronScheduleUpdateOne {
+	mutation := newCronScheduleMutation(c.config, OpUpdateOne, withCronScheduleID(id))
+	return &CronScheduleUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for CronSchedule.
+func (c *CronScheduleClient) Delete() *CronScheduleDelete {
+	mutation := newCronScheduleMutation(c.config, OpDelete)
+	return &CronScheduleDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *CronScheduleClient) DeleteOne(_m *CronSchedule) *CronScheduleDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *CronScheduleClient) DeleteOneID(id string) *CronScheduleDeleteOne {
+	builder := c.Delete().Where(cronschedule.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &CronScheduleDeleteOne{builder}
+}
+
+// Query returns a query builder for CronSchedule.
+func (c *CronScheduleClient) Query() *CronScheduleQuery {
+	return &CronScheduleQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeCronSchedule},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a CronSchedule entity by its id.
+func (c *CronScheduleClient) Get(ctx context.Context, id string) (*CronSchedule, error) {
+	return c.Query().Where(cronschedule.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *CronScheduleClient) GetX(ctx context.Context, id string) *CronSchedule {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *CronScheduleClient) Hooks() []Hook {
+	return c.hooks.CronSchedule
+}
+
+// Interceptors returns the client interceptors.
+func (c *CronScheduleClient) Interceptors() []Interceptor {
+	return c.inters.CronSchedule
+}
+
+func (c *CronScheduleClient) mutate(ctx context.Context, m *CronScheduleMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&CronScheduleCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&CronScheduleUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&CronScheduleUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&CronScheduleDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown CronSchedule mutation op: %q", m.Op())
+	}
+}
+
+// DeadLetterClient is a client for the DeadLetter schema.
+type DeadLetterClient struct {
+	config
+}
+
+// NewDeadLetterClient returns a client for the DeadLetter from the given config.
+func NewDeadLetterClient(c config) *DeadLetterClient {
+	return &DeadLetterClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `deadletter.Hooks(f(g(h())))`.
+func (c *DeadLetterClient) Use(hooks ...Hook) {
+	c.hooks.DeadLetter = append(c.hooks.DeadLetter, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `deadletter.Intercept(f(g(h())))`.
+func (c *DeadLetterClient) Intercept(interceptors ...Interceptor) {
+	c.inters.DeadLetter = append(c.inters.DeadLetter, interceptors...)
+}
+
+// Create returns a builder for creating a DeadLetter entity.
+func (c *DeadLetterClient) Create() *DeadLetterCreate {
+	mutation := newDeadLetterMutation(c.config, OpCreate)
+	return &DeadLetterCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of DeadLetter entities.
+func (c *DeadLetterClient) CreateBulk(builders ...*DeadLetterCreate) *DeadLetterCreateBulk {
+	return &DeadLetterCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *DeadLetterClient) MapCreateBulk(slice any, setFunc func(*DeadLetterCreate, int)) *DeadLetterCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &DeadLetterCreateBulk{err: fmt.Errorf("calling to DeadLetterClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*DeadLetterCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &DeadLetterCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for DeadLetter.
+func (c *DeadLetterClient) Update() *DeadLetterUpdate {
+	mutation := newDeadLetterMutation(c.config, OpUpdate)
+	return &DeadLetterUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *DeadLetterClient) UpdateOne(_m *DeadLetter) *DeadLetterUpdateOne {
+	mutation := newDeadLetterMutation(c.config, OpUpdateOne, withDeadLetter(_m))
+	return &DeadLetterUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *DeadLetterClient) UpdateOneID(id string) *DeadLetterUpdateOne {
+	mutation := newDeadLetterMutation(c.config, OpUpdateOne, withDeadLetterID(id))
+	return &DeadLetterUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for DeadLetter.
+func (c *DeadLetterClient) Delete() *DeadLetterDelete {
+	mutation := newDeadLetterMutation(c.config, OpDelete)
+	return &DeadLetterDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *DeadLetterClient) DeleteOne(_m *DeadLetter) *DeadLetterDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *DeadLetterClient) DeleteOneID(id string) *DeadLetterDeleteOne {
+	builder := c.Delete().Where(deadletter.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &DeadLetterDeleteOne{builder}
+}
+
+// Query returns a query builder for DeadLetter.
+func (c *DeadLetterClient) Query() *DeadLetterQuery {
+	return &DeadLetterQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeDeadLetter},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a DeadLetter entity by its id.
+func (c *DeadLetterClient) Get(ctx context.Context, id string) (*DeadLetter, error) {
+	return c.Query().Where(deadletter.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *DeadLetterClient) GetX(ctx context.Context, id string) *DeadLetter {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *DeadLetterClient) Hooks() []Hook {
+	return c.hooks.DeadLetter
+}
+
+// Interceptors returns the client interceptors.
+func (c *DeadLetterClient) Interceptors() []Interceptor {
+	return c.inters.DeadLetter
+}
+
+func (c *DeadLetterClient) mutate(ctx context.Context, m *DeadLetterMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&DeadLetterCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&DeadLetterUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&DeadLetterUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&DeadLetterDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown DeadLetter mutation op: %q", m.Op())
+	}
+}
+
+// JobClient is a client for the Job schema.
+type JobClient struct {
+	config
+}
+
+// NewJobClient returns a client for the Job from the given config.
+func NewJobClient(c config) *JobClient {
+	return &JobClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `job.Hooks(f(g(h())))`.
+func (c *JobClient) Use(hooks ...Hook) {
+	c.hooks.Job = append(c.hooks.Job, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `job.Intercept(f(g(h())))`.
+func (c *JobClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Job = append(c.inters.Job, interceptors...)
+}
+
+// Create returns a builder for creating a Job entity.
+func (c *JobClient) Create() *JobCreate {
+	mutation := newJobMutation(c.config, OpCreate)
+	return &JobCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Job entities.
+func (c *JobClient) CreateBulk(builders ...*JobCreate) *JobCreateBulk {
+	return &JobCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *JobClient) MapCreateBulk(slice any, setFunc func(*JobCreate, int)) *JobCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &JobCreateBulk{err: fmt.Errorf("calling to JobClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*JobCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &JobCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Job.
+func (c *JobClient) Update() *JobUpdate {
+	mutation := newJobMutation(c.config, OpUpdate)
+	return &JobUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *JobClient) UpdateOne(_m *Job) *JobUpdateOne {
+	mutation := newJobMutation(c.config, OpUpdateOne, withJob(_m))
+	return &JobUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *JobClient) UpdateOneID(id string) *JobUpdateOne {
+	mutation := newJobMutation(c.config, OpUpdateOne, withJobID(id))
+	return &JobUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Job.
+func (c *JobClient) Delete() *JobDelete {
+	mutation := newJobMutation(c.config, OpDelete)
+	return &JobDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *JobClient) DeleteOne(_m *Job) *JobDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *JobClient) DeleteOneID(id string) *JobDeleteOne {
+	builder := c.Delete().Where(job.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &JobDeleteOne{builder}
+}
+
+// Query returns a query builder for Job.
+func (c *JobClient) Query() *JobQuery {
+	return &JobQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeJob},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Job entity by its id.
+func (c *JobClient) Get(ctx context.Context, id string) (*Job, error) {
+	return c.Query().Where(job.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *JobClient) GetX(ctx context.Context, id string) *Job {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *JobClient) Hooks() []Hook {
+	return c.hooks.Job
+}
+
+// Interceptors returns the client interceptors.
+func (c *JobClient) Interceptors() []Interceptor {
+	return c.inters.Job
+}
+
+func (c *JobClient) mutate(ctx context.Context, m *JobMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&JobCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&JobUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&JobUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&JobDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Job mutation op: %q", m.Op())
 	}
 }
 
@@ -1238,9 +1663,11 @@ func (c *WaSessionClient) mutate(ctx context.Context, m *WaSessionMutation) (Val
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Session, User, WaChat, WaContact, WaMessage, WaSession []ent.Hook
+		CronSchedule, DeadLetter, Job, Session, User, WaChat, WaContact, WaMessage,
+		WaSession []ent.Hook
 	}
 	inters struct {
-		Session, User, WaChat, WaContact, WaMessage, WaSession []ent.Interceptor
+		CronSchedule, DeadLetter, Job, Session, User, WaChat, WaContact, WaMessage,
+		WaSession []ent.Interceptor
 	}
 )

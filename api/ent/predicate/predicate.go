@@ -6,6 +6,15 @@ import (
 	"entgo.io/ent/dialect/sql"
 )
 
+// CronSchedule is the predicate function for cronschedule builders.
+type CronSchedule func(*sql.Selector)
+
+// DeadLetter is the predicate function for deadletter builders.
+type DeadLetter func(*sql.Selector)
+
+// Job is the predicate function for job builders.
+type Job func(*sql.Selector)
+
 // Session is the predicate function for session builders.
 type Session func(*sql.Selector)
 

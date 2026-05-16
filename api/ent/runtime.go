@@ -5,6 +5,9 @@ package ent
 import (
 	"time"
 
+	"github.com/kilip/opus/api/ent/cronschedule"
+	"github.com/kilip/opus/api/ent/deadletter"
+	"github.com/kilip/opus/api/ent/job"
 	"github.com/kilip/opus/api/ent/schema"
 	"github.com/kilip/opus/api/ent/session"
 	"github.com/kilip/opus/api/ent/user"
@@ -17,6 +20,60 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	cronscheduleFields := schema.CronSchedule{}.Fields()
+	_ = cronscheduleFields
+	// cronscheduleDescIsActive is the schema descriptor for is_active field.
+	cronscheduleDescIsActive := cronscheduleFields[5].Descriptor()
+	// cronschedule.DefaultIsActive holds the default value on creation for the is_active field.
+	cronschedule.DefaultIsActive = cronscheduleDescIsActive.Default.(bool)
+	// cronscheduleDescCreatedAt is the schema descriptor for created_at field.
+	cronscheduleDescCreatedAt := cronscheduleFields[8].Descriptor()
+	// cronschedule.DefaultCreatedAt holds the default value on creation for the created_at field.
+	cronschedule.DefaultCreatedAt = cronscheduleDescCreatedAt.Default.(func() time.Time)
+	// cronscheduleDescUpdatedAt is the schema descriptor for updated_at field.
+	cronscheduleDescUpdatedAt := cronscheduleFields[9].Descriptor()
+	// cronschedule.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	cronschedule.DefaultUpdatedAt = cronscheduleDescUpdatedAt.Default.(func() time.Time)
+	// cronschedule.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	cronschedule.UpdateDefaultUpdatedAt = cronscheduleDescUpdatedAt.UpdateDefault.(func() time.Time)
+	deadletterFields := schema.DeadLetter{}.Fields()
+	_ = deadletterFields
+	// deadletterDescCreatedAt is the schema descriptor for created_at field.
+	deadletterDescCreatedAt := deadletterFields[6].Descriptor()
+	// deadletter.DefaultCreatedAt holds the default value on creation for the created_at field.
+	deadletter.DefaultCreatedAt = deadletterDescCreatedAt.Default.(func() time.Time)
+	jobFields := schema.Job{}.Fields()
+	_ = jobFields
+	// jobDescPriority is the schema descriptor for priority field.
+	jobDescPriority := jobFields[3].Descriptor()
+	// job.DefaultPriority holds the default value on creation for the priority field.
+	job.DefaultPriority = jobDescPriority.Default.(int)
+	// jobDescStatus is the schema descriptor for status field.
+	jobDescStatus := jobFields[4].Descriptor()
+	// job.DefaultStatus holds the default value on creation for the status field.
+	job.DefaultStatus = jobDescStatus.Default.(string)
+	// jobDescRetries is the schema descriptor for retries field.
+	jobDescRetries := jobFields[5].Descriptor()
+	// job.DefaultRetries holds the default value on creation for the retries field.
+	job.DefaultRetries = jobDescRetries.Default.(int)
+	// jobDescMaxRetries is the schema descriptor for max_retries field.
+	jobDescMaxRetries := jobFields[6].Descriptor()
+	// job.DefaultMaxRetries holds the default value on creation for the max_retries field.
+	job.DefaultMaxRetries = jobDescMaxRetries.Default.(int)
+	// jobDescScheduledAt is the schema descriptor for scheduled_at field.
+	jobDescScheduledAt := jobFields[7].Descriptor()
+	// job.DefaultScheduledAt holds the default value on creation for the scheduled_at field.
+	job.DefaultScheduledAt = jobDescScheduledAt.Default.(func() time.Time)
+	// jobDescCreatedAt is the schema descriptor for created_at field.
+	jobDescCreatedAt := jobFields[8].Descriptor()
+	// job.DefaultCreatedAt holds the default value on creation for the created_at field.
+	job.DefaultCreatedAt = jobDescCreatedAt.Default.(func() time.Time)
+	// jobDescUpdatedAt is the schema descriptor for updated_at field.
+	jobDescUpdatedAt := jobFields[9].Descriptor()
+	// job.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	job.DefaultUpdatedAt = jobDescUpdatedAt.Default.(func() time.Time)
+	// job.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	job.UpdateDefaultUpdatedAt = jobDescUpdatedAt.UpdateDefault.(func() time.Time)
 	sessionFields := schema.Session{}.Fields()
 	_ = sessionFields
 	// sessionDescRevoked is the schema descriptor for revoked field.

@@ -12,6 +12,9 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/kilip/opus/api/ent/cronschedule"
+	"github.com/kilip/opus/api/ent/deadletter"
+	"github.com/kilip/opus/api/ent/job"
 	"github.com/kilip/opus/api/ent/session"
 	"github.com/kilip/opus/api/ent/user"
 	"github.com/kilip/opus/api/ent/wachat"
@@ -78,12 +81,15 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			session.Table:   session.ValidColumn,
-			user.Table:      user.ValidColumn,
-			wachat.Table:    wachat.ValidColumn,
-			wacontact.Table: wacontact.ValidColumn,
-			wamessage.Table: wamessage.ValidColumn,
-			wasession.Table: wasession.ValidColumn,
+			cronschedule.Table: cronschedule.ValidColumn,
+			deadletter.Table:   deadletter.ValidColumn,
+			job.Table:          job.ValidColumn,
+			session.Table:      session.ValidColumn,
+			user.Table:         user.ValidColumn,
+			wachat.Table:       wachat.ValidColumn,
+			wacontact.Table:    wacontact.ValidColumn,
+			wamessage.Table:    wamessage.ValidColumn,
+			wasession.Table:    wasession.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

@@ -8,6 +8,102 @@ import (
 )
 
 var (
+	// CronSchedulesColumns holds the columns for the "cron_schedules" table.
+	CronSchedulesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, Unique: true},
+		{Name: "name", Type: field.TypeString, Unique: true},
+		{Name: "cron_expression", Type: field.TypeString},
+		{Name: "job_type", Type: field.TypeString},
+		{Name: "payload", Type: field.TypeBytes, Nullable: true},
+		{Name: "is_active", Type: field.TypeBool, Default: true},
+		{Name: "last_run_at", Type: field.TypeTime, Nullable: true},
+		{Name: "next_run_at", Type: field.TypeTime, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// CronSchedulesTable holds the schema information for the "cron_schedules" table.
+	CronSchedulesTable = &schema.Table{
+		Name:       "cron_schedules",
+		Columns:    CronSchedulesColumns,
+		PrimaryKey: []*schema.Column{CronSchedulesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "cronschedule_is_active",
+				Unique:  false,
+				Columns: []*schema.Column{CronSchedulesColumns[5]},
+			},
+			{
+				Name:    "cronschedule_next_run_at",
+				Unique:  false,
+				Columns: []*schema.Column{CronSchedulesColumns[7]},
+			},
+		},
+	}
+	// DeadLettersColumns holds the columns for the "dead_letters" table.
+	DeadLettersColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, Unique: true},
+		{Name: "job_id", Type: field.TypeString},
+		{Name: "type", Type: field.TypeString},
+		{Name: "payload", Type: field.TypeBytes},
+		{Name: "last_error", Type: field.TypeString, Nullable: true},
+		{Name: "retries", Type: field.TypeInt},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// DeadLettersTable holds the schema information for the "dead_letters" table.
+	DeadLettersTable = &schema.Table{
+		Name:       "dead_letters",
+		Columns:    DeadLettersColumns,
+		PrimaryKey: []*schema.Column{DeadLettersColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "deadletter_job_id",
+				Unique:  false,
+				Columns: []*schema.Column{DeadLettersColumns[1]},
+			},
+		},
+	}
+	// JobsColumns holds the columns for the "jobs" table.
+	JobsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, Unique: true},
+		{Name: "type", Type: field.TypeString},
+		{Name: "payload", Type: field.TypeBytes},
+		{Name: "priority", Type: field.TypeInt, Default: 0},
+		{Name: "status", Type: field.TypeString, Default: "pending"},
+		{Name: "retries", Type: field.TypeInt, Default: 0},
+		{Name: "max_retries", Type: field.TypeInt, Default: 3},
+		{Name: "scheduled_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "error", Type: field.TypeString, Nullable: true},
+	}
+	// JobsTable holds the schema information for the "jobs" table.
+	JobsTable = &schema.Table{
+		Name:       "jobs",
+		Columns:    JobsColumns,
+		PrimaryKey: []*schema.Column{JobsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "job_status",
+				Unique:  false,
+				Columns: []*schema.Column{JobsColumns[4]},
+			},
+			{
+				Name:    "job_priority",
+				Unique:  false,
+				Columns: []*schema.Column{JobsColumns[3]},
+			},
+			{
+				Name:    "job_scheduled_at",
+				Unique:  false,
+				Columns: []*schema.Column{JobsColumns[7]},
+			},
+			{
+				Name:    "job_status_priority_scheduled_at",
+				Unique:  false,
+				Columns: []*schema.Column{JobsColumns[4], JobsColumns[3], JobsColumns[7]},
+			},
+		},
+	}
 	// SessionsColumns holds the columns for the "sessions" table.
 	SessionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeString, Unique: true},
@@ -170,6 +266,9 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		CronSchedulesTable,
+		DeadLettersTable,
+		JobsTable,
 		SessionsTable,
 		UsersTable,
 		WaChatsTable,
