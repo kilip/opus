@@ -34,7 +34,8 @@ func TestAuth(t *testing.T) {
 
 		body, _ := io.ReadAll(resp.Body)
 		var result map[string]interface{}
-		json.Unmarshal(body, &result)
+		err = json.Unmarshal(body, &result)
+		assert.NoError(t, err)
 
 		assert.False(t, result["success"].(bool))
 		errMap := result["error"].(map[string]interface{})
@@ -62,7 +63,8 @@ func TestAuth(t *testing.T) {
 
 		body, _ := io.ReadAll(resp.Body)
 		var result map[string]interface{}
-		json.Unmarshal(body, &result)
+		err = json.Unmarshal(body, &result)
+		assert.NoError(t, err)
 
 		assert.False(t, result["success"].(bool))
 		errMap := result["error"].(map[string]interface{})
@@ -91,7 +93,8 @@ func TestAuth(t *testing.T) {
 
 		body, _ := io.ReadAll(resp.Body)
 		var result map[string]interface{}
-		json.Unmarshal(body, &result)
+		err = json.Unmarshal(body, &result)
+		assert.NoError(t, err)
 
 		assert.False(t, result["success"].(bool))
 		errMap := result["error"].(map[string]interface{})
