@@ -81,6 +81,12 @@ func GetOpusDir() string {
 func GetConfig() *Config {
 	cfgOnce.Do(func() {
 		opusDir := GetOpusDir()
+		// Ensure opus directory exists only in development mode
+		if os.Getenv("OPUS_SERVER_ENV") == "development" {
+			if _, err := os.Stat(opusDir); os.IsNotExist(err) {
+				_ = os.MkdirAll(opusDir, 0755)
+			}
+		}
 		viper.SetConfigName("config")
 		viper.SetConfigType("toml")
 		viper.AddConfigPath(opusDir)

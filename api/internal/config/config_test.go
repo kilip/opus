@@ -56,6 +56,9 @@ func TestGetConfig_Defaults(t *testing.T) {
 	resetConfig()
 	defer resetConfig()
 
+	t.Setenv("OPUS_SERVER_ENV", "")
+	t.Setenv("OPUS_HOME", "")
+
 	c := GetConfig()
 
 	assert.NotNil(t, c)
