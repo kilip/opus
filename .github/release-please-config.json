@@ -16,6 +16,7 @@
   },
   "group-pull-request-title-pattern": "release: opus v${version}",
   "pull-request-title-pattern": "release: opus v${version}",
+  "include-component-in-tag": false,
   "plugins": [
     {
       "type": "linked-versions",
