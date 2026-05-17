@@ -9,7 +9,7 @@
 
 ## 1. Context
 
-Opus requires a web-based dashboard — **Opus Dash** — to expose its agent lifecycle, vault, workflow, and authentication domains to the end user. Opus Dash runs as a **Progressive Web Application (PWA)** served locally alongside the Opus Server.
+Opus requires a web-based dashboard — **Opus Dash** — to expose its agent lifecycle, vault, and workflow domains to the end user. Opus Dash runs as a **Progressive Web Application (PWA)** served locally alongside the Opus Server.
 
 Because Opus is a local-first, self-hosted system, there is no requirement for server-side rendering (SSR) or static site generation (SSG). Opus Dash communicates exclusively with the Opus Server REST/SSE API over localhost. The PWA layer provides installability, an offline-capable app shell, cached reads, and a mutation queue that synchronises automatically when the Opus Server becomes available again.
 
@@ -203,12 +203,7 @@ opus/
         │   │   ├── hooks/
         │   │   ├── api.ts
         │   │   └── types.ts
-        │   ├── workflow/
-        │   │   ├── components/
-        │   │   ├── hooks/
-        │   │   ├── api.ts
-        │   │   └── types.ts
-        │   └── auth/
+        │   └── workflow/
         │       ├── components/
         │       ├── hooks/
         │       ├── api.ts
@@ -337,15 +332,9 @@ A single configured API client instance is defined in `shared/lib/api-client.ts`
 // shared/lib/api-client.ts
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080';
 
-function getToken(): string | null {
-  return localStorage.getItem('opus_token');
-}
-
 export const apiClient = {
   get: async <T>(path: string): Promise<T> => {
-    const res = await fetch(`${BASE_URL}${path}`, {
-      headers: { Authorization: `Bearer ${getToken()}` },
-    });
+    const res = await fetch(`${BASE_URL}${path}`);
     if (!res.ok) throw new Error(res.statusText);
     return res.json() as Promise<T>;
   },
@@ -354,7 +343,6 @@ export const apiClient = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${getToken()}`,
       },
       body: JSON.stringify(body),
     });
@@ -380,7 +368,6 @@ The Opus Dash feature modules mirror the server domain packages defined in ADR-0
 
 | Server domain (`internal/`) | Dash feature (`features/`) |
 |---|---|
-| `auth` | `auth` |
 | `agent` | `agent` |
 | `vault` | `vault` |
 | `workflow` | `workflow` |
