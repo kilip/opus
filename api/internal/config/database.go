@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"log"
+	"path/filepath"
 	"sync"
 
 	"entgo.io/ent/dialect"
@@ -22,10 +23,14 @@ var (
 func GetDatabase() *ent.Client {
 	dbOnce.Do(func() {
 		cfg := GetConfig()
-		log.Printf("Connecting to database: driver=%s, dsn=%s", cfg.Database.Driver, cfg.Database.DSN)
+		logger := GetLogger()
+
+		absDSN, _ := filepath.Abs(cfg.Database.DSN)
+		logger.Info("Connecting to database", "driver", cfg.Database.Driver, "dsn", cfg.Database.DSN, "abs_dsn", absDSN)
 		var err error
 		switch cfg.Database.Driver {
 		case "sqlite":
+			// Kembalikan ke kondisi semula tanpa WAL mode
 			db, err := sql.Open("sqlite", cfg.Database.DSN+"?_pragma=foreign_keys(1)")
 			if err != nil {
 				log.Fatalf("failed to open sqlite database: %v", err)

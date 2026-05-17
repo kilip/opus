@@ -125,6 +125,7 @@ func (s *AuthService) IssueTokens(ctx context.Context, userID string) (string, s
 
 func (s *AuthService) RefreshTokens(ctx context.Context, rawRefreshToken string) (string, string, error) {
 	hash := s.hashToken(rawRefreshToken)
+	config.GetLogger().Debug("RefreshTokens", "rawToken", rawRefreshToken, "hash", hash)
 	sess, err := s.sessionRepo.FindByTokenHash(ctx, hash)
 	if err != nil {
 		return "", "", fmt.Errorf("authService.RefreshTokens: %w", err)

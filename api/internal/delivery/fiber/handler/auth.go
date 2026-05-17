@@ -95,6 +95,9 @@ func (h *AuthHandler) Login(c fiber.Ctx) error {
 
 // Refresh handles token refresh
 func (h *AuthHandler) Refresh(c fiber.Ctx) error {
+	// Debug cookies
+	fmt.Printf("[DEBUG] All cookies header: %s\n", c.Get("Cookie"))
+
 	rawRefreshToken := c.Cookies("refresh_token")
 	fmt.Printf("[DEBUG] Refresh request: cookie found=%v, len=%d\n", rawRefreshToken != "", len(rawRefreshToken))
 	if rawRefreshToken == "" {

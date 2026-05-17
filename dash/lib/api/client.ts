@@ -3,9 +3,15 @@ import type { ApiResponse } from "./types";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 let inMemoryToken: string | null = null;
+// Use a callback to trigger navigation or auth state reset
+let onUnauthorized: () => void = () => {};
 
 export const setAuthToken = (token: string | null) => {
   inMemoryToken = token;
+};
+
+export const setOnUnauthorized = (callback: () => void) => {
+  onUnauthorized = callback;
 };
 
 async function request<T>(
@@ -22,13 +28,21 @@ async function request<T>(
   }
 
   const url = `${API_BASE_URL}${path}`;
-  // logger.debug(`[API] Request: ${options.method || "GET"} ${url}`);
 
   const response = await fetch(url, {
     ...options,
     headers,
     credentials: "include",
   });
+
+  if (response.status === 401) {
+    onUnauthorized();
+    return {
+      success: false,
+      data: null,
+      error: { code: "UNAUTHORIZED", message: "Session expired" },
+    };
+  }
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({
