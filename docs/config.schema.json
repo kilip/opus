@@ -8,12 +8,16 @@
         "test_field": {
           "type": "string",
           "description": "A test configuration field"
+        },
+        "server": {
+          "$ref": "#/$defs/Config"
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
-        "test_field"
+        "test_field",
+        "server"
       ]
     }
   }
