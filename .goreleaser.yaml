@@ -1,0 +1,54 @@
+# .goreleaser.yaml
+# Documentation at https://goreleaser.com
+version: 2
+
+project_name: opus
+
+before:
+  hooks:
+    - go mod tidy -C server
+    - go generate ./server/...
+
+builds:
+  - id: opus-server
+    dir: server
+    main: . # This will look for main.go in the server directory
+    binary: opus
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - format: tar.gz
+    # this name template makes the arm64 binaries have the _arm64 suffix
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    # use zip for windows archives
+    format_overrides:
+      - goos: windows
+        format: zip
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ .Tag }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '(?i)merge'

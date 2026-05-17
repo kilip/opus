@@ -1,0 +1,27 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "packages": {
+    "server": {
+      "release-type": "go",
+      "package-name": "server",
+      "component": "server",
+      "include-component-in-tag": false
+    },
+    "dash": {
+      "release-type": "node",
+      "package-name": "dash",
+      "component": "dash",
+      "include-component-in-tag": false
+    }
+  },
+  "plugins": [
+    {
+      "type": "linked-versions",
+      "groupName": "opus",
+      "packages": [
+        "server",
+        "dash"
+      ]
+    }
+  ]
+}
