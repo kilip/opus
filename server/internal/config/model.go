@@ -2,7 +2,6 @@
 package config
 
 // Config is the top-level configuration structure.
-// Future fields (Server, Database, etc.) will be added here.
 type Config struct {
-	// Minimal struct for now
+	TestField string `mapstructure:"test_field" json:"test_field"`
 }

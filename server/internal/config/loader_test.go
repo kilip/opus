@@ -29,3 +29,33 @@ func TestLoad_AutoCreateAndResolveDir(t *testing.T) {
 		t.Errorf("Expected path %s to be a directory", opusHome)
 	}
 }
+
+func TestLoad_ReadsFileAndEnvVars(t *testing.T) {
+	tmpDir := t.TempDir()
+	opusHome := filepath.Join(tmpDir, "custom_opus_home")
+	t.Setenv("OPUS_HOME", opusHome)
+
+	// Pre-create dir and add config.json
+	os.MkdirAll(opusHome, 0755)
+	configPath := filepath.Join(opusHome, "config.json")
+	os.WriteFile(configPath, []byte(`{"test_field": "value_from_file"}`), 0644)
+
+	// Test 1: Load from file
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	if cfg.TestField != "value_from_file" {
+		t.Errorf("Expected test_field='value_from_file', got '%s'", cfg.TestField)
+	}
+
+	// Test 2: Env Var override
+	t.Setenv("OPUS_TEST_FIELD", "value_from_env")
+	cfg2, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+	if cfg2.TestField != "value_from_env" {
+		t.Errorf("Expected test_field='value_from_env', got '%s'", cfg2.TestField)
+	}
+}
