@@ -21,6 +21,11 @@ Opus Server adopts a **Go-idiomatic, feature-based clean architecture** with exp
 
 ### 2.1 Directory Structure
 
+> **Note for implementors and AI agents:** The directory structure below is **illustrative**.
+> Concrete layer paths are determined by their respective ADRs (e.g. `delivery/fiber/` as
+> defined in ADR-005, not `delivery/http/`). This ADR defines layer responsibilities,
+> dependency rules, and architectural boundaries only — not literal folder names.
+
 ```
 opus/
 └── server/
