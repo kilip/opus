@@ -1,0 +1,73 @@
+<svg width="100%" viewBox="0 0 680 680" role="img" xmlns="http://www.w3.org/2000/svg">
+<title style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">Opus logo — chibi octopus with 4 short free-curl tentacles</title>
+<desc style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">A cute chibi octopus with large round head, expressive black eyes, and 4 short tentacles with free organic curls in soft peach-orange on transparent background.</desc>
+<defs>
+  <radialGradient id="bodyG" cx="42%" cy="36%" r="58%">
+    <stop offset="0%" stop-color="#FDBA8C"/>
+    <stop offset="100%" stop-color="#EA580C"/>
+  </radialGradient>
+  <radialGradient id="bellyG" cx="50%" cy="42%" r="52%">
+    <stop offset="0%" stop-color="#FEE4C8"/>
+    <stop offset="100%" stop-color="#FDBA8C"/>
+  </radialGradient>
+  <radialGradient id="eyeG" cx="38%" cy="32%" r="58%">
+    <stop offset="0%" stop-color="#FFFFFF"/>
+    <stop offset="100%" stop-color="#F1F5F9"/>
+  </radialGradient>
+</defs>
+
+<g transform="translate(340,340)" style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
+
+  <!-- Tentacle top-left: short, curls up and hooks right -->
+  <path d="M -95 -135&#10;             C -140 -175, -195 -185, -210 -230&#10;             C -222 -262, -200 -290, -172 -285&#10;             C -150 -280, -140 -258, -155 -242" fill="none" stroke="#F97316" stroke-width="44" stroke-linecap="round" stroke-linejoin="round" style="fill:none;stroke:rgb(249, 115, 22);color:rgb(255, 255, 255);stroke-width:44px;stroke-linecap:round;stroke-linejoin:round;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <path d="M -95 -135&#10;             C -140 -175, -195 -185, -210 -230&#10;             C -222 -262, -200 -290, -172 -285&#10;             C -150 -280, -140 -258, -155 -242" fill="none" stroke="#FDBA8C" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" opacity="0.42" style="fill:none;stroke:rgb(253, 186, 140);color:rgb(255, 255, 255);stroke-width:22px;stroke-linecap:round;stroke-linejoin:round;opacity:0.42;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Tentacle top-right: short, curls up and hooks left -->
+  <path d="M 95 -135&#10;             C 145 -168, 188 -192, 215 -232&#10;             C 234 -260, 218 -295, 188 -290&#10;             C 163 -286, 150 -262, 162 -246" fill="none" stroke="#F97316" stroke-width="44" stroke-linecap="round" stroke-linejoin="round" style="fill:none;stroke:rgb(249, 115, 22);color:rgb(255, 255, 255);stroke-width:44px;stroke-linecap:round;stroke-linejoin:round;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <path d="M 95 -135&#10;             C 145 -168, 188 -192, 215 -232&#10;             C 234 -260, 218 -295, 188 -290&#10;             C 163 -286, 150 -262, 162 -246" fill="none" stroke="#FDBA8C" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" opacity="0.42" style="fill:none;stroke:rgb(253, 186, 140);color:rgb(255, 255, 255);stroke-width:22px;stroke-linecap:round;stroke-linejoin:round;opacity:0.42;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Tentacle bottom-left: short, sweeps down-left, curls inward loop -->
+  <path d="M -118 118&#10;             C -158 158, -200 172, -222 218&#10;             C -238 250, -224 285, -196 286&#10;             C -172 287, -156 268, -162 248" fill="none" stroke="#FB923C" stroke-width="44" stroke-linecap="round" stroke-linejoin="round" style="fill:none;stroke:rgb(251, 146, 60);color:rgb(255, 255, 255);stroke-width:44px;stroke-linecap:round;stroke-linejoin:round;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <path d="M -118 118&#10;             C -158 158, -200 172, -222 218&#10;             C -238 250, -224 285, -196 286&#10;             C -172 287, -156 268, -162 248" fill="none" stroke="#FED7AA" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" opacity="0.4" style="fill:none;stroke:rgb(254, 215, 170);color:rgb(255, 255, 255);stroke-width:20px;stroke-linecap:round;stroke-linejoin:round;opacity:0.4;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Tentacle bottom-right: short, sweeps down-right, curls back up -->
+  <path d="M 118 118&#10;             C 162 152, 196 178, 228 212&#10;             C 252 238, 252 278, 224 288&#10;             C 200 296, 176 278, 178 256" fill="none" stroke="#FB923C" stroke-width="44" stroke-linecap="round" stroke-linejoin="round" style="fill:none;stroke:rgb(251, 146, 60);color:rgb(255, 255, 255);stroke-width:44px;stroke-linecap:round;stroke-linejoin:round;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <path d="M 118 118&#10;             C 162 152, 196 178, 228 212&#10;             C 252 238, 252 278, 224 288&#10;             C 200 296, 176 278, 178 256" fill="none" stroke="#FED7AA" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" opacity="0.4" style="fill:none;stroke:rgb(254, 215, 170);color:rgb(255, 255, 255);stroke-width:20px;stroke-linecap:round;stroke-linejoin:round;opacity:0.4;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Body -->
+  <ellipse cx="0" cy="-10" rx="178" ry="188" fill="url(#bodyG)" style="stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Belly -->
+  <ellipse cx="0" cy="22" rx="108" ry="118" fill="url(#bellyG)" opacity="0.9" style="stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.9;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Head dome -->
+  <ellipse cx="0" cy="-100" rx="158" ry="108" fill="#FB923C" style="fill:rgb(251, 146, 60);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Subtle highlight -->
+  <ellipse cx="-28" cy="-82" rx="56" ry="44" fill="#FED7AA" opacity="0.15" style="fill:rgb(254, 215, 170);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.15;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Left eye white -->
+  <ellipse cx="-70" cy="-24" rx="50" ry="54" fill="url(#eyeG)" style="stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <!-- Right eye white -->
+  <ellipse cx="70" cy="-24" rx="50" ry="54" fill="url(#eyeG)" style="stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Left pupil -->
+  <circle cx="-66" cy="-22" r="32" fill="#0C0A09" style="fill:rgb(12, 10, 9);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <!-- Right pupil -->
+  <circle cx="66" cy="-22" r="32" fill="#0C0A09" style="fill:rgb(12, 10, 9);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Left shine large -->
+  <circle cx="-80" cy="-36" r="13" fill="#FFFFFF" style="fill:rgb(255, 255, 255);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <!-- Right shine large -->
+  <circle cx="52" cy="-36" r="13" fill="#FFFFFF" style="fill:rgb(255, 255, 255);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Left shine small -->
+  <circle cx="-56" cy="-12" r="5" fill="#FFFFFF" opacity="0.6" style="fill:rgb(255, 255, 255);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.6;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <!-- Right shine small -->
+  <circle cx="78" cy="-12" r="5" fill="#FFFFFF" opacity="0.6" style="fill:rgb(255, 255, 255);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.6;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+  <!-- Smile -->
+  <path d="M -34 44 Q 0 70 34 44" fill="none" stroke="#C2410C" stroke-width="5.5" stroke-linecap="round" style="fill:none;stroke:rgb(194, 65, 12);color:rgb(255, 255, 255);stroke-width:5.5px;stroke-linecap:round;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+
+</g>
+</svg>
