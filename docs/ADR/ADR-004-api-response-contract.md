@@ -127,7 +127,7 @@ Error responses conform to [RFC 7807](https://www.rfc-editor.org/rfc/rfc7807) wr
     "title": "Resource Not Found",
     "status": 404,
     "detail": "Agent with ID agt_01HZ9XYZ does not exist.",
-    "instance": "/api/agents/agt_01HZ9XYZ"
+    "instance": "/agents/agt_01HZ9XYZ"
   },
   "meta": null
 }
@@ -143,7 +143,7 @@ Error responses conform to [RFC 7807](https://www.rfc-editor.org/rfc/rfc7807) wr
     "title": "Validation Failed",
     "status": 422,
     "detail": "Field 'tick_interval' must be a valid Go duration string (e.g. '60s', '5m').",
-    "instance": "/api/agents"
+    "instance": "/agents"
   },
   "meta": null
 }
@@ -187,8 +187,8 @@ All collection endpoints that may return more than one page of results use **opa
 **Example paginated request:**
 
 ```
-GET /api/agents?limit=20
-GET /api/agents?cursor=eyJpZCI6ImFndF8wMkFCQ0RFRiJ9&limit=20
+GET /agents?limit=20
+GET /agents?cursor=eyJpZCI6ImFndF8wMkFCQ0RFRiJ9&limit=20
 ```
 
 ---
@@ -224,9 +224,9 @@ Opus Server does **not** use API version prefixes in the URL path.
 
 ```
 # Correct
-GET /api/agents
-GET /api/agents/{id}
-GET /api/vault/entries
+GET /agents
+GET /agents/{id}
+GET /vault/entries
 
 # Incorrect — version prefix is not used
 GET /api/v1/agents
@@ -235,14 +235,14 @@ GET /v1/agents
 
 **Rationale:** Opus is a self-hosted, single-tenant system. The server and the Dash client are deployed and upgraded together as a unit. URL versioning introduces coordination overhead (maintaining multiple active versions) that provides no benefit in this deployment model. Breaking changes are managed through the ADR process and release notes, not through parallel URL namespaces.
 
-> **Note for AI agents:** The `/api/` prefix is the sole namespace qualifier. Never prepend `/v1/`, `/v2/`, or any version segment to Opus API paths.
+> **Note for AI agents:** Do not prepend `/api/`, `/v1/`, `/v2/`, or any version segment to Opus API paths.
 
 **URL conventions:**
 
-- Resource collections: `/api/{resource}` (plural noun)
-- Single resource: `/api/{resource}/{id}`
-- Nested resource: `/api/{resource}/{id}/{sub-resource}`
-- Maximum nesting depth: two levels (e.g. `/api/agents/{id}/logs`)
+- Resource collections: `/{resource}` (plural noun)
+- Single resource: `/{resource}/{id}`
+- Nested resource: `/{resource}/{id}/{sub-resource}`
+- Maximum nesting depth: two levels (e.g. `/agents/{id}/logs`)
 
 ---
 
@@ -253,7 +253,7 @@ Opus Server streams real-time agent log events over Server-Sent Events (SSE). Al
 **SSE connection endpoint:**
 
 ```
-GET /api/agents/{id}/logs/stream
+GET /agents/{id}/logs/stream
 ```
 
 **SSE event wire format:**
@@ -294,7 +294,7 @@ If the agent ID does not exist or the caller is not authorised, the server close
 
 ```
 event: error
-data: {"event":"error","agent_id":"agt_01HZ9XYZ","sequence":null,"payload":{"type":"https://opus.local/errors/not-found","title":"Resource Not Found","status":404,"detail":"Agent with ID agt_01HZ9XYZ does not exist.","instance":"/api/agents/agt_01HZ9XYZ/logs/stream"},"timestamp":"2026-05-17T08:00:00Z"}
+data: {"event":"error","agent_id":"agt_01HZ9XYZ","sequence":null,"payload":{"type":"https://opus.local/errors/not-found","title":"Resource Not Found","status":404,"detail":"Agent with ID agt_01HZ9XYZ does not exist.","instance":"/agents/agt_01HZ9XYZ/logs/stream"},"timestamp":"2026-05-17T08:00:00Z"}
 ```
 
 Clients must handle the `error` event type and not attempt reconnection for `404` and `403` errors.
