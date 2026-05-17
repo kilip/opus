@@ -242,10 +242,21 @@ dash/src/
 
 ---
 
-## Commit Convention
+## Conventional Commits
 
 **Format:** `<type>(<scope>): <description>`
+**Length:** `<description>` must be max 70 characters. Use the commit body for a more detailed explanation if necessary.
 **Scopes:** `server`, `dash`, `get-opus`, `ci`, `deps`
+
+**Example:**
+```text
+feat(dash): integrate biome and replace eslint
+
+- Remove eslint and prettier dependencies
+- Add biome configurations
+- Update npm scripts to use biome for linting and formatting
+- Fix existing formatting issues based on biome rules
+```
 
 | Prefix | Version Bump |
 |---|---|
