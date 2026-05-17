@@ -229,7 +229,7 @@ GET /agents/{id}
 GET /vault/entries
 
 # Incorrect — version prefix is not used
-GET /v1/agents
+GET /agents
 ```
 
 **Rationale:** Opus is a self-hosted, single-tenant system. The server and the Dash client are deployed and upgraded together as a unit. URL versioning introduces coordination overhead (maintaining multiple active versions) that provides no benefit in this deployment model. Breaking changes are managed through the ADR process and release notes, not through parallel URL namespaces.
@@ -459,7 +459,7 @@ Single flexible query endpoint. Rejected because:
 - Adds significant server implementation complexity with no benefit given Opus Dash's well-defined, stable query surface
 - Go Fiber's strengths are in REST; GraphQL would require a separate runtime layer
 
-### 3.4 URL Versioning (`/v1/`)
+### 3.4 URL Versioning
 
 Adding a version prefix to all routes. Rejected because:
 
