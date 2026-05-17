@@ -12,7 +12,7 @@ func TestLoad_AutoCreateAndResolveDir(t *testing.T) {
 	// Setup temporary directory for test isolation
 	tmpDir := t.TempDir()
 	opusHome := filepath.Join(tmpDir, "custom_opus_home")
-	
+
 	// Set OPUS_HOME override
 	t.Setenv("OPUS_HOME", opusHome)
 
