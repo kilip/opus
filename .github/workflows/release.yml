@@ -35,15 +35,24 @@ jobs:
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created }}
     steps:
+      - name: Generate GitHub App Token
+        uses: actions/create-github-app-token@v3
+        id: app-token
+        with:
+          client-id: ${{ secrets.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Set up Go
         uses: actions/setup-go@v6
         with:
           go-version-file: 'server/go.mod'
+          cache-dependency-path: 'server/go.sum'
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v7
@@ -52,4 +61,4 @@ jobs:
           version: latest
           args: release --clean
         env:
-          GITHUB_TOKEN: ${{ needs.release-please.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}

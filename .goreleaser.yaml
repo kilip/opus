@@ -7,7 +7,7 @@ project_name: opus
 before:
   hooks:
     - go mod tidy -C server
-    - go generate ./server/...
+    - go generate -C server ./...
 
 builds:
   - id: opus-server
