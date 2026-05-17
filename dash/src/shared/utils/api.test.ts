@@ -1,5 +1,5 @@
 // dash/src/shared/utils/api.test.ts
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { api } from './api';
 
 describe('api', () => {
@@ -28,10 +28,13 @@ describe('api', () => {
 
     const result = await api.post('/test', { foo: 'bar' });
     expect(result).toEqual(mockResponse);
-    expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:8080/test', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ foo: 'bar' }),
-    });
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      'http://localhost:8080/test',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ foo: 'bar' }),
+      },
+    );
   });
 });
