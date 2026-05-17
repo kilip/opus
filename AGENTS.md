@@ -2,10 +2,15 @@
 
 Opus is an open-source, self-hosted, autonomous AI assistant designed to operate 24/7 on behalf of individuals and teams. It unifies a structured knowledge base, a programmable workflow engine, and a proactive AI agent layer into a single platform.
 
+---
+
 ## Project Structure
 - `server/`: Go-based backend application serving REST/SSE API.
 - `dash/`: Progressive Web Application (PWA) frontend.
 - `docs/`: Project documentation including Architecture Decision Records (ADRs).
+- `get-opus/`: Installer, run with `npx get-opus`
+
+---
 
 ## Key Technology Stack
 
@@ -22,6 +27,8 @@ Opus is an open-source, self-hosted, autonomous AI assistant designed to operate
 - **Data Fetching/State**: TanStack Query
 - **Styling/UI**: Tailwind CSS 4.x, shadcn/ui
 - **PWA**: vite-plugin-pwa (Workbox)
+
+---
 
 ## Development Conventions
 
@@ -53,8 +60,40 @@ Opus is an open-source, self-hosted, autonomous AI assistant designed to operate
   - Environment: `OPUS_*` variables
   - Override: `OPUS_HOME` environment variable for custom config location.
 
+---
+
+## Code Quality — Non-Negotiable
+
+### Go (`server/`)
+- Every exported function/type **must** have a GoDoc comment
+- Every new feature **must** have a unit test (co-located `_test.go`)
+- Every repository method **must** have an integration test (`_integration_test.go`, build tag `integration`)
+- Use `go.uber.org/mock` for mocking — never use concrete types in service tests
+
+### TypeScript (`dash/`)
+- Every exported function/component **must** have a JSDoc comment
+- Every component **must** have a Vitest + React Testing Library test
+- Critical flows **must** be covered by Playwright E2E tests
+
+---
+
+## Conventional Commit
+
+Follow **Conventional Commits**. Allowed scopes: `server`, `dash`, `get-opus`, `ci`, `deps`
+
+| Prefix | Version Bump |
+|--------|-------------|
+| `feat:` | minor |
+| `fix:` | patch |
+| `feat!:` / `fix!:` | major |
+| `chore:`, `ci:`, `refactor:` | patch |
+
+---
+
 ## Building and Running
 - TBD
+
+---
 
 ## Memory System
 
