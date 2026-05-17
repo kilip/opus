@@ -1,9 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
   "packages": {
-    ".": {
-      "release-type": "simple"
-    },
     "server": {
       "release-type": "go",
       "package-name": "server",
@@ -17,15 +14,12 @@
       "include-component-in-tag": false
     }
   },
-  "group-pull-request-title-pattern": "release: opus v${version}",
-  "pull-request-title-pattern": "release: opus v${version}",
   "include-component-in-tag": false,
   "plugins": [
     {
       "type": "linked-versions",
       "groupName": "opus",
       "packages": [
-        ".",
         "server",
         "dash"
       ]
