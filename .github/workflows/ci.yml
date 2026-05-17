@@ -17,34 +17,34 @@ jobs:
         working-directory: ./server
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: 'server/go.mod'
           cache-dependency-path: 'server/go.sum'
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
           version: latest
+          install-mode: goinstall
           working-directory: server
           args: --timeout=5m
 
   server-test:
     name: Server Test
-    needs: server-lint
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ./server
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v6
         with:
           go-version-file: 'server/go.mod'
           cache-dependency-path: 'server/go.sum'
@@ -63,15 +63,15 @@ jobs:
         working-directory: ./dash
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 9
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: 'pnpm'
@@ -88,22 +88,21 @@ jobs:
 
   dash-test:
     name: Dash Test
-    needs: dash-lint
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ./dash
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 9
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: 'pnpm'
