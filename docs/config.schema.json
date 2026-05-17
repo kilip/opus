@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kilip/opus/server/internal/config/config",
+  "$ref": "#/$defs/Config",
+  "$defs": {
+    "Config": {
+      "properties": {
+        "test_field": {
+          "type": "string",
+          "description": "A test configuration field"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "test_field"
+      ]
+    }
+  }
+}

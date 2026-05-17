@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
 )
 
@@ -19,11 +20,11 @@ func resolveConfigDir() string {
 	return filepath.Join(home, ".opus")
 }
 
-func Load() (*Config, error) {
+func LoadWithViper() (*Config, *viper.Viper, error) {
 	configDir := resolveConfigDir()
 
 	if err := os.MkdirAll(configDir, 0755); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	v := viper.New()
@@ -50,8 +51,25 @@ func Load() (*Config, error) {
 
 	var cfg Config
 	if err := v.Unmarshal(&cfg); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return &cfg, nil
+	return &cfg, v, nil
+}
+
+func Load() (*Config, error) {
+	cfg, _, err := LoadWithViper()
+	return cfg, err
+}
+
+func Watch(v *viper.Viper, onChange func(cfg *Config)) {
+	v.WatchConfig()
+	v.OnConfigChange(func(e fsnotify.Event) {
+		var cfg Config
+		if err := v.Unmarshal(&cfg); err != nil {
+			// log error, do not apply partial config
+			return
+		}
+		onChange(&cfg)
+	})
 }
