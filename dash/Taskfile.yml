@@ -1,0 +1,60 @@
+version: '3'
+
+tasks:
+  default:
+    desc: Lists all available tasks
+    cmds:
+      - task --list
+    silent: true
+
+  install:
+    desc: Install node dependencies using pnpm
+    cmds:
+      - pnpm install
+
+  dev:
+    desc: Run the Vite development server
+    cmds:
+      - pnpm dev
+
+  build:
+    desc: Build the dashboard production bundle (with TypeScript compilation)
+    cmds:
+      - pnpm build
+
+  lint:
+    desc: Format and lint the dashboard codebase using Biome
+    cmds:
+      - pnpm format
+      - pnpm check
+
+  format:
+    desc: Auto-format dashboard code using Biome
+    cmds:
+      - pnpm format
+
+  check:
+    desc: Run Biome code quality checks (linter, formatter, import organizer)
+    cmds:
+      - pnpm check
+
+  check:write:
+    desc: Run Biome code quality checks and apply safe auto-fixes
+    cmds:
+      - pnpm check:write
+
+  test:
+    desc: Run unit tests using Vitest (single run)
+    cmds:
+      - task: lint
+      - pnpm vitest run
+
+  test:watch:
+    desc: Run unit tests using Vitest in watch mode
+    cmds:
+      - pnpm vitest
+
+  preview:
+    desc: Preview the local production build
+    cmds:
+      - pnpm preview

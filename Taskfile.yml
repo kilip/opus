@@ -1,0 +1,40 @@
+version: '3'
+
+includes:
+  server:
+    taskfile: ./server/Taskfile.yml
+    dir: ./server
+  dash:
+    taskfile: ./dash/Taskfile.yml
+    dir: ./dash
+
+tasks:
+  default:
+    desc: Lists all available tasks from the orchestrator
+    cmds:
+      - task --list
+    silent: true
+
+  install:
+    desc: Install dependencies for both server and dash
+    cmds:
+      - task: server:tidy
+      - task: dash:install
+
+  build:
+    desc: Build both server and dash production targets
+    cmds:
+      - task: server:build
+      - task: dash:build
+
+  lint:
+    desc: Run linters on both server and dash workspaces
+    cmds:
+      - task: server:lint
+      - task: dash:lint
+
+  test:
+    desc: Run unit tests for both server and dash
+    cmds:
+      - task: server:test
+      - task: dash:test

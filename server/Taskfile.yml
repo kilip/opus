@@ -20,6 +20,7 @@ tasks:
   test:
     desc: Run unit tests with race detector
     cmds:
+      - task: lint
       - go test -race ./...
 
   test:integration:
@@ -28,8 +29,10 @@ tasks:
       - go test -race -tags integration ./...
 
   lint:
-    desc: Run golangci-lint
+    desc: Run formatter, tidy dependencies, and golangci-lint
     cmds:
+      - go fmt ./...
+      - go mod tidy
       - golangci-lint run ./...
 
   schema:
