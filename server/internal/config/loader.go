@@ -31,17 +31,22 @@ func LoadWithViper() (*Config, *viper.Viper, error) {
 	v.SetConfigName("config")
 	v.SetConfigType("json")
 
-	// Resolution order: lowest to highest priority
-	v.AddConfigPath(filepath.Join("opus", ".opus")) // development
-	home, _ := os.UserHomeDir()
-	if home != "" {
-		v.AddConfigPath(filepath.Join(home, ".opus")) // user home
-	}
+	// Resolution order: highest to lowest priority (Viper checks in order of addition)
 
-	// Explicit override via env var
+	// 1. Explicit override via env var (Highest file priority)
 	if opusHome := os.Getenv("OPUS_HOME"); opusHome != "" {
 		v.AddConfigPath(opusHome)
 	}
+
+	// 2. User home directory
+	home, _ := os.UserHomeDir()
+	if home != "" {
+		v.AddConfigPath(filepath.Join(home, ".opus"))
+	}
+
+	// 3. Project-local directories (Development fallbacks)
+	v.AddConfigPath(".opus")    // when run from project root
+	v.AddConfigPath("../.opus") // when run from server/ directory
 
 	v.SetEnvPrefix("OPUS")
 	v.AutomaticEnv()

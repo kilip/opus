@@ -109,3 +109,74 @@ func TestWatch(t *testing.T) {
 		t.Log("Watch notification timed out or not supported in this environment.")
 	}
 }
+
+func TestLoad_FilePrecedenceOrder(t *testing.T) {
+	// Setup custom home and OPUS_HOME temp directories
+	tmpDir := t.TempDir()
+	opusHomeDir := filepath.Join(tmpDir, "opus_home")
+	homeDir := filepath.Join(tmpDir, "home")
+
+	// Ensure dirs exist
+	if err := os.MkdirAll(opusHomeDir, 0755); err != nil {
+		t.Fatalf("Failed to create opusHomeDir: %v", err)
+	}
+	if err := os.MkdirAll(filepath.Join(homeDir, ".opus"), 0755); err != nil {
+		t.Fatalf("Failed to create homeDir/.opus: %v", err)
+	}
+
+	// Create local .opus directory in current test running directory
+	localOpusDir := ".opus"
+	if err := os.MkdirAll(localOpusDir, 0755); err != nil {
+		t.Fatalf("Failed to create local .opus dir: %v", err)
+	}
+	defer func() {
+		_ = os.RemoveAll(localOpusDir)
+	}()
+
+	// Write config files in all 3 locations with different values
+	err := os.WriteFile(filepath.Join(opusHomeDir, "config.json"), []byte(`{"test_field": "opus_home_val"}`), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write config in OPUS_HOME: %v", err)
+	}
+	err = os.WriteFile(filepath.Join(homeDir, ".opus", "config.json"), []byte(`{"test_field": "home_val"}`), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write config in home: %v", err)
+	}
+	err = os.WriteFile(filepath.Join(localOpusDir, "config.json"), []byte(`{"test_field": "local_val"}`), 0644)
+	if err != nil {
+		t.Fatalf("Failed to write config in local: %v", err)
+	}
+
+	// Setenv for HOME and OPUS_HOME
+	t.Setenv("OPUS_HOME", opusHomeDir)
+	t.Setenv("HOME", homeDir)
+
+	// Scenario 1: Both OPUS_HOME, Home and Local exist. OPUS_HOME must win.
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() Scenario 1 error: %v", err)
+	}
+	if cfg.TestField != "opus_home_val" {
+		t.Errorf("Expected 'opus_home_val', got '%s'", cfg.TestField)
+	}
+
+	// Scenario 2: OPUS_HOME is not set. Home and Local exist. Home must win.
+	t.Setenv("OPUS_HOME", "")
+	cfg2, err := Load()
+	if err != nil {
+		t.Fatalf("Load() Scenario 2 error: %v", err)
+	}
+	if cfg2.TestField != "home_val" {
+		t.Errorf("Expected 'home_val', got '%s'", cfg2.TestField)
+	}
+
+	// Scenario 3: OPUS_HOME is not set, Home does not have config. Local must win.
+	t.Setenv("HOME", filepath.Join(tmpDir, "non_existent_home"))
+	cfg3, err := Load()
+	if err != nil {
+		t.Fatalf("Load() Scenario 3 error: %v", err)
+	}
+	if cfg3.TestField != "local_val" {
+		t.Errorf("Expected 'local_val', got '%s'", cfg3.TestField)
+	}
+}
