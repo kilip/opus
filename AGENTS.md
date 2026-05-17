@@ -5,84 +5,250 @@ Opus is an open-source, self-hosted, autonomous AI assistant designed to operate
 ---
 
 ## Project Structure
-- `server/`: Go-based backend application serving REST/SSE API.
-- `dash/`: Progressive Web Application (PWA) frontend.
-- `docs/`: Project documentation including Architecture Decision Records (ADRs).
-- `get-opus/`: Installer, run with `npx get-opus`
+
+```
+opus/
+├── server/     # Go backend — REST/SSE API
+├── dash/       # Progressive Web Application (PWA) frontend
+├── docs/       # Architecture Decision Records (ADRs)
+└── get-opus/   # Installer — npx get-opus
+```
 
 ---
 
-## Key Technology Stack
+## Technology Stack
 
 ### Backend (`server/`)
-- **Language**: Go
-- **Framework**: Fiber (HTTP delivery layer)
-- **ORM**: Ent
-- **Configuration**: Viper (layered configuration via files and env vars)
+
+| Concern | Choice |
+|---|---|
+| Language | Go |
+| HTTP Framework | GoFiber v3 |
+| ORM | Ent + Atlas migrations |
+| Config | Viper + JSON + env vars |
+| Queue | SQLite (default) / PostgreSQL / Redis (Asynq) |
+| Logging | `internal/shared/logger` interface (injected) |
+| Mocking | `go.uber.org/mock` |
 
 ### Frontend (`dash/`)
-- **Language**: TypeScript
-- **Framework**: React 19.x with Vite 6.x
-- **Routing**: TanStack Router
-- **Data Fetching/State**: TanStack Query
-- **Styling/UI**: Tailwind CSS 4.x, shadcn/ui
-- **PWA**: vite-plugin-pwa (Workbox)
+
+| Concern | Choice |
+|---|---|
+| Language | TypeScript |
+| Framework | React 19.x + Vite 6.x |
+| Routing | TanStack Router |
+| Server State | TanStack Query |
+| Styling | Tailwind CSS 4.x + shadcn/ui |
+| PWA | vite-plugin-pwa (Workbox) |
+| Testing | Vitest + React Testing Library + Playwright (E2E) |
 
 ---
 
-## Development Conventions
+## Backend Architecture (ADR-001, ADR-005)
 
-### Backend Architecture (ADR-001)
-- Follows a feature-based Clean Architecture with explicit layer boundaries.
-- **Directories**:
-  - `internal/[feature]/`: Domain models, business logic (Services), and repository interfaces.
-  - `adapter/entgo/`: Concrete database implementations (Repositories).
-  - `delivery/http/`: HTTP handlers and routing.
-  - `internal/config/`: Configuration loading.
-  - `internal/shared/`: Cross-cutting domain entities.
-- **Dependency Rule**: Dependencies flow inward. Delivery and Adapter layers depend on the Domain layer, never the reverse.
+### Directory Layout
 
-### Frontend Architecture (ADR-003)
-- Feature-based directory structure mirroring the backend domains (e.g., `auth`, `agent`, `vault`, `workflow`).
-- **Directories**:
-  - `dash/src/app/`: Entry point, global providers, and router tree.
-  - `dash/src/routes/`: Page-level components defined using TanStack Router file-based routing.
-  - `dash/src/features/[feature]/`: Domain-scoped components, hooks, and API queries.
-  - `dash/src/shared/`: Cross-feature UI components, hooks, and types.
-- **Offline Strategy**:
-  - GET requests use `NetworkFirst` with cache fallback.
-  - Mutations (POST/PUT/DELETE) use a background sync queue when offline.
+```
+server/
+├── main.go
+├── ent/                        # Entgo generated code (never edit except ent/schema/)
+│   └── schema/                 # Hand-authored Ent schema definitions
+├── internal/
+│   ├── config/                 # Config loader (Viper)
+│   ├── shared/
+│   │   ├── logger/             # Logger interface + NoopLogger + MockLogger
+│   │   └── queue/              # Queue + EventBus interfaces + Noop* + Mock*
+│   ├── agent/                  # Domain: models, repository interface, service, errors, config
+│   ├── vault/
+│   ├── workflow/
+│   ├── auth/
+│   ├── llm/
+│   └── testutil/               # Shared test helpers (NewTestEntClient, fixtures)
+├── adapter/
+│   ├── entgo/                  # Concrete repository implementations
+│   └── queue/                  # Queue backend implementations (sqlite, postgres, redis, memory)
+└── delivery/
+    └── fiber/                  # Canonical HTTP delivery layer (NOT delivery/http/)
+        ├── handler/
+        ├── middleware/
+        ├── router/
+        └── response/           # ADR-004 envelope helpers
+```
 
-### Configuration (ADR-002)
-- Managed by `server/internal/config`. Uses a layered approach:
-  - **DEVELOPMENT**: `./.opus` (current-working-directory/.opus)
-  - Default: `~/.opus/config.json`
-  - Environment: `OPUS_*` variables
-  - Override: `OPUS_HOME` environment variable for custom config location.
+### Dependency Rule
+
+```
+delivery/fiber/ → internal/[feature]/ ← adapter/
+```
+
+- `internal/[feature]/` has zero knowledge of delivery or adapter implementations.
+- `adapter/` imports `internal/` interfaces — never the reverse.
+- `delivery/` imports `internal/` services — never adapter directly.
+
+### Layer Responsibilities
+
+| Layer | Responsibility |
+|---|---|
+| `internal/[feature]/` | Domain models, business logic, repository interfaces, sentinel errors, feature config |
+| `adapter/entgo/` | Concrete repository implementations (Ent) |
+| `adapter/queue/` | Queue backend implementations |
+| `delivery/fiber/` | HTTP handlers, middleware, routing — thin translation layer only |
 
 ---
 
-## Code Quality — Non-Negotiable
+## Coding Conventions (ADR-010)
 
-### Go (`server/`)
-- Every exported function/type **must** have a GoDoc comment
-- Every new feature **must** have a unit test (co-located `_test.go`)
-- Every repository method **must** have an integration test (`_integration_test.go`, build tag `integration`)
-- Use `go.uber.org/mock` for mocking — never use concrete types in service tests
+### GoDoc
+Every exported symbol **must** have a GoDoc comment starting with the symbol name, ending with a period.
 
-### TypeScript (`dash/`)
-- Every exported function/component **must** have a JSDoc comment
-- Every component **must** have a Vitest + React Testing Library test
-- Critical flows **must** be covered by Playwright E2E tests
+### Error Handling
+- Sentinel errors in `internal/[feature]/errors.go`, prefixed `Err`, checked via `errors.Is`.
+- Wrap all infrastructure errors: `fmt.Errorf("agent.Service.FindByID: %w", err)`.
+- `panic` is **prohibited** in domain/service/adapter/handler code.
+- `log.Fatal` / `os.Exit` are **prohibited** outside `main.go`.
+
+### Interfaces
+- Defined in the **consumer** package (`internal/[feature]/`), never in the adapter.
+- No `I` prefix (`IRepository` is invalid).
+- Carry `//go:generate mockgen` directive above the declaration.
+
+### Context
+- `context.Context` is always the first parameter, named `ctx`.
+- Never store `context.Context` in a struct field.
+- Context enrichment (tracing metadata) happens only in delivery middleware.
+
+### Logging
+- Direct use of `fmt.Println`, `log.Print*`, or any concrete logging library is **prohibited** outside `main.go`.
+- All logging goes through the injected `logger.Logger` interface.
+- Sensitive values use `logger.Redact`.
+- Log messages: lowercase, present tense, no trailing punctuation.
+
+### Naming
+- Packages: lowercase, single word, no underscores.
+- Files: snake_case (`agent_handler.go`, `mock_repository.go`).
+- Errors: `internal/[feature]/errors.go`.
+- Mocks: `mock_<interface>.go` (generated, never edited manually).
+
+### Import Grouping (enforced by `goimports`)
+```go
+import (
+    // 1. Standard library
+    "context"
+    "fmt"
+
+    // 2. Third-party
+    "github.com/gofiber/fiber/v3"
+
+    // 3. Internal
+    "github.com/kilip/opus/server/internal/agent"
+)
+```
+
+### Linting
+- `golangci-lint` with `server/.golangci.yml` — zero warning policy.
+- Run: `cd server && golangci-lint run ./...`
 
 ---
 
-## Conventional Commit
+## Configuration (ADR-002)
 
-Follow **Conventional Commits**. Allowed scopes: `server`, `dash`, `get-opus`, `ci`, `deps`
+**Resolution order (highest → lowest priority):**
+1. `OPUS_*` environment variables
+2. `$OPUS_HOME/config.json`
+3. `~/.opus/config.json`
+4. `./.opus/config.json` (development)
+
+**Hybrid composition:** each feature owns its config struct in `internal/[feature]/config.go`; root `internal/config/model.go` composes them. Features never import the root `config` package.
+
+Secrets (API keys, DSNs) via env vars only — never in config files.
+
+---
+
+## API Contract (ADR-004)
+
+- All responses use the envelope: `{ "data": ..., "error": ..., "meta": ... }`.
+- Errors follow RFC 7807 Problem Details inside `error`.
+- URL structure: `/api/{resource}` — **no version prefix** (`/api/v1/` is invalid).
+- Pagination: cursor-based only (no offset).
+- SSE endpoint: `GET /api/agents/{id}/logs/stream`.
+- Response helpers: `delivery/fiber/response/` — use `response.OK`, `response.Error`, etc.
+
+---
+
+## Queue & Events (ADR-008)
+
+- **`queue.Queue`** — durable background jobs (agent tasks, emails, vault indexing).
+- **`queue.EventBus`** — in-process pub/sub for domain decoupling (no persistence).
+- Job type convention: `"<domain>:<action>"` (e.g. `"agent:evaluate"`).
+- Event topic convention: `"<domain>.<action>"` (e.g. `"agent.completed"`).
+- Use `queue.NoopQueue` / `queue.NoopEventBus` in unit tests.
+
+---
+
+## Testing Strategy (ADR-009)
+
+| Category | File Suffix | Build Tag | Infrastructure |
+|---|---|---|---|
+| Unit | `_test.go` | _(none)_ | Mocks / Noop* only |
+| Integration | `_integration_test.go` | `//go:build integration` | SQLite in-memory |
+
+- All unit tests use the **table-driven** pattern.
+- Default package style: `package foo_test` (black-box); white-box (`package foo`) requires a justification comment.
+- Mocks via `go.uber.org/mock` only — `testify/mock` is **prohibited**.
+- Shared test helpers: `internal/testutil/` — call `t.Helper()` as first statement.
+- Handler tests use Fiber's `app.Test()` and **must** assert the ADR-004 envelope shape.
+- Coverage thresholds: 80% per unit-tested package, 70% per adapter package.
+
+**Run commands:**
+```bash
+go test -race ./...                        # unit tests
+go test -race -tags integration ./...      # unit + integration
+go generate ./...                          # regenerate mocks after interface changes
+```
+
+---
+
+## Frontend Architecture (ADR-003)
+
+```
+dash/src/
+├── app/           # Entry point, router, global providers
+├── routes/        # TanStack Router file-based page components (thin — no business logic)
+├── features/
+│   ├── agent/     # components/, hooks/, api.ts, types.ts
+│   ├── vault/
+│   └── workflow/
+└── shared/
+    ├── components/ # Layout, OfflineBanner, shadcn/ui wrappers
+    ├── hooks/      # useNetworkStatus, useServiceWorkerUpdate, useTheme
+    ├── lib/        # api-client.ts, utils.ts
+    └── types/      # ApiEnvelope<T>, ProblemDetail, PaginationMeta
+```
+
+**Rules:**
+- Features import from `shared/` only — never from sibling features.
+- Cross-feature data is resolved at the route level.
+- All API calls go through `shared/lib/api-client.ts` — no raw `fetch` in components.
+
+**Offline strategy:**
+- `GET` requests: `NetworkFirst` with 5s timeout, falls back to cache.
+- Mutations: `BackgroundSyncPlugin` queue (IndexedDB); optimistic updates via TanStack Query `onMutate`.
+- Offline state: `useNetworkStatus()` → `OfflineBanner` in root layout.
+
+**Frontend code quality:**
+- Every exported function/component: JSDoc comment.
+- Every component: Vitest + React Testing Library test.
+- Critical flows: Playwright E2E test.
+
+---
+
+## Commit Convention
+
+**Format:** `<type>(<scope>): <description>`
+**Scopes:** `server`, `dash`, `get-opus`, `ci`, `deps`
 
 | Prefix | Version Bump |
-|--------|-------------|
+|---|---|
 | `feat:` | minor |
 | `fix:` | patch |
 | `feat!:` / `fix!:` | major |
@@ -90,54 +256,24 @@ Follow **Conventional Commits**. Allowed scopes: `server`, `dash`, `get-opus`, `
 
 ---
 
-## Building and Running
-- TBD
+## Agent Memory System
 
----
-
-## Memory System
-
-Agent memory lives in current working direcotry `.agents/`. **Every session gets its own file** — never append to an existing session file.
-
-### File Structure
+Memory lives in `.agents/` (gitignored). **Every session gets its own file.**
 
 ```
 .agents/
-├── MEMORY.md                        # Long-term: persistent decisions, project context
+├── MEMORY.md                        # Long-term: decisions, project context
 └── memory/
     ├── YYYY-MM-DD-<slug>.md         # One file per session
-    └── YYYY-MM-DD-consolidated.md  # Consolidated summary (auto-generated)
+    └── YYYY-MM-DD-consolidated.md  # Auto-generated consolidated summary
 ```
-
-**Naming:** `YYYY-MM-DD-<slug>.md` — e.g. `2026-05-16-whatsapp-service.md`
-
-### What Belongs Where
-
-| File | Content |
-|------|---------|
-| `MEMORY.md` | Architectural decisions, user preferences, feature status, non-negotiables |
-| `YYYY-MM-DD-<slug>.md` | Task goal, steps taken, decisions made, blockers, what remains |
-| `YYYY-MM-DD-consolidated.md` | Highlights only: Decisions, Progress, Blockers, Key Findings |
 
 ### Session Workflow
 
-**Start of session:**
-1. Read `.agents/MEMORY.md` in full
-2. Read last 3–5 session files in `.agents/memory/`
-3. If 5+ non-consolidated session files exist → run consolidation first
-4. Create a **new** file `.agents/memory/YYYY-MM-DD-<slug>.md` for this session
-5. Write initial context: goal, relevant prior decisions, open questions
+**Start:** Read `MEMORY.md` + last 3–5 session files → create new session file → write goal and open questions.
 
-**During session:** Update the current session file as work progresses — log decisions, findings, blockers.
+**During:** Update session file with decisions, findings, blockers.
 
-**End of session:**
-1. Finalize session file with summary of what was done and what remains
-2. Promote any lasting decisions to `.agents/MEMORY.md`
+**End:** Finalise session file → promote lasting decisions to `MEMORY.md`.
 
-### Consolidation (when 5+ non-consolidated files exist)
-
-1. Collect all non-consolidated files (slug not ending in `consolidated`), oldest first
-2. Output to `YYYY-MM-DD-consolidated.md` — append if file already exists
-3. Content: highlights only (Decisions, Progress, Blockers, Key Findings) — no code snippets or verbose logs
-4. Delete source files after consolidated file is written
-5. Never consolidate the **current session's file**; never delete consolidated files
+**Consolidation** (when 5+ non-consolidated files exist): summarise into `YYYY-MM-DD-consolidated.md` (decisions, progress, blockers, key findings — no code snippets), then delete source files. Never consolidate the current session's file.
