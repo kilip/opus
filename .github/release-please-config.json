@@ -1,29 +1,64 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
-  "packages": {
-    "server": {
-      "release-type": "go",
-      "package-name": "server",
-      "component": "server",
-      "include-component-in-tag": false
-    },
-    "dash": {
-      "release-type": "node",
-      "package-name": "dash",
-      "component": "dash",
-      "include-component-in-tag": false
-    }
-  },
-  "group-pull-request-title-pattern": "release: opus v${version}",
-  "pull-request-title-pattern": "release: opus v${version}",
-  "plugins": [
+  "release-type": "go",
+  "bump-minor-pre-major": true,
+  "bump-patch-for-minor-pre-major": true,
+  "changelog-sections": [
     {
-      "type": "linked-versions",
-      "groupName": "opus",
-      "packages": [
-        "server",
-        "dash"
+      "type": "feat",
+      "section": "New Features",
+      "hidden": false
+    },
+    {
+      "type": "fix",
+      "section": "Bug Fixes",
+      "hidden": false
+    },
+    {
+      "type": "docs",
+      "section": "Documentation",
+      "hidden": false
+    },
+    {
+      "type": "perf",
+      "section": "Performance",
+      "hidden": false
+    },
+    {
+      "type": "refactor",
+      "section": "Refactoring",
+      "hidden": true
+    },
+    {
+      "type": "chore",
+      "section": "Miscellaneous",
+      "hidden": true
+    },
+    {
+      "type": "ci",
+      "section": "CI",
+      "hidden": true
+    },
+    {
+      "type": "test",
+      "section": "Tests",
+      "hidden": true
+    }
+  ],
+  "packages": {
+    ".": {
+      "release-type": "go",
+      "package-name": "opus",
+      "include-component-in-tag": false,
+      "changelog-path": "CHANGELOG.md",
+      "tag-structure": "v${version}",
+      "extra-files": [
+        {
+          "type": "json",
+          "path": "dash/package.json",
+          "jsonpath": "$.version"
+        }
       ]
     }
-  ]
+  }
 }
