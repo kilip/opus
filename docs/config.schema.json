@@ -11,13 +11,40 @@
         },
         "server": {
           "$ref": "#/$defs/Config"
+        },
+        "database": {
+          "$ref": "#/$defs/DatabaseConfig"
         }
       },
       "additionalProperties": false,
       "type": "object",
       "required": [
         "test_field",
-        "server"
+        "server",
+        "database"
+      ]
+    },
+    "DatabaseConfig": {
+      "properties": {
+        "driver": {
+          "type": "string",
+          "enum": [
+            "sqlite3",
+            "postgres"
+          ],
+          "description": "Database driver",
+          "default": "sqlite3"
+        },
+        "dsn": {
+          "type": "string",
+          "description": "Data source name. Inject via OPUS_DATABASE_DSN for production secrets"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object",
+      "required": [
+        "driver",
+        "dsn"
       ]
     }
   }

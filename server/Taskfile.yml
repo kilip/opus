@@ -45,3 +45,18 @@ tasks:
     desc: Compile the server packages
     cmds:
       - go build ./...
+
+  db:generate:
+    desc: Generate ent code
+    cmds:
+      - go generate ./ent/...
+
+  db:migrate:diff:
+    desc: Generate a new atlas migration
+    cmds:
+      - |
+        atlas migrate diff {{.CLI_ARGS}} \
+          --dir "file://ent/migrate/migrations" \
+          --to "ent://ent/schema" \
+          --dev-url "sqlite://dev?mode=memory&cache=shared&_fk=1"
+
