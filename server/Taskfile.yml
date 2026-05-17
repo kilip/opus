@@ -1,0 +1,44 @@
+version: '3'
+
+tasks:
+  default:
+    desc: Lists all available tasks
+    cmds:
+      - task --list
+    silent: true
+
+  tidy:
+    desc: Run go mod tidy to clean up dependencies
+    cmds:
+      - go mod tidy
+
+  generate:
+    desc: Run code generation (mockgen, ent, etc.)
+    cmds:
+      - go generate ./...
+
+  test:
+    desc: Run unit tests with race detector
+    cmds:
+      - go test -race ./...
+
+  test:integration:
+    desc: Run unit and integration tests with race detector
+    cmds:
+      - go test -race -tags integration ./...
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - golangci-lint run ./...
+
+  schema:
+    desc: Generate JSON schema for configurations
+    dir: internal/config
+    cmds:
+      - go run generate.go
+
+  build:
+    desc: Compile the server packages
+    cmds:
+      - go build ./...
