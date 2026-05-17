@@ -323,9 +323,8 @@ func TestAgentHandler_GetAgent(t *testing.T) {
 
             app := fiber.New()
             h := handler.NewAgentHandler(mockSvc)
-            app.Get("/api/agents/:id", h.GetAgent)
-
-            req := httptest.NewRequest(http.MethodGet, "/api/agents/"+tc.agentID, nil)
+            app.Get("/agents/:id", h.GetAgent)
+                        req := httptest.NewRequest(http.MethodGet, "/agents/"+tc.agentID, nil)
             resp, err := app.Test(req)
             if err != nil {
                 t.Fatalf("app.Test failed: %v", err)

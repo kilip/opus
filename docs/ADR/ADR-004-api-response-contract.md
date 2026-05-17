@@ -229,7 +229,6 @@ GET /agents/{id}
 GET /vault/entries
 
 # Incorrect — version prefix is not used
-GET /api/v1/agents
 GET /v1/agents
 ```
 
@@ -460,7 +459,7 @@ Single flexible query endpoint. Rejected because:
 - Adds significant server implementation complexity with no benefit given Opus Dash's well-defined, stable query surface
 - Go Fiber's strengths are in REST; GraphQL would require a separate runtime layer
 
-### 3.4 URL Versioning (`/api/v1/`)
+### 3.4 URL Versioning (`/v1/`)
 
 Adding a version prefix to all routes. Rejected because:
 
