@@ -25,7 +25,7 @@ SQLite is appropriate for Opus's local-first, single-user model. With WAL (Write
 Opus Server adopts **Ent** as the exclusive ORM for all database interactions, with **Atlas** for schema migration management.
 
 - Generated code resides in `server/ent/` following Entgo's own project convention
-- Repository implementations reside in `adapter/entgo/` and implement the domain interfaces defined in `internal/[feature]/repository.go`
+- Repository implementations reside in `internal/adapter/entgo/` and implement the domain interfaces defined in `internal/[feature]/repository.go`
 - Atlas **auto-migrate** is used in development; Atlas **versioned migrations** are used in production
 
 ---
@@ -49,13 +49,14 @@ opus/
     │   ├── ent.go                      # Generated package entry
     │   └── ...                         # Other generated files (never edit manually)
     │
-    └── adapter/
-        └── entgo/
-            ├── client.go               # Ent client setup, driver selection, migration bootstrap
-            ├── auth_repo.go            # Implements internal/auth.Repository
-            ├── agent_repo.go           # Implements internal/agent.Repository
-            ├── vault_repo.go           # Implements internal/vault.Repository
-            └── workflow_repo.go        # Implements internal/workflow.Repository
+    └── internal/
+        └── adapter/
+            └── entgo/
+                ├── client.go               # Ent client setup, driver selection, migration bootstrap
+                ├── auth.go                 # Implements internal/auth.Repository
+                ├── agent.go                # Implements internal/agent.Repository
+                ├── vault.go                # Implements internal/vault.Repository
+                └── workflow.go             # Implements internal/workflow.Repository
 ```
 
 > **Note for AI agents and implementors:** The `server/ent/` directory is **entirely generated** — except `server/ent/schema/`. Never manually edit generated files outside `schema/`. All schema changes begin in `server/ent/schema/` and are propagated via `go generate`.
@@ -67,7 +68,7 @@ opus/
 Both SQLite and PostgreSQL are supported through Ent's driver abstraction. The active driver is selected at runtime based on the `database.driver` configuration field (ADR-002).
 
 ```go
-// adapter/entgo/client.go
+// internal/adapter/entgo/client.go
 package entgo
 
 import (
@@ -118,7 +119,7 @@ Opus uses **Atlas** for migration management, operated in two modes depending on
 During development, `client.Schema.Create()` is called at startup to apply any pending schema changes automatically. This eliminates migration friction during iterative schema work.
 
 ```go
-// adapter/entgo/client.go (development bootstrap)
+// internal/adapter/entgo/client.go (development bootstrap)
 func AutoMigrate(client *ent.Client, ctx context.Context) error {
     return client.Schema.Create(ctx)
 }
@@ -153,7 +154,7 @@ The `atlas.sum` file in `server/ent/migrate/migrations/` provides integrity veri
 
 ### 2.4 Repository Pattern
 
-Each feature domain defines its own repository interface (port) in `internal/[feature]/repository.go`. The `adapter/entgo/` package provides the concrete implementation. This boundary is identical to the pattern established in ADR-001.
+Each feature domain defines its own repository interface (port) in `internal/[feature]/repository.go`. The `internal/adapter/entgo/` package provides the concrete implementation. This boundary is identical to the pattern established in ADR-001.
 
 **Interface (domain layer):**
 
@@ -176,7 +177,7 @@ type Repository interface {
 **Implementation (adapter layer):**
 
 ```go
-// adapter/entgo/agent_repo.go
+// internal/adapter/entgo/agent.go
 package entgo
 
 import (
@@ -212,8 +213,8 @@ func (r *AgentRepo) FindByID(ctx context.Context, id string) (*agent.Agent, erro
 
 ```
 internal/[feature]/repository.go  →  defines interface (port)
-adapter/entgo/[feature]_repo.go   →  implements interface (adapter)
-adapter/entgo imports internal/    ✅
+internal/adapter/entgo/[feature].go        →  implements interface (adapter)
+internal/adapter/entgo imports internal/    ✅
 internal/ never imports adapter/   ✅
 internal/ never imports ent/       ✅  (domain is ORM-agnostic)
 ```
@@ -268,7 +269,7 @@ cd server && go generate ./ent/...
 
 ### 2.6 Configuration Integration (ADR-002)
 
-Database configuration follows the Hybrid Config Composition Pattern from ADR-002. The `DatabaseConfig` struct is defined in `internal/config/model.go` and injected into `adapter/entgo/client.go` at startup.
+Database configuration follows the Hybrid Config Composition Pattern from ADR-002. The `DatabaseConfig` struct is defined in `internal/config/model.go` and injected into `internal/adapter/entgo/client.go` at startup.
 
 ```go
 // internal/config/model.go (excerpt)
@@ -381,7 +382,7 @@ Considered for repository list methods. Rejected in favour of cursor-based pagin
 - **Single codebase, two databases** — Driver abstraction allows switching between SQLite and PostgreSQL via a single config value with no application code changes
 - **SQLite WAL mode** — Enables concurrent reads for the default single-user deployment without contention
 - **Atlas migration safety** — Versioned migrations provide an auditable, reviewable migration history; `atlas.sum` integrity checks prevent history tampering
-- **ORM-agnostic domain layer** — `internal/[feature]/` has no Ent dependency; replacing the ORM requires changes only in `adapter/entgo/` and `server/ent/`
+- **ORM-agnostic domain layer** — `internal/[feature]/` has no Ent dependency; replacing the ORM requires changes only in `internal/adapter/entgo/` and `server/ent/`
 - **Entgo convention compliance** — Placing generated code in `server/ent/` follows Entgo's documented project layout, reducing onboarding friction for contributors familiar with the framework
 
 ### 4.2 Negative / Trade-offs

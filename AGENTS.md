@@ -58,6 +58,9 @@ server/
 │   ├── shared/
 │   │   ├── logger/             # Logger interface + NoopLogger + MockLogger
 │   │   └── queue/              # Queue + EventBus interfaces + Noop* + Mock*
+│   ├── adapter/
+│   │   ├── entgo/              # Concrete repository implementations
+│   │   └── queue/              # Queue backend implementations (sqlite, postgres, redis, memory)
 │   ├── agent/                  # Domain: models, repository interface, service, errors, config
 │   ├── delivery/
 │   │   └── gofiber/            # Canonical HTTP delivery layer (NOT delivery/http/)
@@ -71,19 +74,16 @@ server/
 │   ├── auth/
 │   ├── llm/
 │   └── testutil/               # Shared test helpers (NewTestEntClient, fixtures)
-├── adapter/
-│   ├── entgo/                  # Concrete repository implementations
-│   └── queue/                  # Queue backend implementations (sqlite, postgres, redis, memory)
 ```
 
 ### Dependency Rule
 
 ```
-internal/delivery/gofiber/ → internal/[feature]/ ← adapter/
+internal/delivery/gofiber/ → internal/[feature]/ ← internal/adapter/
 ```
 
 - `internal/[feature]/` has zero knowledge of delivery or adapter implementations.
-- `adapter/` imports `internal/` interfaces — never the reverse.
+- `internal/adapter/` imports `internal/[feature]/` interfaces — never the reverse.
 - `internal/delivery/gofiber/` imports `internal/` services — never adapter directly.
 
 ### Layer Responsibilities
@@ -91,8 +91,8 @@ internal/delivery/gofiber/ → internal/[feature]/ ← adapter/
 | Layer | Responsibility |
 |---|---|
 | `internal/[feature]/` | Domain models, business logic, repository interfaces, sentinel errors, feature config |
-| `adapter/entgo/` | Concrete repository implementations (Ent) |
-| `adapter/queue/` | Queue backend implementations |
+| `internal/adapter/entgo/` | Concrete repository implementations (Ent) |
+| `internal/adapter/queue/` | Queue backend implementations |
 | `internal/delivery/gofiber/` | HTTP handlers, middleware, routing — thin translation layer only |
 
 ---

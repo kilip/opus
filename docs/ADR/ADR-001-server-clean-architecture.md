@@ -69,21 +69,20 @@ opus/
     │           ├── config.go   # GoFiber configuration struct (hybrid composition)
     │           └── sse/        # SSE connection manager
     │               └── manager.go
-    ├── adapter/
-    │   └── entgo/              # Concrete repository implementations (ent ORM)
-    │       ├── client.go       # Ent client setup + migration
-    │       ├── auth_repo.go    # Implements auth.Repository
-    │       ├── agent_repo.go   # Implements agent.Repository
-    │       ├── vault_repo.go   # Implements vault.Repository
-    │       └── workflow_repo.go
-```
+    │   └── adapter/
+    │       └── entgo/              # Concrete repository implementations (ent ORM)
+    │           ├── client.go       # Ent client setup + migration
+    │           ├── auth.go         # Implements auth.Repository
+    │           ├── agent.go        # Implements agent.Repository
+    │           ├── vault.go        # Implements vault.Repository
+    │           └── workflow.go
 
 ### 2.2 Layer Responsibilities
 
 | Layer | Path | Responsibility |
 |---|---|---|
 | **Domain** | `internal/[feature]/` | Business logic, domain models, repository interfaces |
-| **Infrastructure** | `adapter/entgo/` | Concrete implementations of repository interfaces |
+| **Infrastructure** | `internal/adapter/entgo/` | Concrete implementations of repository interfaces |
 | **Delivery** | `internal/delivery/gofiber/`, `internal/delivery/grpc/` | HTTP/gRPC handlers; translates requests to service calls |
 | **Config** | `internal/config/` | Configuration parsing; injected at startup |
 | **Shared** | `internal/shared/` | Cross-cutting domain entities used by multiple features |
@@ -93,14 +92,14 @@ opus/
 Dependencies flow **inward only**:
 
 ```
-internal/delivery/gofiber/ → internal/[feature]/ ← adapter/
+internal/delivery/gofiber/ → internal/[feature]/ ← internal/adapter/
                     ↑
               internal/shared/
               internal/config/
 ```
 
 - `internal/[feature]/` has **zero knowledge** of delivery or adapter implementations
-- `adapter/entgo/` imports `internal/[feature]/` interfaces — never the reverse
+- `internal/adapter/entgo/` imports `internal/[feature]/` interfaces — never the reverse
 - `internal/delivery/gofiber/` imports `internal/[feature]/` services — never adapter directly
 
 ### 2.4 Repository Pattern
@@ -125,13 +124,13 @@ type Repository interface {
 **Implementation (adapter) — defined in adapter layer:**
 
 ```go
-// adapter/entgo/auth_repo.go
+// internal/adapter/entgo/auth.go
 package entgo
 
 import (
     "context"
     "opus/server/internal/auth"
-    "opus/server/adapter/entgo/ent"
+    "opus/server/internal/adapter/entgo/ent"
 )
 
 type AuthRepo struct {
@@ -220,7 +219,7 @@ All wiring happens in `main.go`. No global state, no service locators.
 package main
 
 import (
-    "opus/server/adapter/entgo"
+    "opus/server/internal/adapter/entgo"
     "opus/server/internal/delivery/gofiber/handler"
     "opus/server/internal/delivery/gofiber"
     "opus/server/internal/auth"
@@ -304,7 +303,7 @@ All code in a single `internal/` level without sub-packages. Rejected because:
 ### 4.1 Positive
 
 - **Testability** — Service layer has zero infrastructure dependencies; unit tests require only mock repositories
-- **Swappable infrastructure** — Replacing entgo with another ORM, or SQLite with PostgreSQL, requires changes only in `adapter/entgo/`
+- **Swappable infrastructure** — Replacing entgo with another ORM, or SQLite with PostgreSQL, requires changes only in `internal/adapter/entgo/`
 - **Microservice extraction** — Each `internal/[feature]/` folder is a natural microservice boundary; extraction requires lifting the folder, replacing repository calls with gRPC clients, and promoting the adapter to a standalone DB
 - **Go-idiomatic** — Package-by-feature aligns with standard Go project layout conventions
 - **Clear onboarding** — Contributors navigate to a single feature folder to understand the full domain

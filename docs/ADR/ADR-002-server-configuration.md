@@ -220,7 +220,7 @@ Feature services receive only their own config slice. They have no awareness of 
 package main
 
 import (
-    "opus/server/adapter/entgo"
+    "opus/server/internal/adapter/entgo"
     "opus/server/internal/delivery/gofiber/handler"
     "opus/server/internal/delivery/gofiber"
     "opus/server/internal/agent"

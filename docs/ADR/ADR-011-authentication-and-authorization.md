@@ -44,35 +44,34 @@ the Fiber middleware and handler layers defined in ADR-005.
 opus/
 └── server/
     ├── internal/
-    │   └── auth/
-    │       ├── model.go          # Domain models: User, Token, Session, Claims, Role
-    │       ├── repository.go     # Repository interface (port) + //go:generate directive
-    │       ├── service.go        # Business logic: login, logout, refresh, OAuth2 exchange
-    │       ├── oauth.go          # Provider interface + registry
-    │       ├── casbin.go         # Casbin enforcer wrapper + policy service
-    │       ├── config.go         # auth.Config struct (hybrid composition — ADR-002)
-    │       ├── errors.go         # Sentinel errors
-    │       └── mock_repository.go  # Generated — DO NOT EDIT
-    │
-    ├── adapter/
-    │   ├── entgo/
-    │   │   └── auth_repo.go      # Concrete repository implementation (Ent)
-    │   └── oauth/
-    │       ├── provider.go       # Provider interface implementation base
-    │       ├── google.go         # Google OAuth2 provider
-    │       └── github.go         # GitHub OAuth2 provider
-    │
-    └── internal/
-        └── delivery/
-            └── gofiber/
-                ├── handler/
-                │   └── auth.go   # Login, logout, refresh, OAuth2 callback, /auth/me
-                ├── middleware/
-                │   ├── auth.go           # Token validation + context injection
-                │   └── rbac.go           # Casbin enforcement middleware
-                ├── router.go             # Route registration + app bootstrap
-                ├── response.go           # ADR-004 envelope helpers
-                └── config.go             # GoFiber configuration struct (hybrid composition)
+    │   ├── auth/
+    │   │   ├── model.go          # Domain models: User, Token, Session, Claims, Role
+    │   │   ├── repository.go     # Repository interface (port) + //go:generate directive
+    │   │   ├── service.go        # Business logic: login, logout, refresh, OAuth2 exchange
+    │   │   ├── oauth.go          # Provider interface + registry
+    │   │   ├── casbin.go         # Casbin enforcer wrapper + policy service
+    │   │   ├── config.go         # auth.Config struct (hybrid composition — ADR-002)
+    │   │   ├── errors.go         # Sentinel errors
+    │   │   └── mock_repository.go  # Generated — DO NOT EDIT
+    │   │
+    │   ├── adapter/
+    │   │   ├── entgo/
+    │   │   │   └── auth.go           # Concrete repository implementation (Ent)
+    │   │   └── oauth/
+    │   │       ├── provider.go       # Provider interface implementation base
+    │   │       ├── google.go         # Google OAuth2 provider
+    │   │       └── github.go         # GitHub OAuth2 provider
+    │   │
+    │   └── delivery/
+    │       └── gofiber/
+    │           ├── handler/
+    │           │   └── auth.go   # Login, logout, refresh, OAuth2 callback, /auth/me
+    │           ├── middleware/
+    │           │   ├── auth.go           # Token validation + context injection
+    │           │   └── rbac.go           # Casbin enforcement middleware
+    │           ├── router.go             # Route registration + app bootstrap
+    │           ├── response.go           # ADR-004 envelope helpers
+    │           └── config.go             # GoFiber configuration struct (hybrid composition)
 ```
 
 ---
@@ -174,7 +173,7 @@ package auth
 import "context"
 
 // OAuthProvider defines the contract for an OAuth2 identity provider.
-// New providers are added by implementing this interface in adapter/oauth/
+// New providers are added by implementing this interface in internal/adapter/oauth/
 // and registering them in the ProviderRegistry at startup.
 //
 //go:generate mockgen -destination=mock_oauth_provider.go -package=auth . OAuthProvider
@@ -260,10 +259,10 @@ table with a 10-minute TTL) to prevent CSRF attacks during the OAuth2 callback.
 
 | Provider | Adapter Package | Config Keys |
 |---|---|---|
-| Google | `adapter/oauth/google.go` | `auth.oauth.google.client_id`, `auth.oauth.google.client_secret` |
-| GitHub | `adapter/oauth/github.go` | `auth.oauth.github.client_id`, `auth.oauth.github.client_secret` |
+| Google | `internal/adapter/oauth/google.go` | `auth.oauth.google.client_id`, `auth.oauth.google.client_secret` |
+| GitHub | `internal/adapter/oauth/github.go` | `auth.oauth.github.client_id`, `auth.oauth.github.client_secret` |
 
-Additional providers are added by implementing `auth.OAuthProvider` in `adapter/oauth/` and
+Additional providers are added by implementing `auth.OAuthProvider` in `internal/adapter/oauth/` and
 registering the instance in `main.go`. No changes to the domain layer are required.
 
 ---
@@ -400,7 +399,7 @@ Casbin policies are persisted in the database via the
 The enforcer is configured with auto-save enabled; policy changes are persisted immediately.
 
 ```go
-// adapter/entgo/casbin.go
+// internal/adapter/entgo/casbin.go
 package entgo
 
 import (
@@ -784,8 +783,8 @@ type ProviderCredentials struct {
 package main
 
 import (
-    "opus/server/adapter/entgo"
-    "opus/server/adapter/oauth"
+    "opus/server/internal/adapter/entgo"
+    "opus/server/internal/adapter/oauth"
     "opus/server/internal/delivery/gofiber/handler"
     "opus/server/internal/delivery/gofiber/middleware"
     "opus/server/internal/auth"
@@ -868,7 +867,7 @@ External policy engine. Rejected because:
 - **XSS-Proof Token Storage** — `httpOnly` cookies prevent JavaScript-based token exfiltration
 - **Replay Attack Detection** — Refresh token rotation with family revocation detects and
   neutralises stolen refresh tokens immediately
-- **Extensible OAuth2** — New providers require only a new `adapter/oauth/` implementation
+- **Extensible OAuth2** — New providers require only a new `internal/adapter/oauth/` implementation
   and a `registry.Register()` call in `main.go`; zero domain layer changes
 - **Workspace-Scoped Authorization** — Casbin domain-based RBAC correctly isolates permissions
   per workspace from day one; no future migration required to add workspace scope
@@ -911,4 +910,4 @@ External policy engine. Rejected because:
 - [golang.org/x/oauth2](https://pkg.go.dev/golang.org/x/oauth2)
 - [RFC 6749 — OAuth 2.0 Authorization Framework](https://www.rfc-editor.org/rfc/rfc6749)
 - [RFC 6750 — OAuth 2.0 Bearer Token Usage](https://www.rfc-editor.org/rfc/rfc6750)
-- [OWASP — JWT Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html)
+- [OWASP — JWT Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html)eet.html)

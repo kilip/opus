@@ -194,9 +194,9 @@ errors; the decision to terminate the process is made exclusively in `main.go`.
 | Entity | Convention | Example |
 |---|---|---|
 | Package | Lowercase, single word, no underscores | `agent`, `entgo`, `testutil` |
-| File | Snake case, descriptive noun or noun phrase | `agent_handler.go`, `auth_repo.go` |
+| File | Snake case, descriptive noun or noun phrase | `agent_handler.go`, `auth.go` |
 | Test file | Source file name + `_test` suffix | `agent_handler_test.go` |
-| Integration test file | Source file name + `_integration_test` suffix | `agent_repo_integration_test.go` |
+| Integration test file | Source file name + `_integration_test` suffix | `agent_integration_test.go` |
 | Error file | `errors.go` per feature package | `internal/agent/errors.go` |
 | Mock file | `mock_<interface_name>.go` | `mock_repository.go` |
 | Generated file | Standard generated header comment | `// Code generated ... DO NOT EDIT.` |
@@ -268,7 +268,7 @@ repository pattern.
 package agent
 
 // Repository defines the persistence contract for the Agent domain.
-// The concrete implementation is in adapter/entgo/agent_repo.go.
+// The concrete implementation is in internal/adapter/entgo/agent.go.
 type Repository interface {
     FindByID(ctx context.Context, id string) (*Agent, error)
     FindAll(ctx context.Context, cursor string, limit int) ([]*Agent, string, error)
@@ -279,7 +279,7 @@ type Repository interface {
 ```
 
 > **Note for AI agents:** Interfaces are always defined in `internal/[feature]/` — never in
-> `adapter/` or `delivery/`. The adapter and delivery layers implement interfaces; they do not
+> `internal/adapter/` or `internal/delivery/`. The adapter and delivery layers implement interfaces; they do not
 > define them.
 
 #### 2.5.2 Naming
@@ -603,7 +603,7 @@ the Go standard library, `effective_go`, and the specific architectural constrai
 
 - **Onboarding friction** — New contributors must read this ADR before writing code; the
   conventions are stricter than a typical Go project.
-- **`wrapcheck` verbosity** — Mandatory error wrapping adds boilerplate in adapter layer code;
+- **`wrapcheck` verbosity** — Mandatory error wrapping adds boilerplate in internal/adapter layer code;
   mitigated by the `ignorePackageGlobs` exclusion for internal packages.
 - **`exhaustive` linter maintenance** — Exhaustive switch enforcement requires updating switch
   statements whenever a new enum value is added to a domain type; this is intentional but adds a

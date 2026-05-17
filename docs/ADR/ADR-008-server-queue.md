@@ -28,7 +28,7 @@ Opus Server adopts a **dual-abstraction queue architecture** consisting of two i
 - **`Queue`** — A durable, producer/consumer job queue for background tasks and agent execution. Supports priority, delay, retry, and dead-letter handling.
 - **`EventBus`** — An in-process publish/subscribe event bus for internal domain decoupling. Subscribers are registered at startup; events are dispatched synchronously within the same process.
 
-Both abstractions are defined in `internal/shared/queue/`. All backing engines are implementation details confined to `adapter/queue/`. No application code outside `adapter/queue/` references a concrete queue implementation.
+Both abstractions are defined in `internal/shared/queue/`. All backing engines are implementation details confined to `internal/adapter/queue/`. No application code outside `internal/adapter/queue/` references a concrete queue implementation.
 
 The backing engine for `Queue` is **configurable** per deployment: SQLite (default, zero-dependency), PostgreSQL (production scale), or Redis (high-throughput). The `EventBus` is always in-process; it does not require a persistent backend.
 
@@ -46,14 +46,16 @@ opus/
     │           ├── eventbus.go     # EventBus interface + Event, Handler types
     │           ├── config.go       # queue.Config struct (hybrid composition — ADR-002)
     │           └── noop.go         # NoopQueue + NoopEventBus (testing utilities)
-    └── adapter/
-        └── queue/
-            ├── sqlite/
-            │   └── queue.go        # SQLite-backed Queue implementation
-            ├── postgres/
-            │   └── queue.go        # PostgreSQL-backed Queue implementation
-            ├── redis/
-            │   └── queue.go        # Redis-backed Queue implementation (Asynq)
+    └── internal/
+        └── adapter/
+            └── queue/
+                ├── sqlite/
+                │   └── queue.go        # SQLite-backed Queue implementation
+                ├── postgres/
+                │   └── queue.go        # PostgreSQL-backed Queue implementation
+                ├── redis/
+                │   └── queue.go        # Redis-backed Queue implementation (Asynq)
+                └── factory.go        # Backend construction logic
             └── memory/
                 └── eventbus.go     # In-process EventBus implementation
 ```
@@ -62,7 +64,7 @@ opus/
 
 ### 2.2 Queue Interface
 
-The `Queue` interface is the single contract for all background job and agent task processing. No concrete backend is referenced outside `adapter/queue/`.
+The `Queue` interface is the single contract for all background job and agent task processing. No concrete backend is referenced outside `internal/adapter/queue/`.
 
 ```go
 // internal/shared/queue/queue.go
@@ -318,7 +320,7 @@ CREATE INDEX IF NOT EXISTS idx_opus_jobs_poll
 The SQLite backend uses a polling loop with a configurable interval (default: 500ms). It selects the next eligible job using `SELECT ... FOR UPDATE SKIP LOCKED` semantics emulated via SQLite's `BEGIN IMMEDIATE` transaction.
 
 ```go
-// adapter/queue/sqlite/queue.go
+// internal/adapter/queue/sqlite/queue.go
 package sqlite
 
 import (
@@ -571,7 +573,7 @@ CREATE INDEX IF NOT EXISTS idx_opus_jobs_poll
 **Critical polling difference from SQLite:**
 
 ```go
-// adapter/queue/postgres/queue.go (processNext excerpt)
+// internal/adapter/queue/postgres/queue.go (processNext excerpt)
 func (q *PostgresQueue) processNext(ctx context.Context) error {
     tx, err := q.db.BeginTx(ctx, nil)
     if err != nil {
@@ -618,10 +620,10 @@ The remaining implementation (Enqueue, RegisterHandler, Start, Shutdown, handleF
 
 The Redis backend delegates to **Asynq** (`github.com/hibiken/asynq`), a production-grade Redis-backed job queue library. Asynq provides Redis Streams-based queuing, built-in retry with exponential backoff, dead-letter queues, delayed jobs, priority queues, and a web UI inspector.
 
-The `adapter/queue/redis/queue.go` adapter wraps Asynq's `Client` and `Server` types to satisfy the `queue.Queue` interface, translating `queue.Job` options into Asynq task options.
+The `internal/adapter/queue/redis/queue.go` adapter wraps Asynq's `Client` and `Server` types to satisfy the `queue.Queue` interface, translating `queue.Job` options into Asynq task options.
 
 ```go
-// adapter/queue/redis/queue.go
+// internal/adapter/queue/redis/queue.go
 package redis
 
 import (
@@ -757,7 +759,7 @@ func (q *RedisQueue) Inspect(ctx context.Context, jobID string) (*queue.Job, err
 The EventBus is always in-process. No persistent backend is required. Topic matching supports exact strings and single-level wildcards (`*`).
 
 ```go
-// adapter/queue/memory/eventbus.go
+// internal/adapter/queue/memory/eventbus.go
 package memory
 
 import (
@@ -817,19 +819,19 @@ func (b *InMemoryEventBus) Publish(ctx context.Context, event queue.Event) error
 
 ### 2.6 Queue Factory — Backend Selection at Startup
 
-A factory function in `adapter/queue/` selects and constructs the correct backend from the resolved `queue.Config`. This is the only place in the codebase that references concrete backend types.
+A factory function in `internal/adapter/queue/` selects and constructs the correct backend from the resolved `queue.Config`. This is the only place in the codebase that references concrete backend types.
 
 ```go
-// adapter/queue/factory.go
+// internal/adapter/queue/factory.go
 package queue
 
 import (
     "fmt"
 
-    "opus/server/adapter/queue/memory"
-    postgresqueue "opus/server/adapter/queue/postgres"
-    redisqueue "opus/server/adapter/queue/redis"
-    sqlitequeue "opus/server/adapter/queue/sqlite"
+    "opus/server/internal/adapter/queue/memory"
+    postgresqueue "opus/server/internal/adapter/queue/postgres"
+    redisqueue "opus/server/internal/adapter/queue/redis"
+    sqlitequeue "opus/server/internal/adapter/queue/sqlite"
     "opus/server/internal/shared/queue"
 )
 
@@ -868,7 +870,7 @@ import (
     "context"
     "log"
 
-    adapterqueue "opus/server/adapter/queue"
+    adapterqueue "opus/server/internal/adapter/queue"
     "opus/server/internal/agent"
     "opus/server/internal/config"
     "opus/server/internal/shared/queue"
