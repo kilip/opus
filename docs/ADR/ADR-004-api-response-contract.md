@@ -302,15 +302,15 @@ Clients must handle the `error` event type and not attempt reconnection for `404
 
 ### 2.7 Go Implementation — Fiber Response Helpers
 
-Centralised response helpers are defined in `delivery/http/response/` to enforce the envelope consistently across all handlers.
+Centralised response helpers are defined in `internal/delivery/gofiber/response.go` to enforce the envelope consistently across all handlers.
 
 ```go
-// delivery/http/response/response.go
-package response
+// internal/delivery/gofiber/response.go
+package gofiber
 
 import (
     "fmt"
-    "github.com/gofiber/fiber/v2"
+    "github.com/gofiber/fiber/v3"
 )
 
 type Envelope[T any] struct {
@@ -338,23 +338,23 @@ type CursorMeta struct {
     HasMore bool    `json:"has_more"`
 }
 
-func OK[T any](c *fiber.Ctx, data T) error {
+func OK[T any](c fiber.Ctx, data T) error {
     return c.Status(fiber.StatusOK).JSON(Envelope[T]{Data: data})
 }
 
-func Created[T any](c *fiber.Ctx, data T) error {
+func Created[T any](c fiber.Ctx, data T) error {
     return c.Status(fiber.StatusCreated).JSON(Envelope[T]{Data: data})
 }
 
-func NoContent(c *fiber.Ctx) error {
+func NoContent(c fiber.Ctx) error {
     return c.SendStatus(fiber.StatusNoContent)
 }
 
-func Paginated[T any](c *fiber.Ctx, data T, meta *Meta) error {
+func Paginated[T any](c fiber.Ctx, data T, meta *Meta) error {
     return c.Status(fiber.StatusOK).JSON(Envelope[T]{Data: data, Meta: meta})
 }
 
-func Error(c *fiber.Ctx, status int, slug, title, detail string) error {
+func Error(c fiber.Ctx, status int, slug, title, detail string) error {
     return c.Status(status).JSON(Envelope[any]{
         Error: &Problem{
             Type:     fmt.Sprintf("https://opus.local/errors/%s", slug),
@@ -370,15 +370,15 @@ func Error(c *fiber.Ctx, status int, slug, title, detail string) error {
 **Handler usage example:**
 
 ```go
-// delivery/http/handler/agent_handler.go
-func (h *AgentHandler) GetAgent(c *fiber.Ctx) error {
+// internal/delivery/gofiber/handler/agent.go
+func (h *Agent) GetAgent(c fiber.Ctx) error {
     id := c.Params("id")
     agent, err := h.service.FindByID(c.Context(), id)
     if err != nil {
-        return response.Error(c, fiber.StatusNotFound, "not-found", "Resource Not Found",
+        return gofiber.Error(c, fiber.StatusNotFound, "not-found", "Resource Not Found",
             fmt.Sprintf("Agent with ID %s does not exist.", id))
     }
-    return response.OK(c, agent)
+    return gofiber.OK(c, agent)
 }
 ```
 

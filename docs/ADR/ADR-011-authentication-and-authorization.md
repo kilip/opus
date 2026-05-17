@@ -62,13 +62,17 @@ opus/
     │       ├── google.go         # Google OAuth2 provider
     │       └── github.go         # GitHub OAuth2 provider
     │
-    └── delivery/
-        └── fiber/
-            ├── handler/
-            │   └── auth_handler.go   # Login, logout, refresh, OAuth2 callback, /auth/me
-            └── middleware/
-                ├── auth.go           # Token validation + context injection
-                └── rbac.go           # Casbin enforcement middleware
+    └── internal/
+        └── delivery/
+            └── gofiber/
+                ├── handler/
+                │   └── auth.go   # Login, logout, refresh, OAuth2 callback, /auth/me
+                ├── middleware/
+                │   ├── auth.go           # Token validation + context injection
+                │   └── rbac.go           # Casbin enforcement middleware
+                ├── router.go             # Route registration + app bootstrap
+                ├── response.go           # ADR-004 envelope helpers
+                └── config.go             # GoFiber configuration struct (hybrid composition)
 ```
 
 ---
@@ -435,7 +439,7 @@ Responsibilities:
 5. Inject `request_id`, `user_id`, and `workspace_id` for structured logging (ADR-006).
 
 ```go
-// delivery/fiber/middleware/auth.go
+// internal/delivery/gofiber/middleware/auth.go
 package middleware
 
 import (
@@ -473,13 +477,13 @@ The RBAC middleware is a **factory** — it returns a handler configured for a s
 `(obj, act)` pair. This allows per-route authorization without a centralised policy map.
 
 ```go
-// delivery/fiber/middleware/rbac.go
+// internal/delivery/gofiber/middleware/rbac.go
 package middleware
 
 import (
     "github.com/gofiber/fiber/v3"
     "opus/server/internal/auth"
-    "opus/server/delivery/fiber/response"
+    "opus/server/internal/delivery/gofiber"
 )
 
 // Require returns a Fiber middleware that enforces a Casbin policy check
@@ -493,13 +497,13 @@ func Require(policy *auth.PolicyService, obj, act string) fiber.Handler {
     return func(c fiber.Ctx) error {
         claims := auth.ClaimsFromContext(c.UserContext())
         if claims == nil {
-            return response.Error(c, fiber.StatusUnauthorized,
+            return gofiber.Error(c, fiber.StatusUnauthorized,
                 "unauthorized", "Unauthorized", "authentication required")
         }
 
         ok, err := policy.Enforce(c.Context(), claims.Sub, claims.WorkspaceID, obj, act)
         if err != nil || !ok {
-            return response.Error(c, fiber.StatusForbidden,
+            return gofiber.Error(c, fiber.StatusForbidden,
                 "forbidden", "Forbidden", "insufficient permissions")
         }
 
@@ -511,19 +515,19 @@ func Require(policy *auth.PolicyService, obj, act string) fiber.Handler {
 **Router usage example:**
 
 ```go
-// delivery/fiber/router/router.go (excerpt)
-auth := app.Group("/auth")
-auth.Post("/login",              authHandler.Login)
-auth.Post("/logout",             middleware.Authenticate(authSvc, log), authHandler.Logout)
-auth.Post("/refresh",            authHandler.Refresh)
-auth.Get("/me",                  middleware.Authenticate(authSvc, log), authHandler.Me)
-auth.Get("/oauth/:provider",     authHandler.OAuthRedirect)
-auth.Get("/oauth/:provider/callback", authHandler.OAuthCallback)
+// internal/delivery/gofiber/router.go (excerpt)
+authGroup := app.Group("/auth")
+authGroup.Post("/login",              auth.Login)
+authGroup.Post("/logout",             middleware.Authenticate(authSvc, log), auth.Logout)
+authGroup.Post("/refresh",            auth.Refresh)
+authGroup.Get("/me",                  middleware.Authenticate(authSvc, log), auth.Me)
+authGroup.Get("/oauth/:provider",     auth.OAuthRedirect)
+authGroup.Get("/oauth/:provider/callback", auth.OAuthCallback)
 
 api := app.Group("/api", middleware.Authenticate(authSvc, log))
-api.Get("/agents",     middleware.Require(policy, "agent", "read"),   agentHandler.ListAgents)
-api.Post("/agents",    middleware.Require(policy, "agent", "write"),  agentHandler.CreateAgent)
-api.Delete("/agents/:id", middleware.Require(policy, "agent", "delete"), agentHandler.DeleteAgent)
+api.Get("/agents",     middleware.Require(policy, "agent", "read"),   agent.ListAgents)
+api.Post("/agents",    middleware.Require(policy, "agent", "write"),  agent.CreateAgent)
+api.Delete("/agents/:id", middleware.Require(policy, "agent", "delete"), agent.DeleteAgent)
 ```
 
 ---
@@ -782,8 +786,8 @@ package main
 import (
     "opus/server/adapter/entgo"
     "opus/server/adapter/oauth"
-    "opus/server/delivery/fiber/handler"
-    "opus/server/delivery/fiber/middleware"
+    "opus/server/internal/delivery/gofiber/handler"
+    "opus/server/internal/delivery/gofiber/middleware"
     "opus/server/internal/auth"
     "opus/server/internal/config"
 )
@@ -805,10 +809,10 @@ func main() {
     authService := auth.NewService(authRepo, registry, policyService, cfg.Auth, log)
 
     // Delivery
-    authHandler := handler.NewAuthHandler(authService)
+    auth := handler.NewAuth(authService)
 
     // Router wiring
-    app := router.New(cfg.Server, authHandler, agentHandler, /* ... */)
+    app := gofiber.New(cfg.Server, auth, agent, /* ... */)
 }
 ```
 

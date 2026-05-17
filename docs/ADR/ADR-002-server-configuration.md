@@ -184,24 +184,20 @@ package config
 
 import (
     "opus/server/internal/agent"
+    "opus/server/internal/delivery/gofiber"
     "opus/server/internal/llm"
     "opus/server/internal/vault"
     "opus/server/internal/workflow"
 )
 
 type Config struct {
-    Server   ServerConfig   `mapstructure:"server"   json:"server"   jsonschema:"required"`
+    Server   gofiber.Config `mapstructure:"server"   json:"server"   jsonschema:"required"`
     Database DatabaseConfig `mapstructure:"database" json:"database" jsonschema:"required"`
     Log      LogConfig      `mapstructure:"log"      json:"log"`
     LLM      llm.Config     `mapstructure:"llm"      json:"llm"      jsonschema:"required"`
     Agent    agent.Config   `mapstructure:"agent"    json:"agent"`
     Vault    vault.Config   `mapstructure:"vault"    json:"vault"`
     Workflow workflow.Config `mapstructure:"workflow" json:"workflow"`
-}
-
-type ServerConfig struct {
-    Address string `mapstructure:"address" json:"address" jsonschema:"default=:8080,description=TCP address the HTTP server listens on"`
-    Debug   bool   `mapstructure:"debug"   json:"debug"   jsonschema:"description=Enable debug mode and verbose request logging"`
 }
 
 type DatabaseConfig struct {
@@ -225,8 +221,8 @@ package main
 
 import (
     "opus/server/adapter/entgo"
-    "opus/server/delivery/http/handler"
-    "opus/server/delivery/http/router"
+    "opus/server/internal/delivery/gofiber/handler"
+    "opus/server/internal/delivery/gofiber"
     "opus/server/internal/agent"
     "opus/server/internal/auth"
     "opus/server/internal/config"
@@ -251,12 +247,12 @@ func main() {
     vaultService := vault.NewService(vaultRepo, cfg.Vault)
 
     // Delivery layer
-    authHandler := handler.NewAuthHandler(authService)
-    agentHandler := handler.NewAgentHandler(agentService)
-    vaultHandler := handler.NewVaultHandler(vaultService)
+    auth := handler.NewAuth(authService)
+    agent := handler.NewAgent(agentService)
+    vault := handler.NewVault(vaultService)
 
     // Bootstrap
-    app := router.New(authHandler, agentHandler, vaultHandler)
+    app := gofiber.New(auth, agent, vault)
     app.Listen(cfg.Server.Address)
 }
 ```
@@ -403,25 +399,30 @@ opus/server/
 │   │   ├── loader.go       # Viper setup, resolution order, Watch()
 │   │   ├── reloadable.go   # Reloadable interface (global)
 │   │   └── generate.go     # go:build ignore — schema generator entrypoint
-│   ├── agent/
-│   │   ├── config.go       # agent.Config — owned by feature
-│   │   ├── model.go
-│   │   ├── repository.go
-│   │   └── service.go
-│   ├── vault/
-│   │   ├── config.go       # vault.Config — owned by feature
-│   │   ├── model.go
-│   │   ├── repository.go
-│   │   └── service.go
-│   ├── workflow/
-│   │   ├── config.go       # workflow.Config — owned by feature
-│   │   ├── model.go
-│   │   ├── repository.go
-│   │   └── service.go
-│   └── llm/
-│       ├── config.go       # llm.Config — owned by feature
-│       ├── model.go
-│       └── router.go
+├── delivery/
+│   └── gofiber/
+│       ├── config.go       # gofiber.Config — owned by delivery layer
+│       ├── router.go
+│       └── response.go
+├── agent/
+│   ├── config.go       # agent.Config — owned by feature
+│   ├── model.go
+│   ├── repository.go
+│   └── service.go
+├── vault/
+│   ├── config.go       # vault.Config — owned by feature
+│   ├── model.go
+│   ├── repository.go
+│   └── service.go
+├── workflow/
+│   ├── config.go       # workflow.Config — owned by feature
+│   ├── model.go
+│   ├── repository.go
+│   └── service.go
+└── llm/
+    ├── config.go       # llm.Config — owned by feature
+    ├── model.go
+    └── router.go
 │
 docs/
 └── config.schema.json      # Generated — committed to repository

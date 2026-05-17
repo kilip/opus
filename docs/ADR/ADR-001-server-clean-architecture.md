@@ -22,8 +22,8 @@ Opus Server adopts a **Go-idiomatic, feature-based clean architecture** with exp
 ### 2.1 Directory Structure
 
 > **Note for implementors and AI agents:** The directory structure below is **illustrative**.
-> Concrete layer paths are determined by their respective ADRs (e.g. `delivery/fiber/` as
-> defined in ADR-005, not `delivery/http/`). This ADR defines layer responsibilities,
+> Concrete layer paths are determined by their respective ADRs (e.g. `internal/delivery/gofiber/` as
+> defined in ADR-005, not `internal/delivery/http/`). This ADR defines layer responsibilities,
 > dependency rules, and architectural boundaries only — not literal folder names.
 
 ```
@@ -56,19 +56,19 @@ opus/
     │   │   ├── model.go        # CompletionRequest, CompletionResponse
     │   │   └── router.go       # LLM Router interface + provider resolution
     │   └── delivery/
-    │       ├── http/           # HTTP delivery layer (REST + SSE)
-    │       │   ├── handler/    # Route handlers per domain
-    │       │   │   ├── auth_handler.go
-    │       │   │   ├── agent_handler.go
-    │       │   │   └── vault_handler.go
-    │       │   ├── middleware/ # Cross-cutting HTTP concerns
-    │       │   │   ├── auth.go # JWT validation middleware
-    │       │   │   └── logger.go
-    │       │   ├── router/     # Route registration + app bootstrap
-    │       │   │   └── router.go
-    │       │   └── sse/        # SSE connection manager
-    │       │       └── manager.go
-    │       └── grpc/           # gRPC delivery layer (future: inter-module)
+    │       └── gofiber/        # HTTP delivery layer (REST + SSE)
+    │           ├── handler/    # Route handlers per domain
+    │           │   ├── auth.go
+    │           │   ├── agent.go
+    │           │   └── vault.go
+    │           ├── middleware/ # Cross-cutting HTTP concerns
+    │           │   ├── auth.go # JWT validation middleware
+    │           │   └── logger.go
+    │           ├── router.go   # Route registration + app bootstrap
+    │           ├── response.go # ADR-004 envelope helpers
+    │           ├── config.go   # GoFiber configuration struct (hybrid composition)
+    │           └── sse/        # SSE connection manager
+    │               └── manager.go
     ├── adapter/
     │   └── entgo/              # Concrete repository implementations (ent ORM)
     │       ├── client.go       # Ent client setup + migration
@@ -84,7 +84,7 @@ opus/
 |---|---|---|
 | **Domain** | `internal/[feature]/` | Business logic, domain models, repository interfaces |
 | **Infrastructure** | `adapter/entgo/` | Concrete implementations of repository interfaces |
-| **Delivery** | `internal/delivery/http/`, `internal/delivery/grpc/` | HTTP/gRPC handlers; translates requests to service calls |
+| **Delivery** | `internal/delivery/gofiber/`, `internal/delivery/grpc/` | HTTP/gRPC handlers; translates requests to service calls |
 | **Config** | `internal/config/` | Configuration parsing; injected at startup |
 | **Shared** | `internal/shared/` | Cross-cutting domain entities used by multiple features |
 
@@ -93,7 +93,7 @@ opus/
 Dependencies flow **inward only**:
 
 ```
-internal/delivery/ → internal/[feature]/ ← adapter/
+internal/delivery/gofiber/ → internal/[feature]/ ← adapter/
                     ↑
               internal/shared/
               internal/config/
@@ -101,7 +101,7 @@ internal/delivery/ → internal/[feature]/ ← adapter/
 
 - `internal/[feature]/` has **zero knowledge** of delivery or adapter implementations
 - `adapter/entgo/` imports `internal/[feature]/` interfaces — never the reverse
-- `internal/delivery/` imports `internal/[feature]/` services — never adapter directly
+- `internal/delivery/gofiber/` imports `internal/[feature]/` services — never adapter directly
 
 ### 2.4 Repository Pattern
 
@@ -182,23 +182,23 @@ func (s *Service) Login(ctx context.Context, email, password string) (*TokenPair
 Handlers translate HTTP requests into service calls. No business logic lives in handlers.
 
 ```go
-// internal/delivery/http/handler/auth_handler.go
+// internal/delivery/gofiber/handler/auth.go
 package handler
 
 import (
     "opus/server/internal/auth"
-    "github.com/gofiber/fiber/v2"
+    "github.com/gofiber/fiber/v3"
 )
 
-type AuthHandler struct {
+type Auth struct {
     service *auth.Service
 }
 
-func NewAuthHandler(svc *auth.Service) *AuthHandler {
-    return &AuthHandler{service: svc}
+func NewAuth(svc *auth.Service) *Auth {
+    return &Auth{service: svc}
 }
 
-func (h *AuthHandler) Login(c *fiber.Ctx) error {
+func (h *Auth) Login(c fiber.Ctx) error {
     var req LoginRequest
     if err := c.BodyParser(&req); err != nil {
         return fiber.ErrBadRequest
@@ -221,27 +221,30 @@ package main
 
 import (
     "opus/server/adapter/entgo"
-    "opus/server/internal/delivery/http/handler"
-    "opus/server/internal/delivery/http/router"
+    "opus/server/internal/delivery/gofiber/handler"
+    "opus/server/internal/delivery/gofiber"
     "opus/server/internal/auth"
     "opus/server/internal/config"
 )
 
 func main() {
-    cfg := config.Load()
+    cfg, err := config.Load()
+    if err != nil {
+        panic(err)
+    }
 
     // Adapter layer
-    db := entgo.NewClient(cfg)
+    db := entgo.NewClient(cfg.Database)
     authRepo := entgo.NewAuthRepo(db)
 
     // Service layer
     authService := auth.NewService(authRepo, cfg)
 
     // Delivery layer
-    authHandler := handler.NewAuthHandler(authService)
+    auth := handler.NewAuth(authService)
 
     // Bootstrap
-    app := router.New(authHandler)
+    app := gofiber.New(cfg.Server, auth)
     app.Listen(cfg.Server.Address)
 }
 ```

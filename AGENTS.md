@@ -59,6 +59,13 @@ server/
 │   │   ├── logger/             # Logger interface + NoopLogger + MockLogger
 │   │   └── queue/              # Queue + EventBus interfaces + Noop* + Mock*
 │   ├── agent/                  # Domain: models, repository interface, service, errors, config
+│   ├── delivery/
+│   │   └── gofiber/            # Canonical HTTP delivery layer (NOT delivery/http/)
+│   │       ├── handler/
+│   │       ├── middleware/
+│   │       ├── router.go       # Route registration + app bootstrap
+│   │       ├── response.go     # ADR-004 envelope helpers
+│   │       └── config.go       # GoFiber configuration struct (hybrid composition)
 │   ├── vault/
 │   ├── workflow/
 │   ├── auth/
@@ -67,23 +74,17 @@ server/
 ├── adapter/
 │   ├── entgo/                  # Concrete repository implementations
 │   └── queue/                  # Queue backend implementations (sqlite, postgres, redis, memory)
-└── delivery/
-    └── fiber/                  # Canonical HTTP delivery layer (NOT delivery/http/)
-        ├── handler/
-        ├── middleware/
-        ├── router/
-        └── response/           # ADR-004 envelope helpers
 ```
 
 ### Dependency Rule
 
 ```
-delivery/fiber/ → internal/[feature]/ ← adapter/
+internal/delivery/gofiber/ → internal/[feature]/ ← adapter/
 ```
 
 - `internal/[feature]/` has zero knowledge of delivery or adapter implementations.
 - `adapter/` imports `internal/` interfaces — never the reverse.
-- `delivery/` imports `internal/` services — never adapter directly.
+- `internal/delivery/gofiber/` imports `internal/` services — never adapter directly.
 
 ### Layer Responsibilities
 
@@ -92,7 +93,7 @@ delivery/fiber/ → internal/[feature]/ ← adapter/
 | `internal/[feature]/` | Domain models, business logic, repository interfaces, sentinel errors, feature config |
 | `adapter/entgo/` | Concrete repository implementations (Ent) |
 | `adapter/queue/` | Queue backend implementations |
-| `delivery/fiber/` | HTTP handlers, middleware, routing — thin translation layer only |
+| `internal/delivery/gofiber/` | HTTP handlers, middleware, routing — thin translation layer only |
 
 ---
 
@@ -125,7 +126,7 @@ Every exported symbol **must** have a GoDoc comment starting with the symbol nam
 
 ### Naming
 - Packages: lowercase, single word, no underscores.
-- Files: snake_case (`agent_handler.go`, `mock_repository.go`).
+- Files: snake_case (`agent.go`, `mock_repository.go`).
 - Errors: `internal/[feature]/errors.go`.
 - Mocks: `mock_<interface>.go` (generated, never edited manually).
 
@@ -171,7 +172,7 @@ Secrets (API keys, DSNs) via env vars only — never in config files.
 - URL structure: `/{resource}` — **no prefix**.
 - Pagination: cursor-based only (no offset).
 - SSE endpoint: `GET /agents/{id}/logs/stream`.
-- Response helpers: `delivery/fiber/response/` — use `response.OK`, `response.Error`, etc.
+- Response helpers: `internal/delivery/gofiber/response.go` — use `gofiber.OK`, `gofiber.Error`, etc.
 
 ---
 

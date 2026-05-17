@@ -273,10 +273,10 @@ func (s *Service) Login(ctx context.Context, email string) error {
 
 ### 2.7 Usage in the Delivery Layer
 
-The request logger middleware in `delivery/fiber/middleware/logger.go` is the canonical entry point for populating tracing metadata into the context. It generates a `request_id`, injects it using `logger.WithRequestID`, and logs the request summary via `InfoCtx`.
+The request logger middleware in `internal/delivery/gofiber/middleware/logger.go` is the canonical entry point for populating tracing metadata into the context. It generates a `request_id`, injects it using `logger.WithRequestID`, and logs the request summary via `InfoCtx`.
 
 ```go
-// delivery/fiber/middleware/logger.go
+// internal/delivery/gofiber/middleware/logger.go
 package middleware
 
 import (
@@ -311,7 +311,7 @@ func RequestLogger(log logger.Logger) fiber.Handler {
 Auth middleware populates `user_id` after token validation:
 
 ```go
-// delivery/fiber/middleware/auth.go (excerpt)
+// internal/delivery/gofiber/middleware/auth.go (excerpt)
 ctx := logger.WithUserID(c.UserContext(), claims.UserID)
 c.SetUserContext(ctx)
 ```

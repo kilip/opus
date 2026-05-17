@@ -15,9 +15,7 @@ Opus Server requires a robust, high-performance HTTP framework for its Delivery 
 
 ## 2. Decision
 
-We will adopt **GoFiber v3** as the exclusive framework for the HTTP Delivery Layer in Opus Server. The delivery layer is structured explicitly under **`internal/delivery/fiber/`**.
-
-> **Note for AI agents and automated tooling:** The canonical delivery layer path is `internal/delivery/fiber/`. Any reference to `delivery/http/` or `delivery/fiber` without the `internal` prefix in other ADRs (e.g. ADR-001) is illustrative only and predates this decision. All concrete implementation files must reside under `internal/delivery/fiber/`.
+We will adopt **GoFiber v3** as the exclusive framework for the HTTP Delivery Layer in Opus Server. The delivery layer is structured explicitly under **`internal/delivery/gofiber/`**.
 
 ---
 
@@ -28,17 +26,16 @@ opus/
 └── server/
     └── internal/
         └── delivery/
-            └── fiber/              # GoFiber v3 delivery layer (canonical path)
+            └── gofiber/              # GoFiber v3 delivery layer (canonical path)
                 ├── handler/        # Route handlers per domain
-                │   ├── auth_handler.go
-                │   └── agent_handler.go
+                │   ├── auth.go
+                │   └── agent.go
                 ├── middleware/     # Cross-cutting Fiber middleware
                 │   ├── auth.go     # JWT validation middleware
                 │   └── logger.go   # Request logger middleware (uses logger.Logger — see §2.5)
-                ├── router/         # Route registration + app bootstrap
-                │   └── router.go
-                └── response/       # Fiber-specific response wrappers (ADR-004)
-                    └── response.go
+                ├── router.go       # Route registration + app bootstrap
+                ├── response.go     # Fiber-specific response wrappers (ADR-004)
+                └── config.go       # GoFiber configuration struct (hybrid composition)
 ```
 
 ---
@@ -50,12 +47,11 @@ GoFiber v3 allows setting a custom `ErrorHandler`. We will implement a global Fi
 This ensures that the response contract is enforced at the framework level, preventing handlers from accidentally returning non-compliant structures.
 
 ```go
-// internal/delivery/fiber/router/router.go
-package router
+// internal/delivery/gofiber/router.go
+package gofiber
 
 import (
     "github.com/gofiber/fiber/v3"
-    "opus/server/internal/delivery/fiber/response"
 )
 
 func New(...) *fiber.App {
@@ -65,7 +61,7 @@ func New(...) *fiber.App {
             if e, ok := err.(*fiber.Error); ok {
                 code = e.Code
             }
-            return response.Error(c, code, slugFromStatus(code), titleFromStatus(code), err.Error())
+            return gofiber.Error(c, code, slugFromStatus(code), titleFromStatus(code), err.Error())
         },
     })
     return app
@@ -76,41 +72,41 @@ func New(...) *fiber.App {
 
 ### 2.3 Handler Responsibilities
 
-Handlers in `internal/delivery/fiber/handler/` are strictly responsible for:
+Handlers in `internal/delivery/gofiber/handler/` are strictly responsible for:
 
 1. Parsing incoming Fiber requests (`c.BodyParser`, `c.Params`, `c.Query`).
 2. Calling the appropriate `internal/[feature]/` Service method.
-3. Returning the result using the standardised `internal/delivery/fiber/response` helpers.
+3. Returning the result using the standardised `internal/delivery/gofiber` helpers.
 
 **No business logic** will exist within Fiber handlers. They remain thin translation layers between HTTP/Fiber constructs and the pure Go Service layer.
 
 ```go
-// internal/delivery/fiber/handler/agent_handler.go
+// internal/delivery/gofiber/handler/agent.go
 package handler
 
 import (
     "fmt"
     "github.com/gofiber/fiber/v3"
-    "opus/server/internal/delivery/fiber/response"
+    "opus/server/internal/delivery/gofiber"
     "opus/server/internal/agent"
 )
 
-type AgentHandler struct {
+type Agent struct {
     service *agent.Service
 }
 
-func NewAgentHandler(svc *agent.Service) *AgentHandler {
-    return &AgentHandler{service: svc}
+func NewAgent(svc *agent.Service) *Agent {
+    return &Agent{service: svc}
 }
 
-func (h *AgentHandler) GetAgent(c fiber.Ctx) error {
+func (h *Agent) GetAgent(c fiber.Ctx) error {
     id := c.Params("id")
     a, err := h.service.FindByID(c.Context(), id)
     if err != nil {
-        return response.Error(c, fiber.StatusNotFound, "not-found", "Resource Not Found",
+        return gofiber.Error(c, fiber.StatusNotFound, "not-found", "Resource Not Found",
             fmt.Sprintf("Agent with ID %s does not exist.", id))
     }
-    return response.OK(c, a)
+    return gofiber.OK(c, a)
 }
 ```
 
@@ -118,21 +114,23 @@ func (h *AgentHandler) GetAgent(c fiber.Ctx) error {
 
 ### 2.4 Configuration Integration (ADR-002)
 
-The Fiber application instance is configured using the centralised `internal/config` system established in ADR-002. The `cfg.Server` slice (`internal/config.ServerConfig`) is injected into the router at startup. No Fiber-specific configuration struct is introduced; the existing `ServerConfig` covers all required properties.
+The GoFiber delivery layer defines its own configuration in `internal/delivery/gofiber/config.go`, which is then composed into the root `Config` struct in `internal/config/model.go` following the hybrid composition pattern defined in ADR-002.
 
 ```go
-// internal/config/model.go (relevant excerpt — defined in ADR-002)
-type ServerConfig struct {
-    Address   string `mapstructure:"address"    json:"address"    jsonschema:"default=:8080"`
-    Debug     bool   `mapstructure:"debug"      json:"debug"`
+// internal/delivery/gofiber/config.go
+package gofiber
+
+type Config struct {
+    Address   string `mapstructure:"address"    json:"address"    jsonschema:"default=:8080,description=TCP address the HTTP server listens on"`
+    Debug     bool   `mapstructure:"debug"      json:"debug"      jsonschema:"description=Enable debug mode and verbose request logging"`
     BodyLimit int    `mapstructure:"body_limit" json:"body_limit" jsonschema:"default=4194304,description=Max request body size in bytes"`
     Prefork   bool   `mapstructure:"prefork"    json:"prefork"    jsonschema:"description=Enable Fiber Prefork mode (production only)"`
 }
 ```
 
 ```go
-// internal/delivery/fiber/router/router.go
-func New(cfg config.ServerConfig, ...) *fiber.App {
+// internal/delivery/gofiber/router.go
+func New(cfg Config, ...) *fiber.App {
     app := fiber.New(fiber.Config{
         Prefork:     cfg.Prefork,
         BodyLimit:   cfg.BodyLimit,
@@ -145,7 +143,7 @@ func New(cfg config.ServerConfig, ...) *fiber.App {
 
 ```go
 // main.go
-app := router.New(cfg.Server, authHandler, agentHandler)
+app := gofiber.New(cfg.Server, auth, agent)
 app.Listen(cfg.Server.Address)
 ```
 
@@ -153,7 +151,7 @@ app.Listen(cfg.Server.Address)
 
 ### 2.5 Logger Middleware (ADR-006)
 
-The request logger middleware in `internal/delivery/fiber/middleware/logger.go` **must** use the `logger.Logger` interface defined in ADR-006.
+The request logger middleware in `internal/delivery/gofiber/middleware/logger.go` **must** use the `logger.Logger` interface defined in ADR-006.
 
 > **Constraint:** Direct use of `log/slog`, `fmt.Println`, or any concrete logging library is **prohibited** within the delivery layer. All logging must go through the injected `logger.Logger` interface.
 
@@ -164,7 +162,7 @@ The middleware is responsible for:
 3. Logging the request and response summary via `logger.InfoCtx`.
 
 ```go
-// internal/delivery/fiber/middleware/logger.go
+// internal/delivery/gofiber/middleware/logger.go
 package middleware
 
 import (
@@ -206,7 +204,7 @@ Go 1.22 introduced improved routing in the standard library. While excellent for
 
 ### 4.1 Positive
 
-- **Explicit Boundaries:** The `internal/delivery/fiber` name correctly signals that everything inside is coupled to GoFiber v3, preventing accidental bleeding of Fiber context into the generic `internal` domains.
+- **Explicit Boundaries:** The `internal/delivery/gofiber` name correctly signals that everything inside is coupled to GoFiber v3, preventing accidental bleeding of Fiber context into the generic `internal` domains.
 - **Performance:** GoFiber v3 provides excellent performance and modern Go generics support.
 - **Contract Enforcement:** Fiber's global error handler uniformly enforces the ADR-004 response contract.
 - **Observability:** Logger middleware enforces ADR-006 compliance at the framework boundary; all requests are traced with a `request_id`.
@@ -214,7 +212,7 @@ Go 1.22 introduced improved routing in the standard library. While excellent for
 
 ### 4.2 Negative / Trade-offs
 
-- **Framework Lock-in:** The delivery layer is fully coupled to GoFiber v3. However, because business logic is isolated in the `internal/` service layer (ADR-001), this lock-in is contained entirely within the `internal/delivery/fiber/` boundary.
+- **Framework Lock-in:** The delivery layer is fully coupled to GoFiber v3. However, because business logic is isolated in the `internal/` service layer (ADR-001), this lock-in is contained entirely within the `internal/delivery/gofiber/` boundary.
 
 ---
 
