@@ -4,16 +4,17 @@ package config
 import (
 	"os"
 	"path/filepath"
+
+	"github.com/spf13/viper"
 )
 
 func resolveConfigDir() string {
 	if opusHome := os.Getenv("OPUS_HOME"); opusHome != "" {
 		return opusHome
 	}
-	// Fallback to user home
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return "." // fallback if home cannot be determined
+		return "."
 	}
 	return filepath.Join(home, ".opus")
 }
@@ -21,10 +22,36 @@ func resolveConfigDir() string {
 func Load() (*Config, error) {
 	configDir := resolveConfigDir()
 
-	// Auto-create directory if it doesn't exist
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		return nil, err
 	}
 
-	return &Config{}, nil
+	v := viper.New()
+	v.SetConfigName("config")
+	v.SetConfigType("json")
+
+	// Resolution order: lowest to highest priority
+	v.AddConfigPath(filepath.Join("opus", ".opus")) // development
+	home, _ := os.UserHomeDir()
+	if home != "" {
+		v.AddConfigPath(filepath.Join(home, ".opus")) // user home
+	}
+
+	// Explicit override via env var
+	if opusHome := os.Getenv("OPUS_HOME"); opusHome != "" {
+		v.AddConfigPath(opusHome)
+	}
+
+	v.SetEnvPrefix("OPUS")
+	v.AutomaticEnv()
+
+	// It's okay if config file doesn't exist, we might just use env vars
+	_ = v.ReadInConfig()
+
+	var cfg Config
+	if err := v.Unmarshal(&cfg); err != nil {
+		return nil, err
+	}
+
+	return &cfg, nil
 }
