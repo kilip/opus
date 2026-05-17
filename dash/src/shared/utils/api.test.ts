@@ -1,8 +1,8 @@
-// dash/src/shared/lib/api-client.test.ts
+// dash/src/shared/utils/api.test.ts
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { apiClient } from './api-client';
+import { api } from './api';
 
-describe('apiClient', () => {
+describe('api', () => {
   beforeEach(() => {
     globalThis.fetch = vi.fn();
   });
@@ -14,7 +14,7 @@ describe('apiClient', () => {
       json: async () => mockResponse,
     } as Response);
 
-    const result = await apiClient.get('/test');
+    const result = await api.get('/test');
     expect(result).toEqual(mockResponse);
     expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:8080/test');
   });
@@ -26,7 +26,7 @@ describe('apiClient', () => {
       json: async () => mockResponse,
     } as Response);
 
-    const result = await apiClient.post('/test', { foo: 'bar' });
+    const result = await api.post('/test', { foo: 'bar' });
     expect(result).toEqual(mockResponse);
     expect(globalThis.fetch).toHaveBeenCalledWith('http://localhost:8080/test', {
       method: 'POST',
