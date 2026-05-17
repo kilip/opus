@@ -52,9 +52,23 @@ opus/
     │   ├── scheduler/          # Background job scheduling domain
     │   │   ├── model.go
     │   │   └── service.go
-    │   └── llm/                # LLM abstraction domain
-    │       ├── model.go        # CompletionRequest, CompletionResponse
-    │       └── router.go       # LLM Router interface + provider resolution
+    │   ├── llm/                # LLM abstraction domain
+    │   │   ├── model.go        # CompletionRequest, CompletionResponse
+    │   │   └── router.go       # LLM Router interface + provider resolution
+    │   └── delivery/
+    │       ├── http/           # HTTP delivery layer (REST + SSE)
+    │       │   ├── handler/    # Route handlers per domain
+    │       │   │   ├── auth_handler.go
+    │       │   │   ├── agent_handler.go
+    │       │   │   └── vault_handler.go
+    │       │   ├── middleware/ # Cross-cutting HTTP concerns
+    │       │   │   ├── auth.go # JWT validation middleware
+    │       │   │   └── logger.go
+    │       │   ├── router/     # Route registration + app bootstrap
+    │       │   │   └── router.go
+    │       │   └── sse/        # SSE connection manager
+    │       │       └── manager.go
+    │       └── grpc/           # gRPC delivery layer (future: inter-module)
     ├── adapter/
     │   └── entgo/              # Concrete repository implementations (ent ORM)
     │       ├── client.go       # Ent client setup + migration
@@ -62,20 +76,6 @@ opus/
     │       ├── agent_repo.go   # Implements agent.Repository
     │       ├── vault_repo.go   # Implements vault.Repository
     │       └── workflow_repo.go
-    └── delivery/
-        ├── http/               # HTTP delivery layer (REST + SSE)
-        │   ├── handler/        # Route handlers per domain
-        │   │   ├── auth_handler.go
-        │   │   ├── agent_handler.go
-        │   │   └── vault_handler.go
-        │   ├── middleware/     # Cross-cutting HTTP concerns
-        │   │   ├── auth.go     # JWT validation middleware
-        │   │   └── logger.go
-        │   ├── router/         # Route registration + app bootstrap
-        │   │   └── router.go
-        │   └── sse/            # SSE connection manager
-        │       └── manager.go
-        └── grpc/               # gRPC delivery layer (future: inter-module)
 ```
 
 ### 2.2 Layer Responsibilities
@@ -84,7 +84,7 @@ opus/
 |---|---|---|
 | **Domain** | `internal/[feature]/` | Business logic, domain models, repository interfaces |
 | **Infrastructure** | `adapter/entgo/` | Concrete implementations of repository interfaces |
-| **Delivery** | `delivery/http/`, `delivery/grpc/` | HTTP/gRPC handlers; translates requests to service calls |
+| **Delivery** | `internal/delivery/http/`, `internal/delivery/grpc/` | HTTP/gRPC handlers; translates requests to service calls |
 | **Config** | `internal/config/` | Configuration parsing; injected at startup |
 | **Shared** | `internal/shared/` | Cross-cutting domain entities used by multiple features |
 
@@ -93,7 +93,7 @@ opus/
 Dependencies flow **inward only**:
 
 ```
-delivery/ → internal/[feature]/ ← adapter/
+internal/delivery/ → internal/[feature]/ ← adapter/
                     ↑
               internal/shared/
               internal/config/
@@ -101,7 +101,7 @@ delivery/ → internal/[feature]/ ← adapter/
 
 - `internal/[feature]/` has **zero knowledge** of delivery or adapter implementations
 - `adapter/entgo/` imports `internal/[feature]/` interfaces — never the reverse
-- `delivery/` imports `internal/[feature]/` services — never adapter directly
+- `internal/delivery/` imports `internal/[feature]/` services — never adapter directly
 
 ### 2.4 Repository Pattern
 
@@ -182,7 +182,7 @@ func (s *Service) Login(ctx context.Context, email, password string) (*TokenPair
 Handlers translate HTTP requests into service calls. No business logic lives in handlers.
 
 ```go
-// delivery/http/handler/auth_handler.go
+// internal/delivery/http/handler/auth_handler.go
 package handler
 
 import (
@@ -221,8 +221,8 @@ package main
 
 import (
     "opus/server/adapter/entgo"
-    "opus/server/delivery/http/handler"
-    "opus/server/delivery/http/router"
+    "opus/server/internal/delivery/http/handler"
+    "opus/server/internal/delivery/http/router"
     "opus/server/internal/auth"
     "opus/server/internal/config"
 )
@@ -310,7 +310,7 @@ All code in a single `internal/` level without sub-packages. Rejected because:
 
 - **`internal/shared/` discipline required** — Without governance, `shared/` becomes a dumping ground for entities that should remain in their feature domain
 - **Boilerplate at startup** — Explicit DI in `main.go` grows as modules are added; a DI container (e.g. `uber/fx`) may be considered in a future ADR if wiring complexity becomes unmanageable
-- **gRPC delivery layer is a stub** — `delivery/grpc/` is reserved for future inter-module communication; it adds directory noise in v1 but is intentional
+- **gRPC delivery layer is a stub** — `internal/delivery/grpc/` is reserved for future inter-module communication; it adds directory noise in v1 but is intentional
 
 ---
 

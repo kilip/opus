@@ -168,9 +168,9 @@ Secrets (API keys, DSNs) via env vars only — never in config files.
 
 - All responses use the envelope: `{ "data": ..., "error": ..., "meta": ... }`.
 - Errors follow RFC 7807 Problem Details inside `error`.
-- URL structure: `/api/{resource}` — **no version prefix** (`/api/v1/` is invalid).
+- URL structure: `/{resource}` — **no prefix**.
 - Pagination: cursor-based only (no offset).
-- SSE endpoint: `GET /api/agents/{id}/logs/stream`.
+- SSE endpoint: `GET /agents/{id}/logs/stream`.
 - Response helpers: `delivery/fiber/response/` — use `response.OK`, `response.Error`, etc.
 
 ---
