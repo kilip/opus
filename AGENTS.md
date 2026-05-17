@@ -284,8 +284,8 @@ Memory lives in `.agents/` (gitignored). **Every session gets its own file.**
 
 **Start:** Read `MEMORY.md` + last 3–5 session files → create new session file → write goal and open questions.
 
+**Consolidation** (when 5+ non-consolidated files exist): summarise into `YYYY-MM-DD-consolidated.md` (decisions, progress, blockers, key findings — no code snippets), then delete source files. Never consolidate the current session's file.
+
 **During:** Update session file with decisions, findings, blockers.
 
 **End:** Finalise session file → promote lasting decisions to `MEMORY.md`.
-
-**Consolidation** (when 5+ non-consolidated files exist): summarise into `YYYY-MM-DD-consolidated.md` (decisions, progress, blockers, key findings — no code snippets), then delete source files. Never consolidate the current session's file.
