@@ -70,6 +70,7 @@ jobs:
         env:
           OPUS_DATABASE_DRIVER: postgres
           OPUS_DATABASE_DSN: postgres://opus:opus@localhost:5432/opus?sslmode=disable
+          OPUS_QUEUE_DRIVER: database
         run: go test -v -race -tags integration ./...
 
   dash-lint:
