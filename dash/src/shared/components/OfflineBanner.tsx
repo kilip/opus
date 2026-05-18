@@ -13,7 +13,7 @@ export function OfflineBanner() {
   return (
     <div
       role="alert"
-      className="flex items-center justify-center gap-2 bg-amber-500 text-amber-950 px-4 py-2.5 text-center text-sm font-semibold transition-all duration-300 animate-pulse border-b border-amber-600 shadow-sm"
+      className="flex items-center justify-center gap-2 border-b border-brand-secondary/30 bg-brand-secondary/15 px-4 py-2.5 text-center font-sans text-sm font-medium text-brand-dark dark:text-brand-light"
     >
       <WifiOff className="h-4 w-4 shrink-0" aria-hidden="true" />
       <span>
