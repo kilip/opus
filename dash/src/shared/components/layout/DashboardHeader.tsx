@@ -1,4 +1,6 @@
-import { Menu } from 'lucide-react';
+import { useNavigate, useRouteContext } from '@tanstack/react-router';
+import { LogOut, Menu, User } from 'lucide-react';
+import { logout } from '@/features/auth/api';
 import { ThemeToggle } from '@/shared/components/ThemeToggle';
 import { Button } from '@/shared/components/ui/button';
 import { cn } from '@/shared/lib/utils';
@@ -9,12 +11,21 @@ type DashboardHeaderProps = {
 };
 
 /**
- * Sticky top bar with mobile menu control and theme toggle.
+ * Sticky top bar with mobile menu control, theme toggle, and user actions.
  */
 export function DashboardHeader({
   onMenuOpen,
   className,
 }: DashboardHeaderProps) {
+  const navigate = useNavigate();
+  const context = useRouteContext({ from: '__root__' });
+  const user = context.user;
+
+  const handleLogout = async () => {
+    await logout();
+    navigate({ to: '/login' });
+  };
+
   return (
     <header
       className={cn(
@@ -40,8 +51,43 @@ export function DashboardHeader({
         </div>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3">
         <ThemeToggle />
+
+        <div className="h-6 w-px bg-border mx-1 hidden sm:block" />
+
+        <div className="flex items-center gap-3 pl-1">
+          <div className="hidden sm:block text-right">
+            <p className="font-sans text-xs font-semibold leading-none">
+              {user?.name || 'User'}
+            </p>
+            <p className="font-serif text-[10px] text-muted leading-tight mt-1 capitalize">
+              {user?.role || 'Guest'}
+            </p>
+          </div>
+
+          <div className="h-8 w-8 rounded-full bg-brand-subtle flex items-center justify-center border border-border overflow-hidden">
+            {user?.avatar_url ? (
+              <img
+                src={user.avatar_url}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <User className="h-4 w-4 text-muted" />
+            )}
+          </div>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted hover:text-brand-primary"
+            onClick={handleLogout}
+            title="Sign out"
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
     </header>
   );

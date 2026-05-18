@@ -1,4 +1,5 @@
 export { AppShell } from './AppShell';
+export { AuthLayout } from './AuthLayout';
 export { DashboardHeader } from './DashboardHeader';
 export { DashboardSidebar } from './DashboardSidebar';
 export { MobileNavDrawer } from './MobileNavDrawer';
