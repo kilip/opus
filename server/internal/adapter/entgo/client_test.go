@@ -4,13 +4,12 @@ import (
 	"testing"
 
 	"github.com/kilip/opus/server/internal/adapter/entgo"
-	"github.com/kilip/opus/server/internal/config"
 	"github.com/kilip/opus/server/internal/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNewClient(t *testing.T) {
-	cfg := config.DatabaseConfig{
+	cfg := entgo.Config{
 		Driver: "sqlite3",
 		DSN:    "file:ent?mode=memory&cache=shared&_fk=1",
 	}

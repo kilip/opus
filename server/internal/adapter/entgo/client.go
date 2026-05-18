@@ -10,11 +10,10 @@ import (
 	_ "modernc.org/sqlite"
 
 	"github.com/kilip/opus/server/ent"
-	"github.com/kilip/opus/server/internal/config"
 )
 
 // NewClient creates a new Ent database client using the provided database configuration.
-func NewClient(cfg config.DatabaseConfig) (*ent.Client, error) {
+func NewClient(cfg Config) (*ent.Client, error) {
 	var dialectName string
 	var driverName string
 

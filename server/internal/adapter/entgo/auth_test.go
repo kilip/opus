@@ -5,13 +5,12 @@ import (
 	"testing"
 
 	"github.com/kilip/opus/server/internal/adapter/entgo"
-	"github.com/kilip/opus/server/internal/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestAuthRepo_FindByEmail(t *testing.T) {
-	cfg := config.DatabaseConfig{
+	cfg := entgo.Config{
 		Driver: "sqlite3",
 		DSN:    "file:ent_auth?mode=memory&cache=shared&_fk=1",
 	}

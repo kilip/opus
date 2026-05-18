@@ -32,7 +32,7 @@ interactive setup convention, service management approach, and project structure
 ## 2. Decision
 
 The `get-opus` installer is a **zero-dependency Node.js CLI script** that downloads the
-appropriate pre-built `opus-server` binary from GitHub Releases, runs a minimal interactive
+appropriate pre-built `opus` binary from GitHub Releases, runs a minimal interactive
 setup wizard, generates a `config.json` with sensible defaults, auto-configures a system service,
 and opens the Opus Dash onboarding flow in the user's browser.
 
@@ -68,17 +68,17 @@ Node.js 24 is the current LTS release as of 2026. It provides:
 
 ### 2.2 Binary Distribution Strategy
 
-Pre-built `opus-server` binaries are attached to each GitHub Release as release assets.
+Pre-built `opus` binaries are attached to each GitHub Release as release assets.
 
 #### 2.2.1 Supported Platforms
 
 | OS | Architecture | Asset Name |
 |---|---|---|
-| Linux | x64 | `opus-server-linux-amd64.tar.gz` |
-| Linux | arm64 | `opus-server-linux-arm64.tar.gz` |
-| macOS | x64 (Intel) | `opus-server-darwin-amd64.tar.gz` |
-| macOS | arm64 (Apple Silicon) | `opus-server-darwin-arm64.tar.gz` |
-| Windows | x64 | `opus-server-windows-amd64.zip` |
+| Linux | x64 | `opus-linux-amd64.tar.gz` |
+| Linux | arm64 | `opus-linux-arm64.tar.gz` |
+| macOS | x64 (Intel) | `opus-darwin-amd64.tar.gz` |
+| macOS | arm64 (Apple Silicon) | `opus-darwin-arm64.tar.gz` |
+| Windows | x64 | `opus-windows-amd64.zip` |
 
 #### 2.2.2 Asset Resolution
 
@@ -89,11 +89,11 @@ The installer resolves the correct asset at runtime using `os.platform()` and `o
 import os from 'os';
 
 const PLATFORM_MAP = {
-  'linux-x64':   'opus-server-linux-amd64.tar.gz',
-  'linux-arm64': 'opus-server-linux-arm64.tar.gz',
-  'darwin-x64':  'opus-server-darwin-amd64.tar.gz',
-  'darwin-arm64':'opus-server-darwin-arm64.tar.gz',
-  'win32-x64':   'opus-server-windows-amd64.zip',
+  'linux-x64':   'opus-linux-amd64.tar.gz',
+  'linux-arm64': 'opus-linux-arm64.tar.gz',
+  'darwin-x64':  'opus-darwin-amd64.tar.gz',
+  'darwin-arm64':'opus-darwin-arm64.tar.gz',
+  'win32-x64':   'opus-windows-amd64.zip',
 };
 
 export function resolveAssetName() {
@@ -143,7 +143,7 @@ npx get-opus
   │     ├─ Fetch latest release version from GitHub API
   │     ├─ Download platform-specific asset
   │     ├─ Verify SHA-256 checksum against release manifest
-  │     └─ Extract binary to {dataDir}/bin/opus-server
+  │     └─ Extract binary to {dataDir}/bin/opus
   │
   ├─ 4. Configuration Generation
   │     └─ Write {dataDir}/config.json with user answers + sensible defaults
@@ -154,7 +154,7 @@ npx get-opus
   │     └─ Windows → NSSM-based Windows Service (if NSSM available) or Task Scheduler
   │
   ├─ 6. First Start
-  │     └─ Start opus-server process (via service or directly)
+  │     └─ Start opus process (via service or directly)
   │
   └─ 7. Onboarding Handoff
         ├─ Wait for server health check (GET /health, max 30s)
@@ -184,7 +184,7 @@ export function checkNodeVersion() {
 
 #### 2.3.2 Existing Installation Detection
 
-If `{dataDir}/bin/opus-server` already exists, the installer prompts the user:
+If `{dataDir}/bin/opus` already exists, the installer prompts the user:
 
 ```
 → An existing Opus installation was detected at ~/.opus.
@@ -290,7 +290,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart={dataDir}/bin/opus-server
+ExecStart={dataDir}/bin/opus
 WorkingDirectory={dataDir}
 Restart=on-failure
 RestartSec=5s
@@ -324,7 +324,7 @@ automatically and notes it in the completion output.
   <string>com.opus.server</string>
   <key>ProgramArguments</key>
   <array>
-    <string>{dataDir}/bin/opus-server</string>
+    <string>{dataDir}/bin/opus</string>
   </array>
   <key>WorkingDirectory</key>
   <string>{dataDir}</string>
@@ -454,7 +454,7 @@ On successful installation, the installer prints a clear summary:
   Version:      v0.3.1
   Data dir:     ~/.opus
   Config:       ~/.opus/config.json
-  Binary:       ~/.opus/bin/opus-server
+  Binary:       ~/.opus/bin/opus
   Service:      systemd user service (opus.service) — enabled and running
 
   Opening Opus Dash at http://localhost:8080 …
@@ -554,7 +554,7 @@ Making service setup opt-in rather than opt-out. Rejected because:
   clear message
 - **Task Scheduler on Windows** — less robust than a true Windows Service (NSSM); an
   installer-level process crash does not auto-restart until next logon. Mitigated by
-  `opus-server`'s own crash recovery; NSSM support deferred to future ADR
+  `opus`'s own crash recovery; NSSM support deferred to future ADR
 - **systemd linger requirement** — Linux users on multi-user systems may need
   `loginctl enable-linger` for boot-time auto-start; the installer runs this automatically
   but it requires the user to be logged in at least once post-install

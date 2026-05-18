@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/kilip/opus/server/internal/delivery/gofiber"
+	"github.com/kilip/opus/server/internal/delivery/gofiber/response"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,13 +17,13 @@ func TestResponseHelpers(t *testing.T) {
 	app := fiber.New()
 
 	app.Get("/ok", func(c fiber.Ctx) error {
-		return gofiber.OK(c, fiber.Map{"foo": "bar"})
+		return response.OK(c, fiber.Map{"foo": "bar"})
 	})
 	app.Post("/created", func(c fiber.Ctx) error {
-		return gofiber.Created(c, fiber.Map{"id": 123})
+		return response.Created(c, fiber.Map{"id": 123})
 	})
 	app.Delete("/no-content", func(c fiber.Ctx) error {
-		return gofiber.NoContent(c)
+		return response.NoContent(c)
 	})
 
 	tests := []struct {
@@ -39,7 +39,7 @@ func TestResponseHelpers(t *testing.T) {
 			path:           "/ok",
 			expectedStatus: 200,
 			validateBody: func(t *testing.T, w *httptest.ResponseRecorder) {
-				var body gofiber.Envelope[map[string]string]
+				var body response.Envelope[map[string]string]
 				err := json.NewDecoder(w.Body).Decode(&body)
 				require.NoError(t, err)
 				assert.Equal(t, "bar", body.Data["foo"])
@@ -51,7 +51,7 @@ func TestResponseHelpers(t *testing.T) {
 			path:           "/created",
 			expectedStatus: 201,
 			validateBody: func(t *testing.T, w *httptest.ResponseRecorder) {
-				var body gofiber.Envelope[map[string]int]
+				var body response.Envelope[map[string]int]
 				err := json.NewDecoder(w.Body).Decode(&body)
 				require.NoError(t, err)
 				assert.Equal(t, 123, body.Data["id"])

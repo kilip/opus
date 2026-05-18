@@ -14,7 +14,7 @@ before:
     - go generate -C server ./...
 
 builds:
-  - id: opus-server
+  - id: opus
     dir: server
     main: . # This will look for main.go in the server directory
     binary: opus
@@ -32,8 +32,8 @@ archives:
   - format: tar.gz
     # this name template makes the arm64 binaries have the _arm64 suffix
     name_template: >-
-      {{ .ProjectName }}_
-      {{- .Os }}_
+      {{ .ProjectName }}-
+      {{- .Os }}-
       {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}

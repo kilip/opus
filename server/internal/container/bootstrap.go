@@ -6,7 +6,9 @@ import (
 
 	"github.com/kilip/opus/server/internal/adapter/entgo"
 	adapterqueue "github.com/kilip/opus/server/internal/adapter/queue"
+	"github.com/kilip/opus/server/internal/auth"
 	"github.com/kilip/opus/server/internal/config"
+	"github.com/kilip/opus/server/internal/delivery/gofiber"
 	"github.com/kilip/opus/server/internal/shared/logger"
 )
 
@@ -16,33 +18,37 @@ func Bootstrap(cfg config.Config) {
 	once.Do(func() {
 		c = &container{}
 
-		// 1. Logger
+		// 1. Shared Infrastructure
 		log, err := logger.NewSlogLogger(logger.DefaultConfig())
 		if err != nil {
 			panic(fmt.Errorf("container: failed to initialize logger: %w", err))
 		}
 		c.log = log
 
-		// 2. Database
 		dbClient, err := entgo.NewClient(cfg.Database)
 		if err != nil {
 			panic(fmt.Errorf("container: failed to initialize database: %w", err))
 		}
 		c.db = dbClient
 
-		// 3. Auto-Migrate Schema
 		if err := entgo.AutoMigrate(c.db, context.Background()); err != nil {
 			panic(fmt.Errorf("container: failed to run auto-migrations: %w", err))
 		}
 
-		// 4. Queue
 		q, err := adapterqueue.NewQueue(cfg.Queue, c.db, c.log)
 		if err != nil {
 			panic(fmt.Errorf("container: failed to init queue: %w", err))
 		}
 		c.queue = q
 
-		// 6. EventBus
 		c.bus = adapterqueue.NewEventBus()
+
+		c.fiber = gofiber.New(cfg.Server, c.log)
+
+		// 2. Domain Bootstraps
+		auth.Bootstrap(entgo.NewAuthRepo(c.db), c.bus, c.queue, c.log, cfg.Auth)
+
+		// 3. Delivery Bootstrap
+		gofiber.Bootstrap(c.fiber, c.log, cfg.Server)
 	})
 }

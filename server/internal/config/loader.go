@@ -55,12 +55,16 @@ func LoadWithViper() (*Config, *viper.Viper, error) {
 	// Register nested default values for CORS to enable correct environment variable unmarshaling.
 	// Without explicit default values, Viper will ignore env-vars for nested structures (like server.cors)
 	// when no config.json file exists.
-	v.SetDefault("server.cors.allowed_origins", []string{})
+	v.SetDefault("server.cors.allowed_origins", []string{"http://localhost:5173"})
 	v.SetDefault("server.cors.allowed_methods", []string{})
 	v.SetDefault("server.cors.allowed_headers", []string{})
 	v.SetDefault("server.cors.expose_headers", []string{})
 	v.SetDefault("server.cors.allow_credentials", true)
 	v.SetDefault("server.cors.max_age", 3600)
+
+	v.SetDefault("database.driver", "sqlite3")
+	v.SetDefault("database.dsn", ":memory:")
+	v.SetDefault("queue.driver", "database")
 
 	v.AutomaticEnv()
 

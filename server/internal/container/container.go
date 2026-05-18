@@ -3,6 +3,7 @@ package container
 import (
 	"sync"
 
+	"github.com/gofiber/fiber/v3"
 	"github.com/kilip/opus/server/ent"
 	"github.com/kilip/opus/server/internal/shared/logger"
 	"github.com/kilip/opus/server/internal/shared/queue"
@@ -13,6 +14,7 @@ type container struct {
 	log   logger.Logger
 	queue queue.Queue
 	bus   queue.EventBus
+	fiber *fiber.App
 }
 
 var (
@@ -27,29 +29,31 @@ func mustInit() {
 }
 
 // GetQueue returns the initialized queue.Queue.
-// Panics if Bootstrap has not been called.
 func GetQueue() queue.Queue {
 	mustInit()
 	return c.queue
 }
 
 // GetEventBus returns the initialized queue.EventBus.
-// Panics if Bootstrap has not been called.
 func GetEventBus() queue.EventBus {
 	mustInit()
 	return c.bus
 }
 
 // GetLogger returns the initialized logger.Logger.
-// Panics if Bootstrap has not been called.
 func GetLogger() logger.Logger {
 	mustInit()
 	return c.log
 }
 
 // GetDB returns the initialized *ent.Client.
-// Panics if Bootstrap has not been called.
 func GetDB() *ent.Client {
 	mustInit()
 	return c.db
+}
+
+// GetFiber returns the initialized *fiber.App.
+func GetFiber() *fiber.App {
+	mustInit()
+	return c.fiber
 }

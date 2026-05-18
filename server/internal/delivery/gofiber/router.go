@@ -4,6 +4,7 @@ package gofiber
 import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/kilip/opus/server/internal/delivery/gofiber/middleware"
+	"github.com/kilip/opus/server/internal/delivery/gofiber/response"
 	"github.com/kilip/opus/server/internal/shared/logger"
 )
 
@@ -17,7 +18,7 @@ func New(cfg Config, log logger.Logger) *fiber.App {
 			if e, ok := err.(*fiber.Error); ok {
 				code = e.Code
 			}
-			return Error(c, code, slugFromStatus(code), titleFromStatus(code), err.Error())
+			return response.Error(c, code, slugFromStatus(code), titleFromStatus(code), err.Error())
 		},
 	})
 
@@ -26,7 +27,7 @@ func New(cfg Config, log logger.Logger) *fiber.App {
 	app.Use(middleware.RequestLogger(log))
 
 	app.Get("/health", func(c fiber.Ctx) error {
-		return OK(c, fiber.Map{"status": "ok"})
+		return response.OK(c, fiber.Map{"status": "ok"})
 	})
 
 	return app

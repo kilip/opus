@@ -1,5 +1,5 @@
 // Package gofiber implements the HTTP delivery layer for the Opus server using GoFiber v3.
-package gofiber
+package response
 
 import (
 	"fmt"

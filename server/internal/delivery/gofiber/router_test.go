@@ -8,6 +8,7 @@ import (
 
 	"github.com/kilip/opus/server/internal/delivery/gofiber"
 	"github.com/kilip/opus/server/internal/delivery/gofiber/middleware"
+	"github.com/kilip/opus/server/internal/delivery/gofiber/response"
 	"github.com/kilip/opus/server/internal/shared/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -29,7 +30,7 @@ func TestRouter(t *testing.T) {
 			path:           "/health",
 			expectedStatus: 200,
 			validate: func(t *testing.T, w *httptest.ResponseRecorder) {
-				var body gofiber.Envelope[map[string]string]
+				var body response.Envelope[map[string]string]
 				err := json.NewDecoder(w.Body).Decode(&body)
 				require.NoError(t, err)
 				assert.Equal(t, "ok", body.Data["status"])
@@ -40,7 +41,7 @@ func TestRouter(t *testing.T) {
 			path:           "/not-found-route",
 			expectedStatus: 404,
 			validate: func(t *testing.T, w *httptest.ResponseRecorder) {
-				var body gofiber.Envelope[any]
+				var body response.Envelope[any]
 				err := json.NewDecoder(w.Body).Decode(&body)
 				require.NoError(t, err)
 				assert.NotNil(t, body.Error)
