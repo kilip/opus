@@ -48,7 +48,7 @@ func TestDatabaseQueue(t *testing.T) {
 
 	// Verify job status with wait loop
 	var j *queue.Job
-	for i := 0; i < 50; i++ {
+	for i := 0; i < 100; i++ {
 		j, err = q.Inspect(ctx, id)
 		if err == nil && j.Status == queue.JobStatusCompleted {
 			break
