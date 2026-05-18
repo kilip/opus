@@ -4,6 +4,7 @@ package config
 import (
 	"github.com/kilip/opus/server/internal/auth"
 	"github.com/kilip/opus/server/internal/delivery/gofiber"
+	"github.com/kilip/opus/server/internal/shared/queue"
 )
 
 // DatabaseConfig holds the configuration details for the database connection.
@@ -28,4 +29,7 @@ type Config struct {
 
 	// Auth is the authentication configuration section.
 	Auth auth.Config `mapstructure:"auth" json:"auth"`
+
+	// Queue is the queue configuration section.
+	Queue queue.Config `mapstructure:"queue" json:"queue"`
 }

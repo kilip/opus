@@ -53,3 +53,13 @@ func NewClient(cfg config.DatabaseConfig) (*ent.Client, error) {
 func AutoMigrate(client *ent.Client, ctx context.Context) error {
 	return client.Schema.Create(ctx)
 }
+
+// DB returns the underlying *sql.DB connection managed by the Ent client.
+// Used by adapters that share the same database connection, such as the SQLite queue.
+func DB(client *ent.Client) (*sql.DB, error) {
+	sqlDrv, ok := client.Driver().(*entsql.Driver)
+	if !ok {
+		return nil, fmt.Errorf("entgo.DB: driver is not *entsql.Driver")
+	}
+	return sqlDrv.DB(), nil
+}
