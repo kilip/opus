@@ -7,6 +7,10 @@ project_name: opus
 before:
   hooks:
     - go mod tidy -C server
+    - go run -C server go.uber.org/mock/mockgen -destination=mocks/auth.go -package=mocks github.com/kilip/opus/server/internal/auth Repository,PolicyService,OAuthProvider
+    - go run -C server go.uber.org/mock/mockgen -destination=mocks/logger.go -package=mocks github.com/kilip/opus/server/internal/shared/logger Logger
+    - go run -C server go.uber.org/mock/mockgen -destination=mocks/queue.go -package=mocks github.com/kilip/opus/server/internal/shared/queue Queue
+    - go run -C server go.uber.org/mock/mockgen -destination=mocks/eventbus.go -package=mocks github.com/kilip/opus/server/internal/shared/queue EventBus
     - go generate -C server ./...
 
 builds:

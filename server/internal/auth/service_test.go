@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/kilip/opus/server/internal/auth"
-	"github.com/kilip/opus/server/internal/shared/logger"
+	"github.com/kilip/opus/server/mocks"
 	"go.uber.org/mock/gomock"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -15,9 +15,9 @@ func TestService_Register(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	repo := auth.NewMockRepository(ctrl)
-	log := logger.NewMockLogger(ctrl)
-	ps := auth.NewMockPolicyService(ctrl)
+	repo := mocks.NewMockRepository(ctrl)
+	log := mocks.NewMockLogger(ctrl)
+	ps := mocks.NewMockPolicyService(ctrl)
 	reg := auth.NewProviderRegistry()
 
 	svc := auth.NewService(repo, reg, ps, auth.Config{
@@ -66,8 +66,8 @@ func TestService_Login(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	repo := auth.NewMockRepository(ctrl)
-	ps := auth.NewMockPolicyService(ctrl)
+	repo := mocks.NewMockRepository(ctrl)
+	ps := mocks.NewMockPolicyService(ctrl)
 	reg := auth.NewProviderRegistry()
 	svc := auth.NewService(repo, reg, ps, auth.Config{
 		JWTSecret:       "secret",
@@ -102,8 +102,8 @@ func TestService_Refresh(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	repo := auth.NewMockRepository(ctrl)
-	ps := auth.NewMockPolicyService(ctrl)
+	repo := mocks.NewMockRepository(ctrl)
+	ps := mocks.NewMockPolicyService(ctrl)
 	reg := auth.NewProviderRegistry()
 	svc := auth.NewService(repo, reg, ps, auth.Config{
 		JWTSecret:       "secret",
@@ -143,11 +143,11 @@ func TestService_OAuthCallback(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	repo := auth.NewMockRepository(ctrl)
-	ps := auth.NewMockPolicyService(ctrl)
+	repo := mocks.NewMockRepository(ctrl)
+	ps := mocks.NewMockPolicyService(ctrl)
 
 	// Create mock provider registry and mock Google OAuthProvider
-	googleMockProvider := auth.NewMockOAuthProvider(ctrl)
+	googleMockProvider := mocks.NewMockOAuthProvider(ctrl)
 	googleMockProvider.EXPECT().Name().Return("google").AnyTimes()
 	reg := auth.NewProviderRegistry(googleMockProvider)
 

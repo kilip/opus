@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/kilip/opus/server/internal/auth"
 	"github.com/kilip/opus/server/internal/delivery/gofiber/handler"
+	"github.com/kilip/opus/server/mocks"
 	"go.uber.org/mock/gomock"
 )
 
@@ -16,8 +17,8 @@ func TestAuthHandler_Register(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := auth.NewMockRepository(ctrl)
-	mockPolicy := auth.NewMockPolicyService(ctrl)
+	mockRepo := mocks.NewMockRepository(ctrl)
+	mockPolicy := mocks.NewMockPolicyService(ctrl)
 	mockRegistry := auth.NewProviderRegistry()
 
 	svc := auth.NewService(mockRepo, mockRegistry, mockPolicy, auth.Config{

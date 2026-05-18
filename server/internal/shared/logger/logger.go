@@ -3,7 +3,7 @@ package logger
 
 import "context"
 
-//go:generate mockgen -destination=mock_logger.go -package=logger . Logger
+// Mocks live in server/mocks/ — regenerate with task mocks.
 
 // Logger defines the standard logging contract for the entire application.
 type Logger interface {

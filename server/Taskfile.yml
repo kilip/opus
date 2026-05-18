@@ -12,9 +12,18 @@ tasks:
     cmds:
       - go mod tidy
 
-  generate:
-    desc: Run code generation (mockgen, ent, etc.)
+  mocks:
+    desc: Regenerate go.uber.org/mock mocks into mocks/
     cmds:
+      - go run go.uber.org/mock/mockgen -destination=mocks/auth.go -package=mocks github.com/kilip/opus/server/internal/auth Repository,PolicyService,OAuthProvider
+      - go run go.uber.org/mock/mockgen -destination=mocks/logger.go -package=mocks github.com/kilip/opus/server/internal/shared/logger Logger
+      - go run go.uber.org/mock/mockgen -destination=mocks/queue.go -package=mocks github.com/kilip/opus/server/internal/shared/queue Queue
+      - go run go.uber.org/mock/mockgen -destination=mocks/eventbus.go -package=mocks github.com/kilip/opus/server/internal/shared/queue EventBus
+
+  generate:
+    desc: Run code generation (mockgen, ent, config schema, etc.)
+    cmds:
+      - task: mocks
       - go generate ./...
 
   test:

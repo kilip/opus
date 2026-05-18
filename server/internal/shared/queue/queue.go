@@ -78,7 +78,7 @@ func WithQueue(q string) JobOption {
 	}
 }
 
-//go:generate mockgen -destination=mock_queue.go -package=queue . Queue
+// Mocks live in server/mocks/ — regenerate with task mocks.
 
 // Queue defines the contract for all durable background job processing.
 // Implementations must be safe for concurrent use.

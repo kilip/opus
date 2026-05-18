@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-//go:generate mockgen -destination=mock_repository.go -package=auth github.com/kilip/opus/server/internal/auth Repository,PolicyService,OAuthProvider
+// Mocks live in server/mocks/ — regenerate with task mocks.
 
 // Repository handles abstract operations on Ent database drivers.
 type Repository interface {

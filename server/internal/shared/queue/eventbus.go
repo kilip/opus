@@ -16,7 +16,7 @@ type Event struct {
 // EventHandler processes an event.
 type EventHandler func(ctx context.Context, event Event) error
 
-//go:generate mockgen -destination=mock_eventbus.go -package=queue . EventBus
+// Mocks live in server/mocks/ — regenerate with task mocks.
 
 // EventBus defines the contract for in-process publish/subscribe messaging.
 // All subscribers are notified synchronously in the order they were registered.
