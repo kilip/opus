@@ -22,6 +22,8 @@ type Tx struct {
 	AuthToken *AuthTokenClient
 	// CasbinRule is the client for interacting with the CasbinRule builders.
 	CasbinRule *CasbinRuleClient
+	// Job is the client for interacting with the Job builders.
+	Job *JobClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 	// Workspace is the client for interacting with the Workspace builders.
@@ -162,6 +164,7 @@ func (tx *Tx) init() {
 	tx.AuthSession = NewAuthSessionClient(tx.config)
 	tx.AuthToken = NewAuthTokenClient(tx.config)
 	tx.CasbinRule = NewCasbinRuleClient(tx.config)
+	tx.Job = NewJobClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 	tx.Workspace = NewWorkspaceClient(tx.config)
 }

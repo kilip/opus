@@ -35,14 +35,8 @@ func Bootstrap(cfg config.Config) {
 			panic(fmt.Errorf("container: failed to run auto-migrations: %w", err))
 		}
 
-		// 4. Extract *sql.DB for shared connections
-		db, err := entgo.DB(c.db)
-		if err != nil {
-			panic(fmt.Errorf("container: failed to extract *sql.DB: %w", err))
-		}
-
-		// 5. Queue
-		q, err := adapterqueue.NewQueue(cfg.Queue, db, c.log)
+		// 4. Queue
+		q, err := adapterqueue.NewQueue(cfg.Queue, c.db, c.log)
 		if err != nil {
 			panic(fmt.Errorf("container: failed to init queue: %w", err))
 		}

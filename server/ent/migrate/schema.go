@@ -127,6 +127,33 @@ var (
 		Columns:    CasbinRulesColumns,
 		PrimaryKey: []*schema.Column{CasbinRulesColumns[0]},
 	}
+	// JobsColumns holds the columns for the "jobs" table.
+	JobsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, Unique: true},
+		{Name: "type", Type: field.TypeString},
+		{Name: "queue", Type: field.TypeString, Default: "default"},
+		{Name: "payload", Type: field.TypeBytes},
+		{Name: "status", Type: field.TypeString, Default: "pending"},
+		{Name: "priority", Type: field.TypeInt, Default: 0},
+		{Name: "max_retries", Type: field.TypeInt, Default: 3},
+		{Name: "retry_count", Type: field.TypeInt, Default: 0},
+		{Name: "process_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// JobsTable holds the schema information for the "jobs" table.
+	JobsTable = &schema.Table{
+		Name:       "jobs",
+		Columns:    JobsColumns,
+		PrimaryKey: []*schema.Column{JobsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "job_queue_status_priority_process_at",
+				Unique:  false,
+				Columns: []*schema.Column{JobsColumns[2], JobsColumns[4], JobsColumns[5], JobsColumns[8]},
+			},
+		},
+	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeString, Unique: true},
@@ -166,6 +193,7 @@ var (
 		AuthSessionsTable,
 		AuthTokensTable,
 		CasbinRulesTable,
+		JobsTable,
 		UsersTable,
 		WorkspacesTable,
 	}

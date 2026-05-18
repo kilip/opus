@@ -21,6 +21,9 @@ type AuthToken func(*sql.Selector)
 // CasbinRule is the predicate function for casbinrule builders.
 type CasbinRule func(*sql.Selector)
 
+// Job is the predicate function for job builders.
+type Job func(*sql.Selector)
+
 // User is the predicate function for user builders.
 type User func(*sql.Selector)
 

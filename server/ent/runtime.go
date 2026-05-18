@@ -10,6 +10,7 @@ import (
 	"github.com/kilip/opus/server/ent/authsession"
 	"github.com/kilip/opus/server/ent/authtoken"
 	"github.com/kilip/opus/server/ent/casbinrule"
+	"github.com/kilip/opus/server/ent/job"
 	"github.com/kilip/opus/server/ent/schema"
 	"github.com/kilip/opus/server/ent/user"
 	"github.com/kilip/opus/server/ent/workspace"
@@ -79,6 +80,46 @@ func init() {
 	casbinruleDescV5 := casbinruleFields[6].Descriptor()
 	// casbinrule.DefaultV5 holds the default value on creation for the v5 field.
 	casbinrule.DefaultV5 = casbinruleDescV5.Default.(string)
+	jobFields := schema.Job{}.Fields()
+	_ = jobFields
+	// jobDescType is the schema descriptor for type field.
+	jobDescType := jobFields[1].Descriptor()
+	// job.TypeValidator is a validator for the "type" field. It is called by the builders before save.
+	job.TypeValidator = jobDescType.Validators[0].(func(string) error)
+	// jobDescQueue is the schema descriptor for queue field.
+	jobDescQueue := jobFields[2].Descriptor()
+	// job.DefaultQueue holds the default value on creation for the queue field.
+	job.DefaultQueue = jobDescQueue.Default.(string)
+	// jobDescStatus is the schema descriptor for status field.
+	jobDescStatus := jobFields[4].Descriptor()
+	// job.DefaultStatus holds the default value on creation for the status field.
+	job.DefaultStatus = jobDescStatus.Default.(string)
+	// jobDescPriority is the schema descriptor for priority field.
+	jobDescPriority := jobFields[5].Descriptor()
+	// job.DefaultPriority holds the default value on creation for the priority field.
+	job.DefaultPriority = jobDescPriority.Default.(int)
+	// jobDescMaxRetries is the schema descriptor for max_retries field.
+	jobDescMaxRetries := jobFields[6].Descriptor()
+	// job.DefaultMaxRetries holds the default value on creation for the max_retries field.
+	job.DefaultMaxRetries = jobDescMaxRetries.Default.(int)
+	// jobDescRetryCount is the schema descriptor for retry_count field.
+	jobDescRetryCount := jobFields[7].Descriptor()
+	// job.DefaultRetryCount holds the default value on creation for the retry_count field.
+	job.DefaultRetryCount = jobDescRetryCount.Default.(int)
+	// jobDescProcessAt is the schema descriptor for process_at field.
+	jobDescProcessAt := jobFields[8].Descriptor()
+	// job.DefaultProcessAt holds the default value on creation for the process_at field.
+	job.DefaultProcessAt = jobDescProcessAt.Default.(func() time.Time)
+	// jobDescCreatedAt is the schema descriptor for created_at field.
+	jobDescCreatedAt := jobFields[9].Descriptor()
+	// job.DefaultCreatedAt holds the default value on creation for the created_at field.
+	job.DefaultCreatedAt = jobDescCreatedAt.Default.(func() time.Time)
+	// jobDescUpdatedAt is the schema descriptor for updated_at field.
+	jobDescUpdatedAt := jobFields[10].Descriptor()
+	// job.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	job.DefaultUpdatedAt = jobDescUpdatedAt.Default.(func() time.Time)
+	// job.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	job.UpdateDefaultUpdatedAt = jobDescUpdatedAt.UpdateDefault.(func() time.Time)
 	userFields := schema.User{}.Fields()
 	_ = userFields
 	// userDescEmail is the schema descriptor for email field.

@@ -17,6 +17,7 @@ import (
 	"github.com/kilip/opus/server/ent/authsession"
 	"github.com/kilip/opus/server/ent/authtoken"
 	"github.com/kilip/opus/server/ent/casbinrule"
+	"github.com/kilip/opus/server/ent/job"
 	"github.com/kilip/opus/server/ent/user"
 	"github.com/kilip/opus/server/ent/workspace"
 )
@@ -84,6 +85,7 @@ func checkColumn(t, c string) error {
 			authsession.Table:    authsession.ValidColumn,
 			authtoken.Table:      authtoken.ValidColumn,
 			casbinrule.Table:     casbinrule.ValidColumn,
+			job.Table:            job.ValidColumn,
 			user.Table:           user.ValidColumn,
 			workspace.Table:      workspace.ValidColumn,
 		})

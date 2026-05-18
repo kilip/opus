@@ -2,30 +2,30 @@
 package queue
 
 import (
-	"database/sql"
 	"fmt"
 
+	"github.com/kilip/opus/server/ent"
+	"github.com/kilip/opus/server/internal/adapter/queue/database"
 	"github.com/kilip/opus/server/internal/adapter/queue/memory"
-	"github.com/kilip/opus/server/internal/adapter/queue/sqlite"
+	"github.com/kilip/opus/server/internal/adapter/queue/redis"
 	"github.com/kilip/opus/server/internal/shared/logger"
 	"github.com/kilip/opus/server/internal/shared/queue"
 )
 
 // NewQueue constructs and returns the Queue implementation specified by cfg.Driver.
-func NewQueue(cfg queue.Config, db *sql.DB, log logger.Logger) (queue.Queue, error) {
+func NewQueue(cfg queue.Config, db *ent.Client, log logger.Logger) (queue.Queue, error) {
 	switch cfg.Driver {
-	case queue.DriverSQLite:
-		return sqlite.NewSQLiteQueue(db, cfg.Concurrency, log)
-	case queue.DriverPostgres:
-		return nil, fmt.Errorf("postgres queue driver is not yet implemented")
+	case queue.DriverDatabase:
+		return database.NewDatabaseQueue(db, cfg.Concurrency, log), nil
 	case queue.DriverRedis:
-		return nil, fmt.Errorf("redis queue driver is not yet implemented")
+		return redis.NewRedisQueue(cfg.DSN, cfg.Concurrency, log)
 	default:
-		return nil, fmt.Errorf("unknown queue driver: %s", cfg.Driver)
+		return nil, fmt.Errorf("queue: unsupported driver %q", cfg.Driver)
 	}
 }
 
 // NewEventBus always returns the in-process EventBus implementation.
+// The EventBus does not require a persistent backend.
 func NewEventBus() queue.EventBus {
 	return memory.NewInMemoryEventBus()
 }
