@@ -87,9 +87,17 @@ func (q *SQLiteQueue) Enqueue(ctx context.Context, jobType string, payload []byt
 		opt(job)
 	}
 
+	conn, err := q.db.Conn(ctx)
+	if err != nil {
+		return "", fmt.Errorf("sqlite.SQLiteQueue.Enqueue: %w", err)
+	}
+	defer func() { _ = conn.Close() }()
+
+	_, _ = conn.ExecContext(ctx, "PRAGMA busy_timeout = 5000;")
+
 	query := `INSERT INTO opus_jobs (id, type, queue, payload, status, priority, max_retries, retry_count, process_at, created_at, updated_at) 
 	          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	_, err := q.db.ExecContext(ctx, query, job.ID, job.Type, job.Queue, job.Payload, string(job.Status), job.Priority, job.MaxRetries, job.RetryCount, job.ProcessAt, job.CreatedAt, time.Now())
+	_, err = conn.ExecContext(ctx, query, job.ID, job.Type, job.Queue, job.Payload, string(job.Status), job.Priority, job.MaxRetries, job.RetryCount, job.ProcessAt, job.CreatedAt, time.Now())
 	if err != nil {
 		return "", fmt.Errorf("sqlite.SQLiteQueue.Enqueue: %w", err)
 	}
@@ -183,13 +191,17 @@ func (q *SQLiteQueue) Start(ctx context.Context) error {
 }
 
 func (q *SQLiteQueue) claimNext(ctx context.Context) (*queue.Job, error) {
-	tx, err := q.db.BeginTx(ctx, nil)
+	conn, err := q.db.Conn(ctx)
 	if err != nil {
 		return nil, err
 	}
-	defer func() { _ = tx.Rollback() }()
+	defer func() { _ = conn.Close() }()
 
-	_, _ = tx.ExecContext(ctx, "BEGIN IMMEDIATE")
+	_, _ = conn.ExecContext(ctx, "PRAGMA busy_timeout = 5000;")
+	_, err = conn.ExecContext(ctx, "BEGIN IMMEDIATE")
+	if err != nil {
+		return nil, err
+	}
 
 	// We use process_at <= ? with time.Now() to handle Go-to-SQLite timezone conversions correctly.
 	query := `SELECT id, type, queue, payload, status, priority, max_retries, retry_count, process_at, created_at 
@@ -197,21 +209,28 @@ func (q *SQLiteQueue) claimNext(ctx context.Context) (*queue.Job, error) {
 	          WHERE status = 'pending' AND process_at <= ? 
 	          ORDER BY priority DESC, process_at ASC LIMIT 1`
 
-	row := tx.QueryRowContext(ctx, query, time.Now())
+	row := conn.QueryRowContext(ctx, query, time.Now())
 	var j queue.Job
 	var statusStr string
 	err = row.Scan(&j.ID, &j.Type, &j.Queue, &j.Payload, &statusStr, &j.Priority, &j.MaxRetries, &j.RetryCount, &j.ProcessAt, &j.CreatedAt)
 	if err != nil {
+		_, _ = conn.ExecContext(ctx, "ROLLBACK")
 		return nil, err
 	}
 	j.Status = queue.JobStatus(statusStr)
 
-	_, err = tx.ExecContext(ctx, "UPDATE opus_jobs SET status = 'running', updated_at = CURRENT_TIMESTAMP WHERE id = ?", j.ID)
+	_, err = conn.ExecContext(ctx, "UPDATE opus_jobs SET status = 'running', updated_at = CURRENT_TIMESTAMP WHERE id = ?", j.ID)
+	if err != nil {
+		_, _ = conn.ExecContext(ctx, "ROLLBACK")
+		return nil, err
+	}
+
+	_, err = conn.ExecContext(ctx, "COMMIT")
 	if err != nil {
 		return nil, err
 	}
 
-	return &j, tx.Commit()
+	return &j, nil
 }
 
 func (q *SQLiteQueue) processJob(ctx context.Context, job *queue.Job) {
@@ -245,7 +264,17 @@ func (q *SQLiteQueue) processJob(ctx context.Context, job *queue.Job) {
 	}
 
 	query := `UPDATE opus_jobs SET status = ?, retry_count = ?, process_at = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`
-	_, _ = q.db.ExecContext(context.Background(), query, statusStr, job.RetryCount, job.ProcessAt, job.ID)
+	conn, connErr := q.db.Conn(context.Background())
+	if connErr != nil {
+		q.logger.ErrorCtx(context.Background(), "failed to get connection for job status update", connErr)
+		return
+	}
+	defer func() { _ = conn.Close() }()
+
+	_, _ = conn.ExecContext(context.Background(), "PRAGMA busy_timeout = 5000;")
+	if _, execErr := conn.ExecContext(context.Background(), query, statusStr, job.RetryCount, job.ProcessAt, job.ID); execErr != nil {
+		q.logger.ErrorCtx(context.Background(), "failed to update job status in database", execErr)
+	}
 }
 
 // Shutdown gracefully stops polling and waits for active jobs.
