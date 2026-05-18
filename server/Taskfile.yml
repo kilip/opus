@@ -55,6 +55,11 @@ tasks:
     cmds:
       - go build ./...
 
+  dev:
+    desc: Run the server in development mode with hot reload (Air)
+    cmds:
+      - air
+
   db:generate:
     desc: Generate ent code
     cmds:

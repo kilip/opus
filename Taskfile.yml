@@ -38,3 +38,9 @@ tasks:
     cmds:
       - task: server:test
       - task: dash:test
+
+  dev:
+    desc: Start development servers (alias for server:dev)
+    deps:
+      - task: server:dev
+      - task: dash:dev
