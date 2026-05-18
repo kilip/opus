@@ -234,8 +234,6 @@ GET /agents
 
 **Rationale:** Opus is a self-hosted, single-tenant system. The server and the Dash client are deployed and upgraded together as a unit. URL versioning introduces coordination overhead (maintaining multiple active versions) that provides no benefit in this deployment model. Breaking changes are managed through the ADR process and release notes, not through parallel URL namespaces.
 
-> **Note for AI agents:** Do not prepend `/api/`, `/v1/`, `/v2/`, or any version segment to Opus API paths.
-
 **URL conventions:**
 
 - Resource collections: `/{resource}` (plural noun)

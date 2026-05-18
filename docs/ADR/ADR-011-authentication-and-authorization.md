@@ -491,7 +491,7 @@ import (
 // Must be applied after Authenticate middleware.
 //
 // Example:
-//   app.Delete("/api/agents/:id", middleware.Require(policy, "agent", "delete"), handler.DeleteAgent)
+//   app.Delete("/agents/:id", middleware.Require(policy, "agent", "delete"), handler.DeleteAgent)
 func Require(policy *auth.PolicyService, obj, act string) fiber.Handler {
     return func(c fiber.Ctx) error {
         claims := auth.ClaimsFromContext(c.UserContext())
@@ -523,18 +523,17 @@ authGroup.Get("/me",                  middleware.Authenticate(authSvc, log), aut
 authGroup.Get("/oauth/:provider",     auth.OAuthRedirect)
 authGroup.Get("/oauth/:provider/callback", auth.OAuthCallback)
 
-api := app.Group("/api", middleware.Authenticate(authSvc, log))
-api.Get("/agents",     middleware.Require(policy, "agent", "read"),   agent.ListAgents)
-api.Post("/agents",    middleware.Require(policy, "agent", "write"),  agent.CreateAgent)
-api.Delete("/agents/:id", middleware.Require(policy, "agent", "delete"), agent.DeleteAgent)
+api := app.Group("/agents", middleware.Authenticate(authSvc, log))
+api.Get("/",     middleware.Require(policy, "agent", "read"),   agent.ListAgents)
+api.Post("/",    middleware.Require(policy, "agent", "write"),  agent.CreateAgent)
+api.Delete("/:id", middleware.Require(policy, "agent", "delete"), agent.DeleteAgent)
 ```
 
 ---
 
 ### 2.6 Auth Endpoints
 
-Auth endpoints are served under `/auth/` — **no `/api/` prefix, no version segment**,
-consistent with the URL convention established in ADR-004.
+Auth endpoints are served under `/auth/` consistent with the URL convention established in ADR-004.
 
 | Method | Path | Auth Required | Description |
 |---|---|---|---|
