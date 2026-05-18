@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/kilip/opus/server/internal/delivery/gofiber"
+	"github.com/kilip/opus/server/internal/delivery/gofiber/middleware"
 	"github.com/kilip/opus/server/internal/shared/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -62,4 +63,25 @@ func TestRouter(t *testing.T) {
 			tt.validate(t, rec)
 		})
 	}
+}
+
+func TestRouter_CORS(t *testing.T) {
+	cfg := gofiber.Config{
+		Address: ":8080",
+		CORS: middleware.CORSConfig{
+			AllowedOrigins:   []string{"http://localhost:3000"},
+			AllowCredentials: true,
+		},
+	}
+	log := &logger.NoopLogger{}
+	app := gofiber.New(cfg, log)
+
+	req := httptest.NewRequest("GET", "/health", nil)
+	req.Header.Set("Origin", "http://localhost:3000")
+
+	resp, err := app.Test(req)
+	require.NoError(t, err)
+	assert.Equal(t, 200, resp.StatusCode)
+	assert.Equal(t, "http://localhost:3000", resp.Header.Get("Access-Control-Allow-Origin"))
+	assert.Equal(t, "true", resp.Header.Get("Access-Control-Allow-Credentials"))
 }

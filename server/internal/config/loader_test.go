@@ -180,3 +180,69 @@ func TestLoad_FilePrecedenceOrder(t *testing.T) {
 		t.Errorf("Expected 'local_val', got '%s'", cfg3.TestField)
 	}
 }
+
+func TestLoad_CORSConfig(t *testing.T) {
+	// Setup temporary directory for test isolation
+	tmpDir := t.TempDir()
+	opusHome := filepath.Join(tmpDir, "custom_opus_home")
+	t.Setenv("OPUS_HOME", opusHome)
+
+	err := os.MkdirAll(opusHome, 0755)
+	if err != nil {
+		t.Fatalf("failed to create test directory: %v", err)
+	}
+
+	// 1. Test unmarshaling from JSON config.json
+	configPath := filepath.Join(opusHome, "config.json")
+	configJSON := `{
+		"server": {
+			"cors": {
+				"allowed_origins": ["http://localhost:3000"],
+				"allow_credentials": true,
+				"max_age": 7200
+			}
+		}
+	}`
+	err = os.WriteFile(configPath, []byte(configJSON), 0644)
+	if err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+
+	if len(cfg.Server.CORS.AllowedOrigins) != 1 || cfg.Server.CORS.AllowedOrigins[0] != "http://localhost:3000" {
+		t.Errorf("Expected allowed_origins=['http://localhost:3000'], got %v", cfg.Server.CORS.AllowedOrigins)
+	}
+	if !cfg.Server.CORS.AllowCredentials {
+		t.Errorf("Expected allow_credentials=true")
+	}
+	if cfg.Server.CORS.MaxAge != 7200 {
+		t.Errorf("Expected max_age=7200, got %d", cfg.Server.CORS.MaxAge)
+	}
+
+	// 2. Test environment variable override with AutomaticEnv mapping (with config file)
+	t.Setenv("OPUS_SERVER_CORS_ALLOWED_ORIGINS", "http://localhost:8000,http://localhost:9000")
+	cfg2, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+
+	if len(cfg2.Server.CORS.AllowedOrigins) != 2 || cfg2.Server.CORS.AllowedOrigins[0] != "http://localhost:8000" || cfg2.Server.CORS.AllowedOrigins[1] != "http://localhost:9000" {
+		t.Errorf("Expected allowed_origins=['http://localhost:8000', 'http://localhost:9000'], got %v", cfg2.Server.CORS.AllowedOrigins)
+	}
+
+	// 3. Test environment variable override without any config file (Docker/K8s environments)
+	t.Setenv("OPUS_HOME", filepath.Join(tmpDir, "env_only_opus_home"))
+	t.Setenv("OPUS_SERVER_CORS_ALLOWED_ORIGINS", "http://localhost:8500")
+	cfg3, err := Load()
+	if err != nil {
+		t.Fatalf("Load() error: %v", err)
+	}
+
+	if len(cfg3.Server.CORS.AllowedOrigins) != 1 || cfg3.Server.CORS.AllowedOrigins[0] != "http://localhost:8500" {
+		t.Errorf("Expected allowed_origins=['http://localhost:8500'], got %v", cfg3.Server.CORS.AllowedOrigins)
+	}
+}

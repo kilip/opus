@@ -21,6 +21,8 @@ func New(cfg Config, log logger.Logger) *fiber.App {
 		},
 	})
 
+	// Global middleware - order is critical
+	app.Use(middleware.CORS(cfg.CORS))
 	app.Use(middleware.RequestLogger(log))
 
 	app.Get("/health", func(c fiber.Ctx) error {

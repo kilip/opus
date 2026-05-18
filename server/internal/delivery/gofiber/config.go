@@ -1,6 +1,10 @@
 // Package gofiber implements the HTTP delivery layer for the Opus server using GoFiber v3.
 package gofiber
 
+import (
+	"github.com/kilip/opus/server/internal/delivery/gofiber/middleware"
+)
+
 // Config defines the configuration for the GoFiber HTTP server.
 type Config struct {
 	// Address is the TCP address the HTTP server listens on (e.g., ":8080").
@@ -14,4 +18,7 @@ type Config struct {
 
 	// Prefork enables Fiber Prefork mode (production only).
 	Prefork bool `mapstructure:"prefork" json:"prefork" jsonschema:"description=Enable Fiber Prefork mode (production only)"`
+
+	// CORS defines the CORS middleware configurations.
+	CORS middleware.CORSConfig `mapstructure:"cors" json:"cors" jsonschema:"description=CORS configurations"`
 }

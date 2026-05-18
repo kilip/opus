@@ -4,6 +4,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
@@ -49,6 +50,18 @@ func LoadWithViper() (*Config, *viper.Viper, error) {
 	v.AddConfigPath("../.opus") // when run from server/ directory
 
 	v.SetEnvPrefix("OPUS")
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
+
+	// Register nested default values for CORS to enable correct environment variable unmarshaling.
+	// Without explicit default values, Viper will ignore env-vars for nested structures (like server.cors)
+	// when no config.json file exists.
+	v.SetDefault("server.cors.allowed_origins", []string{})
+	v.SetDefault("server.cors.allowed_methods", []string{})
+	v.SetDefault("server.cors.allowed_headers", []string{})
+	v.SetDefault("server.cors.expose_headers", []string{})
+	v.SetDefault("server.cors.allow_credentials", true)
+	v.SetDefault("server.cors.max_age", 3600)
+
 	v.AutomaticEnv()
 
 	// It's okay if config file doesn't exist, we might just use env vars
