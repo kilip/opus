@@ -276,15 +276,17 @@ Memory lives in `.agents/` (gitignored). **Every session gets its own file.**
 .agents/
 ├── MEMORY.md                        # Long-term: decisions, project context
 └── memory/
-    ├── YYYY-MM-DD-<slug>.md         # One file per session
-    └── YYYY-MM-DD-consolidated.md  # Auto-generated consolidated summary
+    ├── sessions/                    # Active session files
+    │   └── YYYY-MM-DD-<slug>.md
+    └── consolidated/                # Historical consolidated summaries
+        └── YYYY-MM-DD.md
 ```
 
 ### Session Workflow
 
 **Start:** Read `MEMORY.md` + last 3–5 session files → create new session file → write goal and open questions.
 
-**Consolidation** (when 5+ non-consolidated files exist): summarise into `YYYY-MM-DD-consolidated.md` (decisions, progress, blockers, key findings — no code snippets), then delete source files. Never consolidate the current session's file.
+**Consolidation** when 10 or more non-consolidated files exist: summarise into `memory/consolidated/YYYY-MM-DD.md` (decisions, progress, blockers, key findings — no code snippets), then delete source files. Never consolidate the current session's file.
 
 **During:** Update session file with decisions, findings, blockers.
 
