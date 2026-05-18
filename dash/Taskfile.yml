@@ -25,6 +25,7 @@ tasks:
   lint:
     desc: Format and lint the dashboard codebase using Biome
     cmds:
+      - pnpm tsc -b
       - pnpm format
       - pnpm check
 

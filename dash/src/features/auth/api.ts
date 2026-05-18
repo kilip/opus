@@ -2,6 +2,8 @@ import { queryOptions } from '@tanstack/react-query';
 import { api } from '@/shared/lib/api';
 import type { AuthUser, LoginCredentials } from './types';
 
+export type { AuthUser, LoginCredentials };
+
 /**
  * Authentication query keys and functions.
  * Consistent with ADR-011.

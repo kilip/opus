@@ -5,11 +5,12 @@ import {
   redirect,
   useLocation,
 } from '@tanstack/react-router';
-import { authQueries } from '@/features/auth/api';
+import { type AuthUser, authQueries } from '@/features/auth/api';
 import { AppShell } from '@/shared/components/layout';
 
 type RootContext = {
   queryClient: QueryClient;
+  user?: AuthUser;
 };
 
 /**
