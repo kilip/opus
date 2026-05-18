@@ -1,2 +1,5 @@
 .agents
 docs/superpowers
+
+# Tooling
+.playwright-mcp/

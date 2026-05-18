@@ -54,6 +54,11 @@ tasks:
     cmds:
       - pnpm vitest
 
+  test:e2e:
+    desc: Run End-to-End tests using Playwright
+    cmds:
+      - pnpm test:e2e
+
   preview:
     desc: Preview the local production build
     cmds:
