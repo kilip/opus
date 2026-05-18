@@ -130,7 +130,7 @@ func runStart(cmd *cobra.Command, args []string) error {
 	}()
 
 	return <-errCh
-	}
+}
 func init() {
 	startCmd.Flags().BoolVarP(&daemonBool, "daemon", "d", false, "Run Opus server in background")
 	rootCmd.AddCommand(startCmd)
