@@ -12,7 +12,13 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
+	"github.com/kilip/opus/server/ent/authaccount"
+	"github.com/kilip/opus/server/ent/authoauthstate"
+	"github.com/kilip/opus/server/ent/authsession"
+	"github.com/kilip/opus/server/ent/authtoken"
+	"github.com/kilip/opus/server/ent/casbinrule"
 	"github.com/kilip/opus/server/ent/user"
+	"github.com/kilip/opus/server/ent/workspace"
 )
 
 // ent aliases to avoid import conflicts in user's code.
@@ -73,7 +79,13 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			user.Table: user.ValidColumn,
+			authaccount.Table:    authaccount.ValidColumn,
+			authoauthstate.Table: authoauthstate.ValidColumn,
+			authsession.Table:    authsession.ValidColumn,
+			authtoken.Table:      authtoken.ValidColumn,
+			casbinrule.Table:     casbinrule.ValidColumn,
+			user.Table:           user.ValidColumn,
+			workspace.Table:      workspace.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

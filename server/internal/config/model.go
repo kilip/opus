@@ -2,6 +2,7 @@
 package config
 
 import (
+	"github.com/kilip/opus/server/internal/auth"
 	"github.com/kilip/opus/server/internal/delivery/gofiber"
 )
 
@@ -24,4 +25,7 @@ type Config struct {
 
 	// Database is the database configuration section.
 	Database DatabaseConfig `mapstructure:"database" json:"database"`
+
+	// Auth is the authentication configuration section.
+	Auth auth.Config `mapstructure:"auth" json:"auth"`
 }

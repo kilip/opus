@@ -3,22 +3,108 @@
 package ent
 
 import (
+	"time"
+
+	"github.com/kilip/opus/server/ent/authaccount"
+	"github.com/kilip/opus/server/ent/authoauthstate"
+	"github.com/kilip/opus/server/ent/authsession"
+	"github.com/kilip/opus/server/ent/authtoken"
+	"github.com/kilip/opus/server/ent/casbinrule"
 	"github.com/kilip/opus/server/ent/schema"
 	"github.com/kilip/opus/server/ent/user"
+	"github.com/kilip/opus/server/ent/workspace"
 )
 
 // The init function reads all schema descriptors with runtime code
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	authaccountFields := schema.AuthAccount{}.Fields()
+	_ = authaccountFields
+	// authaccountDescCreatedAt is the schema descriptor for created_at field.
+	authaccountDescCreatedAt := authaccountFields[8].Descriptor()
+	// authaccount.DefaultCreatedAt holds the default value on creation for the created_at field.
+	authaccount.DefaultCreatedAt = authaccountDescCreatedAt.Default.(func() time.Time)
+	// authaccountDescUpdatedAt is the schema descriptor for updated_at field.
+	authaccountDescUpdatedAt := authaccountFields[9].Descriptor()
+	// authaccount.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	authaccount.DefaultUpdatedAt = authaccountDescUpdatedAt.Default.(func() time.Time)
+	// authaccount.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	authaccount.UpdateDefaultUpdatedAt = authaccountDescUpdatedAt.UpdateDefault.(func() time.Time)
+	authoauthstateFields := schema.AuthOauthState{}.Fields()
+	_ = authoauthstateFields
+	// authoauthstateDescCreatedAt is the schema descriptor for created_at field.
+	authoauthstateDescCreatedAt := authoauthstateFields[4].Descriptor()
+	// authoauthstate.DefaultCreatedAt holds the default value on creation for the created_at field.
+	authoauthstate.DefaultCreatedAt = authoauthstateDescCreatedAt.Default.(func() time.Time)
+	authsessionFields := schema.AuthSession{}.Fields()
+	_ = authsessionFields
+	// authsessionDescCreatedAt is the schema descriptor for created_at field.
+	authsessionDescCreatedAt := authsessionFields[5].Descriptor()
+	// authsession.DefaultCreatedAt holds the default value on creation for the created_at field.
+	authsession.DefaultCreatedAt = authsessionDescCreatedAt.Default.(func() time.Time)
+	authtokenFields := schema.AuthToken{}.Fields()
+	_ = authtokenFields
+	// authtokenDescCreatedAt is the schema descriptor for created_at field.
+	authtokenDescCreatedAt := authtokenFields[7].Descriptor()
+	// authtoken.DefaultCreatedAt holds the default value on creation for the created_at field.
+	authtoken.DefaultCreatedAt = authtokenDescCreatedAt.Default.(func() time.Time)
+	casbinruleFields := schema.CasbinRule{}.Fields()
+	_ = casbinruleFields
+	// casbinruleDescPtype is the schema descriptor for ptype field.
+	casbinruleDescPtype := casbinruleFields[0].Descriptor()
+	// casbinrule.DefaultPtype holds the default value on creation for the ptype field.
+	casbinrule.DefaultPtype = casbinruleDescPtype.Default.(string)
+	// casbinruleDescV0 is the schema descriptor for v0 field.
+	casbinruleDescV0 := casbinruleFields[1].Descriptor()
+	// casbinrule.DefaultV0 holds the default value on creation for the v0 field.
+	casbinrule.DefaultV0 = casbinruleDescV0.Default.(string)
+	// casbinruleDescV1 is the schema descriptor for v1 field.
+	casbinruleDescV1 := casbinruleFields[2].Descriptor()
+	// casbinrule.DefaultV1 holds the default value on creation for the v1 field.
+	casbinrule.DefaultV1 = casbinruleDescV1.Default.(string)
+	// casbinruleDescV2 is the schema descriptor for v2 field.
+	casbinruleDescV2 := casbinruleFields[3].Descriptor()
+	// casbinrule.DefaultV2 holds the default value on creation for the v2 field.
+	casbinrule.DefaultV2 = casbinruleDescV2.Default.(string)
+	// casbinruleDescV3 is the schema descriptor for v3 field.
+	casbinruleDescV3 := casbinruleFields[4].Descriptor()
+	// casbinrule.DefaultV3 holds the default value on creation for the v3 field.
+	casbinrule.DefaultV3 = casbinruleDescV3.Default.(string)
+	// casbinruleDescV4 is the schema descriptor for v4 field.
+	casbinruleDescV4 := casbinruleFields[5].Descriptor()
+	// casbinrule.DefaultV4 holds the default value on creation for the v4 field.
+	casbinrule.DefaultV4 = casbinruleDescV4.Default.(string)
+	// casbinruleDescV5 is the schema descriptor for v5 field.
+	casbinruleDescV5 := casbinruleFields[6].Descriptor()
+	// casbinrule.DefaultV5 holds the default value on creation for the v5 field.
+	casbinrule.DefaultV5 = casbinruleDescV5.Default.(string)
 	userFields := schema.User{}.Fields()
 	_ = userFields
 	// userDescEmail is the schema descriptor for email field.
-	userDescEmail := userFields[0].Descriptor()
+	userDescEmail := userFields[1].Descriptor()
 	// user.EmailValidator is a validator for the "email" field. It is called by the builders before save.
 	user.EmailValidator = userDescEmail.Validators[0].(func(string) error)
-	// userDescPasswordHash is the schema descriptor for password_hash field.
-	userDescPasswordHash := userFields[1].Descriptor()
-	// user.PasswordHashValidator is a validator for the "password_hash" field. It is called by the builders before save.
-	user.PasswordHashValidator = userDescPasswordHash.Validators[0].(func(string) error)
+	// userDescCreatedAt is the schema descriptor for created_at field.
+	userDescCreatedAt := userFields[8].Descriptor()
+	// user.DefaultCreatedAt holds the default value on creation for the created_at field.
+	user.DefaultCreatedAt = userDescCreatedAt.Default.(func() time.Time)
+	// userDescUpdatedAt is the schema descriptor for updated_at field.
+	userDescUpdatedAt := userFields[9].Descriptor()
+	// user.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	user.DefaultUpdatedAt = userDescUpdatedAt.Default.(func() time.Time)
+	// user.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	user.UpdateDefaultUpdatedAt = userDescUpdatedAt.UpdateDefault.(func() time.Time)
+	workspaceFields := schema.Workspace{}.Fields()
+	_ = workspaceFields
+	// workspaceDescCreatedAt is the schema descriptor for created_at field.
+	workspaceDescCreatedAt := workspaceFields[2].Descriptor()
+	// workspace.DefaultCreatedAt holds the default value on creation for the created_at field.
+	workspace.DefaultCreatedAt = workspaceDescCreatedAt.Default.(func() time.Time)
+	// workspaceDescUpdatedAt is the schema descriptor for updated_at field.
+	workspaceDescUpdatedAt := workspaceFields[3].Descriptor()
+	// workspace.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	workspace.DefaultUpdatedAt = workspaceDescUpdatedAt.Default.(func() time.Time)
+	// workspace.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	workspace.UpdateDefaultUpdatedAt = workspaceDescUpdatedAt.UpdateDefault.(func() time.Time)
 }

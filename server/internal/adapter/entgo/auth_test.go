@@ -22,11 +22,18 @@ func TestAuthRepo_FindByEmail(t *testing.T) {
 	ctx := context.Background()
 	require.NoError(t, entgo.AutoMigrate(client, ctx))
 
-	_, err = client.User.Create().SetEmail("test@example.com").SetPasswordHash("hash").Save(ctx)
+	_, err = client.User.Create().
+		SetID("test-id").
+		SetEmail("test@example.com").
+		SetPasswordHash("hash").
+		SetProvider("credential").
+		SetProviderID("test-id").
+		SetWorkspaceID("test-ws").
+		Save(ctx)
 	require.NoError(t, err)
 
 	repo := entgo.NewAuthRepo(client)
-	u, err := repo.FindByEmail(ctx, "test@example.com")
+	u, err := repo.FindUserByEmail(ctx, "test@example.com")
 	assert.NoError(t, err)
 	assert.Equal(t, "test@example.com", u.Email)
 }

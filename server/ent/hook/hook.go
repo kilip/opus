@@ -9,6 +9,66 @@ import (
 	"github.com/kilip/opus/server/ent"
 )
 
+// The AuthAccountFunc type is an adapter to allow the use of ordinary
+// function as AuthAccount mutator.
+type AuthAccountFunc func(context.Context, *ent.AuthAccountMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f AuthAccountFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.AuthAccountMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AuthAccountMutation", m)
+}
+
+// The AuthOauthStateFunc type is an adapter to allow the use of ordinary
+// function as AuthOauthState mutator.
+type AuthOauthStateFunc func(context.Context, *ent.AuthOauthStateMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f AuthOauthStateFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.AuthOauthStateMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AuthOauthStateMutation", m)
+}
+
+// The AuthSessionFunc type is an adapter to allow the use of ordinary
+// function as AuthSession mutator.
+type AuthSessionFunc func(context.Context, *ent.AuthSessionMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f AuthSessionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.AuthSessionMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AuthSessionMutation", m)
+}
+
+// The AuthTokenFunc type is an adapter to allow the use of ordinary
+// function as AuthToken mutator.
+type AuthTokenFunc func(context.Context, *ent.AuthTokenMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f AuthTokenFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.AuthTokenMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AuthTokenMutation", m)
+}
+
+// The CasbinRuleFunc type is an adapter to allow the use of ordinary
+// function as CasbinRule mutator.
+type CasbinRuleFunc func(context.Context, *ent.CasbinRuleMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f CasbinRuleFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.CasbinRuleMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.CasbinRuleMutation", m)
+}
+
 // The UserFunc type is an adapter to allow the use of ordinary
 // function as User mutator.
 type UserFunc func(context.Context, *ent.UserMutation) (ent.Value, error)
@@ -19,6 +79,18 @@ func (f UserFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error)
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.UserMutation", m)
+}
+
+// The WorkspaceFunc type is an adapter to allow the use of ordinary
+// function as Workspace mutator.
+type WorkspaceFunc func(context.Context, *ent.WorkspaceMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f WorkspaceFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.WorkspaceMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.WorkspaceMutation", m)
 }
 
 // Condition is a hook condition function.

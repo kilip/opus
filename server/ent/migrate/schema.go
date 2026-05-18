@@ -8,11 +8,137 @@ import (
 )
 
 var (
+	// AuthAccountsColumns holds the columns for the "auth_accounts" table.
+	AuthAccountsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, Unique: true},
+		{Name: "account_id", Type: field.TypeString},
+		{Name: "provider_id", Type: field.TypeString},
+		{Name: "access_token", Type: field.TypeString, Nullable: true},
+		{Name: "refresh_token", Type: field.TypeString, Nullable: true},
+		{Name: "access_token_expires_at", Type: field.TypeTime, Nullable: true},
+		{Name: "scope", Type: field.TypeString, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "user_id", Type: field.TypeString},
+	}
+	// AuthAccountsTable holds the schema information for the "auth_accounts" table.
+	AuthAccountsTable = &schema.Table{
+		Name:       "auth_accounts",
+		Columns:    AuthAccountsColumns,
+		PrimaryKey: []*schema.Column{AuthAccountsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "auth_accounts_users_accounts",
+				Columns:    []*schema.Column{AuthAccountsColumns[9]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "authaccount_provider_id_account_id",
+				Unique:  true,
+				Columns: []*schema.Column{AuthAccountsColumns[2], AuthAccountsColumns[1]},
+			},
+		},
+	}
+	// AuthOauthStatesColumns holds the columns for the "auth_oauth_states" table.
+	AuthOauthStatesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, Unique: true},
+		{Name: "state", Type: field.TypeString, Unique: true},
+		{Name: "provider_id", Type: field.TypeString},
+		{Name: "expires_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// AuthOauthStatesTable holds the schema information for the "auth_oauth_states" table.
+	AuthOauthStatesTable = &schema.Table{
+		Name:       "auth_oauth_states",
+		Columns:    AuthOauthStatesColumns,
+		PrimaryKey: []*schema.Column{AuthOauthStatesColumns[0]},
+	}
+	// AuthSessionsColumns holds the columns for the "auth_sessions" table.
+	AuthSessionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, Unique: true},
+		{Name: "workspace_id", Type: field.TypeString},
+		{Name: "ip_address", Type: field.TypeString, Nullable: true},
+		{Name: "user_agent", Type: field.TypeString, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "user_id", Type: field.TypeString},
+	}
+	// AuthSessionsTable holds the schema information for the "auth_sessions" table.
+	AuthSessionsTable = &schema.Table{
+		Name:       "auth_sessions",
+		Columns:    AuthSessionsColumns,
+		PrimaryKey: []*schema.Column{AuthSessionsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "auth_sessions_users_sessions",
+				Columns:    []*schema.Column{AuthSessionsColumns[5]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
+	// AuthTokensColumns holds the columns for the "auth_tokens" table.
+	AuthTokensColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, Unique: true},
+		{Name: "type", Type: field.TypeString},
+		{Name: "hash", Type: field.TypeString, Unique: true},
+		{Name: "expires_at", Type: field.TypeTime},
+		{Name: "revoked_at", Type: field.TypeTime, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "session_id", Type: field.TypeString},
+		{Name: "user_id", Type: field.TypeString},
+	}
+	// AuthTokensTable holds the schema information for the "auth_tokens" table.
+	AuthTokensTable = &schema.Table{
+		Name:       "auth_tokens",
+		Columns:    AuthTokensColumns,
+		PrimaryKey: []*schema.Column{AuthTokensColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "auth_tokens_auth_sessions_tokens",
+				Columns:    []*schema.Column{AuthTokensColumns[6]},
+				RefColumns: []*schema.Column{AuthSessionsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "auth_tokens_users_tokens",
+				Columns:    []*schema.Column{AuthTokensColumns[7]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
+	// CasbinRulesColumns holds the columns for the "casbin_rules" table.
+	CasbinRulesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "ptype", Type: field.TypeString, Nullable: true, Default: ""},
+		{Name: "v0", Type: field.TypeString, Nullable: true, Default: ""},
+		{Name: "v1", Type: field.TypeString, Nullable: true, Default: ""},
+		{Name: "v2", Type: field.TypeString, Nullable: true, Default: ""},
+		{Name: "v3", Type: field.TypeString, Nullable: true, Default: ""},
+		{Name: "v4", Type: field.TypeString, Nullable: true, Default: ""},
+		{Name: "v5", Type: field.TypeString, Nullable: true, Default: ""},
+	}
+	// CasbinRulesTable holds the schema information for the "casbin_rules" table.
+	CasbinRulesTable = &schema.Table{
+		Name:       "casbin_rules",
+		Columns:    CasbinRulesColumns,
+		PrimaryKey: []*schema.Column{CasbinRulesColumns[0]},
+	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "id", Type: field.TypeString, Unique: true},
 		{Name: "email", Type: field.TypeString, Unique: true},
-		{Name: "password_hash", Type: field.TypeString},
+		{Name: "password_hash", Type: field.TypeString, Nullable: true},
+		{Name: "name", Type: field.TypeString, Nullable: true},
+		{Name: "avatar_url", Type: field.TypeString, Nullable: true},
+		{Name: "provider", Type: field.TypeString},
+		{Name: "provider_id", Type: field.TypeString},
+		{Name: "workspace_id", Type: field.TypeString},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
 	}
 	// UsersTable holds the schema information for the "users" table.
 	UsersTable = &schema.Table{
@@ -20,11 +146,34 @@ var (
 		Columns:    UsersColumns,
 		PrimaryKey: []*schema.Column{UsersColumns[0]},
 	}
+	// WorkspacesColumns holds the columns for the "workspaces" table.
+	WorkspacesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeString, Unique: true},
+		{Name: "name", Type: field.TypeString},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// WorkspacesTable holds the schema information for the "workspaces" table.
+	WorkspacesTable = &schema.Table{
+		Name:       "workspaces",
+		Columns:    WorkspacesColumns,
+		PrimaryKey: []*schema.Column{WorkspacesColumns[0]},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		AuthAccountsTable,
+		AuthOauthStatesTable,
+		AuthSessionsTable,
+		AuthTokensTable,
+		CasbinRulesTable,
 		UsersTable,
+		WorkspacesTable,
 	}
 )
 
 func init() {
+	AuthAccountsTable.ForeignKeys[0].RefTable = UsersTable
+	AuthSessionsTable.ForeignKeys[0].RefTable = UsersTable
+	AuthTokensTable.ForeignKeys[0].RefTable = AuthSessionsTable
+	AuthTokensTable.ForeignKeys[1].RefTable = UsersTable
 }

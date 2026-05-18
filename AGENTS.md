@@ -44,144 +44,125 @@ opus/
 
 ---
 
-## Backend Architecture (ADR-001, ADR-005)
+## Backend Architecture (ADR-001, ADR-005, ADR-012)
 
 ### Directory Layout
 
 ```
 server/
-├── main.go
-├── ent/                        # Entgo generated code (never edit except ent/schema/)
-│   └── schema/                 # Hand-authored Ent schema definitions
-├── internal/
-│   ├── config/                 # Config loader (Viper)
-│   ├── shared/
-│   │   ├── logger/             # Logger interface + NoopLogger + MockLogger
-│   │   └── queue/              # Queue + EventBus interfaces + Noop* + Mock*
-│   ├── adapter/
-│   │   ├── entgo/              # Concrete repository implementations
-│   │   └── queue/              # Queue backend implementations (sqlite, postgres, redis, memory)
-│   ├── agent/                  # Domain: models, repository interface, service, errors, config
-│   ├── delivery/
-│   │   └── gofiber/            # Canonical HTTP delivery layer (NOT delivery/http/)
-│   │       ├── handler/
-│   │       ├── middleware/
-│   │       ├── router.go       # Route registration + app bootstrap
-│   │       ├── response.go     # ADR-004 envelope helpers
-│   │       └── config.go       # GoFiber configuration struct (hybrid composition)
-│   ├── vault/
-│   ├── workflow/
-│   ├── auth/
-│   ├── llm/
-│   └── testutil/               # Shared test helpers (NewTestEntClient, fixtures)
+├── main.go                         # Calls container.Bootstrap(cfg) only
+├── ent/                            # Entgo generated code (never edit except ent/schema/)
+│   └── schema/
+└── internal/
+    ├── container/
+    │   ├── container.go            # Container struct + typed getter functions
+    │   └── bootstrap.go            # Bootstrap() — orchestrates all domain init
+    ├── config/                     # Config loader (Viper)
+    ├── shared/
+    │   ├── logger/                 # Logger interface + NoopLogger + MockLogger
+    │   └── queue/                  # Queue + EventBus interfaces + Noop* + Mock*
+    ├── adapter/
+    │   ├── entgo/                  # Concrete repository implementations
+    │   └── queue/                  # Queue backend implementations (sqlite, postgres, redis, memory)
+    ├── agent/                      # bootstrap.go, model.go, repository.go, service.go, errors.go, config.go
+    ├── auth/                       # bootstrap.go, model.go, repository.go, service.go, errors.go, config.go
+    ├── vault/                      # bootstrap.go, ...
+    ├── workflow/                   # bootstrap.go, ...
+    ├── gmail/                      # bootstrap.go, ...
+    ├── gdrive/                     # bootstrap.go, ...
+    ├── whatsapp/                   # bootstrap.go, ...
+    ├── telegram/                   # bootstrap.go, ...
+    ├── gitsync/                    # bootstrap.go, ...
+    ├── llm/                        # model.go, router.go, config.go
+    ├── delivery/
+    │   └── gofiber/                # bootstrap.go, handler/, middleware/, router.go, response.go, config.go
+    └── testutil/                   # NewTestEntClient, fixtures
 ```
 
 ### Dependency Rule
 
 ```
 internal/delivery/gofiber/ → internal/[feature]/ ← internal/adapter/
+                    ↑                  ↑
+              internal/shared/   internal/container/
 ```
 
-- `internal/[feature]/` has zero knowledge of delivery or adapter implementations.
-- `internal/adapter/` imports `internal/[feature]/` interfaces — never the reverse.
-- `internal/delivery/gofiber/` imports `internal/` services — never adapter directly.
+- `internal/[feature]/` — zero knowledge of delivery, adapter, or container.
+- `internal/adapter/` — imports `internal/[feature]/` interfaces only.
+- `internal/delivery/gofiber/` — imports `internal/[feature]/` via `GetService()`.
+- `internal/container/` — only package permitted to import all domains simultaneously.
+- **Feature domains never import each other** — all cross-domain communication via `queue.EventBus`.
 
-### Layer Responsibilities
+### Bootstrap Pattern (ADR-012)
 
-| Layer | Responsibility |
-|---|---|
-| `internal/[feature]/` | Domain models, business logic, repository interfaces, sentinel errors, feature config |
-| `internal/adapter/entgo/` | Concrete repository implementations (Ent) |
-| `internal/adapter/queue/` | Queue backend implementations |
-| `internal/delivery/gofiber/` | HTTP handlers, middleware, routing — thin translation layer only |
+`main.go` calls `container.Bootstrap(cfg)` only. Each domain owns `[feature]/bootstrap.go`.
+
+```go
+// main.go
+func main() {
+    cfg, err := config.Load()
+    if err != nil { panic("config load failed: " + err.Error()) }
+    container.Bootstrap(cfg)
+    ctx := context.Background()
+    if err := container.GetQueue().Start(ctx); err != nil { panic(err) }
+    if err := container.GetFiber().Listen(cfg.Server.Address); err != nil { panic(err) }
+}
+```
+
+```go
+// internal/agent/bootstrap.go
+func Bootstrap(db *ent.Client, bus queue.EventBus, q queue.Queue, log logger.Logger, cfg Config) {
+    repo := entgo.NewAgentRepo(db)
+    svc  := NewService(repo, q, bus, log, cfg)
+    q.RegisterHandler("agent:evaluate", svc.HandleEvaluateJob)
+    bus.Subscribe("vault.written", svc.OnVaultWritten)
+    setService(svc)
+}
+```
+
+Adding a new domain = 4 steps: create `internal/[feature]/`, add config, add Ent schema, add one line to `container/bootstrap.go`.
 
 ---
 
 ## Coding Conventions (ADR-010)
 
-### GoDoc
-Every exported symbol **must** have a GoDoc comment starting with the symbol name, ending with a period.
-
-### Error Handling
-- Sentinel errors in `internal/[feature]/errors.go`, prefixed `Err`, checked via `errors.Is`.
-- Wrap all infrastructure errors: `fmt.Errorf("agent.Service.FindByID: %w", err)`.
-- `panic` is **prohibited** in domain/service/adapter/handler code.
-- `log.Fatal` / `os.Exit` are **prohibited** outside `main.go`.
-
-### Interfaces
-- Defined in the **consumer** package (`internal/[feature]/`), never in the adapter.
-- No `I` prefix (`IRepository` is invalid).
-- Carry `//go:generate mockgen` directive above the declaration.
-
-### Context
-- `context.Context` is always the first parameter, named `ctx`.
-- Never store `context.Context` in a struct field.
-- Context enrichment (tracing metadata) happens only in delivery middleware.
-
-### Logging
-- Direct use of `fmt.Println`, `log.Print*`, or any concrete logging library is **prohibited** outside `main.go`.
-- All logging goes through the injected `logger.Logger` interface.
-- Sensitive values use `logger.Redact`.
-- Log messages: lowercase, present tense, no trailing punctuation.
-
-### Naming
-- Packages: lowercase, single word, no underscores.
-- Files: snake_case (`agent.go`, `mock_repository.go`).
-- Errors: `internal/[feature]/errors.go`.
-- Mocks: `mock_<interface>.go` (generated, never edited manually).
-
-### Import Grouping (enforced by `goimports`)
-```go
-import (
-    // 1. Standard library
-    "context"
-    "fmt"
-
-    // 2. Third-party
-    "github.com/gofiber/fiber/v3"
-
-    // 3. Internal
-    "github.com/kilip/opus/server/internal/agent"
-)
-```
-
-### Linting
-- `golangci-lint` with `server/.golangci.yml` — zero warning policy.
-- Run: `cd server && golangci-lint run ./...`
+- **GoDoc** — every exported symbol, starts with symbol name, ends with period.
+- **Errors** — sentinel in `errors.go` with `Err` prefix; wrap with `fmt.Errorf("pkg.Type.Method: %w", err)`; check with `errors.Is`.
+- **No `panic`** outside `main.go`; no `log.Fatal`/`os.Exit` outside `main.go`.
+- **Interfaces** — defined in consumer package; no `I` prefix; carry `//go:generate mockgen` directive.
+- **Context** — `ctx context.Context` always first param; never stored in struct.
+- **Logging** — injected `logger.Logger` only; sensitive values via `logger.Redact`; messages lowercase, present tense, no trailing punctuation.
+- **Imports** — stdlib → third-party → internal (enforced by `goimports`).
+- **Linting** — `golangci-lint` with `server/.golangci.yml`; zero warning policy.
 
 ---
 
 ## Configuration (ADR-002)
 
-**Resolution order (highest → lowest priority):**
-1. `OPUS_*` environment variables
-2. `$OPUS_HOME/config.json`
-3. `~/.opus/config.json`
-4. `./.opus/config.json` (development)
+**Resolution order:** env vars → `$OPUS_HOME/config.json` → `~/.opus/config.json` → `./.opus/config.json`
 
-**Hybrid composition:** each feature owns its config struct in `internal/[feature]/config.go`; root `internal/config/model.go` composes them. Features never import the root `config` package.
-
-Secrets (API keys, DSNs) via env vars only — never in config files.
+- Each feature owns its config struct in `internal/[feature]/config.go`.
+- Root `internal/config/model.go` composes all feature configs.
+- Features never import the root `config` package.
+- Secrets via `OPUS_*` env vars only — never in config files.
 
 ---
 
 ## API Contract (ADR-004)
 
-- All responses use the envelope: `{ "data": ..., "error": ..., "meta": ... }`.
-- Errors follow RFC 7807 Problem Details inside `error`.
-- URL structure: `/{resource}` — **no prefix**.
-- Pagination: cursor-based only (no offset).
-- SSE endpoint: `GET /agents/{id}/logs/stream`.
-- Response helpers: `internal/delivery/gofiber/response.go` — use `gofiber.OK`, `gofiber.Error`, etc.
+- Envelope: `{ "data": ..., "error": ..., "meta": ... }` on every response.
+- Errors: RFC 7807 Problem Details inside `error`.
+- URLs: `/{resource}` — **no version prefix**.
+- Pagination: cursor-based only.
+- SSE: `GET /agents/{id}/logs/stream`.
+- Helpers: `internal/delivery/gofiber/response.go` — use `gofiber.OK`, `gofiber.Error`, etc.
 
 ---
 
 ## Queue & Events (ADR-008)
 
-- **`queue.Queue`** — durable background jobs (agent tasks, emails, vault indexing).
-- **`queue.EventBus`** — in-process pub/sub for domain decoupling (no persistence).
-- Job type convention: `"<domain>:<action>"` (e.g. `"agent:evaluate"`).
-- Event topic convention: `"<domain>.<action>"` (e.g. `"agent.completed"`).
+- **`queue.Queue`** — durable background jobs; type convention `"<domain>:<action>"` e.g. `"agent:evaluate"`.
+- **`queue.EventBus`** — in-process pub/sub; topic convention `"<domain>.<action>"` e.g. `"agent.completed"`.
 - Use `queue.NoopQueue` / `queue.NoopEventBus` in unit tests.
 
 ---
@@ -193,18 +174,17 @@ Secrets (API keys, DSNs) via env vars only — never in config files.
 | Unit | `_test.go` | _(none)_ | Mocks / Noop* only |
 | Integration | `_integration_test.go` | `//go:build integration` | SQLite in-memory |
 
-- All unit tests use the **table-driven** pattern.
-- Default package style: `package foo_test` (black-box); white-box (`package foo`) requires a justification comment.
-- Mocks via `go.uber.org/mock` only — `testify/mock` is **prohibited**.
-- Shared test helpers: `internal/testutil/` — call `t.Helper()` as first statement.
-- Handler tests use Fiber's `app.Test()` and **must** assert the ADR-004 envelope shape.
-- Coverage thresholds: 80% per unit-tested package, 70% per adapter package.
+- Table-driven tests required for all exported functions.
+- Default: `package foo_test` (black-box); white-box requires justification comment.
+- Mocks via `go.uber.org/mock` only — `testify/mock` prohibited.
+- Shared helpers in `internal/testutil/` — call `t.Helper()` first.
+- Handler tests use `app.Test()` and must assert ADR-004 envelope shape.
+- Coverage: 80% per unit-tested package, 70% per adapter package.
 
-**Run commands:**
 ```bash
-go test -race ./...                        # unit tests
-go test -race -tags integration ./...      # unit + integration
-go generate ./...                          # regenerate mocks after interface changes
+go test -race ./...                    # unit tests
+go test -race -tags integration ./...  # unit + integration
+go generate ./...                      # regenerate mocks after interface changes
 ```
 
 ---
@@ -214,7 +194,7 @@ go generate ./...                          # regenerate mocks after interface ch
 ```
 dash/src/
 ├── app/           # Entry point, router, global providers
-├── routes/        # TanStack Router file-based page components (thin — no business logic)
+├── routes/        # TanStack Router file-based pages (thin — no business logic)
 ├── features/
 │   ├── agent/     # components/, hooks/, api.ts, types.ts
 │   ├── vault/
@@ -226,38 +206,17 @@ dash/src/
     └── types/      # ApiEnvelope<T>, ProblemDetail, PaginationMeta
 ```
 
-**Rules:**
 - Features import from `shared/` only — never from sibling features.
-- Cross-feature data is resolved at the route level.
-- All API calls go through `shared/lib/api-client.ts` — no raw `fetch` in components.
-
-**Offline strategy:**
-- `GET` requests: `NetworkFirst` with 5s timeout, falls back to cache.
-- Mutations: `BackgroundSyncPlugin` queue (IndexedDB); optimistic updates via TanStack Query `onMutate`.
-- Offline state: `useNetworkStatus()` → `OfflineBanner` in root layout.
-
-**Frontend code quality:**
-- Every exported function/component: JSDoc comment.
-- Every component: Vitest + React Testing Library test.
-- Critical flows: Playwright E2E test.
+- All API calls via `shared/lib/api-client.ts` — no raw `fetch` in components.
+- Offline reads: `NetworkFirst` + cache fallback. Offline writes: `BackgroundSyncPlugin` queue.
 
 ---
 
 ## Conventional Commits
 
-**Format:** `<type>(<scope>): <description>`
-**Length:** `<description>` must be max 70 characters. Use the commit body for a more detailed explanation if necessary.
+**Format:** `<type>(<scope>): <description>` — description max 70 chars.
+
 **Scopes:** `server`, `dash`, `get-opus`, `ci`, `deps`
-
-**Example:**
-```text
-feat(dash): integrate biome and replace eslint
-
-- Remove eslint and prettier dependencies
-- Add biome configurations
-- Update npm scripts to use biome for linting and formatting
-- Fix existing formatting issues based on biome rules
-```
 
 | Prefix | Version Bump |
 |---|---|
@@ -270,7 +229,7 @@ feat(dash): integrate biome and replace eslint
 
 ## Agent Memory System
 
-Memory lives in `.agents/` (gitignored). **Every session gets its own file.**
+Memory lives in `.agents/` (gitignored). Every session gets its own file.
 
 ```
 .agents/
@@ -282,12 +241,39 @@ Memory lives in `.agents/` (gitignored). **Every session gets its own file.**
         └── YYYY-MM-DD.md
 ```
 
+### Decision Format
+
+All decisions in session files and `MEMORY.md` use this format:
+
+```
+[YYYY-MM-DDTHH:MM:SSZ] [domain.topic]: decision
+```
+
+Examples:
+```
+[2026-05-18T10:00:00Z] [database.driver]: Use SQLite as default
+[2026-05-18T14:00:00Z] [queue.backend]: Use Asynq for Redis backend
+[2026-05-18T14:30:00Z] [auth.token]: Use stateful JWT with refresh rotation
+```
+
+**Key convention:** `[domain.topic]` — domain first, then topic. Examples: `[database.driver]`, `[auth.token]`, `[queue.backend]`, `[delivery.framework]`.
+
+### Conflict Resolution
+
+When promoting decisions to `MEMORY.md`:
+1. Search `MEMORY.md` for entries with the same `[domain.topic]` key.
+2. **Latest timestamp wins** — overwrite older entry.
+3. To explicitly override an older decision, add a `supersedes` note:
+   ```
+   [2026-05-19T09:00:00Z] [database.driver]: Use PostgreSQL in production (supersedes 2026-05-18T10:00:00Z)
+   ```
+
 ### Session Workflow
 
 **Start:** Read `MEMORY.md` + last 3–5 session files → create new session file → write goal and open questions.
 
-**Consolidation** when 10 or more non-consolidated files exist: summarise into `memory/consolidated/YYYY-MM-DD.md` (decisions, progress, blockers, key findings — no code snippets), then delete source files. Never consolidate the current session's file.
+**Consolidation** when 10+ non-consolidated session files exist: summarise into `memory/consolidated/YYYY-MM-DD.md` (decisions, progress, blockers — no code snippets), delete source files. Never consolidate the current session's file.
 
-**During:** Update session file with decisions, findings, blockers.
+**During:** Record decisions using `[timestamp] [domain.topic]: decision` format. Update session file with findings and blockers.
 
-**End:** Finalise session file → promote lasting decisions to `MEMORY.md`.
+**End:** Promote lasting decisions to `MEMORY.md` (latest timestamp wins per key) → finalise session file.
