@@ -217,7 +217,7 @@ opus/
         │   │   ├── useTheme.ts
         │   │   └── useMediaQuery.ts
         │   ├── lib/
-        │   │   ├── api-client.ts  # Configured fetch instance (base URL, auth headers)
+        │   │   ├── api.ts  # Configured fetch instance (base URL, auth headers)
         │   │   └── utils.ts       # cn() helper, date formatting, etc.
         │   └── types/
         │       ├── api.ts         # Shared API response envelope types

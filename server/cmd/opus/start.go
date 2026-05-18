@@ -103,19 +103,34 @@ func runStart(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("main.runStart: failed to start queue: %w", err)
 	}
 
-	address := cfg.Server.Address
-	if address == "" {
-		address = ":8080"
+	errCh := make(chan error, 2)
+
+	// API Server
+	go func() {
+		address := cfg.Server.Address
+		if address == "" {
+			address = ":8080"
+		}
+		log.Info("start opus api server", logger.String("address", address))
+		if err := container.GetFiber().Listen(address); err != nil {
+			errCh <- fmt.Errorf("api server: %w", err)
+		}
+	}()
+
+	// Dash Server
+	go func() {
+		address := cfg.Dash.Address
+		if address == "" {
+			address = ":8081"
+		}
+		log.Info("start opus dash server", logger.String("address", address))
+		if err := container.GetDash().Listen(address); err != nil {
+			errCh <- fmt.Errorf("dash server: %w", err)
+		}
+	}()
+
+	return <-errCh
 	}
-
-	log.Info("start opus server", logger.String("address", address))
-	if err := container.GetFiber().Listen(address); err != nil {
-		return fmt.Errorf("main.runStart: failed to start server: %w", err)
-	}
-
-	return nil
-}
-
 func init() {
 	startCmd.Flags().BoolVarP(&daemonBool, "daemon", "d", false, "Run Opus server in background")
 	rootCmd.AddCommand(startCmd)

@@ -8,6 +8,7 @@ import (
 	adapterqueue "github.com/kilip/opus/server/internal/adapter/queue"
 	"github.com/kilip/opus/server/internal/auth"
 	"github.com/kilip/opus/server/internal/config"
+	"github.com/kilip/opus/server/internal/dash"
 	"github.com/kilip/opus/server/internal/delivery/gofiber"
 	"github.com/kilip/opus/server/internal/shared/logger"
 )
@@ -47,8 +48,10 @@ func Bootstrap(cfg config.Config) {
 
 		// 2. Domain Bootstraps
 		auth.Bootstrap(entgo.NewAuthRepo(c.db), c.bus, c.queue, c.log, cfg.Auth)
+		dash.Bootstrap(cfg.Dash)
 
 		// 3. Delivery Bootstrap
 		gofiber.Bootstrap(c.fiber, c.log, cfg.Server)
+		c.dash = dash.GetServer()
 	})
 }

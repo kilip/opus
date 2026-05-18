@@ -4,6 +4,7 @@ package config
 import (
 	"github.com/kilip/opus/server/internal/adapter/entgo"
 	"github.com/kilip/opus/server/internal/auth"
+	"github.com/kilip/opus/server/internal/dash"
 	"github.com/kilip/opus/server/internal/delivery/gofiber"
 	"github.com/kilip/opus/server/internal/shared/queue"
 )
@@ -24,4 +25,7 @@ type Config struct {
 
 	// Queue is the queue configuration section.
 	Queue queue.Config `mapstructure:"queue" json:"queue"`
+
+	// Dash is the dash static server configuration section.
+	Dash dash.Config `mapstructure:"dash" json:"dash"`
 }

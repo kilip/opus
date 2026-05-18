@@ -15,6 +15,7 @@ type container struct {
 	queue queue.Queue
 	bus   queue.EventBus
 	fiber *fiber.App
+	dash  *fiber.App
 }
 
 var (
@@ -56,4 +57,10 @@ func GetDB() *ent.Client {
 func GetFiber() *fiber.App {
 	mustInit()
 	return c.fiber
+}
+
+// GetDash returns the initialized Dash *fiber.App.
+func GetDash() *fiber.App {
+	mustInit()
+	return c.dash
 }
