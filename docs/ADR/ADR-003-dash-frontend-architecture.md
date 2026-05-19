@@ -9,7 +9,7 @@
 
 ## 1. Context
 
-Opus requires a web-based dashboard — **Opus Dash** — to expose its agent lifecycle, vault, and workflow domains to the end user. Opus Dash runs as a **Progressive Web Application (PWA)** served locally alongside the Opus Server.
+Opus requires a web-based dashboard — **Opus Dash** — to expose its functional domains to the end user. Opus Dash runs as a **Progressive Web Application (PWA)** served locally alongside the Opus Server.
 
 Because Opus is a local-first, self-hosted system, there is no requirement for server-side rendering (SSR) or static site generation (SSG). Opus Dash communicates exclusively with the Opus Server REST/SSE API over localhost. The PWA layer provides installability, an offline-capable app shell, cached reads, and a mutation queue that synchronises automatically when the Opus Server becomes available again.
 
@@ -193,21 +193,11 @@ opus/
         │   └── providers.tsx      # Composes QueryClientProvider, ThemeContext, etc.
         │
         ├── features/
-        │   ├── agent/
-        │   │   ├── components/    # AgentCard, AgentLogViewer, AgentStatusBadge, etc.
-        │   │   ├── hooks/         # useAgent(), useAgentLogs(), useAgentActions()
+        │   ├── auth/
+        │   │   ├── components/    # LoginForm, AuthGuard, etc.
+        │   │   ├── hooks/         # useLogin(), useAuthStatus()
         │   │   ├── api.ts         # TanStack Query queryKeys + queryFn definitions
-        │   │   └── types.ts       # Agent domain types (AgentRun, AgentStatus, etc.)
-        │   ├── vault/
-        │   │   ├── components/
-        │   │   ├── hooks/
-        │   │   ├── api.ts
-        │   │   └── types.ts
-        │   └── workflow/
-        │       ├── components/
-        │       ├── hooks/
-        │       ├── api.ts
-        │       └── types.ts
+        │   │   └── types.ts       # Auth domain types (User, Session, etc.)
         │
         ├── shared/
         │   ├── components/        # Layout, Sidebar, OfflineBanner, shadcn/ui wrappers
@@ -225,14 +215,10 @@ opus/
         │
         └── routes/
             ├── __root.tsx         # Root route; renders Layout + OfflineBanner + Outlet
-            ├── index.tsx          # Default redirect to /agent
-            ├── agent/
-            │   ├── index.tsx      # /agent — agent list
-            │   └── $agentId.tsx   # /agent/:agentId — agent detail
-            ├── vault/
-            │   └── index.tsx      # /vault
-            └── workflow/
-                └── index.tsx      # /workflow
+            ├── index.tsx          # Default redirect
+            └── auth/
+                ├── index.tsx      # /auth — auth pages
+                └── login.tsx      # /auth/login — login page
 ```
 
 ---
@@ -255,26 +241,21 @@ Each feature module is self-contained. Code within a feature may import from `sh
 **`api.ts` pattern:**
 
 ```typescript
-// features/agent/api.ts
+// features/auth/api.ts
 import { queryOptions } from '@tanstack/react-query';
 import { apiClient } from '@/shared/lib/api-client';
-import type { AgentRun } from './types';
+import type { User } from './types';
 
-export const agentKeys = {
-  all: ['agents'] as const,
-  detail: (id: string) => ['agents', id] as const,
+export const authKeys = {
+  all: ['auth'] as const,
+  me: () => ['auth', 'me'] as const,
 };
 
-export const agentQueries = {
-  list: () =>
+export const authQueries = {
+  me: () =>
     queryOptions({
-      queryKey: agentKeys.all,
-      queryFn: () => apiClient.get<AgentRun[]>('/agents'),
-    }),
-  detail: (id: string) =>
-    queryOptions({
-      queryKey: agentKeys.detail(id),
-      queryFn: () => apiClient.get<AgentRun>(`/agents/${id}`),
+      queryKey: authKeys.me(),
+      queryFn: () => apiClient.get<User>('/auth/me'),
     }),
 };
 ```
@@ -282,12 +263,12 @@ export const agentQueries = {
 **Hook pattern:**
 
 ```typescript
-// features/agent/hooks/useAgent.ts
+// features/auth/hooks/useUser.ts
 import { useQuery } from '@tanstack/react-query';
-import { agentQueries } from '../api';
+import { authQueries } from '../api';
 
-export function useAgent(id: string) {
-  return useQuery(agentQueries.detail(id));
+export function useUser() {
+  return useQuery(authQueries.me());
 }
 ```
 
@@ -298,27 +279,23 @@ export function useAgent(id: string) {
 Routes are defined in `src/routes/` using TanStack Router's file-based convention. The route tree is registered in `src/app/router.ts`.
 
 - `__root.tsx` — root layout route; renders `<Sidebar>`, `<Header>`, `<OfflineBanner>`, and `<Outlet>`
-- `index.tsx` — default redirect to `/agent`
+- `index.tsx` — default redirect
 - `[feature]/index.tsx` — feature list view
 - `[feature]/$id.tsx` — feature detail view with type-safe `$id` param
 
 Route components are thin: they compose feature components and wire TanStack Query loaders. No business logic or direct API calls are made in route files.
 
 ```typescript
-// routes/agent/$agentId.tsx
+// routes/auth/login.tsx
 import { createFileRoute } from '@tanstack/react-router';
-import { agentQueries } from '@/features/agent/api';
-import { AgentDetail } from '@/features/agent/components/AgentDetail';
+import { LoginForm } from '@/features/auth/components/LoginForm';
 
-export const Route = createFileRoute('/agent/$agentId')({
-  loader: ({ context: { queryClient }, params }) =>
-    queryClient.ensureQueryData(agentQueries.detail(params.agentId)),
-  component: AgentDetailPage,
+export const Route = createFileRoute('/auth/login')({
+  component: LoginPage,
 });
 
-function AgentDetailPage() {
-  const { agentId } = Route.useParams();
-  return <AgentDetail agentId={agentId} />;
+function LoginPage() {
+  return <LoginForm />;
 }
 ```
 
@@ -362,17 +339,9 @@ If UI state complexity grows (e.g. cross-feature modal coordination, undo stacks
 
 ---
 
-### 2.9 Alignment with ADR-001
+## 2.9 Alignment with ADR-001
 
-The Opus Dash feature modules mirror the server domain packages defined in ADR-001:
-
-| Server domain (`internal/`) | Dash feature (`features/`) |
-|---|---|
-| `agent` | `agent` |
-| `vault` | `vault` |
-| `workflow` | `workflow` |
-
-This 1:1 mapping ensures that developers navigating either codebase can reason about domain boundaries consistently.
+The Opus Dash feature modules mirror the server domain packages defined in ADR-001. This mapping ensures that developers navigating either codebase can reason about domain boundaries consistently.
 
 ---
 

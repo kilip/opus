@@ -47,9 +47,9 @@ Every API response — success or error — is wrapped in a consistent top-level
 ```json
 {
   "data": {
-    "id": "agt_01HZ9XYZ",
-    "name": "Daily Digest",
-    "status": "running"
+    "id": "usr_01HZ9XYZ",
+    "email": "toni@example.com",
+    "name": "Anthonius Munthi"
   },
   "error": null,
   "meta": null
@@ -61,13 +61,13 @@ Every API response — success or error — is wrapped in a consistent top-level
 ```json
 {
   "data": [
-    { "id": "agt_01HZ9XYZ", "name": "Daily Digest", "status": "running" },
-    { "id": "agt_02ABCDEF", "name": "Mail Sorter",  "status": "idle" }
+    { "id": "usr_01HZ9XYZ", "email": "toni@example.com", "name": "Anthonius Munthi" },
+    { "id": "usr_02ABCDEF", "email": "other@example.com", "name": "Other User" }
   ],
   "error": null,
   "meta": {
     "cursor": {
-      "next": "eyJpZCI6ImFndF8wMkFCQ0RFRiJ9",
+      "next": "eyJpZCI6InVzcl8wMkFCQ0RFRiJ9",
       "has_more": true
     },
     "total": null,
@@ -126,8 +126,8 @@ Error responses conform to [RFC 7807](https://www.rfc-editor.org/rfc/rfc7807) wr
     "type": "https://opus.local/errors/not-found",
     "title": "Resource Not Found",
     "status": 404,
-    "detail": "Agent with ID agt_01HZ9XYZ does not exist.",
-    "instance": "/agents/agt_01HZ9XYZ"
+    "detail": "User with ID usr_01HZ9XYZ does not exist.",
+    "instance": "/users/usr_01HZ9XYZ"
   },
   "meta": null
 }
@@ -142,8 +142,8 @@ Error responses conform to [RFC 7807](https://www.rfc-editor.org/rfc/rfc7807) wr
     "type": "https://opus.local/errors/unprocessable-entity",
     "title": "Validation Failed",
     "status": 422,
-    "detail": "Field 'tick_interval' must be a valid Go duration string (e.g. '60s', '5m').",
-    "instance": "/agents"
+    "detail": "Field 'email' must be a valid email address.",
+    "instance": "/users"
   },
   "meta": null
 }
@@ -187,8 +187,8 @@ All collection endpoints that may return more than one page of results use **opa
 **Example paginated request:**
 
 ```
-GET /agents?limit=20
-GET /agents?cursor=eyJpZCI6ImFndF8wMkFCQ0RFRiJ9&limit=20
+GET /users?limit=20
+GET /users?cursor=eyJpZCI6InVzcl8wMkFCQ0RFRiJ9&limit=20
 ```
 
 ---
@@ -224,15 +224,15 @@ Opus Server does **not** use API version prefixes in the URL path.
 
 ```
 # Correct
-GET /agents
-GET /agents/{id}
+GET /users
+GET /users/{id}
 GET /vault/entries
 
 # Incorrect — version prefix is not used
-GET /agents
+GET /users
 ```
 
-**Rationale:** Opus is a self-hosted, single-tenant system. The server and the Dash client are deployed and upgraded together as a unit. URL versioning introduces coordination overhead (maintaining multiple active versions) that provides no benefit in this deployment model. Breaking changes are managed through the ADR process and release notes, not through parallel URL namespaces.
+**Rationale:** Opus is a self-hosted, multi-tenant system. The server and the Dash client are deployed and upgraded together as a unit. URL versioning introduces coordination overhead (maintaining multiple active versions) that provides no benefit in this deployment model. Breaking changes are managed through the ADR process and release notes, not through parallel URL namespaces.
 
 **URL conventions:**
 
@@ -368,15 +368,15 @@ func Error(c fiber.Ctx, status int, slug, title, detail string) error {
 **Handler usage example:**
 
 ```go
-// internal/delivery/gofiber/handler/agent.go
-func (h *Agent) GetAgent(c fiber.Ctx) error {
+// internal/delivery/gofiber/handler/user.go
+func (h *User) GetUser(c fiber.Ctx) error {
     id := c.Params("id")
-    agent, err := h.service.FindByID(c.Context(), id)
+    user, err := h.service.FindByID(c.Context(), id)
     if err != nil {
         return gofiber.Error(c, fiber.StatusNotFound, "not-found", "Resource Not Found",
-            fmt.Sprintf("Agent with ID %s does not exist.", id))
+            fmt.Sprintf("User with ID %s does not exist.", id))
     }
-    return gofiber.OK(c, agent)
+    return gofiber.OK(c, user)
 }
 ```
 
@@ -462,7 +462,7 @@ Single flexible query endpoint. Rejected because:
 Adding a version prefix to all routes. Rejected because:
 
 - Opus is a co-deployed monolith; the server and client are always upgraded together
-- URL versioning implies maintaining multiple live API versions simultaneously, which is not a requirement for a self-hosted single-tenant system
+- URL versioning implies maintaining multiple live API versions simultaneously, which is not a requirement for a self-hosted multi-tenant system
 - Breaking changes are communicated through the ADR process and release notes
 
 ---

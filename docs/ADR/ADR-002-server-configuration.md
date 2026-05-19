@@ -366,18 +366,6 @@ cd opus/server/internal/config && go generate
     "driver": "sqlite3",
     "dsn": "opus.db"
   },
-  "llm": {
-    "provider": "anthropic",
-    "model": "claude-sonnet-4-20250514",
-    "max_tokens": 4096
-  },
-  "agent": {
-    "tick_interval": "60s",
-    "max_retries": 3
-  },
-  "vault": {
-    "path": "./vault"
-  },
   "log": {
     "level": "debug",
     "format": "text"
@@ -404,29 +392,10 @@ opus/server/
 │       ├── config.go       # gofiber.Config — owned by delivery layer
 │       ├── router.go
 │       └── response.go
-├── agent/
-│   ├── config.go       # agent.Config — owned by feature
-│   ├── model.go
-│   ├── repository.go
-│   └── service.go
-├── vault/
-│   ├── config.go       # vault.Config — owned by feature
-│   ├── model.go
-│   ├── repository.go
-│   └── service.go
-├── workflow/
-│   ├── config.go       # workflow.Config — owned by feature
-│   ├── model.go
-│   ├── repository.go
-│   └── service.go
-└── llm/
-    ├── config.go       # llm.Config — owned by feature
-    ├── model.go
-    └── router.go
 │
 docs/
 └── config.schema.json      # Generated — committed to repository
-
+│
 opus/.opus/
 └── config.json             # Development config — committed with safe defaults only
 ```

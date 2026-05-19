@@ -33,7 +33,7 @@ construction and domain initialisation is delegated to the module system defined
 
 ### 2.1 Directory Structure
 
-> **Note for implementors and AI agents:** The directory structure below is **definitive**.
+> **Note for implementors and AI agents:** The directory structure below is **definitive** for sample purpose only.
 > Concrete layer paths are determined by their respective ADRs (e.g. `internal/delivery/gofiber/`
 > as defined in ADR-005). This ADR defines layer responsibilities, dependency rules, and
 > architectural boundaries. Dependency injection and bootstrap wiring are defined in ADR-012.
@@ -60,14 +60,7 @@ opus/
         │   ├── entgo/                      # Concrete repository implementations (Ent ORM)
         │   │   ├── client.go               # Ent client setup, driver selection, migration
         │   │   ├── auth.go                 # Implements internal/auth.Repository
-        │   │   ├── agent.go                # Implements internal/agent.Repository
-        │   │   ├── vault.go                # Implements internal/vault.Repository
-        │   │   ├── workflow.go             # Implements internal/workflow.Repository
-        │   │   ├── gmail.go                # Implements internal/gmail.Repository
-        │   │   ├── gdrive.go               # Implements internal/gdrive.Repository
-        │   │   ├── whatsapp.go             # Implements internal/whatsapp.Repository
-        │   │   ├── telegram.go             # Implements internal/telegram.Repository
-        │   │   └── gitsync.go              # Implements internal/gitsync.Repository
+        │   │   └── agent.go                # Implements internal/agent.Repository
         │   └── queue/                      # Queue backend implementations (ADR-008)
         │       ├── sqlite/
         │       ├── postgres/
@@ -84,91 +77,20 @@ opus/
         │   ├── errors.go
         │   └── mock_repository.go          # Generated — DO NOT EDIT
         │
-        ├── agent/
-        │   ├── bootstrap.go
-        │   ├── model.go
-        │   ├── repository.go
-        │   ├── service.go
-        │   ├── config.go
-        │   └── errors.go
-        │
-        ├── vault/
-        │   ├── bootstrap.go
-        │   ├── model.go
-        │   ├── repository.go
-        │   ├── service.go
-        │   ├── config.go
-        │   └── errors.go
-        │
-        ├── workflow/
-        │   ├── bootstrap.go
-        │   ├── model.go
-        │   ├── repository.go
-        │   ├── service.go
-        │   ├── config.go
-        │   └── errors.go
-        │
-        ├── gmail/
-        │   ├── bootstrap.go
-        │   ├── model.go
-        │   ├── repository.go
-        │   ├── service.go
-        │   ├── config.go
-        │   └── errors.go
-        │
-        ├── gdrive/
-        │   ├── bootstrap.go
-        │   ├── model.go
-        │   ├── repository.go
-        │   ├── service.go
-        │   ├── config.go
-        │   └── errors.go
-        │
-        ├── whatsapp/
-        │   ├── bootstrap.go
-        │   ├── model.go
-        │   ├── repository.go
-        │   ├── service.go
-        │   ├── config.go
-        │   └── errors.go
-        │
-        ├── telegram/
-        │   ├── bootstrap.go
-        │   ├── model.go
-        │   ├── repository.go
-        │   ├── service.go
-        │   ├── config.go
-        │   └── errors.go
-        │
-        ├── gitsync/
-        │   ├── bootstrap.go
-        │   ├── model.go
-        │   ├── repository.go
-        │   ├── service.go
-        │   ├── config.go
-        │   └── errors.go
-        │
-        ├── llm/
-        │   ├── model.go                    # CompletionRequest, CompletionResponse
-        │   ├── router.go                   # LLM Router interface + provider resolution
-        │   └── config.go
-        │
-        ├── delivery/
-        │   └── gofiber/                    # HTTP delivery layer (REST + SSE) — ADR-005
-        │       ├── bootstrap.go            # Registers all routes; bootstrapped last
-        │       ├── handler/                # Route handlers per domain
-        │       │   ├── auth.go
-        │       │   ├── agent.go
-        │       │   └── vault.go
-        │       ├── middleware/             # Cross-cutting HTTP concerns
-        │       │   ├── auth.go             # JWT validation middleware
-        │       │   ├── rbac.go             # Casbin enforcement middleware
-        │       │   └── logger.go
-        │       ├── router.go               # Route registration
-        │       ├── response.go             # ADR-004 envelope helpers
-        │       └── config.go
-        │
-        └── testutil/                       # Shared test helpers (NewTestEntClient, fixtures)
+        |── delivery/
+            └── gofiber/                    # HTTP delivery layer (REST + SSE) — ADR-005
+                ├── bootstrap.go            # Registers all routes; bootstrapped last
+                ├── handler/                # Route handlers per domain
+                │   ├── auth.go
+                │   ├── agent.go
+                │   └── vault.go
+                ├── middleware/             # Cross-cutting HTTP concerns
+                │   ├── auth.go             # JWT validation middleware
+                │   ├── rbac.go             # Casbin enforcement middleware
+                │   └── logger.go
+                ├── router.go               # Route registration
+                ├── response.go             # ADR-004 envelope helpers
+                └── config.go
 ```
 
 ---
