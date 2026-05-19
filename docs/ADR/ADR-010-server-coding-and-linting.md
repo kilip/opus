@@ -50,28 +50,17 @@ a GoDoc comment. This is a non-negotiable requirement enforced by the `revive` l
 - Package-level comments are required for every package.
 
 ```go
-// Package agent provides the business logic and domain types for the Agent lifecycle domain.
-package agent
+// Package auth provides the business logic and domain types for the Authentication domain.
+package auth
 
-// Agent represents a single autonomous agent instance managed by Opus.
-type Agent struct {
-    ID     string
-    Name   string
-    Status Status
+// User represents a single authenticated user instance managed by Opus.
+type User struct {
+    ID    string
+    Email string
+    Name  string
 }
 
-// Status represents the lifecycle state of an Agent.
-type Status string
-
-const (
-    // StatusIdle indicates the agent is not currently executing a task.
-    StatusIdle Status = "idle"
-
-    // StatusRunning indicates the agent is actively executing a task.
-    StatusRunning Status = "running"
-)
-
-// Service handles all business logic for the Agent domain.
+// Service handles all business logic for the Auth domain.
 type Service struct {
     repo   Repository
     logger logger.Logger
@@ -82,9 +71,9 @@ func NewService(repo Repository, log logger.Logger) *Service {
     return &Service{repo: repo, logger: log}
 }
 
-// FindByID retrieves an Agent by its unique identifier.
-// Returns ErrNotFound if no agent with the given ID exists.
-func (s *Service) FindByID(ctx context.Context, id string) (*Agent, error) {
+// FindUserByID retrieves a User by its unique identifier.
+// Returns ErrUserNotFound if no user with the given ID exists.
+func (s *Service) FindUserByID(ctx context.Context, id string) (*User, error) {
     // ...
 }
 ```
@@ -100,16 +89,16 @@ defined in the domain package (`internal/[feature]/`) and are the only errors th
 boundaries.
 
 ```go
-// internal/agent/errors.go
-package agent
+// internal/auth/errors.go
+package auth
 
 import "errors"
 
-// ErrNotFound is returned when a requested agent does not exist.
-var ErrNotFound = errors.New("agent: not found")
+// ErrUserNotFound is returned when a requested user does not exist.
+var ErrUserNotFound = errors.New("auth: user not found")
 
-// ErrInvalidStatus is returned when a status transition is not permitted.
-var ErrInvalidStatus = errors.New("agent: invalid status transition")
+// ErrInvalidCredentials is returned when login fails.
+var ErrInvalidCredentials = errors.New("auth: invalid credentials")
 ```
 
 **Rules:**
@@ -121,10 +110,10 @@ var ErrInvalidStatus = errors.New("agent: invalid status transition")
 
 ```go
 // Correct
-if errors.Is(err, agent.ErrNotFound) { ... }
+if errors.Is(err, auth.ErrUserNotFound) { ... }
 
 // Incorrect — never compare error strings
-if err.Error() == "agent: not found" { ... }
+if err.Error() == "auth: user not found" { ... }
 ```
 
 #### 2.2.2 Error Wrapping
@@ -135,23 +124,17 @@ wrapped with context using `fmt.Errorf` and the `%w` verb. This preserves the er
 
 ```go
 // Correct — wraps the underlying error with context
-func (s *Service) FindByID(ctx context.Context, id string) (*Agent, error) {
-    a, err := s.repo.FindByID(ctx, id)
+func (s *Service) FindUserByID(ctx context.Context, id string) (*User, error) {
+    u, err := s.repo.FindUserByID(ctx, id)
     if err != nil {
-        return nil, fmt.Errorf("agent.Service.FindByID: %w", err)
+        return nil, fmt.Errorf("auth.Service.FindUserByID: %w", err)
     }
-    return a, nil
+    return u, nil
 }
-
-// Incorrect — discards the error chain
-return nil, errors.New("failed to find agent")
-
-// Incorrect — loses the original error type
-return nil, fmt.Errorf("failed to find agent: %s", err.Error())
 ```
 
 **Wrapping convention:** `"<package>.<Type>.<Method>: %w"` — e.g.
-`"agent.Service.FindByID: %w"`.
+`"auth.Service.FindUserByID: %w"`.
 
 #### 2.2.3 `panic` Usage
 
@@ -166,17 +149,9 @@ uses of `panic` are:
 
 ```go
 // Correct — return an error from application code
-func (s *Service) FindByID(ctx context.Context, id string) (*Agent, error) {
+func (s *Service) FindUserByID(ctx context.Context, id string) (*User, error) {
     if id == "" {
-        return nil, fmt.Errorf("agent.Service.FindByID: %w", ErrInvalidID)
-    }
-    // ...
-}
-
-// Incorrect — panic in application code
-func (s *Service) FindByID(ctx context.Context, id string) (*Agent, error) {
-    if id == "" {
-        panic("id must not be empty")
+        return nil, fmt.Errorf("auth.Service.FindUserByID: %w", ErrInvalidID)
     }
     // ...
 }
@@ -193,11 +168,11 @@ errors; the decision to terminate the process is made exclusively in `main.go`.
 
 | Entity | Convention | Example |
 |---|---|---|
-| Package | Lowercase, single word, no underscores | `agent`, `entgo`, `testutil` |
-| File | Snake case, descriptive noun or noun phrase | `agent_handler.go`, `auth.go` |
-| Test file | Source file name + `_test` suffix | `agent_handler_test.go` |
-| Integration test file | Source file name + `_integration_test` suffix | `agent_integration_test.go` |
-| Error file | `errors.go` per feature package | `internal/agent/errors.go` |
+| Package | Lowercase, single word, no underscores | `auth`, `entgo`, `testutil` |
+| File | Snake case, descriptive noun or noun phrase | `auth_handler.go`, `auth.go` |
+| Test file | Source file name + `_test` suffix | `auth_handler_test.go` |
+| Integration test file | Source file name + `_integration_test` suffix | `auth_integration_test.go` |
+| Error file | `errors.go` per feature package | `internal/auth/errors.go` |
 | Mock file | `mock_<interface_name>.go` | `mock_repository.go` |
 | Generated file | Standard generated header comment | `// Code generated ... DO NOT EDIT.` |
 
@@ -219,21 +194,21 @@ of the defining package.
 func NewService(repo Repository, log logger.Logger, cfg Config) *Service {
     return &Service{
         repo:   repo,
-        logger: log.With(logger.String("component", "agent_service")),
+        logger: log.With(logger.String("component", "auth_service")),
         cfg:    cfg,
     }
 }
 
 // Incorrect — direct instantiation from outside the package
-svc := &agent.Service{} // compilation error — fields are unexported; this is enforced structurally
+svc := &auth.Service{} // compilation error — fields are unexported; this is enforced structurally
 ```
 
 #### 2.4.2 Field Visibility
 
 Struct fields are **unexported by default**. Exported fields are only permitted on:
 
-- Config structs (e.g. `agent.Config`, `logger.Config`)
-- Domain model structs (e.g. `agent.Agent`, `queue.Job`)
+- Config structs (e.g. `auth.Config`, `logger.Config`)
+- Domain model structs (e.g. `auth.User`, `queue.Job`)
 - API request/response structs in the delivery layer
 
 ```go
@@ -245,10 +220,10 @@ type Service struct {
 }
 
 // Correct — domain model with exported fields
-type Agent struct {
+type User struct {
     ID        string
+    Email     string
     Name      string
-    Status    Status
     CreatedAt time.Time
 }
 ```
@@ -264,17 +239,16 @@ implements them. This is the standard Go idiom and is already established in ADR
 repository pattern.
 
 ```go
-// internal/agent/repository.go — defined in the consumer package (agent domain)
-package agent
+// internal/auth/repository.go — defined in the consumer package (auth domain)
+package auth
 
-// Repository defines the persistence contract for the Agent domain.
-// The concrete implementation is in internal/adapter/entgo/agent.go.
+// Repository defines the persistence contract for the Auth domain.
+// The concrete implementation is in internal/adapter/entgo/auth.go.
 type Repository interface {
-    FindByID(ctx context.Context, id string) (*Agent, error)
-    FindAll(ctx context.Context, cursor string, limit int) ([]*Agent, string, error)
-    Create(ctx context.Context, agent *Agent) (*Agent, error)
-    UpdateStatus(ctx context.Context, id string, status Status) error
-    Delete(ctx context.Context, id string) error
+    FindUserByID(ctx context.Context, id string) (*User, error)
+    FindUserByEmail(ctx context.Context, email string) (*User, error)
+    CreateUserWithWorkspace(ctx context.Context, user *User, account *Account, workspaceName string) (*User, error)
+    // ...
 }
 ```
 
@@ -292,20 +266,13 @@ type Repository interface {
 #### 2.5.3 Interface Size
 
 Interfaces should be as small as the consumer requires. Prefer multiple small interfaces over a
-single large interface. If a function only needs `FindByID`, it should accept an interface with
+single large interface. If a function only needs `FindUserByID`, it should accept an interface with
 only that method, not the full `Repository`.
 
 ```go
 // Preferred for a function that only reads
-type AgentFinder interface {
-    FindByID(ctx context.Context, id string) (*Agent, error)
-}
-
-// Acceptable for a service that requires full CRUD
-type Repository interface {
-    FindByID(ctx context.Context, id string) (*Agent, error)
-    Create(ctx context.Context, agent *Agent) (*Agent, error)
-    // ...
+type UserFinder interface {
+    FindUserByID(ctx context.Context, id string) (*User, error)
 }
 ```
 
@@ -315,9 +282,9 @@ Every interface that requires mocking in tests **must** carry a `//go:generate` 
 immediately above the interface declaration.
 
 ```go
-//go:generate mockgen -destination=mock_repository.go -package=agent . Repository
+//go:generate mockgen -destination=mock_repository.go -package=auth . Repository
 
-// Repository defines the persistence contract for the Agent domain.
+// Repository defines the persistence contract for the Auth domain.
 type Repository interface {
     // ...
 }
@@ -334,13 +301,10 @@ Every function or method that performs I/O, calls another service, or may block 
 
 ```go
 // Correct
-func (s *Service) FindByID(ctx context.Context, id string) (*Agent, error)
+func (s *Service) FindUserByID(ctx context.Context, id string) (*User, error)
 
 // Incorrect — context omitted
-func (s *Service) FindByID(id string) (*Agent, error)
-
-// Incorrect — context not first
-func (s *Service) FindByID(id string, ctx context.Context) (*Agent, error)
+func (s *Service) FindUserByID(id string) (*User, error)
 ```
 
 #### 2.6.2 No Context in Structs
@@ -356,8 +320,8 @@ type Service struct {
 }
 
 // Correct — context passed per call
-func (s *Service) FindByID(ctx context.Context, id string) (*Agent, error) {
-    return s.repo.FindByID(ctx, id)
+func (s *Service) FindUserByID(ctx context.Context, id string) (*User, error) {
+    return s.repo.FindUserByID(ctx, id)
 }
 ```
 
@@ -392,15 +356,12 @@ specific usage rules.
 
 ```go
 // Correct
-s.logger.InfoCtx(ctx, "agent evaluation started",
-    logger.String("agent_id", id),
+s.logger.InfoCtx(ctx, "user creation started",
+    logger.String("email", email),
 )
 
 // Incorrect — direct stdlib log
-log.Printf("agent %s evaluation started", id)
-
-// Incorrect — uppercase / trailing punctuation
-s.logger.InfoCtx(ctx, "Agent evaluation started.", logger.String("agent_id", id))
+log.Printf("user %s creation started", email)
 ```
 
 ---
@@ -538,7 +499,7 @@ import (
     "github.com/gofiber/fiber/v3"
     "go.uber.org/mock/gomock"
 
-    "github.com/kilip/opus/server/internal/agent"
+    "github.com/kilip/opus/server/internal/auth"
     "github.com/kilip/opus/server/internal/shared/logger"
 )
 ```

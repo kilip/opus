@@ -130,7 +130,7 @@ func NewServer() *fiber.App {
 }
 ```
 
-**SPA fallback rationale:** TanStack Router uses history-mode routing (e.g. `/agent/agt_001`).
+**SPA fallback rationale:** TanStack Router uses history-mode routing (e.g. `/login`).
 Without a catch-all fallback to `index.html`, a hard refresh on any non-root route would
 return a 404 from the static server. The `NotFoundFile: "index.html"` setting ensures all
 unmatched paths return the SPA shell, allowing TanStack Router to handle routing client-side.
@@ -170,10 +170,8 @@ type Config struct {
     Server   gofiber.Config   `mapstructure:"server"   json:"server"   jsonschema:"required"`
     Database DatabaseConfig   `mapstructure:"database" json:"database" jsonschema:"required"`
     Log      LogConfig        `mapstructure:"log"      json:"log"`
-    LLM      llm.Config       `mapstructure:"llm"      json:"llm"      jsonschema:"required"`
-    Agent    agent.Config     `mapstructure:"agent"    json:"agent"`
-    Vault    vault.Config     `mapstructure:"vault"    json:"vault"`
-    Workflow workflow.Config  `mapstructure:"workflow" json:"workflow"`
+    Auth     auth.Config      `mapstructure:"auth"     json:"auth"`
+    Workspace workspace.Config `mapstructure:"workspace" json:"workspace"`
     Queue    queue.Config     `mapstructure:"queue"    json:"queue"`
     Dash     dash.Config      `mapstructure:"dash"     json:"dash"`
 }
@@ -233,9 +231,7 @@ import "github.com/kilip/opus/server/internal/dash"
 func Bootstrap(cfg *config.Config) {
     initShared(cfg)
     auth.Bootstrap(...)
-    vault.Bootstrap(...)
-    agent.Bootstrap(...)
-    workflow.Bootstrap(...)
+    workspace.Bootstrap(...)
     // ... other domains ...
     dash.Bootstrap(cfg.Dash)                    // ← added
     fiberdelivery.Bootstrap(c.fiber, c.log, cfg.Server)
@@ -384,10 +380,11 @@ before:
   hooks:
     - go mod tidy -C server
     # Mock generation (existing)
-    - go run -C server go.uber.org/mock/mockgen -destination=mocks/auth.go    -package=mocks github.com/kilip/opus/server/internal/auth Repository,PolicyService,OAuthProvider
-    - go run -C server go.uber.org/mock/mockgen -destination=mocks/logger.go  -package=mocks github.com/kilip/opus/server/internal/shared/logger Logger
-    - go run -C server go.uber.org/mock/mockgen -destination=mocks/queue.go   -package=mocks github.com/kilip/opus/server/internal/shared/queue Queue
-    - go run -C server go.uber.org/mock/mockgen -destination=mocks/eventbus.go -package=mocks github.com/kilip/opus/server/internal/shared/queue EventBus
+    - go run -C server go.uber.org/mock/mockgen -destination=mocks/auth.go      -package=mocks github.com/kilip/opus/server/internal/auth Repository,PolicyService,OAuthProvider
+    - go run -C server go.uber.org/mock/mockgen -destination=mocks/workspace.go -package=mocks github.com/kilip/opus/server/internal/workspace Repository
+    - go run -C server go.uber.org/mock/mockgen -destination=mocks/logger.go     -package=mocks github.com/kilip/opus/server/internal/shared/logger Logger
+    - go run -C server go.uber.org/mock/mockgen -destination=mocks/queue.go      -package=mocks github.com/kilip/opus/server/internal/shared/queue Queue
+    - go run -C server go.uber.org/mock/mockgen -destination=mocks/eventbus.go   -package=mocks github.com/kilip/opus/server/internal/shared/queue EventBus
     - go generate -C server ./...
     # Dash build — must run before go build
     - pnpm --dir dash install --frozen-lockfile

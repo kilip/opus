@@ -9,14 +9,14 @@
 
 ## 1. Context
 
-Opus Server requires a persistent storage layer for multiple feature domains: `auth`, `agent`, `vault`, and `workflow`. The ORM must:
+Opus Server requires a persistent storage layer for multiple feature domains: `auth`, `workspace`, and infrastructure domains like `job`. The ORM must:
 
 - Support both **SQLite** (zero-configuration local development and single-user deployments) and **PostgreSQL** (team and production deployments) from a single codebase
 - Provide **type-safe, code-generated** query builders to eliminate stringly-typed SQL at compile time
 - Integrate cleanly with the **feature-based Clean Architecture** established in ADR-001 — repository interfaces defined in the domain layer, implementations isolated in the adapter layer
-- Handle **schema migrations** safely and reproducibly with minimal operator intervention — a critical requirement for a self-hosted system where users expect reliable upgrades without manual database management
+- Handle **schema migrations** safely and reproducibly with minimal operator intervention — a critical requirement for a self-hosted system di mana pengguna mengharapkan upgrade yang handal tanpa manajemen database manual
 
-SQLite is appropriate for Opus's local-first, single-user model. With WAL (Write-Ahead Logging) mode enabled, SQLite handles concurrent reads and serialised writes without contention at the access patterns Opus produces. It imposes zero infrastructure dependency for the default deployment.
+SQLite is appropriate for Opus's local-first, single-user model. Dengan WAL (Write-Ahead Logging) mode diaktifkan, SQLite menangani pembacaan bersamaan dan penulisan berurutan tanpa konten pada pola akses yang dihasilkan Opus. Ini tidak membebankan dependensi infrastruktur untuk deployment default.
 
 ---
 
@@ -38,9 +38,9 @@ opus/
     ├── ent/                            # Entgo generated code (entgo convention)
     │   ├── schema/                     # Schema definitions (hand-authored)
     │   │   ├── user.go
-    │   │   ├── agent.go
-    │   │   ├── vault_entry.go
-    │   │   └── workflow.go
+    │   │   ├── auth_account.go
+    │   │   ├── workspace.go
+    │   │   └── job.go
     │   ├── migrate/
     │   │   └── migrations/             # Atlas versioned migration files
     │   │       ├── 20260517000001_init.sql
@@ -54,12 +54,10 @@ opus/
             └── entgo/
                 ├── client.go               # Ent client setup, driver selection, migration bootstrap
                 ├── auth.go                 # Implements internal/auth.Repository
-                ├── agent.go                # Implements internal/agent.Repository
-                ├── vault.go                # Implements internal/vault.Repository
-                └── workflow.go             # Implements internal/workflow.Repository
+                └── workspace.go            # Implements internal/workspace.Repository
 ```
 
-> **Note for AI agents and implementors:** The `server/ent/` directory is **entirely generated** — except `server/ent/schema/`. Never manually edit generated files outside `schema/`. All schema changes begin in `server/ent/schema/` and are propagated via `go generate`.
+> **Note for AI agents and implementors:** The `server/ent/` directory is **entirely generated** — kecuali `server/ent/schema/`. Jangan pernah mengedit file yang dibuat secara manual di luar `schema/`. Semua perubahan skema dimulai di `server/ent/schema/` dan disebarkan melalui `go generate`.
 
 ---
 
@@ -159,53 +157,51 @@ Each feature domain defines its own repository interface (port) in `internal/[fe
 **Interface (domain layer):**
 
 ```go
-// internal/agent/repository.go
-package agent
+// internal/auth/repository.go
+package auth
 
 import "context"
 
-// Repository defines the persistence contract for the Agent domain.
+// Repository defines the persistence contract for the Auth domain.
 type Repository interface {
-    FindByID(ctx context.Context, id string) (*Agent, error)
-    FindAll(ctx context.Context, cursor string, limit int) ([]*Agent, string, error)
-    Create(ctx context.Context, agent *Agent) (*Agent, error)
-    UpdateStatus(ctx context.Context, id string, status Status) error
-    Delete(ctx context.Context, id string) error
+    FindUserByID(ctx context.Context, id string) (*User, error)
+    FindUserByEmail(ctx context.Context, email string) (*User, error)
+    // ...
 }
 ```
 
 **Implementation (adapter layer):**
 
 ```go
-// internal/adapter/entgo/agent.go
+// internal/adapter/entgo/auth.go
 package entgo
 
 import (
     "context"
     "github.com/kilip/opus/server/ent"
-    "github.com/kilip/opus/server/internal/agent"
+    "github.com/kilip/opus/server/internal/auth"
 )
 
-// AgentRepo implements agent.Repository using Ent.
-type AgentRepo struct {
+// AuthRepo implements auth.Repository using Ent.
+type AuthRepo struct {
     client *ent.Client
 }
 
-// NewAgentRepo constructs an AgentRepo.
-func NewAgentRepo(client *ent.Client) *AgentRepo {
-    return &AgentRepo{client: client}
+// NewAuthRepo constructs an AuthRepo.
+func NewAuthRepo(client *ent.Client) *AuthRepo {
+    return &AuthRepo{client: client}
 }
 
-// FindByID retrieves an agent by its ID.
-func (r *AgentRepo) FindByID(ctx context.Context, id string) (*agent.Agent, error) {
-    row, err := r.client.Agent.Get(ctx, id)
+// FindUserByID retrieves a user by its ID.
+func (r *AuthRepo) FindUserByID(ctx context.Context, id string) (*auth.User, error) {
+    row, err := r.client.User.Get(ctx, id)
     if err != nil {
         if ent.IsNotFound(err) {
-            return nil, agent.ErrNotFound
+            return nil, auth.ErrUserNotFound
         }
         return nil, err
     }
-    return mapAgentFromEnt(row), nil
+    return mapUserFromEnt(row), nil
 }
 ```
 
@@ -226,27 +222,28 @@ internal/ never imports ent/       ✅  (domain is ORM-agnostic)
 All Ent schemas are defined in `server/ent/schema/`. Each schema file corresponds to one domain entity. Schemas use `entgo.io/ent` field and edge declarations; they must not embed domain types from `internal/`.
 
 ```go
-// ent/schema/agent.go
+// ent/schema/user.go
 package schema
 
 import (
+    "time"
     "entgo.io/ent"
     "entgo.io/ent/schema/field"
 )
 
-// Agent holds the schema definition for the Agent entity.
-type Agent struct {
+// User holds the schema definition for the User entity.
+type User struct {
     ent.Schema
 }
 
-// Fields defines the Agent entity fields.
-func (Agent) Fields() []ent.Field {
+// Fields defines the User entity fields.
+func (User) Fields() []ent.Field {
     return []ent.Field{
-        field.String("id").Unique().Immutable(),
-        field.String("name").NotEmpty(),
-        field.Enum("status").Values("idle", "running", "completed", "errored").Default("idle"),
-        field.Time("created_at").Immutable(),
-        field.Time("updated_at"),
+        field.String("id").Immutable().Unique(),
+        field.String("email").Unique().NotEmpty(),
+        field.String("name").Optional(),
+        field.Time("created_at").Default(time.Now).Immutable(),
+        field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
     }
 }
 ```
@@ -327,12 +324,10 @@ func main() {
     }
 
     // Repository layer
-    agentRepo  := entgo.NewAgentRepo(entClient)
     authRepo   := entgo.NewAuthRepo(entClient)
-    vaultRepo  := entgo.NewVaultRepo(entClient)
 
     // Service layer
-    agentService := agent.NewService(agentRepo, cfg.Agent)
+    authService := auth.NewService(authRepo, cfg.Auth)
     // ...
 }
 ```
@@ -369,7 +364,7 @@ Generates type-safe Go code from raw SQL queries. Not chosen over Ent because:
 
 Considered for repository list methods. Rejected in favour of cursor-based pagination (consistent with ADR-004) because:
 
-- Offset pagination produces unstable results under concurrent inserts — critical for agent log and workflow run streams
+- Offset pagination produces unstable results under concurrent inserts — critical for growing data streams like audit logs or workspace activities
 - `OFFSET N` queries perform full index scans up to offset N; cursor pagination uses keyset seeks and scales linearly
 
 ---

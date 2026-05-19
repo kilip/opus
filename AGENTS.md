@@ -64,16 +64,11 @@ server/
     ├── adapter/
     │   ├── entgo/                  # Concrete repository implementations
     │   └── queue/                  # Queue backend implementations (sqlite, postgres, redis, memory)
-    ├── agent/                      # bootstrap.go, model.go, repository.go, service.go, errors.go, config.go
     ├── auth/                       # bootstrap.go, model.go, repository.go, service.go, errors.go, config.go
-    ├── vault/                      # bootstrap.go, ...
-    ├── workflow/                   # bootstrap.go, ...
-    ├── gmail/                      # bootstrap.go, ...
-    ├── gdrive/                     # bootstrap.go, ...
-    ├── whatsapp/                   # bootstrap.go, ...
-    ├── telegram/                   # bootstrap.go, ...
-    ├── gitsync/                    # bootstrap.go, ...
-    ├── llm/                        # model.go, router.go, config.go
+    ├── workspace/                  # bootstrap.go, model.go, repository.go, service.go, errors.go, config.go
+    ├── shared/
+    │   ├── logger/                 # Logger interface + NoopLogger + MockLogger
+    │   └── queue/                  # Queue + EventBus interfaces + Noop* + Mock*
     ├── delivery/
     │   └── gofiber/                # bootstrap.go, handler/, middleware/, router.go, response.go, config.go
     └── testutil/                   # NewTestEntClient, fixtures
@@ -110,12 +105,12 @@ func main() {
 ```
 
 ```go
-// internal/agent/bootstrap.go
-func Bootstrap(db *ent.Client, bus queue.EventBus, q queue.Queue, log logger.Logger, cfg Config) {
-    repo := entgo.NewAgentRepo(db)
+// internal/auth/bootstrap.go
+func Bootstrap(r Repository, bus queue.EventBus, q queue.Queue, log logger.Logger, cfg Config) {
+    repo = r
     svc  := NewService(repo, q, bus, log, cfg)
-    q.RegisterHandler("agent:evaluate", svc.HandleEvaluateJob)
-    bus.Subscribe("vault.written", svc.OnVaultWritten)
+    q.RegisterHandler("auth:send_welcome_email", svc.HandleSendWelcomeEmail)
+    bus.Subscribe("user.created", svc.OnUserCreated)
     setService(svc)
 }
 ```
@@ -154,15 +149,15 @@ Adding a new domain = 4 steps: create `internal/[feature]/`, add config, add Ent
 - Errors: RFC 7807 Problem Details inside `error`.
 - URLs: `/{resource}` — **no version prefix**.
 - Pagination: cursor-based only.
-- SSE: `GET /agents/{id}/logs/stream`.
+- SSE: `GET /auth/stream` (example).
 - Helpers: `internal/delivery/gofiber/response.go` — use `gofiber.OK`, `gofiber.Error`, etc.
 
 ---
 
 ## Queue & Events (ADR-008)
 
-- **`queue.Queue`** — durable background jobs; type convention `"<domain>:<action>"` e.g. `"agent:evaluate"`.
-- **`queue.EventBus`** — in-process pub/sub; topic convention `"<domain>.<action>"` e.g. `"agent.completed"`.
+- **`queue.Queue`** — durable background jobs; type convention `"<domain>:<action>"` e.g. `"email:send"`.
+- **`queue.EventBus`** — in-process pub/sub; topic convention `"<domain>.<action>"` e.g. `"user.created"`.
 - Use `queue.NoopQueue` / `queue.NoopEventBus` in unit tests.
 
 ---
@@ -196,9 +191,8 @@ dash/src/
 ├── app/           # Entry point, router, global providers
 ├── routes/        # TanStack Router file-based pages (thin — no business logic)
 ├── features/
-│   ├── agent/     # components/, hooks/, api.ts, types.ts
-│   ├── vault/
-│   └── workflow/
+│   ├── auth/      # components/, hooks/, api.ts, types.ts
+│   └── workspace/
 └── shared/
     ├── components/ # Layout, OfflineBanner, shadcn/ui wrappers
     ├── hooks/      # useNetworkStatus, useServiceWorkerUpdate, useTheme
@@ -216,7 +210,7 @@ dash/src/
 
 **Format:** `<type>(<scope>): <description>` — description max 70 chars.
 
-**Scopes:** `server`, `dash`, `get-opus`, `ci`, `deps`
+**Scopes:** `server`, `dash`, `get-opus`, `ci`, `deps`, `adr`, `prd`
 
 | Prefix | Version Bump |
 |---|---|

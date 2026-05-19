@@ -461,8 +461,8 @@ On successful installation, the installer prints a clear summary:
 
   Complete your setup in the browser:
     • Create your admin account
-    • Configure your LLM provider (Anthropic, OpenAI, or Ollama)
-    • Connect integrations (Gmail, Google Drive, Telegram, etc.)
+    • Configure your workspace settings
+    • Connect integrations as needed
 
   Tip: To manage your Opus service:
     systemctl --user status opus.service

@@ -9,11 +9,10 @@
 
 ## 1. Context
 
-Opus Server requires a durable, reliable messaging infrastructure to support three categories of asynchronous work:
+Opus Server requires a durable, reliable messaging infrastructure to support asynchronous work and domain decoupling:
 
-1. **Background Job Processing** — Sending notifications, dispatching emails, post-processing agent outputs, and other deferred tasks that must not block the HTTP request lifecycle.
-2. **Agent Task Execution** — Queuing autonomous agent evaluation cycles with support for priority, delay, retry, and failure handling. Agent tasks are long-running and must survive server restarts.
-3. **Internal Domain Event Bus** — Decoupling feature domains from one another via a publish/subscribe mechanism. For example: an agent completing its run may trigger a workflow execution or a vault write without the `agent` package importing `workflow` or `vault` directly.
+1. **Background Job Processing** — Sending notifications, dispatching emails, and other deferred tasks that must not block the HTTP request lifecycle.
+2. **Internal Domain Event Bus** — Decoupling feature domains from one another via a publish/subscribe mechanism. For example: a user created in the `auth` domain may trigger a workspace provisioning or a welcome email without the `auth` package importing other domains directly.
 
 Without a unified, interface-driven queue abstraction, each domain risks implementing bespoke async patterns, creating operational inconsistency, coupling domains together implicitly, and making it impossible to swap queue backends without rewriting call sites.
 
@@ -25,7 +24,7 @@ This ADR establishes the canonical queue and event bus architecture for Opus Ser
 
 Opus Server adopts a **dual-abstraction queue architecture** consisting of two independent interfaces:
 
-- **`Queue`** — A durable, producer/consumer job queue for background tasks and agent execution. Supports priority, delay, retry, and dead-letter handling.
+- **`Queue`** — A durable, producer/consumer job queue for background tasks. Supports priority, delay, retry, and dead-letter handling.
 - **`EventBus`** — An in-process publish/subscribe event bus for internal domain decoupling. Subscribers are registered at startup; events are dispatched synchronously within the same process.
 
 Both abstractions are defined in `internal/shared/queue/`. All backing engines are implementation details confined to `internal/adapter/queue/`. No application code outside `internal/adapter/queue/` references a concrete queue implementation.
@@ -741,13 +740,12 @@ func main() {
     bus := adapterqueue.NewEventBus()
 
     // Register job handlers before calling Start()
-    agentService := agent.NewService(agentRepo, cfg.Agent, q, bus)
-    q.RegisterHandler("agent:evaluate", agentService.HandleEvaluateJob)
-    q.RegisterHandler("agent:retry",    agentService.HandleRetryJob)
+    authService := auth.GetService()
+    q.RegisterHandler("email:send", authService.HandleSendEmailJob)
 
     // Register event subscribers
-    bus.Subscribe("agent.completed", workflowService.OnAgentCompleted)
-    bus.Subscribe("agent.*",         notifService.OnAgentEvent)
+    bus.Subscribe("user.created", workspaceService.OnUserCreated)
+    bus.Subscribe("workspace.*",  notifService.OnWorkspaceEvent)
 
     // Start the queue worker loop
     ctx := context.Background()
@@ -767,19 +765,14 @@ All job types follow the `"<domain>:<action>"` convention. All event topics foll
 
 | Job Type | Description |
 |---|---|
-| `agent:evaluate` | Trigger an autonomous agent evaluation cycle |
-| `agent:retry` | Retry a failed agent task |
 | `email:send` | Send a transactional email |
-| `vault:index` | Re-index vault entries after a write |
-| `workflow:trigger` | Trigger a workflow execution |
+| `workspace:setup` | Provision a new workspace |
 
 | Event Topic | Description |
 |---|---|
-| `agent.completed` | An agent run completed successfully |
-| `agent.failed` | An agent run failed and was dead-lettered |
-| `agent.started` | An agent run began execution |
-| `vault.written` | A vault entry was created or updated |
-| `workflow.completed` | A workflow execution completed |
+| `user.created` | A new user was registered |
+| `workspace.provisioned` | A workspace was successfully provisioned |
+| `workspace.failed` | Workspace provisioning failed |
 
 ---
 
@@ -831,7 +824,7 @@ For tests that assert specific enqueue or publish calls, generate mocks using `g
 | Interface-driven design | `queue.Queue` + `queue.EventBus` interfaces | ADR-001 (Repository pattern) |
 | Feature config co-location | `queue.Config` owned by queue package | ADR-002 (Hybrid composition) |
 | Delivery layer logging | `logger.Logger` injected into queue workers | ADR-006 (Logger interface) |
-| Domain decoupling via EventBus | `agent` → `workflow` via `bus.Publish` | ADR-001 (Dependency rule) |
+| Domain decoupling via EventBus | `auth` → `workspace` via `bus.Publish` | ADR-001 (Dependency rule) |
 
 ---
 
@@ -880,7 +873,7 @@ Introduce a standalone broker process. Rejected because:
 - **Domain decoupling** — EventBus eliminates direct imports between feature domains, preserving the strict dependency rule from ADR-001.
 - **Durability by default** — All Queue backends persist jobs to disk or Redis; no job is lost on server restart.
 - **Testability** — `NoopQueue` and `NoopEventBus` eliminate infrastructure setup in unit tests; mock generation provides precise call assertions.
-- **Retry and dead-letter** — Built into the Queue interface and all implementations; failed agent tasks are automatically retried with exponential backoff.
+- **Retry and dead-letter** — Built into the Queue interface and all implementations; failed jobs are automatically retried with exponential backoff.
 
 ### 4.2 Negative / Trade-offs
 

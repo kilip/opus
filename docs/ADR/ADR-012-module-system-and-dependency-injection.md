@@ -74,43 +74,15 @@ opus/
         │   ├── container.go            # Container struct + shared dep accessors
         │   └── bootstrap.go            # Bootstrap() — orchestrates all domain init
         │
-        ├── agent/
-        │   ├── bootstrap.go            # agent domain bootstrap
+        ├── auth/
+        │   ├── bootstrap.go            # auth domain bootstrap
         │   ├── service.go
         │   ├── repository.go
         │   ├── model.go
         │   ├── errors.go
         │   └── config.go
         │
-        ├── auth/
-        │   ├── bootstrap.go
-        │   └── ...
-        │
-        ├── vault/
-        │   ├── bootstrap.go
-        │   └── ...
-        │
-        ├── workflow/
-        │   ├── bootstrap.go
-        │   └── ...
-        │
-        ├── gmail/
-        │   ├── bootstrap.go
-        │   └── ...
-        │
-        ├── gdrive/
-        │   ├── bootstrap.go
-        │   └── ...
-        │
-        ├── whatsapp/
-        │   ├── bootstrap.go
-        │   └── ...
-        │
-        ├── telegram/
-        │   ├── bootstrap.go
-        │   └── ...
-        │
-        ├── gitsync/
+        ├── workspace/
         │   ├── bootstrap.go
         │   └── ...
         │
@@ -160,15 +132,8 @@ type container struct {
     bus    queue.EventBus
 
     // Domain services
-    auth     *auth.Service
-    agent    *agent.Service
-    vault    *vault.Service
-    workflow *workflow.Service
-    gmail    *gmail.Service
-    gdrive   *gdrive.Service
-    whatsapp *whatsapp.Service
-    telegram *telegram.Service
-    gitsync  *gitsync.Service
+    auth      *auth.Service
+    workspace *workspace.Service
 
     // Delivery
     fiber *fiber.App
@@ -181,60 +146,11 @@ func GetAuth() *auth.Service {
     return c.auth
 }
 
-// GetAgent returns the initialised agent.Service.
+// GetWorkspace returns the initialised workspace.Service.
 // Panics if Bootstrap has not been called.
-func GetAgent() *agent.Service {
+func GetWorkspace() *workspace.Service {
     mustInit()
-    return c.agent
-}
-
-// GetVault returns the initialised vault.Service.
-// Panics if Bootstrap has not been called.
-func GetVault() *vault.Service {
-    mustInit()
-    return c.vault
-}
-
-// GetWorkflow returns the initialised workflow.Service.
-// Panics if Bootstrap has not been called.
-func GetWorkflow() *workflow.Service {
-    mustInit()
-    return c.workflow
-}
-
-// GetGmail returns the initialised gmail.Service.
-// Panics if Bootstrap has not been called.
-func GetGmail() *gmail.Service {
-    mustInit()
-    return c.gmail
-}
-
-// GetGDrive returns the initialised gdrive.Service.
-// Panics if Bootstrap has not been called.
-func GetGDrive() *gdrive.Service {
-    mustInit()
-    return c.gdrive
-}
-
-// GetWhatsApp returns the initialised whatsapp.Service.
-// Panics if Bootstrap has not been called.
-func GetWhatsApp() *whatsapp.Service {
-    mustInit()
-    return c.whatsapp
-}
-
-// GetTelegram returns the initialised telegram.Service.
-// Panics if Bootstrap has not been called.
-func GetTelegram() *telegram.Service {
-    mustInit()
-    return c.telegram
-}
-
-// GetGitSync returns the initialised gitsync.Service.
-// Panics if Bootstrap has not been called.
-func GetGitSync() *gitsync.Service {
-    mustInit()
-    return c.gitsync
+    return c.workspace
 }
 
 // GetFiber returns the initialised Fiber application.
@@ -268,17 +184,10 @@ import (
 
     "github.com/kilip/opus/server/internal/adapter/entgo"
     adapterqueue "github.com/kilip/opus/server/internal/adapter/queue"
-    "github.com/kilip/opus/server/internal/agent"
     "github.com/kilip/opus/server/internal/auth"
+    "github.com/kilip/opus/server/internal/workspace"
     "github.com/kilip/opus/server/internal/config"
     fiberdelivery "github.com/kilip/opus/server/internal/delivery/gofiber"
-    "github.com/kilip/opus/server/internal/gdrive"
-    "github.com/kilip/opus/server/internal/gmail"
-    "github.com/kilip/opus/server/internal/gitsync"
-    "github.com/kilip/opus/server/internal/telegram"
-    "github.com/kilip/opus/server/internal/vault"
-    "github.com/kilip/opus/server/internal/whatsapp"
-    "github.com/kilip/opus/server/internal/workflow"
 )
 
 // Bootstrap initialises all shared infrastructure and domain services in dependency order.
@@ -287,14 +196,7 @@ import (
 func Bootstrap(cfg *config.Config) {
     initShared(cfg)
     auth.Bootstrap(c.db, c.bus, c.queue, c.log, cfg.Auth)
-    vault.Bootstrap(c.db, c.bus, c.queue, c.log, cfg.Vault)
-    agent.Bootstrap(c.db, c.bus, c.queue, c.log, cfg.Agent)
-    workflow.Bootstrap(c.db, c.bus, c.queue, c.log, cfg.Workflow)
-    gmail.Bootstrap(c.db, c.bus, c.queue, c.log, cfg.Gmail)
-    gdrive.Bootstrap(c.db, c.bus, c.queue, c.log, cfg.GDrive)
-    whatsapp.Bootstrap(c.db, c.bus, c.queue, c.log, cfg.WhatsApp)
-    telegram.Bootstrap(c.db, c.bus, c.queue, c.log, cfg.Telegram)
-    gitsync.Bootstrap(c.db, c.bus, c.queue, c.log, cfg.GitSync)
+    workspace.Bootstrap(c.db, c.bus, c.queue, c.log, cfg.Workspace)
     fiberdelivery.Bootstrap(c.fiber, c.log, cfg.Server)
 }
 
@@ -344,8 +246,8 @@ responsible for:
 5. Storing the initialised service in the container via an unexported setter.
 
 ```go
-// internal/agent/bootstrap.go
-package agent
+// internal/auth/bootstrap.go
+package auth
 
 import (
     "github.com/kilip/opus/server/ent"
@@ -354,7 +256,7 @@ import (
     "github.com/kilip/opus/server/internal/shared/queue"
 )
 
-// Bootstrap initialises the agent domain: repository, service, job handlers,
+// Bootstrap initialises the auth domain: repository, service, job handlers,
 // and event subscriptions. Called by container.Bootstrap() during startup.
 func Bootstrap(
     db  *ent.Client,
@@ -363,17 +265,15 @@ func Bootstrap(
     log logger.Logger,
     cfg Config,
 ) {
-    repo := entgo.NewAgentRepo(db)
-    svc  := NewService(repo, q, bus, log, cfg)
+    repo := entgo.NewAuthRepo(db)
+    // registry and policyService are initialised in container.Bootstrap
+    svc  := NewService(repo, nil, nil, cfg, log)
 
     // Register job handlers — must be called before queue.Start().
-    q.RegisterHandler("agent:evaluate", svc.HandleEvaluateJob)
-    q.RegisterHandler("agent:retry",    svc.HandleRetryJob)
+    q.RegisterHandler("email:send", svc.HandleSendEmailJob)
 
     // Subscribe to domain events from other domains.
-    // agent never imports vault, workflow, gmail, etc.
-    bus.Subscribe("vault.written",      svc.OnVaultWritten)
-    bus.Subscribe("workflow.completed", svc.OnWorkflowCompleted)
+    bus.Subscribe("user.created", svc.OnUserCreated)
 
     setService(svc)
 }
@@ -384,52 +284,13 @@ var svc *Service
 // setService stores the initialised service. Called exclusively by Bootstrap.
 func setService(s *Service) { svc = s }
 
-// GetService returns the initialised agent.Service.
+// GetService returns the initialised auth.Service.
 // Panics if Bootstrap has not been called.
 func GetService() *Service {
     if svc == nil {
-        panic("agent: Bootstrap has not been called")
+        panic("auth: Bootstrap has not been called")
     }
     return svc
-}
-```
-
-**Gmail domain bootstrap example — subscribes to agent events without importing agent:**
-
-```go
-// internal/gmail/bootstrap.go
-package gmail
-
-import (
-    "github.com/kilip/opus/server/ent"
-    "github.com/kilip/opus/server/internal/adapter/entgo"
-    "github.com/kilip/opus/server/internal/shared/logger"
-    "github.com/kilip/opus/server/internal/shared/queue"
-)
-
-// Bootstrap initialises the gmail domain: repository, service, job handlers,
-// and event subscriptions. Called by container.Bootstrap() during startup.
-func Bootstrap(
-    db  *ent.Client,
-    bus queue.EventBus,
-    q   queue.Queue,
-    log logger.Logger,
-    cfg Config,
-) {
-    repo := entgo.NewGmailRepo(db)
-    svc  := NewService(repo, q, bus, log, cfg)
-
-    // Register job handlers.
-    q.RegisterHandler("gmail:send",    svc.HandleSendJob)
-    q.RegisterHandler("gmail:sync",    svc.HandleSyncJob)
-    q.RegisterHandler("gmail:process", svc.HandleProcessJob)
-
-    // Subscribe to domain events.
-    // gmail does not import agent — it reacts to published events only.
-    bus.Subscribe("agent.completed",   svc.OnAgentCompleted)
-    bus.Subscribe("vault.written",     svc.OnVaultWritten)
-
-    setService(svc)
 }
 ```
 
@@ -446,11 +307,9 @@ package gofiber
 
 import (
     "github.com/gofiber/fiber/v3"
-    "github.com/kilip/opus/server/internal/agent"
     "github.com/kilip/opus/server/internal/auth"
+    "github.com/kilip/opus/server/internal/workspace"
     "github.com/kilip/opus/server/internal/shared/logger"
-    "github.com/kilip/opus/server/internal/vault"
-    "github.com/kilip/opus/server/internal/workflow"
 )
 
 // Bootstrap registers all HTTP routes on the provided Fiber app.
@@ -463,9 +322,7 @@ func Bootstrap(
     registerRoutes(
         app,
         auth.GetService(),
-        agent.GetService(),
-        vault.GetService(),
-        workflow.GetService(),
+        workspace.GetService(),
         log,
     )
 }
@@ -526,20 +383,20 @@ internal/[feature_b]/  →  internal/shared/queue/  ✅  via EventBus only
 **Correct inter-domain pattern:**
 
 ```go
-// agent/service.go — publishes an event; does not import gmail, workflow, etc.
-func (s *Service) completeRun(ctx context.Context, runID string) error {
+// workspace/service.go — publishes an event; does not import auth, etc.
+func (s *Service) Create(ctx context.Context, name string) error {
     // ... business logic ...
 
     return s.bus.Publish(ctx, queue.Event{
-        Topic:   "agent.completed",
+        Topic:   "workspace.created",
         Payload: payload,
-        Source:  "agent",
+        Source:  "workspace",
     })
 }
 
-// gmail/service.go — reacts to agent events; does not import agent
-func (s *Service) OnAgentCompleted(ctx context.Context, event queue.Event) error {
-    // ... handle agent completion ...
+// auth/service.go — reacts to workspace events; does not import workspace
+func (s *Service) OnWorkspaceCreated(ctx context.Context, event queue.Event) error {
+    // ... handle workspace creation ...
     return nil
 }
 ```
@@ -548,16 +405,9 @@ func (s *Service) OnAgentCompleted(ctx context.Context, event queue.Event) error
 
 | Topic | Producer | Consumers |
 |---|---|---|
-| `agent.completed` | `agent` | `gmail`, `workflow`, `telegram`, `whatsapp` |
-| `agent.failed` | `agent` | `gmail`, `telegram`, `whatsapp` |
-| `agent.started` | `agent` | `workflow` |
-| `vault.written` | `vault` | `agent`, `gmail`, `gdrive`, `gitsync` |
-| `workflow.completed` | `workflow` | `agent`, `gmail`, `telegram` |
-| `gmail.received` | `gmail` | `agent`, `vault` |
-| `gdrive.changed` | `gdrive` | `agent`, `vault`, `gitsync` |
-| `gitsync.pushed` | `gitsync` | `agent`, `vault` |
-| `telegram.message` | `telegram` | `agent` |
-| `whatsapp.message` | `whatsapp` | `agent` |
+| `user.created` | `auth` | `workspace` |
+| `workspace.created` | `workspace` | `auth` |
+| `email.sent` | `auth` | `logger` |
 
 ---
 

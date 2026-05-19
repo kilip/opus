@@ -142,34 +142,22 @@ Feature services receive only their own config struct via constructor injection.
 Each feature defines its config struct independently:
 
 ```go
-// internal/agent/config.go
-package agent
+// internal/auth/config.go
+package auth
 
 type Config struct {
-    TickInterval string `mapstructure:"tick_interval" json:"tick_interval" jsonschema:"default=60s,description=Interval between autonomous agent evaluation cycles (Go duration string)"`
-    MaxRetries   int    `mapstructure:"max_retries"   json:"max_retries"   jsonschema:"default=3,description=Maximum retries for a failed agent task before marking it as errored"`
+    SessionTTL string `mapstructure:"session_ttl" json:"session_ttl" jsonschema:"default=24h,description=Time-to-live for user sessions"`
+    Issuer     string `mapstructure:"issuer"      json:"issuer"      jsonschema:"default=opus,description=JWT issuer identifier"`
 }
 ```
 
 ```go
-// internal/vault/config.go
-package vault
+// internal/delivery/gofiber/config.go
+package gofiber
 
 type Config struct {
-    Path string `mapstructure:"path" json:"path" jsonschema:"description=Absolute or relative path to the vault root directory"`
-}
-```
-
-```go
-// internal/llm/config.go
-package llm
-
-type Config struct {
-    Provider  string `mapstructure:"provider"   json:"provider"   jsonschema:"enum=anthropic,enum=openai,enum=ollama,description=Active LLM provider"`
-    BaseURL   string `mapstructure:"base_url"   json:"base_url"   jsonschema:"description=Override provider base URL (e.g. for Ollama local endpoint)"`
-    APIKey    string `mapstructure:"api_key"    json:"-"          jsonschema:"-"`
-    Model     string `mapstructure:"model"      json:"model"      jsonschema:"description=Model identifier passed to provider"`
-    MaxTokens int    `mapstructure:"max_tokens" json:"max_tokens" jsonschema:"default=4096,description=Maximum tokens per completion request"`
+    Address string `mapstructure:"address" json:"address" jsonschema:"default=:8080,description=TCP address the HTTP server listens on"`
+    Debug   bool   `mapstructure:"debug"   json:"debug"   jsonschema:"description=Enable debug mode and verbose request logging"`
 }
 ```
 
@@ -183,31 +171,19 @@ The root config struct imports and embeds each feature config struct. It owns no
 package config
 
 import (
-    "opus/server/internal/agent"
-    "opus/server/internal/delivery/gofiber"
-    "opus/server/internal/llm"
-    "opus/server/internal/vault"
-    "opus/server/internal/workflow"
+    "github.com/kilip/opus/server/internal/adapter/entgo"
+    "github.com/kilip/opus/server/internal/auth"
+    "github.com/kilip/opus/server/internal/dash"
+    "github.com/kilip/opus/server/internal/delivery/gofiber"
+    "github.com/kilip/opus/server/internal/shared/queue"
 )
 
 type Config struct {
     Server   gofiber.Config `mapstructure:"server"   json:"server"   jsonschema:"required"`
-    Database DatabaseConfig `mapstructure:"database" json:"database" jsonschema:"required"`
-    Log      LogConfig      `mapstructure:"log"      json:"log"`
-    LLM      llm.Config     `mapstructure:"llm"      json:"llm"      jsonschema:"required"`
-    Agent    agent.Config   `mapstructure:"agent"    json:"agent"`
-    Vault    vault.Config   `mapstructure:"vault"    json:"vault"`
-    Workflow workflow.Config `mapstructure:"workflow" json:"workflow"`
-}
-
-type DatabaseConfig struct {
-    Driver string `mapstructure:"driver" json:"driver" jsonschema:"enum=sqlite3,enum=postgres,default=sqlite3,description=Database driver"`
-    DSN    string `mapstructure:"dsn"    json:"dsn"    jsonschema:"description=Data source name. Use env var OPUS_DATABASE_DSN for secrets"`
-}
-
-type LogConfig struct {
-    Level  string `mapstructure:"level"  json:"level"  jsonschema:"enum=debug,enum=info,enum=warn,enum=error,default=info"`
-    Format string `mapstructure:"format" json:"format" jsonschema:"enum=json,enum=text,default=json"`
+    Database entgo.Config   `mapstructure:"database" json:"database" jsonschema:"required"`
+    Auth     auth.Config    `mapstructure:"auth"     json:"auth"`
+    Queue    queue.Config   `mapstructure:"queue"    json:"queue"`
+    Dash     dash.Config    `mapstructure:"dash"     json:"dash"`
 }
 ```
 
@@ -223,10 +199,8 @@ import (
     "opus/server/internal/adapter/entgo"
     "opus/server/internal/delivery/gofiber/handler"
     "opus/server/internal/delivery/gofiber"
-    "opus/server/internal/agent"
     "opus/server/internal/auth"
     "opus/server/internal/config"
-    "opus/server/internal/vault"
 )
 
 func main() {
@@ -238,21 +212,15 @@ func main() {
     // Adapter layer
     db := entgo.NewClient(cfg.Database)
     authRepo := entgo.NewAuthRepo(db)
-    agentRepo := entgo.NewAgentRepo(db)
-    vaultRepo := entgo.NewVaultRepo(db)
 
     // Service layer — each service receives only its own config slice
-    authService := auth.NewService(authRepo, cfg.Server)
-    agentService := agent.NewService(agentRepo, cfg.Agent)
-    vaultService := vault.NewService(vaultRepo, cfg.Vault)
+    authService := auth.NewService(authRepo, cfg.Auth)
 
     // Delivery layer
-    auth := handler.NewAuth(authService)
-    agent := handler.NewAgent(agentService)
-    vault := handler.NewVault(vaultService)
+    authHandler := handler.NewAuth(authService)
 
     // Bootstrap
-    app := gofiber.New(auth, agent, vault)
+    app := gofiber.New(cfg.Server, authHandler)
     app.Listen(cfg.Server.Address)
 }
 ```

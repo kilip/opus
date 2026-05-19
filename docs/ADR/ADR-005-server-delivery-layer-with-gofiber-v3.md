@@ -28,8 +28,7 @@ opus/
         └── delivery/
             └── gofiber/              # GoFiber v3 delivery layer (canonical path)
                 ├── handler/        # Route handlers per domain
-                │   ├── auth.go
-                │   └── agent.go
+                │   └── auth.go
                 ├── middleware/     # Cross-cutting Fiber middleware
                 │   ├── auth.go     # JWT validation middleware
                 │   └── logger.go   # Request logger middleware (uses logger.Logger — see §2.5)
@@ -81,32 +80,29 @@ Handlers in `internal/delivery/gofiber/handler/` are strictly responsible for:
 **No business logic** will exist within Fiber handlers. They remain thin translation layers between HTTP/Fiber constructs and the pure Go Service layer.
 
 ```go
-// internal/delivery/gofiber/handler/agent.go
+// internal/delivery/gofiber/handler/auth.go
 package handler
 
 import (
-    "fmt"
     "github.com/gofiber/fiber/v3"
     "opus/server/internal/delivery/gofiber"
-    "opus/server/internal/agent"
+    "opus/server/internal/auth"
 )
 
-type Agent struct {
-    service *agent.Service
+type Auth struct {
+    service *auth.Service
 }
 
-func NewAgent(svc *agent.Service) *Agent {
-    return &Agent{service: svc}
+func NewAuth(svc *auth.Service) *Auth {
+    return &Auth{service: svc}
 }
 
-func (h *Agent) GetAgent(c fiber.Ctx) error {
-    id := c.Params("id")
-    a, err := h.service.FindByID(c.Context(), id)
+func (h *Auth) GetMe(c fiber.Ctx) error {
+    u, err := h.service.FindUserByID(c.Context(), "...") // simplified
     if err != nil {
-        return gofiber.Error(c, fiber.StatusNotFound, "not-found", "Resource Not Found",
-            fmt.Sprintf("Agent with ID %s does not exist.", id))
+        return gofiber.Error(c, fiber.StatusNotFound, "not-found", "Resource Not Found", "User does not exist.")
     }
-    return gofiber.OK(c, a)
+    return gofiber.OK(c, u)
 }
 ```
 
@@ -143,7 +139,7 @@ func New(cfg Config, ...) *fiber.App {
 
 ```go
 // main.go
-app := gofiber.New(cfg.Server, auth, agent)
+app := gofiber.New(cfg.Server, authHandler)
 app.Listen(cfg.Server.Address)
 ```
 

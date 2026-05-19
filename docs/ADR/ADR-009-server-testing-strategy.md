@@ -58,12 +58,12 @@ Two naming styles are permitted, each with a defined purpose:
 comment at the top of the test file.
 
 ```go
-// internal/agent/service_test.go — black-box (preferred)
-package agent_test
+// internal/auth/service_test.go — black-box (preferred)
+package auth_test
 
-// internal/agent/cursor_test.go — white-box (justified: testing unexported cursor encoding)
-// White-box: tests unexported encodeCursor/decodeCursor helpers.
-package agent
+// internal/auth/jwt_test.go — white-box (justified: testing unexported claims logic)
+// White-box: tests unexported claims parsing helpers.
+package auth
 ```
 
 ---
@@ -84,17 +84,16 @@ All mocks are generated using `go.uber.org/mock/mockgen`. Mock generation direct
 in the source file that defines the interface, not in the test file.
 
 ```go
-// internal/agent/repository.go
-package agent
+// internal/auth/repository.go
+package auth
 
-//go:generate mockgen -destination=mock_repository.go -package=agent . Repository
+//go:generate mockgen -destination=mock_repository.go -package=auth . Repository
 
 type Repository interface {
-    FindByID(ctx context.Context, id string) (*Agent, error)
-    FindAll(ctx context.Context, cursor string, limit int) ([]*Agent, string, error)
-    Create(ctx context.Context, agent *Agent) (*Agent, error)
-    UpdateStatus(ctx context.Context, id string, status Status) error
-    Delete(ctx context.Context, id string) error
+    FindUserByID(ctx context.Context, id string) (*User, error)
+    FindUserByEmail(ctx context.Context, email string) (*User, error)
+    CreateUserWithWorkspace(ctx context.Context, user *User, account *Account, workspaceName string) (*User, error)
+    // ...
 }
 ```
 
@@ -130,55 +129,55 @@ All unit tests **must** use the table-driven pattern. Inline single-case tests a
 for exported functions.
 
 ```go
-// internal/agent/service_test.go
-package agent_test
+// internal/auth/service_test.go
+package auth_test
 
 import (
     "context"
     "testing"
 
     "go.uber.org/mock/gomock"
-    "github.com/kilip/opus/server/internal/agent"
+    "github.com/kilip/opus/server/internal/auth"
     "github.com/kilip/opus/server/internal/shared/logger"
 )
 
-func TestService_FindByID(t *testing.T) {
+func TestService_FindUserByID(t *testing.T) {
     tests := []struct {
         name      string
-        agentID   string
-        setupMock func(repo *agent.MockRepository)
+        userID    string
+        setupMock func(repo *auth.MockRepository)
         wantErr   error
     }{
         {
-            name:    "returns agent when found",
-            agentID: "agt_001",
-            setupMock: func(repo *agent.MockRepository) {
+            name:    "returns user when found",
+            userID:  "usr_001",
+            setupMock: func(repo *auth.MockRepository) {
                 repo.EXPECT().
-                    FindByID(gomock.Any(), "agt_001").
-                    Return(&agent.Agent{ID: "agt_001", Name: "Test"}, nil)
+                    FindUserByID(gomock.Any(), "usr_001").
+                    Return(&auth.User{ID: "usr_001", Email: "test@example.com"}, nil)
             },
             wantErr: nil,
         },
         {
-            name:    "returns ErrNotFound when agent does not exist",
-            agentID: "agt_missing",
-            setupMock: func(repo *agent.MockRepository) {
+            name:    "returns ErrUserNotFound when user does not exist",
+            userID:  "usr_missing",
+            setupMock: func(repo *auth.MockRepository) {
                 repo.EXPECT().
-                    FindByID(gomock.Any(), "agt_missing").
-                    Return(nil, agent.ErrNotFound)
+                    FindUserByID(gomock.Any(), "usr_missing").
+                    Return(nil, auth.ErrUserNotFound)
             },
-            wantErr: agent.ErrNotFound,
+            wantErr: auth.ErrUserNotFound,
         },
     }
 
     for _, tc := range tests {
         t.Run(tc.name, func(t *testing.T) {
             ctrl := gomock.NewController(t)
-            mockRepo := agent.NewMockRepository(ctrl)
+            mockRepo := auth.NewMockRepository(ctrl)
             tc.setupMock(mockRepo)
 
-            svc := agent.NewService(mockRepo, agent.Config{}, &logger.NoopLogger{})
-            _, err := svc.FindByID(context.Background(), tc.agentID)
+            svc := auth.NewService(mockRepo, nil, nil, auth.Config{}, &logger.NoopLogger{})
+            _, err := svc.FindUserByID(context.Background(), tc.userID)
 
             if err != tc.wantErr {
                 t.Errorf("expected error %v, got %v", tc.wantErr, err)
@@ -203,7 +202,7 @@ Every integration test file **must** begin with the build tag declaration:
 ```go
 //go:build integration
 
-package agent_test
+package entgo_test
 ```
 
 #### 2.4.2 File Naming
@@ -211,8 +210,8 @@ package agent_test
 Integration test files use the `_integration_test.go` suffix:
 
 ```
-internal/agent/service_integration_test.go
-internal/adapter/entgo/agent_integration_test.go
+internal/auth/service_integration_test.go
+internal/adapter/entgo/auth_integration_test.go
 ```
 
 #### 2.4.3 Test Database — SQLite In-Memory
@@ -232,24 +231,26 @@ import (
 
     "github.com/kilip/opus/server/internal/testutil"
     "github.com/kilip/opus/server/internal/adapter/entgo"
+    "github.com/kilip/opus/server/internal/auth"
 )
 
-func TestAgentRepo_FindByID(t *testing.T) {
+func TestAuthRepo_FindUserByID(t *testing.T) {
     client := testutil.NewTestEntClient(t)
-    repo := entgo.NewAgentRepo(client)
+    repo := entgo.NewAuthRepo(client)
 
     // seed
-    created, err := repo.Create(context.Background(), &agent.Agent{
-        ID:   "agt_001",
-        Name: "Test Agent",
-    })
+    ctx := context.Background()
+    created, err := repo.CreateUserWithWorkspace(ctx, &auth.User{
+        ID:    "usr_001",
+        Email: "test@example.com",
+    }, nil, "Default")
     if err != nil {
         t.Fatalf("seed failed: %v", err)
     }
 
-    found, err := repo.FindByID(context.Background(), created.ID)
+    found, err := repo.FindUserByID(ctx, created.ID)
     if err != nil {
-        t.Fatalf("FindByID failed: %v", err)
+        t.Fatalf("FindUserByID failed: %v", err)
     }
     if found.ID != created.ID {
         t.Errorf("expected ID %s, got %s", created.ID, found.ID)
@@ -270,7 +271,7 @@ Fiber handlers are tested using Fiber's built-in `app.Test()` helper. Handler te
 (no build tag) that mock the service layer.
 
 ```go
-// internal/delivery/gofiber/handler/agent_test.go
+// internal/delivery/gofiber/handler/auth_test.go
 package handler_test
 
 import (
@@ -283,48 +284,36 @@ import (
     "github.com/gofiber/fiber/v3"
     "go.uber.org/mock/gomock"
     "github.com/kilip/opus/server/internal/delivery/gofiber/handler"
-    "github.com/kilip/opus/server/internal/agent"
+    "github.com/kilip/opus/server/internal/auth"
 )
 
-func TestAgent_GetAgent(t *testing.T) {
+func TestAuth_GetCurrentUser(t *testing.T) {
     tests := []struct {
         name           string
-        agentID        string
-        setupMock      func(svc *agent.MockService)
+        setupMock      func(svc *auth.MockService)
         wantStatusCode int
     }{
         {
-            name:    "returns 200 with agent data",
-            agentID: "agt_001",
-            setupMock: func(svc *agent.MockService) {
+            name: "returns 200 with user data",
+            setupMock: func(svc *auth.MockService) {
                 svc.EXPECT().
-                    FindByID(gomock.Any(), "agt_001").
-                    Return(&agent.Agent{ID: "agt_001", Name: "Test"}, nil)
+                    FindUserByID(gomock.Any(), gomock.Any()).
+                    Return(&auth.User{ID: "usr_001", Email: "test@example.com"}, nil)
             },
             wantStatusCode: http.StatusOK,
-        },
-        {
-            name:    "returns 404 when agent not found",
-            agentID: "agt_missing",
-            setupMock: func(svc *agent.MockService) {
-                svc.EXPECT().
-                    FindByID(gomock.Any(), "agt_missing").
-                    Return(nil, agent.ErrNotFound)
-            },
-            wantStatusCode: http.StatusNotFound,
         },
     }
 
     for _, tc := range tests {
         t.Run(tc.name, func(t *testing.T) {
             ctrl := gomock.NewController(t)
-            mockSvc := agent.NewMockService(ctrl)
+            mockSvc := auth.NewMockService(ctrl)
             tc.setupMock(mockSvc)
 
             app := fiber.New()
-            h := handler.NewAgent(mockSvc)
-            app.Get("/agents/:id", h.GetAgent)
-                        req := httptest.NewRequest(http.MethodGet, "/agents/"+tc.agentID, nil)
+            h := handler.NewAuth(mockSvc)
+            app.Get("/auth/me", h.GetCurrentUser)
+            req := httptest.NewRequest(http.MethodGet, "/auth/me", nil)
             resp, err := app.Test(req)
             if err != nil {
                 t.Fatalf("app.Test failed: %v", err)
@@ -343,9 +332,6 @@ func TestAgent_GetAgent(t *testing.T) {
             }
             if _, ok := envelope["data"]; !ok {
                 t.Error("response envelope missing 'data' key")
-            }
-            if _, ok := envelope["error"]; !ok {
-                t.Error("response envelope missing 'error' key")
             }
         })
     }
@@ -429,7 +415,7 @@ go test ./...
 go test -race ./...
 
 # Run a specific package
-go test ./internal/agent/...
+go test ./internal/auth/...
 ```
 
 #### Integration Tests
@@ -482,7 +468,7 @@ go test -race -coverprofile=coverage.out ./...
 opus/
 └── server/
     └── internal/
-        ├── agent/
+        ├── auth/
         │   ├── service.go
         │   ├── service_test.go              # Unit test (black-box)
         │   ├── service_integration_test.go  # Integration test (build tag: integration)
@@ -491,8 +477,8 @@ opus/
         ├── delivery/
         │   └── gofiber/
         │       └── handler/
-        │           ├── agent.go
-        │           └── agent_test.go    # Unit test using app.Test()
+        │           ├── auth.go
+        │           └── auth_test.go    # Unit test using app.Test()
         ├── shared/
         │   ├── logger/
         │   │   ├── logger.go
@@ -510,10 +496,9 @@ opus/
             └── fixtures.go                  # Seed helpers
         └── adapter/
             └── entgo/
-                ├── agent.go
-                └── agent_integration_test.go  # Integration test (build tag: integration)
-        ```
-
+                ├── auth.go
+                └── auth_integration_test.go  # Integration test (build tag: integration)
+```
 
 ---
 

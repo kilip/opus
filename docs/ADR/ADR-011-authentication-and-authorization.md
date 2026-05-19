@@ -248,7 +248,7 @@ Dash                        Server                      OAuth Provider
   │                            │── Exchange(ctx, code)        │
   │                            │── Upsert user record         │
   │                            │── Issue token pair           │
-  │◄── 302 → Dash /agent ──────│                              │
+  │◄── 302 → Dash / ───────────│                              │
   │   (Set-Cookie: tokens)     │
 ```
 
@@ -298,7 +298,7 @@ m = g(r.sub, p.sub, r.dom) && r.dom == p.dom && r.obj == p.obj && r.act == p.act
 |---|---|
 | `sub` | User ID |
 | `dom` | Workspace ID (domain) |
-| `obj` | Resource being accessed (e.g. `agent`, `vault`, `workflow`) |
+| `obj` | Resource being accessed (e.g. `workspace`, `job`) |
 | `act` | Action being performed (e.g. `read`, `write`, `delete`, `manage`) |
 
 #### 2.4.2 Built-in Roles and Policies
@@ -308,28 +308,22 @@ Two roles are defined at MVP. The policy table is seeded at workspace creation.
 **`admin` role — full access within workspace:**
 
 ```
-p, admin, {workspace_id}, agent,    read
-p, admin, {workspace_id}, agent,    write
-p, admin, {workspace_id}, agent,    delete
-p, admin, {workspace_id}, agent,    manage
-p, admin, {workspace_id}, vault,    read
-p, admin, {workspace_id}, vault,    write
-p, admin, {workspace_id}, vault,    delete
-p, admin, {workspace_id}, workflow, read
-p, admin, {workspace_id}, workflow, write
-p, admin, {workspace_id}, workflow, delete
-p, admin, {workspace_id}, user,     manage
+p, admin, {workspace_id}, workspace, read
+p, admin, {workspace_id}, workspace, write
+p, admin, {workspace_id}, workspace, delete
+p, admin, {workspace_id}, workspace, manage
+p, admin, {workspace_id}, job,       read
+p, admin, {workspace_id}, job,       write
+p, admin, {workspace_id}, job,       delete
+p, admin, {workspace_id}, user,      manage
 ```
 
 **`user` role — read + limited write within workspace:**
 
 ```
-p, user, {workspace_id}, agent,    read
-p, user, {workspace_id}, agent,    write
-p, user, {workspace_id}, vault,    read
-p, user, {workspace_id}, vault,    write
-p, user, {workspace_id}, workflow, read
-p, user, {workspace_id}, workflow, write
+p, user, {workspace_id}, workspace, read
+p, user, {workspace_id}, workspace, write
+p, user, {workspace_id}, job,       read
 ```
 
 **Role assignment:**

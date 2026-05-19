@@ -189,15 +189,14 @@ opus/
         ├── app/
         │   ├── main.tsx           # Application entry point; mounts React root
         │   ├── App.tsx            # Root component; renders <RouterProvider>
-        │   ├── router.ts          # TanStack Router route tree definition
         │   └── providers.tsx      # Composes QueryClientProvider, ThemeContext, etc.
         │
         ├── features/
         │   ├── auth/
         │   │   ├── components/    # LoginForm, AuthGuard, etc.
-        │   │   ├── hooks/         # useLogin(), useAuthStatus()
         │   │   ├── api.ts         # TanStack Query queryKeys + queryFn definitions
-        │   │   └── types.ts       # Auth domain types (User, Session, etc.)
+        │   │   └── types.ts       # Auth domain types (AuthUser, LoginCredentials, etc.)
+        │   └── demo/              # Demo components and hooks
         │
         ├── shared/
         │   ├── components/        # Layout, Sidebar, OfflineBanner, shadcn/ui wrappers
@@ -207,7 +206,7 @@ opus/
         │   │   ├── useTheme.ts
         │   │   └── useMediaQuery.ts
         │   ├── lib/
-        │   │   ├── api.ts  # Configured fetch instance (base URL, auth headers)
+        │   │   ├── api.ts         # Configured fetch instance (base URL, envelope parsing)
         │   │   └── utils.ts       # cn() helper, date formatting, etc.
         │   └── types/
         │       ├── api.ts         # Shared API response envelope types
@@ -216,10 +215,11 @@ opus/
         └── routes/
             ├── __root.tsx         # Root route; renders Layout + OfflineBanner + Outlet
             ├── index.tsx          # Default redirect
-            └── auth/
-                ├── index.tsx      # /auth — auth pages
-                └── login.tsx      # /auth/login — login page
+            ├── login.tsx          # /login — login page
+            └── agent/
+                └── index.tsx      # /agent — agent dashboard shell
 ```
+
 
 ---
 
@@ -243,54 +243,37 @@ Each feature module is self-contained. Code within a feature may import from `sh
 ```typescript
 // features/auth/api.ts
 import { queryOptions } from '@tanstack/react-query';
-import { apiClient } from '@/shared/lib/api-client';
-import type { User } from './types';
-
-export const authKeys = {
-  all: ['auth'] as const,
-  me: () => ['auth', 'me'] as const,
-};
+import { api } from '@/shared/lib/api';
+import type { AuthUser } from './types';
 
 export const authQueries = {
   me: () =>
     queryOptions({
-      queryKey: authKeys.me(),
-      queryFn: () => apiClient.get<User>('/auth/me'),
+      queryKey: ['auth', 'me'],
+      queryFn: () => api.get<AuthUser>('/auth/me'),
     }),
 };
-```
-
-**Hook pattern:**
-
-```typescript
-// features/auth/hooks/useUser.ts
-import { useQuery } from '@tanstack/react-query';
-import { authQueries } from '../api';
-
-export function useUser() {
-  return useQuery(authQueries.me());
-}
 ```
 
 ---
 
 ### 2.6 Routing Convention
 
-Routes are defined in `src/routes/` using TanStack Router's file-based convention. The route tree is registered in `src/app/router.ts`.
+Routes are defined in `src/routes/` using TanStack Router's file-based convention.
 
 - `__root.tsx` — root layout route; renders `<Sidebar>`, `<Header>`, `<OfflineBanner>`, and `<Outlet>`
-- `index.tsx` — default redirect
-- `[feature]/index.tsx` — feature list view
-- `[feature]/$id.tsx` — feature detail view with type-safe `$id` param
+- `index.tsx` — default dashboard
+- `login.tsx` — login page
+- `agent/index.tsx` — agent management UI
 
 Route components are thin: they compose feature components and wire TanStack Query loaders. No business logic or direct API calls are made in route files.
 
 ```typescript
-// routes/auth/login.tsx
+// routes/login.tsx
 import { createFileRoute } from '@tanstack/react-router';
 import { LoginForm } from '@/features/auth/components/LoginForm';
 
-export const Route = createFileRoute('/auth/login')({
+export const Route = createFileRoute('/login')({
   component: LoginPage,
 });
 
@@ -303,29 +286,36 @@ function LoginPage() {
 
 ### 2.7 API Client
 
-A single configured API client instance is defined in `shared/lib/api-client.ts`. All feature `api.ts` files import from this shared instance. This centralises base URL configuration, authentication header injection, and error handling.
+A single configured API client instance is defined in `shared/lib/api.ts`. All feature `api.ts` files import from this shared instance. This centralises base URL configuration, envelope parsing (ADR-004), and error handling.
 
 ```typescript
-// shared/lib/api-client.ts
-const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8080';
+// shared/lib/api.ts
+const BASE_URL = import.meta.env.VITE_API_URL ?? '';
 
-export const apiClient = {
-  get: async <T>(path: string): Promise<T> => {
-    const res = await fetch(`${BASE_URL}${path}`);
-    if (!res.ok) throw new Error(res.statusText);
-    return res.json() as Promise<T>;
-  },
-  post: async <T>(path: string, body: unknown): Promise<T> => {
-    const res = await fetch(`${BASE_URL}${path}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error(res.statusText);
-    return res.json() as Promise<T>;
-  },
+async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const url = `${BASE_URL}${path}`;
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options?.headers,
+    },
+  });
+
+  const envelope: ApiEnvelope<T> = await response.json();
+
+  if (!response.ok || envelope.error) {
+    // Error handling logic as defined in ADR-004...
+    throw new ApiError(...);
+  }
+
+  return envelope.data as T;
+}
+
+export const api = {
+  get: <T>(path: string) => request<T>(path, { method: 'GET' }),
+  post: <T>(path: string, body?: unknown) => 
+    request<T>(path, { method: 'POST', body: JSON.stringify(body) }),
 };
 ```
 

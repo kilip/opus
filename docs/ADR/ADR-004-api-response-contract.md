@@ -126,8 +126,8 @@ Error responses conform to [RFC 7807](https://www.rfc-editor.org/rfc/rfc7807) wr
     "type": "https://opus.local/errors/not-found",
     "title": "Resource Not Found",
     "status": 404,
-    "detail": "User with ID usr_01HZ9XYZ does not exist.",
-    "instance": "/users/usr_01HZ9XYZ"
+    "detail": "Workspace with ID ws_01ABCDEF does not exist.",
+    "instance": "/workspaces/ws_01ABCDEF"
   },
   "meta": null
 }
@@ -143,7 +143,7 @@ Error responses conform to [RFC 7807](https://www.rfc-editor.org/rfc/rfc7807) wr
     "title": "Validation Failed",
     "status": 422,
     "detail": "Field 'email' must be a valid email address.",
-    "instance": "/users"
+    "instance": "/auth/login"
   },
   "meta": null
 }
@@ -155,7 +155,7 @@ Error responses conform to [RFC 7807](https://www.rfc-editor.org/rfc/rfc7807) wr
 
 All collection endpoints that may return more than one page of results use **opaque cursor-based pagination**. Offset-based pagination is not used.
 
-**Rationale:** Agent logs and workflow runs are high-volume, append-only data streams. Cursor-based pagination is stable under concurrent inserts and does not suffer from the page-drift problem inherent in offset pagination.
+**Rationale:** Workspace resources and audit logs are growing data streams. Cursor-based pagination is stable under concurrent inserts and does not suffer from the page-drift problem inherent in offset pagination.
 
 **Request parameters:**
 
@@ -187,8 +187,8 @@ All collection endpoints that may return more than one page of results use **opa
 **Example paginated request:**
 
 ```
-GET /users?limit=20
-GET /users?cursor=eyJpZCI6InVzcl8wMkFCQ0RFRiJ9&limit=20
+GET /workspaces?limit=20
+GET /workspaces?cursor=eyJpZCI6InVzcl8wMkFCQ0RFRiJ9&limit=20
 ```
 
 ---
@@ -368,15 +368,15 @@ func Error(c fiber.Ctx, status int, slug, title, detail string) error {
 **Handler usage example:**
 
 ```go
-// internal/delivery/gofiber/handler/user.go
-func (h *User) GetUser(c fiber.Ctx) error {
+// internal/delivery/gofiber/handler/workspace.go
+func (h *Workspace) GetWorkspace(c fiber.Ctx) error {
     id := c.Params("id")
-    user, err := h.service.FindByID(c.Context(), id)
+    ws, err := h.service.FindByID(c.Context(), id)
     if err != nil {
         return gofiber.Error(c, fiber.StatusNotFound, "not-found", "Resource Not Found",
-            fmt.Sprintf("User with ID %s does not exist.", id))
+            fmt.Sprintf("Workspace with ID %s does not exist.", id))
     }
-    return gofiber.OK(c, user)
+    return gofiber.OK(c, ws)
 }
 ```
 
