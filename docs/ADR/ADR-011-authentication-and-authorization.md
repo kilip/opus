@@ -5,6 +5,9 @@
 **Deciders:** Chief Architect
 **Context:** Opus Server (`opus/server/`) · Opus Dash (`opus/dash/`)
 
+**Amended by:** ADR-015 (2026-05-19) — WorkspaceID replaced by ActiveOrganizationID
+in JWT claims; Casbin domain updated from workspaceId to organizationId.
+
 ---
 
 ## 1. Context
@@ -109,7 +112,7 @@ package auth
 import "time"
 
 // Claims represents the payload embedded in a signed JWT.
-// Claims are minimal — role and workspace are always resolved from the DB,
+// Claims are minimal — role and organization are always resolved from the DB,
 // never trusted from the token payload alone.
 type Claims struct {
     // Sub is the user ID (stable, immutable identifier).
@@ -119,10 +122,10 @@ type Claims struct {
     // Used to look up and validate the token against the database.
     SessionID string `json:"sid"`
 
-    // WorkspaceID identifies the workspace this session belongs to.
-    WorkspaceID string `json:"wid"`
+    // ActiveOrganizationID identifies the organization currently active in this session.
+    ActiveOrganizationID string `json:"aoid"` // replaces wid — see ADR-015
 
-    // Role is the user's role within the workspace at the time of issuance.
+    // Role is the user's role within the organization at the time of issuance.
     // INFORMATIONAL ONLY — authorization decisions always query Casbin,
     // never this field directly.
     Role string `json:"role"`
@@ -132,6 +135,10 @@ type Claims struct {
     ExpiresAt time.Time `json:"exp"`
 }
 ```
+
+> **ActiveOrganizationID** identifies the organization currently active in this session.
+> Set automatically to the personal organization on first login. Updated via
+> `POST /auth/organizations/switch`. See ADR-015 for the full organization lifecycle.
 
 > **Authorization rule:** The `Role` field in JWT claims is informational only. All
 > authorization decisions are made by the Casbin enforcer against live DB policy records.
@@ -297,40 +304,40 @@ m = g(r.sub, p.sub, r.dom) && r.dom == p.dom && r.obj == p.obj && r.act == p.act
 | Field | Description |
 |---|---|
 | `sub` | User ID |
-| `dom` | Workspace ID (domain) |
+| `dom` | Organization ID — see ADR-015 for the Organization domain definition |
 | `obj` | Resource being accessed (e.g. `workspace`, `job`) |
 | `act` | Action being performed (e.g. `read`, `write`, `delete`, `manage`) |
 
 #### 2.4.2 Built-in Roles and Policies
 
-Two roles are defined at MVP. The policy table is seeded at workspace creation.
+Two roles are defined at MVP. The policy table is seeded at organization creation.
 
-**`admin` role — full access within workspace:**
-
-```
-p, admin, {workspace_id}, workspace, read
-p, admin, {workspace_id}, workspace, write
-p, admin, {workspace_id}, workspace, delete
-p, admin, {workspace_id}, workspace, manage
-p, admin, {workspace_id}, job,       read
-p, admin, {workspace_id}, job,       write
-p, admin, {workspace_id}, job,       delete
-p, admin, {workspace_id}, user,      manage
-```
-
-**`user` role — read + limited write within workspace:**
+**`admin` role — full access within organization:**
 
 ```
-p, user, {workspace_id}, workspace, read
-p, user, {workspace_id}, workspace, write
-p, user, {workspace_id}, job,       read
+p, admin, {organization_id}, workspace, read
+p, admin, {organization_id}, workspace, write
+p, admin, {organization_id}, workspace, delete
+p, admin, {organization_id}, workspace, manage
+p, admin, {organization_id}, job,       read
+p, admin, {organization_id}, job,       write
+p, admin, {organization_id}, job,       delete
+p, admin, {organization_id}, user,      manage
+```
+
+**`user` role — read + limited write within organization:**
+
+```
+p, user, {organization_id}, workspace, read
+p, user, {organization_id}, workspace, write
+p, user, {organization_id}, job,       read
 ```
 
 **Role assignment:**
 
 ```
-g, {user_id}, admin, {workspace_id}
-g, {user_id}, user,  {workspace_id}
+g, {user_id}, admin, {organization_id}
+g, {user_id}, user,  {organization_id}
 ```
 
 #### 2.4.3 Casbin Enforcer Wrapper
@@ -545,11 +552,11 @@ Auth endpoints are served under `/auth/` consistent with the URL convention esta
 ```json
 {
   "data": {
-    "id": "usr_01HZ9XYZ",
+    "id": "018f3a5a-3c2b-7d1e-8f9g-0h1i2j3k4l5m",
     "email": "user@example.com",
     "name": "Alice",
     "role": "admin",
-    "workspace_id": "ws_01ABCDEF"
+    "active_organization_id": "018f3a5a-8b3d-7a2e-9f1c-4b5c6d7e8f90"
   },
   "error": null,
   "meta": null
@@ -903,4 +910,4 @@ External policy engine. Rejected because:
 - [golang.org/x/oauth2](https://pkg.go.dev/golang.org/x/oauth2)
 - [RFC 6749 — OAuth 2.0 Authorization Framework](https://www.rfc-editor.org/rfc/rfc6749)
 - [RFC 6750 — OAuth 2.0 Bearer Token Usage](https://www.rfc-editor.org/rfc/rfc6750)
-- [OWASP — JWT Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html)eet.html)
+- [OWASP — JWT Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html)
