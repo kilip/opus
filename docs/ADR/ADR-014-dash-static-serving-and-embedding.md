@@ -171,7 +171,7 @@ type Config struct {
     Database DatabaseConfig   `mapstructure:"database" json:"database" jsonschema:"required"`
     Log      LogConfig        `mapstructure:"log"      json:"log"`
     Auth     auth.Config      `mapstructure:"auth"     json:"auth"`
-    Workspace workspace.Config `mapstructure:"workspace" json:"workspace"`
+    Organization organization.Config `mapstructure:"organization" json:"organization"`
     Queue    queue.Config     `mapstructure:"queue"    json:"queue"`
     Dash     dash.Config      `mapstructure:"dash"     json:"dash"`
 }
@@ -231,7 +231,7 @@ import "github.com/kilip/opus/server/internal/dash"
 func Bootstrap(cfg *config.Config) {
     initShared(cfg)
     auth.Bootstrap(...)
-    workspace.Bootstrap(...)
+    organization.Bootstrap(...)
     // ... other domains ...
     dash.Bootstrap(cfg.Dash)                    // ← added
     fiberdelivery.Bootstrap(c.fiber, c.log, cfg.Server)
@@ -381,7 +381,7 @@ before:
     - go mod tidy -C server
     # Mock generation (existing)
     - go run -C server go.uber.org/mock/mockgen -destination=mocks/auth.go      -package=mocks github.com/kilip/opus/server/internal/auth Repository,PolicyService,OAuthProvider
-    - go run -C server go.uber.org/mock/mockgen -destination=mocks/workspace.go -package=mocks github.com/kilip/opus/server/internal/workspace Repository
+    - go run -C server go.uber.org/mock/mockgen -destination=mocks/organization.go -package=mocks github.com/kilip/opus/server/internal/organization Repository
     - go run -C server go.uber.org/mock/mockgen -destination=mocks/logger.go     -package=mocks github.com/kilip/opus/server/internal/shared/logger Logger
     - go run -C server go.uber.org/mock/mockgen -destination=mocks/queue.go      -package=mocks github.com/kilip/opus/server/internal/shared/queue Queue
     - go run -C server go.uber.org/mock/mockgen -destination=mocks/eventbus.go   -package=mocks github.com/kilip/opus/server/internal/shared/queue EventBus

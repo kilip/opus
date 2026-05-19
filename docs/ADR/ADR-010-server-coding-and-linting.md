@@ -247,7 +247,7 @@ package auth
 type Repository interface {
     FindUserByID(ctx context.Context, id string) (*User, error)
     FindUserByEmail(ctx context.Context, email string) (*User, error)
-    CreateUserWithWorkspace(ctx context.Context, user *User, account *Account, workspaceName string) (*User, error)
+    CreateUserWithOrganization(ctx context.Context, user *User, account *Account, organizationName string) (*User, error)
     // ...
 }
 ```

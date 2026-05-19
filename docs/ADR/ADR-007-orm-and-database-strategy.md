@@ -9,7 +9,7 @@
 
 ## 1. Context
 
-Opus Server requires a persistent storage layer for multiple feature domains: `auth`, `workspace`, and infrastructure domains like `job`. The ORM must:
+Opus Server requires a persistent storage layer for multiple feature domains: `auth`, `organization`, and infrastructure domains like `job`. The ORM must:
 
 - Support both **SQLite** (zero-configuration local development and single-user deployments) and **PostgreSQL** (team and production deployments) from a single codebase
 - Provide **type-safe, code-generated** query builders to eliminate stringly-typed SQL at compile time
@@ -36,11 +36,11 @@ Opus Server adopts **Ent** as the exclusive ORM for all database interactions, w
 opus/
 └── server/
     ├── ent/                            # Entgo generated code (entgo convention)
-    │   ├── schema/                     # Schema definitions (hand-authored)
-    │   │   ├── user.go
-    │   │   ├── auth_account.go
-    │   │   ├── workspace.go
-    │   │   └── job.go
+    ├── schema/                     # Schema definitions (hand-authored)
+    │   ├── user.go
+    │   ├── auth_account.go
+    │   ├── organization.go
+    │   └── job.go
     │   ├── migrate/
     │   │   └── migrations/             # Atlas versioned migration files
     │   │       ├── 20260517000001_init.sql
@@ -54,7 +54,7 @@ opus/
             └── entgo/
                 ├── client.go               # Ent client setup, driver selection, migration bootstrap
                 ├── auth.go                 # Implements internal/auth.Repository
-                └── workspace.go            # Implements internal/workspace.Repository
+                └── organization.go            # Implements internal/organization.Repository
 ```
 
 > **Note for AI agents and implementors:** The `server/ent/` directory is **entirely generated** — kecuali `server/ent/schema/`. Jangan pernah mengedit file yang dibuat secara manual di luar `schema/`. Semua perubahan skema dimulai di `server/ent/schema/` dan disebarkan melalui `go generate`.
@@ -227,6 +227,7 @@ package schema
 
 import (
     "time"
+    "github.com/google/uuid"
     "entgo.io/ent"
     "entgo.io/ent/schema/field"
 )
@@ -239,7 +240,13 @@ type User struct {
 // Fields defines the User entity fields.
 func (User) Fields() []ent.Field {
     return []ent.Field{
-        field.String("id").Immutable().Unique(),
+        field.String("id").
+            DefaultFunc(func() string {
+                // Generates a K-sortable UUID v7 (36-character hyphenated string)
+                return uuid.Must(uuid.NewV7()).String()
+            }).
+            Immutable().
+            Unique(),
         field.String("email").Unique().NotEmpty(),
         field.String("name").Optional(),
         field.Time("created_at").Default(time.Now).Immutable(),
@@ -364,7 +371,7 @@ Generates type-safe Go code from raw SQL queries. Not chosen over Ent because:
 
 Considered for repository list methods. Rejected in favour of cursor-based pagination (consistent with ADR-004) because:
 
-- Offset pagination produces unstable results under concurrent inserts — critical for growing data streams like audit logs or workspace activities
+- Offset pagination produces unstable results under concurrent inserts — critical for growing data streams like audit logs or organization activities
 - `OFFSET N` queries perform full index scans up to offset N; cursor pagination uses keyset seeks and scales linearly
 
 ---

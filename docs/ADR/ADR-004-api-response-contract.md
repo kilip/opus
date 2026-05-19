@@ -47,7 +47,7 @@ Every API response — success or error — is wrapped in a consistent top-level
 ```json
 {
   "data": {
-    "id": "usr_01HZ9XYZ",
+    "id": "018f3a5a-3c2b-7d1e-8f9g-0h1i2j3k4l5m",
     "email": "toni@example.com",
     "name": "Anthonius Munthi"
   },
@@ -61,17 +61,17 @@ Every API response — success or error — is wrapped in a consistent top-level
 ```json
 {
   "data": [
-    { "id": "usr_01HZ9XYZ", "email": "toni@example.com", "name": "Anthonius Munthi" },
-    { "id": "usr_02ABCDEF", "email": "other@example.com", "name": "Other User" }
+    { "id": "018f3a5a-3c2b-7d1e-8f9g-0h1i2j3k4l5m", "email": "toni@example.com", "name": "Anthonius Munthi" },
+    { "id": "018f3a5b-4d5e-6f7g-8h9i-0j1k2l3m4n5o", "email": "other@example.com", "name": "Other User" }
   ],
   "error": null,
   "meta": {
     "cursor": {
-      "next": "eyJpZCI6InVzcl8wMkFCQ0RFRiJ9",
+      "next": "eyJpZCI6IjAxOGYzYTViLTRkNWUtNmY3Zy04aDlpLTBqMWsybDNtNG41byJ9",
       "has_more": true
     },
     "total": null,
-    "request_id": "req_7fGh3kLm"
+    "request_id": "018f3a5c-5f6g-7h8i-9j0k-1l2m3n4o5p6q"
   }
 }
 ```
@@ -126,8 +126,8 @@ Error responses conform to [RFC 7807](https://www.rfc-editor.org/rfc/rfc7807) wr
     "type": "https://opus.local/errors/not-found",
     "title": "Resource Not Found",
     "status": 404,
-    "detail": "Workspace with ID ws_01ABCDEF does not exist.",
-    "instance": "/workspaces/ws_01ABCDEF"
+    "detail": "Organization with ID 018f3a5a-8b3d-7a2e-9f1c-4b5c6d7e8f90 does not exist.",
+    "instance": "/organizations/018f3a5a-8b3d-7a2e-9f1c-4b5c6d7e8f90"
   },
   "meta": null
 }
@@ -155,7 +155,7 @@ Error responses conform to [RFC 7807](https://www.rfc-editor.org/rfc/rfc7807) wr
 
 All collection endpoints that may return more than one page of results use **opaque cursor-based pagination**. Offset-based pagination is not used.
 
-**Rationale:** Workspace resources and audit logs are growing data streams. Cursor-based pagination is stable under concurrent inserts and does not suffer from the page-drift problem inherent in offset pagination.
+**Rationale:** Organization resources and audit logs are growing data streams. Cursor-based pagination is stable under concurrent inserts and does not suffer from the page-drift problem inherent in offset pagination.
 
 **Request parameters:**
 
@@ -173,7 +173,7 @@ All collection endpoints that may return more than one page of results use **opa
     "has_more": true
   },
   "total": null,
-  "request_id": "req_7fGh3kLm"
+  "request_id": "018f3a5c-5f6g-7h8i-9j0k-1l2m3n4o5p6q"
 }
 ```
 
@@ -187,8 +187,8 @@ All collection endpoints that may return more than one page of results use **opa
 **Example paginated request:**
 
 ```
-GET /workspaces?limit=20
-GET /workspaces?cursor=eyJpZCI6InVzcl8wMkFCQ0RFRiJ9&limit=20
+GET /organizations?limit=20
+GET /organizations?cursor=eyJpZCI6IjAxOGYzYTViLTRkNWUtNmY3Zy04aDlpLTBqMWsybDNtNG41byJ9&limit=20
 ```
 
 ---
@@ -229,7 +229,7 @@ GET /users/{id}
 GET /vault/entries
 
 # Incorrect — version prefix is not used
-GET /users
+GET /v1/users
 ```
 
 **Rationale:** Opus is a self-hosted, multi-tenant system. The server and the Dash client are deployed and upgraded together as a unit. URL versioning introduces coordination overhead (maintaining multiple active versions) that provides no benefit in this deployment model. Breaking changes are managed through the ADR process and release notes, not through parallel URL namespaces.
@@ -257,13 +257,13 @@ GET /agents/{id}/logs/stream
 
 ```
 event: agent.log
-data: {"event":"agent.log","agent_id":"agt_01HZ9XYZ","sequence":42,"payload":{...},"timestamp":"2026-05-17T08:00:00Z"}
+data: {"event":"agent.log","agent_id":"018f3a5d-6h7i-8j9k-0l1m-2n3o4p5q6r7s","sequence":42,"payload":{...},"timestamp":"2026-05-17T08:00:00Z"}
 
 event: agent.status
-data: {"event":"agent.status","agent_id":"agt_01HZ9XYZ","sequence":43,"payload":{"status":"completed"},"timestamp":"2026-05-17T08:00:01Z"}
+data: {"event":"agent.status","agent_id":"018f3a5d-6h7i-8j9k-0l1m-2n3o4p5q6r7s","sequence":43,"payload":{"status":"completed"},"timestamp":"2026-05-17T08:00:01Z"}
 
 event: heartbeat
-data: {"event":"heartbeat","agent_id":"agt_01HZ9XYZ","sequence":null,"payload":null,"timestamp":"2026-05-17T08:00:30Z"}
+data: {"event":"heartbeat","agent_id":"018f3a5d-6h7i-8j9k-0l1m-2n3o4p5q6r7s","sequence":null,"payload":null,"timestamp":"2026-05-17T08:00:30Z"}
 ```
 
 **SSE envelope fields:**
@@ -291,7 +291,7 @@ If the agent ID does not exist or the caller is not authorised, the server close
 
 ```
 event: error
-data: {"event":"error","agent_id":"agt_01HZ9XYZ","sequence":null,"payload":{"type":"https://opus.local/errors/not-found","title":"Resource Not Found","status":404,"detail":"Agent with ID agt_01HZ9XYZ does not exist.","instance":"/agents/agt_01HZ9XYZ/logs/stream"},"timestamp":"2026-05-17T08:00:00Z"}
+data: {"event":"error","agent_id":"018f3a5d-6h7i-8j9k-0l1m-2n3o4p5q6r7s","sequence":null,"payload":{"type":"https://opus.local/errors/not-found","title":"Resource Not Found","status":404,"detail":"Agent with ID 018f3a5d-6h7i-8j9k-0l1m-2n3o4p5q6r7s does not exist.","instance":"/agents/018f3a5d-6h7i-8j9k-0l1m-2n3o4p5q6r7s/logs/stream"},"timestamp":"2026-05-17T08:00:00Z"}
 ```
 
 Clients must handle the `error` event type and not attempt reconnection for `404` and `403` errors.
@@ -368,15 +368,15 @@ func Error(c fiber.Ctx, status int, slug, title, detail string) error {
 **Handler usage example:**
 
 ```go
-// internal/delivery/gofiber/handler/workspace.go
-func (h *Workspace) GetWorkspace(c fiber.Ctx) error {
+// internal/delivery/gofiber/handler/organization.go
+func (h *Organization) GetOrganization(c fiber.Ctx) error {
     id := c.Params("id")
-    ws, err := h.service.FindByID(c.Context(), id)
+    org, err := h.service.FindByID(c.Context(), id)
     if err != nil {
         return gofiber.Error(c, fiber.StatusNotFound, "not-found", "Resource Not Found",
-            fmt.Sprintf("Workspace with ID %s does not exist.", id))
+            fmt.Sprintf("Organization with ID %s does not exist.", id))
     }
-    return gofiber.OK(c, ws)
+    return gofiber.OK(c, org)
 }
 ```
 

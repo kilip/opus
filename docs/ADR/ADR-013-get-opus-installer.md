@@ -225,7 +225,7 @@ npx get-opus --port 8080 --data-dir ~/.opus --no-service
 ```
 
 **Rationale for minimal questions:** Opus Dash provides a full setup wizard for LLM API keys,
-workspace configuration, user accounts, and all other settings. The installer's only
+organization configuration, user accounts, and all other settings. The installer's only
 responsibility is to get the server running so the user can reach the Dash UI.
 
 ---
@@ -461,7 +461,7 @@ On successful installation, the installer prints a clear summary:
 
   Complete your setup in the browser:
     • Create your admin account
-    • Configure your workspace settings
+    • Configure your organization settings
     • Connect integrations as needed
 
   Tip: To manage your Opus service:

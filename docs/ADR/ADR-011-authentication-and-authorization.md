@@ -14,7 +14,7 @@ in JWT claims; Casbin domain updated from workspaceId to organizationId.
 
 Opus is a self-hosted, multi-user autonomous AI assistant. With the introduction of multi-user
 support, the system requires a formal, extensible authentication and authorization architecture
-that governs how users authenticate, how sessions are managed, and how access to workspaces and
+that governs how users authenticate, how sessions are managed, and how access to organizations and
 resources is enforced across all domains.
 
 Without a formally defined auth architecture, individual handlers risk implementing ad-hoc
@@ -22,7 +22,7 @@ token validation, role checking, and session management — leading to security 
 untestable code paths, and friction for future capability expansion.
 
 This ADR establishes the canonical authentication mechanism (stateful JWT with refresh token
-rotation), OAuth2 provider abstraction, workspace-scoped role-based access control via Casbin,
+rotation), OAuth2 provider abstraction, organization-scoped role-based access control via Casbin,
 and the corresponding Dash client auth flow for all code under `opus/server/` and `opus/dash/`.
 
 > **Note for AI agents and automated tooling:** This ADR is the authoritative specification for
@@ -35,7 +35,7 @@ and the corresponding Dash client auth flow for all code under `opus/server/` an
 
 Opus Server adopts **stateful JWT with refresh token rotation** for session management,
 **OAuth2 with an extensible provider abstraction** for external authentication, and
-**Casbin domain-based RBAC** for workspace-scoped authorization. All auth logic is
+**Casbin domain-based RBAC** for organization-scoped authorization. All auth logic is
 encapsulated in the `internal/auth/` domain package; delivery is handled exclusively via
 the Fiber middleware and handler layers defined in ADR-005.
 
@@ -276,7 +276,7 @@ registering the instance in `main.go`. No changes to the domain layer are requir
 
 ### 2.4 Authorization — Casbin Domain-Based RBAC
 
-Opus uses **Casbin** with a **domain-based RBAC model** to enforce workspace-scoped
+Opus uses **Casbin** with a **domain-based RBAC model** to enforce organization-scoped
 access control. Every authorization decision is evaluated against live policy records
 persisted in the database.
 
@@ -305,7 +305,7 @@ m = g(r.sub, p.sub, r.dom) && r.dom == p.dom && r.obj == p.obj && r.act == p.act
 |---|---|
 | `sub` | User ID |
 | `dom` | Organization ID — see ADR-015 for the Organization domain definition |
-| `obj` | Resource being accessed (e.g. `workspace`, `job`) |
+| `obj` | Resource being accessed (e.g. `organization`, `job`) |
 | `act` | Action being performed (e.g. `read`, `write`, `delete`, `manage`) |
 
 #### 2.4.2 Built-in Roles and Policies
@@ -315,22 +315,22 @@ Two roles are defined at MVP. The policy table is seeded at organization creatio
 **`admin` role — full access within organization:**
 
 ```
-p, admin, {organization_id}, workspace, read
-p, admin, {organization_id}, workspace, write
-p, admin, {organization_id}, workspace, delete
-p, admin, {organization_id}, workspace, manage
-p, admin, {organization_id}, job,       read
-p, admin, {organization_id}, job,       write
-p, admin, {organization_id}, job,       delete
-p, admin, {organization_id}, user,      manage
+p, admin, {organization_id}, organization, read
+p, admin, {organization_id}, organization, write
+p, admin, {organization_id}, organization, delete
+p, admin, {organization_id}, organization, manage
+p, admin, {organization_id}, job,          read
+p, admin, {organization_id}, job,          write
+p, admin, {organization_id}, job,          delete
+p, admin, {organization_id}, user,         manage
 ```
 
 **`user` role — read + limited write within organization:**
 
 ```
-p, user, {organization_id}, workspace, read
-p, user, {organization_id}, workspace, write
-p, user, {organization_id}, job,       read
+p, user, {organization_id}, organization, read
+p, user, {organization_id}, organization, write
+p, user, {organization_id}, job,          read
 ```
 
 **Role assignment:**
@@ -353,7 +353,7 @@ import (
     "github.com/casbin/casbin/v2"
 )
 
-// PolicyService wraps the Casbin enforcer and provides workspace-scoped
+// PolicyService wraps the Casbin enforcer and provides organization-scoped
 // authorization checks for use by the RBAC middleware and service layer.
 type PolicyService struct {
     enforcer *casbin.Enforcer
@@ -365,27 +365,27 @@ func NewPolicyService(enforcer *casbin.Enforcer) *PolicyService {
 }
 
 // Enforce returns true if the subject (userID) is permitted to perform
-// the given action on the given object within the specified workspace (domain).
-func (ps *PolicyService) Enforce(ctx context.Context, userID, workspaceID, obj, act string) (bool, error) {
-    ok, err := ps.enforcer.Enforce(userID, workspaceID, obj, act)
+// the given action on the given object within the specified organization (domain).
+func (ps *PolicyService) Enforce(ctx context.Context, userID, organizationID, obj, act string) (bool, error) {
+    ok, err := ps.enforcer.Enforce(userID, organizationID, obj, act)
     if err != nil {
         return false, fmt.Errorf("auth.PolicyService.Enforce: %w", err)
     }
     return ok, nil
 }
 
-// AssignRole assigns the given role to a user within a workspace.
-func (ps *PolicyService) AssignRole(ctx context.Context, userID, role, workspaceID string) error {
-    _, err := ps.enforcer.AddRoleForUserInDomain(userID, role, workspaceID)
+// AssignRole assigns the given role to a user within a organization.
+func (ps *PolicyService) AssignRole(ctx context.Context, userID, role, organizationID string) error {
+    _, err := ps.enforcer.AddRoleForUserInDomain(userID, role, organizationID)
     if err != nil {
         return fmt.Errorf("auth.PolicyService.AssignRole: %w", err)
     }
     return nil
 }
 
-// RevokeRole removes a role from a user within a workspace.
-func (ps *PolicyService) RevokeRole(ctx context.Context, userID, role, workspaceID string) error {
-    _, err := ps.enforcer.DeleteRoleForUserInDomain(userID, role, workspaceID)
+// RevokeRole removes a role from a user within a organization.
+func (ps *PolicyService) RevokeRole(ctx context.Context, userID, role, organizationID string) error {
+    _, err := ps.enforcer.DeleteRoleForUserInDomain(userID, role, organizationID)
     if err != nil {
         return fmt.Errorf("auth.PolicyService.RevokeRole: %w", err)
     }
@@ -436,7 +436,7 @@ Responsibilities:
 2. Parse and verify the JWT signature.
 3. Look up the token record in the DB and verify `revoked_at IS NULL`.
 4. Inject the resolved `Claims` into `context.Context` using a typed context key.
-5. Inject `request_id`, `user_id`, and `workspace_id` for structured logging (ADR-006).
+5. Inject `request_id`, `user_id`, and `active_organization_id` for structured logging (ADR-006).
 
 ```go
 // internal/delivery/gofiber/middleware/auth.go
@@ -464,6 +464,7 @@ func Authenticate(svc *auth.Service, log logger.Logger) fiber.Handler {
 
         ctx := auth.WithClaims(c.Context(), claims)
         ctx = logger.WithUserID(ctx, claims.Sub)
+        ctx = logger.WithOrganizationID(ctx, claims.ActiveOrganizationID)
         c.SetUserContext(ctx)
 
         return c.Next()
@@ -487,7 +488,7 @@ import (
 )
 
 // Require returns a Fiber middleware that enforces a Casbin policy check
-// for the given resource object and action within the authenticated user's workspace.
+// for the given resource object and action within the authenticated user's organization.
 //
 // Must be applied after Authenticate middleware.
 //
@@ -501,7 +502,7 @@ func Require(policy *auth.PolicyService, obj, act string) fiber.Handler {
                 "unauthorized", "Unauthorized", "authentication required")
         }
 
-        ok, err := policy.Enforce(c.Context(), claims.Sub, claims.WorkspaceID, obj, act)
+        ok, err := policy.Enforce(c.Context(), claims.Sub, claims.ActiveOrganizationID, obj, act)
         if err != nil || !ok {
             return gofiber.Error(c, fiber.StatusForbidden,
                 "forbidden", "Forbidden", "insufficient permissions")
@@ -651,15 +652,15 @@ import "time"
 
 // User represents an authenticated Opus user.
 type User struct {
-    ID          string
-    Email       string
-    Name        string
-    AvatarURL   string
-    Provider    string // "local", "google", "github"
-    ProviderID  string // empty for local users
-    WorkspaceID string
-    CreatedAt   time.Time
-    UpdatedAt   time.Time
+    ID             string
+    Email          string
+    Name           string
+    AvatarURL      string
+    Provider       string // "local", "google", "github"
+    ProviderID     string // empty for local users
+    OrganizationID string
+    CreatedAt      time.Time
+    UpdatedAt      time.Time
 }
 
 // Token represents a persisted access or refresh token record.
@@ -685,12 +686,12 @@ const (
 // Session groups an access token and refresh token issued together.
 // Revoking a session invalidates both tokens atomically.
 type Session struct {
-    ID           string
-    UserID       string
-    WorkspaceID  string
-    AccessToken  *Token
-    RefreshToken *Token
-    CreatedAt    time.Time
+    ID                   string
+    UserID               string
+    ActiveOrganizationID string
+    AccessToken          *Token
+    RefreshToken         *Token
+    CreatedAt            time.Time
 }
 ```
 
@@ -834,15 +835,15 @@ Traditional server-side sessions with a session ID in a cookie, validated agains
 Rejected because:
 
 - JWT claims provide a compact, self-describing identity payload useful for structured logging
-  (user ID, workspace ID, role) without an additional DB query in every middleware
+  (user ID, organization ID, role) without an additional DB query in every middleware
 - OAuth2 integration is cleaner with JWT as the issuance format
 - Future service-to-service auth (agent runtime calling internal APIs) benefits from JWT portability
 
 ### 3.3 Standard RBAC Without Domain Scoping (`sub, obj, act`)
 
-Casbin RBAC without workspace domain awareness. Rejected because:
+Casbin RBAC without organization domain awareness. Rejected because:
 
-- Opus is a multi-user, multi-workspace system; permissions are inherently workspace-scoped
+- Opus is a multi-user, multi-organization system; permissions are inherently organization-scoped
 - Upgrading from flat RBAC to domain-based RBAC after data exists requires a breaking policy
   migration. Starting with `sub, dom, obj, act` from the outset avoids this migration entirely
 - Casbin's domain-based RBAC (`g = _, _, _`) is a first-class built-in feature, not a custom extension
@@ -869,8 +870,8 @@ External policy engine. Rejected because:
   neutralises stolen refresh tokens immediately
 - **Extensible OAuth2** — New providers require only a new `internal/adapter/oauth/` implementation
   and a `registry.Register()` call in `main.go`; zero domain layer changes
-- **Workspace-Scoped Authorization** — Casbin domain-based RBAC correctly isolates permissions
-  per workspace from day one; no future migration required to add workspace scope
+- **Organization-Scoped Authorization** — Casbin domain-based RBAC correctly isolates permissions
+  per organization from day one; no future migration required to add organization scope
 - **Per-Route Enforcement** — `middleware.Require(policy, obj, act)` enables declarative,
   readable authorization rules co-located with route registration
 - **Type Safety** — All auth models, claims, and errors are strongly typed; no stringly-typed

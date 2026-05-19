@@ -82,7 +82,7 @@ opus/
         │   ├── errors.go
         │   └── config.go
         │
-        ├── workspace/
+        ├── organization/
         │   ├── bootstrap.go
         │   └── ...
         │
@@ -110,6 +110,7 @@ import (
     "github.com/kilip/opus/server/internal/agent"
     "github.com/kilip/opus/server/internal/vault"
     "github.com/kilip/opus/server/internal/workflow"
+    "github.com/kilip/opus/server/internal/organization"
     "github.com/kilip/opus/server/internal/gmail"
     "github.com/kilip/opus/server/internal/gdrive"
     "github.com/kilip/opus/server/internal/whatsapp"
@@ -132,8 +133,8 @@ type container struct {
     bus    queue.EventBus
 
     // Domain services
-    auth      *auth.Service
-    workspace *workspace.Service
+    auth         *auth.Service
+    organization *organization.Service
 
     // Delivery
     fiber *fiber.App
@@ -146,11 +147,11 @@ func GetAuth() *auth.Service {
     return c.auth
 }
 
-// GetWorkspace returns the initialised workspace.Service.
+// GetOrganization returns the initialised organization.Service.
 // Panics if Bootstrap has not been called.
-func GetWorkspace() *workspace.Service {
+func GetOrganization() *organization.Service {
     mustInit()
-    return c.workspace
+    return c.organization
 }
 
 // GetFiber returns the initialised Fiber application.
@@ -185,7 +186,7 @@ import (
     "github.com/kilip/opus/server/internal/adapter/entgo"
     adapterqueue "github.com/kilip/opus/server/internal/adapter/queue"
     "github.com/kilip/opus/server/internal/auth"
-    "github.com/kilip/opus/server/internal/workspace"
+    "github.com/kilip/opus/server/internal/organization"
     "github.com/kilip/opus/server/internal/config"
     fiberdelivery "github.com/kilip/opus/server/internal/delivery/gofiber"
 )
@@ -196,7 +197,7 @@ import (
 func Bootstrap(cfg *config.Config) {
     initShared(cfg)
     auth.Bootstrap(c.db, c.bus, c.queue, c.log, cfg.Auth)
-    workspace.Bootstrap(c.db, c.bus, c.queue, c.log, cfg.Workspace)
+    organization.Bootstrap(c.db, c.bus, c.queue, c.log, cfg.Organization)
     fiberdelivery.Bootstrap(c.fiber, c.log, cfg.Server)
 }
 
@@ -308,7 +309,7 @@ package gofiber
 import (
     "github.com/gofiber/fiber/v3"
     "github.com/kilip/opus/server/internal/auth"
-    "github.com/kilip/opus/server/internal/workspace"
+    "github.com/kilip/opus/server/internal/organization"
     "github.com/kilip/opus/server/internal/shared/logger"
 )
 
@@ -322,7 +323,7 @@ func Bootstrap(
     registerRoutes(
         app,
         auth.GetService(),
-        workspace.GetService(),
+        organization.GetService(),
         log,
     )
 }
@@ -383,20 +384,20 @@ internal/[feature_b]/  →  internal/shared/queue/  ✅  via EventBus only
 **Correct inter-domain pattern:**
 
 ```go
-// workspace/service.go — publishes an event; does not import auth, etc.
+// organization/service.go — publishes an event; does not import auth, etc.
 func (s *Service) Create(ctx context.Context, name string) error {
     // ... business logic ...
 
     return s.bus.Publish(ctx, queue.Event{
-        Topic:   "workspace.created",
+        Topic:   "organization.created",
         Payload: payload,
-        Source:  "workspace",
+        Source:  "organization",
     })
 }
 
-// auth/service.go — reacts to workspace events; does not import workspace
-func (s *Service) OnWorkspaceCreated(ctx context.Context, event queue.Event) error {
-    // ... handle workspace creation ...
+// auth/service.go — reacts to organization events; does not import organization
+func (s *Service) OnOrganizationCreated(ctx context.Context, event queue.Event) error {
+    // ... handle organization creation ...
     return nil
 }
 ```
@@ -405,8 +406,8 @@ func (s *Service) OnWorkspaceCreated(ctx context.Context, event queue.Event) err
 
 | Topic | Producer | Consumers |
 |---|---|---|
-| `user.created` | `auth` | `workspace` |
-| `workspace.created` | `workspace` | `auth` |
+| `user.created` | `auth` | `organization` |
+| `organization.created` | `organization` | `auth` |
 | `email.sent` | `auth` | `logger` |
 
 ---

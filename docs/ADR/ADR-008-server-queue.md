@@ -12,7 +12,7 @@
 Opus Server requires a durable, reliable messaging infrastructure to support asynchronous work and domain decoupling:
 
 1. **Background Job Processing** — Sending notifications, dispatching emails, and other deferred tasks that must not block the HTTP request lifecycle.
-2. **Internal Domain Event Bus** — Decoupling feature domains from one another via a publish/subscribe mechanism. For example: a user created in the `auth` domain may trigger a workspace provisioning or a welcome email without the `auth` package importing other domains directly.
+2. **Internal Domain Event Bus** — Decoupling feature domains from one another via a publish/subscribe mechanism. For example: a user created in the `auth` domain may trigger an organization provisioning or a welcome email without the `auth` package importing other domains directly.
 
 Without a unified, interface-driven queue abstraction, each domain risks implementing bespoke async patterns, creating operational inconsistency, coupling domains together implicitly, and making it impossible to swap queue backends without rewriting call sites.
 
@@ -744,8 +744,8 @@ func main() {
     q.RegisterHandler("email:send", authService.HandleSendEmailJob)
 
     // Register event subscribers
-    bus.Subscribe("user.created", workspaceService.OnUserCreated)
-    bus.Subscribe("workspace.*",  notifService.OnWorkspaceEvent)
+    bus.Subscribe("user.created", organizationService.OnUserCreated)
+    bus.Subscribe("organization.*",  notifService.OnOrganizationEvent)
 
     // Start the queue worker loop
     ctx := context.Background()
@@ -766,13 +766,13 @@ All job types follow the `"<domain>:<action>"` convention. All event topics foll
 | Job Type | Description |
 |---|---|
 | `email:send` | Send a transactional email |
-| `workspace:setup` | Provision a new workspace |
+| `organization:setup` | Provision a new organization |
 
 | Event Topic | Description |
 |---|---|
 | `user.created` | A new user was registered |
-| `workspace.provisioned` | A workspace was successfully provisioned |
-| `workspace.failed` | Workspace provisioning failed |
+| `organization.provisioned` | An organization was successfully provisioned |
+| `organization.failed` | Organization provisioning failed |
 
 ---
 
@@ -824,7 +824,7 @@ For tests that assert specific enqueue or publish calls, generate mocks using `g
 | Interface-driven design | `queue.Queue` + `queue.EventBus` interfaces | ADR-001 (Repository pattern) |
 | Feature config co-location | `queue.Config` owned by queue package | ADR-002 (Hybrid composition) |
 | Delivery layer logging | `logger.Logger` injected into queue workers | ADR-006 (Logger interface) |
-| Domain decoupling via EventBus | `auth` → `workspace` via `bus.Publish` | ADR-001 (Dependency rule) |
+| Domain decoupling via EventBus | `auth` → `organization` via `bus.Publish` | ADR-001 (Dependency rule) |
 
 ---
 

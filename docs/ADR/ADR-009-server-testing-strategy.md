@@ -92,7 +92,7 @@ package auth
 type Repository interface {
     FindUserByID(ctx context.Context, id string) (*User, error)
     FindUserByEmail(ctx context.Context, email string) (*User, error)
-    CreateUserWithWorkspace(ctx context.Context, user *User, account *Account, workspaceName string) (*User, error)
+    CreateUserWithOrganization(ctx context.Context, user *User, account *Account, organizationName string) (*User, error)
     // ...
 }
 ```
@@ -150,20 +150,20 @@ func TestService_FindUserByID(t *testing.T) {
     }{
         {
             name:    "returns user when found",
-            userID:  "usr_001",
+            userID:  "018f3a5a-3c2b-7d1e-8f9g-0h1i2j3k4l5m",
             setupMock: func(repo *auth.MockRepository) {
                 repo.EXPECT().
-                    FindUserByID(gomock.Any(), "usr_001").
-                    Return(&auth.User{ID: "usr_001", Email: "test@example.com"}, nil)
+                    FindUserByID(gomock.Any(), "018f3a5a-3c2b-7d1e-8f9g-0h1i2j3k4l5m").
+                    Return(&auth.User{ID: "018f3a5a-3c2b-7d1e-8f9g-0h1i2j3k4l5m", Email: "test@example.com"}, nil)
             },
             wantErr: nil,
         },
         {
             name:    "returns ErrUserNotFound when user does not exist",
-            userID:  "usr_missing",
+            userID:  "018f3a5a-3c2c-7d1e-8f9g-0h1i2j3k4l5n",
             setupMock: func(repo *auth.MockRepository) {
                 repo.EXPECT().
-                    FindUserByID(gomock.Any(), "usr_missing").
+                    FindUserByID(gomock.Any(), "018f3a5a-3c2c-7d1e-8f9g-0h1i2j3k4l5n").
                     Return(nil, auth.ErrUserNotFound)
             },
             wantErr: auth.ErrUserNotFound,
@@ -240,8 +240,8 @@ func TestAuthRepo_FindUserByID(t *testing.T) {
 
     // seed
     ctx := context.Background()
-    created, err := repo.CreateUserWithWorkspace(ctx, &auth.User{
-        ID:    "usr_001",
+    created, err := repo.CreateUserWithOrganization(ctx, &auth.User{
+        ID:    "018f3a5a-3c2b-7d1e-8f9g-0h1i2j3k4l5m",
         Email: "test@example.com",
     }, nil, "Default")
     if err != nil {
@@ -298,7 +298,7 @@ func TestAuth_GetCurrentUser(t *testing.T) {
             setupMock: func(svc *auth.MockService) {
                 svc.EXPECT().
                     FindUserByID(gomock.Any(), gomock.Any()).
-                    Return(&auth.User{ID: "usr_001", Email: "test@example.com"}, nil)
+                    Return(&auth.User{ID: "018f3a5a-3c2b-7d1e-8f9g-0h1i2j3k4l5m", Email: "test@example.com"}, nil)
             },
             wantStatusCode: http.StatusOK,
         },
