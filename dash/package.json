@@ -28,7 +28,7 @@
     "workbox-window": "^7.4.1"
   },
   "devDependencies": {
-    "@babel/core": "^7.29.0",
+    "@babel/core": "^7.29.6",
     "@biomejs/biome": "2.4.15",
     "@playwright/test": "^1.60.0",
     "@rolldown/plugin-babel": "^0.2.3",
