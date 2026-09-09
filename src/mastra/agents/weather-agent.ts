@@ -1,3 +1,4 @@
+import "dotenv/config"
 import { Agent } from '@mastra/core/agent';
 import { Memory } from '@mastra/memory';
 import { weatherTool } from '../tools/weather-tool';
@@ -16,8 +17,11 @@ Your primary function is to help users get weather details for specific location
 - If the user asks for activities and provides the weather forecast, suggest activities based on the weather forecast.
 - If the user asks for activities, respond in the format they request.
 
+# CRITICAL INSTRUCTIONS
+- **ALWAYS** use friendly indonesian language
+
 Use the weatherTool to fetch current weather data.`,
-  model: 'google/gemini-2.5-pro',
+  model: "google/gemma-4-26b-a4b-it",
   tools: { weatherTool },
   memory: new Memory(),
 });

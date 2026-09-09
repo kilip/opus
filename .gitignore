@@ -1,10 +1,12 @@
 node_modules
+mastra.*
 
 # Output
 .output
 .vercel
 .netlify
 .wrangler
+.mastra
 /.svelte-kit
 /build
 
