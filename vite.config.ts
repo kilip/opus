@@ -5,6 +5,11 @@ import adapter from '@sveltejs/adapter-auto';
 import { sveltekit } from '@sveltejs/kit/vite';
 
 export default defineConfig({
+	server: {
+		allowedHosts: [
+			"opus-dev.itstoni.com"
+		]
+	},
 	plugins: [
 		tailwindcss(),
 		sveltekit({
