@@ -227,7 +227,7 @@ Modular monolith: one Bun server process, strict module boundaries.
     | `revert`   | ⏪    | `revert: ⏪ revert refresh token rotation` |
 
   - Subject: imperative mood, lowercase (after the emoji), no trailing period, max ~72 chars including the emoji.
-  - Body (when needed): explain _why_, not _what_; wrap at ~72 chars.
+  - Body / Description (when needed): separated from the subject by a blank line. Use this for longer or detailed messages (explain _why_, not _what_); wrap lines at ~72 chars.
   - Breaking changes: add `!` after type (`type!: <emoji> subject`) and a `BREAKING CHANGE:` footer.
   - One logical change per commit. Don't mix refactors with behavior changes.
   - Never commit directly to `main`/`master`. Work on a branch named `type/short-description`.
