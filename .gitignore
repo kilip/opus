@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+.react-router/
+
+# Turbo cache
+.turbo/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Runtime state (AGENTS.md)
+cli/
+data/
+workspaces/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
