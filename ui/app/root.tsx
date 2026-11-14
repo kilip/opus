@@ -30,6 +30,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <meta name="color-scheme" content="light dark" />
         {/* biome-ignore lint/security/noDangerouslySetInnerHtml: static theme bootstrap, runs before paint to avoid a flash */}
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
+        <script src="/config.js" />
         <Meta />
         <Links />
       </head>
