@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.2.0](https://github.com/kilip/opus/compare/v0.1.0...v0.2.0) (2026-11-14)
+
+### ✨ Features
+
+- **api:** implement internal user feature phase 0 ([12c5808](https://github.com/kilip/opus/commit/12c58083148750179d2630f2b4b1996832dfe11d))
+- **api:** bootstrap ent sqlite client and user schema ([be5c58d](https://github.com/kilip/opus/commit/be5c58dbb145a42aca89a92ad36d4235c8bfdecf))
+
+### 📦 Dependencies
+
+- **deps:** add ent and modernc sqlite pure go driver ([b7d15b0](https://github.com/kilip/opus/commit/b7d15b0cdea7daaf4a28e77b3f096ce6b1b17830))
+
+### 🔧 Tooling & Chores
+
+- **release:** v0.2.0 ([82b26e4](https://github.com/kilip/opus/commit/82b26e45842b374e787c779e03fba7388088619d))
+- **deps:** add ent and modernc sqlite pure go driver ([b7d15b0](https://github.com/kilip/opus/commit/b7d15b0cdea7daaf4a28e77b3f096ce6b1b17830))
+
 ## [v0.1.0](https://github.com/kilip/opus/releases/tag/v0.1.0) (2026-11-14)
 
 ### ✨ Features
