@@ -23,7 +23,7 @@ run = "bun run build"
 
 [tasks.api-spec]
 description = "Generate the OpenAPI 3.1 spec (api/swagger.json) from swag annotations"
-run = "swag init --v3.1 -g main.go -d ./cmd/opus,./internal --parseInternal --outputTypes json -o api"
+run = "swag init --v3.1 -g main.go -d ./cmd/opus,./internal/app,./internal/platform/httpx,./internal/task/handler,./internal/task/domain --parseInternal --outputTypes json -o api"
 
 [tasks.api-types]
 description = "Generate ui/app/shared/api/schema.d.ts from the OpenAPI spec"
