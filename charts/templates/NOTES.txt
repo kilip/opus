@@ -1,0 +1,10 @@
+Opus {{ .Chart.AppVersion }} deployed as release "{{ .Release.Name }}".
+
+{{- if .Values.ingress.enabled }}
+{{- range $host := .Values.ingress.hosts }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}
+{{- end }}
+{{- else }}
+Port-forward to access locally:
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "opus.fullname" . }} 7880:{{ .Values.service.port }}
+{{- end }}
