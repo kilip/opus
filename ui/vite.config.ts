@@ -3,6 +3,9 @@ import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 
 export default defineConfig({
+  build: {
+    sourcemap: true,
+  },
   plugins: [tailwindcss(), reactRouter()],
   resolve: {
     tsconfigPaths: true,
