@@ -1,0 +1,252 @@
+@import "tailwindcss";
+
+/*
+ * Opus design tokens — warm palette, light + dark.
+ * `data-theme` on <html> is resolved to "light" | "dark" by shared/theme.ts
+ * (and by the inline bootstrap script in root.tsx, to avoid a flash).
+ */
+:root {
+  color-scheme: light;
+
+  --bg: #faf7f2;
+  --surface: #ffffff;
+  --surface-2: #f3eee6;
+  --line: #e6ded2;
+  --line-strong: #d3c8b8;
+  --fg: #2b2622;
+  --muted: #7a6f63;
+
+  --primary: #c2562b;
+  --primary-hover: #a94823;
+  --primary-fg: #ffffff;
+  --primary-soft: #f8e6dc;
+  --primary-ink: #a94823;
+
+  --accent: #e0a030;
+  --accent-soft: #fbf0d8;
+  --accent-ink: #8a5a00;
+
+  --success: #5b8c5a;
+  --success-soft: #e4eee3;
+  --success-ink: #3e6b3d;
+
+  --danger: #c8453a;
+  --danger-soft: #f8e2df;
+  --danger-ink: #a8362c;
+
+  --info: #4f7f8e;
+  --info-soft: #e1ecef;
+  --info-ink: #3b6674;
+
+  --navbar: #9a4322;
+  --navbar-fg: #fff4ec;
+
+  --shade-1: rgb(43 38 34 / 0.08);
+  --shade-2: rgb(43 38 34 / 0.16);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #1c1815;
+  --surface: #26211d;
+  --surface-2: #2f2924;
+  --line: #3a322b;
+  --line-strong: #4b4137;
+  --fg: #efe8de;
+  --muted: #a89c8e;
+
+  --primary: #e27a4f;
+  --primary-hover: #ec8b63;
+  --primary-fg: #1c1210;
+  --primary-soft: #3f2a20;
+  --primary-ink: #f0a07c;
+
+  --accent: #f0b650;
+  --accent-soft: #3a2f18;
+  --accent-ink: #f0b650;
+
+  --success: #7dae7c;
+  --success-soft: #263325;
+  --success-ink: #8fc08e;
+
+  --danger: #e5685d;
+  --danger-soft: #3d2220;
+  --danger-ink: #f08a80;
+
+  --info: #7fb0c0;
+  --info-soft: #22333a;
+  --info-ink: #93c3d2;
+
+  --navbar: #2d2420;
+  --navbar-fg: #efe8de;
+
+  --shade-1: rgb(0 0 0 / 0.3);
+  --shade-2: rgb(0 0 0 / 0.5);
+}
+
+@theme inline {
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-fg: var(--primary-fg);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-ink: var(--primary-ink);
+
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-ink: var(--success-ink);
+
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-ink: var(--danger-ink);
+
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-info-ink: var(--info-ink);
+
+  --color-navbar: var(--navbar);
+  --color-navbar-fg: var(--navbar-fg);
+
+  --shadow-card: 0 1px 2px var(--shade-1);
+  --shadow-pop: 0 8px 24px var(--shade-2), 0 1px 3px var(--shade-1);
+}
+
+@layer base {
+  html {
+    background: var(--bg);
+    color: var(--fg);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--primary-soft);
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+  }
+}
+
+@layer components {
+  /* Form controls. */
+  .field {
+    width: 100%;
+    border-radius: 0.375rem;
+    border: 1px solid var(--line-strong);
+    background: var(--surface);
+    color: var(--fg);
+    padding: 0.375rem 0.625rem;
+  }
+  .field::placeholder {
+    color: var(--muted);
+  }
+  .field:hover {
+    border-color: var(--muted);
+  }
+  .field:focus {
+    border-color: var(--primary);
+    outline: none;
+    box-shadow: 0 0 0 3px var(--primary-soft);
+  }
+  .field[aria-invalid="true"] {
+    border-color: var(--danger);
+  }
+
+  /* Chevron-shaped stage bar (form view status bar). */
+  .statusbar {
+    display: flex;
+    align-items: center;
+    overflow-x: auto;
+    padding-left: 0.5rem;
+  }
+  .statusbar-step {
+    position: relative;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    height: 2rem;
+    margin-left: -9px;
+    padding: 0 1.25rem 0 1.625rem;
+    font-weight: 500;
+    white-space: nowrap;
+    color: var(--muted);
+    background: var(--surface-2);
+    cursor: pointer;
+    clip-path: polygon(
+      0 0,
+      calc(100% - 12px) 0,
+      100% 50%,
+      calc(100% - 12px) 100%,
+      0 100%,
+      12px 50%
+    );
+    transition:
+      background-color 120ms,
+      color 120ms;
+  }
+  .statusbar-step:first-child {
+    margin-left: 0;
+    padding-left: 1rem;
+    border-radius: 0.375rem 0 0 0.375rem;
+    clip-path: polygon(
+      0 0,
+      calc(100% - 12px) 0,
+      100% 50%,
+      calc(100% - 12px) 100%,
+      0 100%
+    );
+  }
+  .statusbar-step:hover {
+    color: var(--fg);
+    background: var(--line);
+  }
+  .statusbar-step[aria-pressed="true"] {
+    color: var(--primary-fg);
+    background: var(--primary);
+  }
+  .statusbar-step:focus-visible {
+    outline-offset: -3px;
+  }
+}
+
+/* biome-ignore-start lint/complexity/noImportantStyles: must beat utility-level transitions */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+  }
+}
+/* biome-ignore-end lint/complexity/noImportantStyles: must beat utility-level transitions */

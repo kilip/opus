@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="25.75 8.50 204.50 204.50" width="64" height="64" role="img" aria-label="Opus favicon"><title>Opus favicon</title><defs>
+    <linearGradient id="g" gradientUnits="userSpaceOnUse" x1="0" y1="30" x2="0" y2="194">
+      <stop offset="0" stop-color="#FBBF24"/>
+      <stop offset="1" stop-color="#F43F5E"/>
+    </linearGradient>
+
+    <g id="half">
+      <path d="M128 38 C112 28 84 30 70 50 C48 50 34 72 42 92 C26 104 28 132 44 142 C42 164 62 182 84 176 C92 194 118 194 128 176 Z"
+            fill="url(#g)" fill-opacity="0.14" stroke="url(#g)" stroke-width="6" stroke-linejoin="round"/>
+      <g fill="none" stroke="url(#g)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M128 70 H104 L90 84 H72"/>
+        <path d="M128 104 H96 L82 118 H60"/>
+        <path d="M128 138 H108 L96 150 H78"/>
+        <path d="M104 70 V52"/>
+      </g>
+      <g fill="url(#g)">
+        <circle cx="72" cy="84" r="5.5"/>
+        <circle cx="60" cy="118" r="5.5"/>
+        <circle cx="78" cy="150" r="5.5"/>
+        <circle cx="104" cy="52" r="4.5"/>
+      </g>
+    </g>
+  </defs>
+
+  
+    <use href="#half"/>
+    <use href="#half" transform="translate(256,0) scale(-1,1)"/>
+    <g fill="url(#g)">
+      <circle cx="128" cy="70" r="5"/>
+      <circle cx="128" cy="104" r="5"/>
+      <circle cx="128" cy="138" r="5"/>
+    </g>
+  </svg>
