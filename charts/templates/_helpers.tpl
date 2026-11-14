@@ -71,6 +71,8 @@ Environment variables from values.config.
 {{- $c := .Values.config -}}
 - name: APP_NAME
   value: {{ $c.appName | quote }}
+- name: DATABASE_URL
+  value: {{ printf "file:%s/opus.db?_pragma=foreign_keys(ON)&_pragma=busy_timeout(5000)" (default "/data" .Values.persistence.mountPath) | quote }}
 - name: HOST
   value: {{ $c.host | quote }}
 - name: PORT

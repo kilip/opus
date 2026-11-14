@@ -16,6 +16,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /opus ./cmd/
 
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=go-builder /opus /opus
+COPY --from=go-builder --chown=nonroot:nonroot --chmod=755 /tmp /data
 EXPOSE 7880
 USER nonroot:nonroot
 ENTRYPOINT ["/opus", "serve"]

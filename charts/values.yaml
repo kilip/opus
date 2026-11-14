@@ -11,6 +11,7 @@ nameOverride: ""
 # -- Override full resource name prefix.
 fullnameOverride: ""
 
+# -- Number of replicas. SQLite requires a single replica (1).
 replicaCount: 1
 
 image:
@@ -62,6 +63,23 @@ ingress:
   tls: []
 
 resources: {}
+persistence:
+  # -- Enable persistence using Persistent Volume Claim.
+  enabled: false
+  # -- Storage class of the PVC.
+  storageClass: ""
+  # -- Size of data volume.
+  size: 1Gi
+  # -- Existing PVC name to use instead of creating one.
+  existingClaim: ""
+  # -- Annotations for the PVC.
+  annotations: {}
+  # -- Access mode for the PVC.
+  accessModes:
+    - ReadWriteOnce
+  # -- Mount path for data volume.
+  mountPath: /data
+
 
 hpa:
   enabled: false
