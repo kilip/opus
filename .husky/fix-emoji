@@ -39,4 +39,6 @@ if printf "%s" "$REST" | grep -q -P '^\x{a9}|\x{ae}|[\x{2000}-\x{3300}]|[\x{1f00
 fi
 
 NEW_FIRST_LINE="$TYPE($SCOPE): $EMOJI $REST"
-sed -i "1s/.*/$NEW_FIRST_LINE/" "$FILE"
+REST_OF_FILE=$(tail -n +2 "$FILE")
+printf "%s\n" "$NEW_FIRST_LINE" > "$FILE"
+[ -z "$REST_OF_FILE" ] || printf "%s\n" "$REST_OF_FILE" >> "$FILE"
