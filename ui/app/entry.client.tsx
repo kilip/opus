@@ -16,7 +16,6 @@ const runtimeConfig =
   (typeof window !== "undefined" && window.__CONFIG__) || {};
 const dsn =
   runtimeConfig.SENTRY_DSN ||
-  import.meta.env.VITE_SENTRY_DSN ||
   "https://957993bc03a49ec153c832a5f86ba579@o4507164991684608.ingest.us.sentry.io/4512431358935040";
 
 Sentry.init({
