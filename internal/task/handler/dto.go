@@ -2,97 +2,90 @@ package handler
 
 import "time"
 
-// TaskSource identifies the tracker a task originates from. Tasks are issues
-// normalised from external systems, or created in Opus itself ("custom").
+// TaskSource identifies tracker task originates from.
 type TaskSource string
 
 const (
 	TaskSourceGitHub TaskSource = "github"
-	TaskSourceJira   TaskSource = "jira"
+	TaskSourceLinear TaskSource = "linear"
 	TaskSourceSentry TaskSource = "sentry"
-	TaskSourceCustom TaskSource = "custom"
+	TaskSourceAgent  TaskSource = "agent"
+	TaskSourceManual TaskSource = "manual"
 )
 
-// TaskStatus is the normalised workflow stage. The status reported by the
-// source tracker is kept verbatim in Task.SourceStatus.
+// TaskStatus is normalised workflow stage.
 type TaskStatus string
 
 const (
 	TaskStatusBacklog    TaskStatus = "backlog"
-	TaskStatusSpec       TaskStatus = "spec"
-	TaskStatusInProgress TaskStatus = "inProgress"
-	TaskStatusInReview   TaskStatus = "inReview"
+	TaskStatusTodo       TaskStatus = "todo"
+	TaskStatusInProgress TaskStatus = "in_progress"
+	TaskStatusReview     TaskStatus = "review"
 	TaskStatusDone       TaskStatus = "done"
 )
 
-// TaskPriority is the normalised priority, lowest first.
+// TaskPriority is normalised priority, lowest first.
 type TaskPriority string
 
 const (
-	TaskPriorityNone   TaskPriority = "none"
-	TaskPriorityLow    TaskPriority = "low"
-	TaskPriorityMedium TaskPriority = "medium"
-	TaskPriorityHigh   TaskPriority = "high"
+	TaskPriorityP0 TaskPriority = "0"
+	TaskPriorityP1 TaskPriority = "1"
+	TaskPriorityP2 TaskPriority = "2"
+	TaskPriorityP3 TaskPriority = "3"
 )
 
-// TaskType is the normalised kind of work.
+// TaskType is normalised kind of work.
 type TaskType string
 
 const (
-	TaskTypeFeature  TaskType = "feature"
+	TaskTypeFeat     TaskType = "feat"
 	TaskTypeBug      TaskType = "bug"
 	TaskTypeChore    TaskType = "chore"
-	TaskTypeIncident TaskType = "incident"
+	TaskTypeRefactor TaskType = "refactor"
+	TaskTypeDocs     TaskType = "docs"
 )
 
-// ActivityKind distinguishes the entries of a task's chatter timeline.
+// ActivityKind distinguishes entries of task chatter timeline.
 type ActivityKind string
 
 const (
-	ActivityKindMessage  ActivityKind = "message"
-	ActivityKindNote     ActivityKind = "note"
-	ActivityKindTracking ActivityKind = "tracking"
+	ActivityKindStatus  ActivityKind = "status"
+	ActivityKindComment ActivityKind = "comment"
+	ActivityKindAssign  ActivityKind = "assign"
+	ActivityKindCommit  ActivityKind = "commit"
+	ActivityKindReview  ActivityKind = "review"
 )
 
-// Assignee is the person a task is assigned to.
+// Assignee is person or agent task assigned to.
 type Assignee struct {
 	ID   string `json:"id" validate:"required"`
 	Name string `json:"name" validate:"required"`
 }
 
-// Task is an issue normalised from its source tracker.
+// Task is issue normalised from source tracker.
 type Task struct {
-	// ID is the Opus identifier.
+	// ID is Opus identifier.
 	ID string `json:"id" validate:"required"`
-	// Key is the human-readable reference, e.g. OPUS-12.
-	Key    string     `json:"key" validate:"required"`
-	Source TaskSource `json:"source" validate:"required"`
-	// ExternalID is the identifier in the source tracker.
-	ExternalID string `json:"externalId,omitempty"`
-	// ExternalURL links to the issue in the source tracker.
-	ExternalURL string     `json:"externalUrl,omitempty"`
-	Title       string     `json:"title" validate:"required"`
-	Description string     `json:"description" validate:"required"`
-	Status      TaskStatus `json:"status" validate:"required"`
-	// SourceStatus is the status name as reported by the source tracker.
+	// Key is human-readable reference, e.g. OP-12.
+	Key          string       `json:"key" validate:"required"`
+	Source       TaskSource   `json:"source" validate:"required"`
+	ExternalID   string       `json:"externalId,omitempty"`
+	ExternalURL  string       `json:"externalUrl,omitempty"`
+	Title        string       `json:"title" validate:"required"`
+	Description  string       `json:"description" validate:"required"`
+	Status       TaskStatus   `json:"status" validate:"required"`
 	SourceStatus string       `json:"sourceStatus,omitempty"`
 	Priority     TaskPriority `json:"priority" validate:"required"`
 	Type         TaskType     `json:"type" validate:"required"`
 	Assignee     *Assignee    `json:"assignee,omitempty"`
-	// DueDate is a calendar date (YYYY-MM-DD).
+	// DueDate is calendar date (YYYY-MM-DD).
 	DueDate   string    `json:"dueDate,omitempty" format:"date"`
 	Labels    []string  `json:"labels" validate:"required"`
 	CreatedAt time.Time `json:"createdAt" validate:"required"`
 	UpdatedAt time.Time `json:"updatedAt" validate:"required"`
 }
 
-// TaskList is the response of the task collection endpoint.
-type TaskList struct {
-	Items []Task `json:"items" validate:"required"`
-	Total int    `json:"total" validate:"required"`
-}
-
-// Activity is one entry of a task's chatter timeline.
+// Activity is one entry of task chatter timeline.
 type Activity struct {
 	ID        string       `json:"id" validate:"required"`
 	Kind      ActivityKind `json:"kind" validate:"required"`
@@ -101,12 +94,34 @@ type Activity struct {
 	CreatedAt time.Time    `json:"createdAt" validate:"required"`
 }
 
-// ActivityList is the response of the task activity endpoint, oldest first.
-type ActivityList struct {
-	Items []Activity `json:"items" validate:"required"`
+// CreateTaskRequest is payload for creating task.
+type CreateTaskRequest struct {
+	Title       string        `json:"title" validate:"required"`
+	Description string        `json:"description,omitempty"`
+	Status      *TaskStatus   `json:"status,omitempty"`
+	Priority    *TaskPriority `json:"priority,omitempty"`
+	Type        *TaskType     `json:"type,omitempty"`
+	Assignee    *Assignee     `json:"assignee,omitempty"`
+	DueDate     string        `json:"dueDate,omitempty" format:"date"`
+	Labels      []string      `json:"labels,omitempty"`
 }
 
-// ErrorResponse is the body of every non-2xx response.
-type ErrorResponse struct {
-	Message string `json:"message" validate:"required"`
+// UpdateTaskRequest is payload for updating task.
+type UpdateTaskRequest struct {
+	Title         *string       `json:"title,omitempty"`
+	Description   *string       `json:"description,omitempty"`
+	Status        *TaskStatus   `json:"status,omitempty"`
+	Priority      *TaskPriority `json:"priority,omitempty"`
+	Type          *TaskType     `json:"type,omitempty"`
+	Assignee      *Assignee     `json:"assignee,omitempty"`
+	ClearAssignee bool          `json:"clearAssignee,omitempty"`
+	DueDate       *string       `json:"dueDate,omitempty" format:"date"`
+	Labels        *[]string     `json:"labels,omitempty"`
+}
+
+// CreateActivityRequest is payload for adding activity to task.
+type CreateActivityRequest struct {
+	Kind   *ActivityKind `json:"kind,omitempty"`
+	Author string        `json:"author,omitempty"`
+	Body   string        `json:"body" validate:"required"`
 }

@@ -1,6 +1,14 @@
 {
     "components": {
         "schemas": {
+            "app.HealthStatus": {
+                "properties": {
+                    "status": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "handler.Activity": {
                 "properties": {
                     "author": {
@@ -30,31 +38,20 @@
             },
             "handler.ActivityKind": {
                 "enum": [
-                    "message",
-                    "note",
-                    "tracking"
+                    "status",
+                    "comment",
+                    "assign",
+                    "commit",
+                    "review"
                 ],
                 "type": "string",
                 "x-enum-varnames": [
-                    "ActivityKindMessage",
-                    "ActivityKindNote",
-                    "ActivityKindTracking"
+                    "ActivityKindStatus",
+                    "ActivityKindComment",
+                    "ActivityKindAssign",
+                    "ActivityKindCommit",
+                    "ActivityKindReview"
                 ]
-            },
-            "handler.ActivityList": {
-                "properties": {
-                    "items": {
-                        "items": {
-                            "$ref": "#/components/schemas/handler.Activity"
-                        },
-                        "type": "array",
-                        "uniqueItems": false
-                    }
-                },
-                "required": [
-                    "items"
-                ],
-                "type": "object"
             },
             "handler.Assignee": {
                 "properties": {
@@ -71,14 +68,57 @@
                 ],
                 "type": "object"
             },
-            "handler.ErrorResponse": {
+            "handler.CreateActivityRequest": {
                 "properties": {
-                    "message": {
+                    "author": {
                         "type": "string"
+                    },
+                    "body": {
+                        "type": "string"
+                    },
+                    "kind": {
+                        "$ref": "#/components/schemas/handler.ActivityKind"
                     }
                 },
                 "required": [
-                    "message"
+                    "body"
+                ],
+                "type": "object"
+            },
+            "handler.CreateTaskRequest": {
+                "properties": {
+                    "assignee": {
+                        "$ref": "#/components/schemas/handler.Assignee"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "dueDate": {
+                        "format": "date",
+                        "type": "string"
+                    },
+                    "labels": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "priority": {
+                        "$ref": "#/components/schemas/handler.TaskPriority"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/handler.TaskStatus"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "$ref": "#/components/schemas/handler.TaskType"
+                    }
+                },
+                "required": [
+                    "title"
                 ],
                 "type": "object"
             },
@@ -94,24 +134,22 @@
                         "type": "string"
                     },
                     "dueDate": {
-                        "description": "DueDate is a calendar date (YYYY-MM-DD).",
+                        "description": "DueDate is calendar date (YYYY-MM-DD).",
                         "format": "date",
                         "type": "string"
                     },
                     "externalId": {
-                        "description": "ExternalID is the identifier in the source tracker.",
                         "type": "string"
                     },
                     "externalUrl": {
-                        "description": "ExternalURL links to the issue in the source tracker.",
                         "type": "string"
                     },
                     "id": {
-                        "description": "ID is the Opus identifier.",
+                        "description": "ID is Opus identifier.",
                         "type": "string"
                     },
                     "key": {
-                        "description": "Key is the human-readable reference, e.g. OPUS-12.",
+                        "description": "Key is human-readable reference, e.g. OP-12.",
                         "type": "string"
                     },
                     "labels": {
@@ -128,7 +166,6 @@
                         "$ref": "#/components/schemas/handler.TaskSource"
                     },
                     "sourceStatus": {
-                        "description": "SourceStatus is the status name as reported by the source tracker.",
                         "type": "string"
                     },
                     "status": {
@@ -159,99 +196,247 @@
                 ],
                 "type": "object"
             },
-            "handler.TaskList": {
+            "handler.TaskPriority": {
+                "enum": [
+                    "0",
+                    "1",
+                    "2",
+                    "3"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "TaskPriorityP0",
+                    "TaskPriorityP1",
+                    "TaskPriorityP2",
+                    "TaskPriorityP3"
+                ]
+            },
+            "handler.TaskSource": {
+                "enum": [
+                    "github",
+                    "linear",
+                    "sentry",
+                    "agent",
+                    "manual"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "TaskSourceGitHub",
+                    "TaskSourceLinear",
+                    "TaskSourceSentry",
+                    "TaskSourceAgent",
+                    "TaskSourceManual"
+                ]
+            },
+            "handler.TaskStatus": {
+                "enum": [
+                    "backlog",
+                    "todo",
+                    "in_progress",
+                    "review",
+                    "done"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "TaskStatusBacklog",
+                    "TaskStatusTodo",
+                    "TaskStatusInProgress",
+                    "TaskStatusReview",
+                    "TaskStatusDone"
+                ]
+            },
+            "handler.TaskType": {
+                "enum": [
+                    "feat",
+                    "bug",
+                    "chore",
+                    "refactor",
+                    "docs"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "TaskTypeFeat",
+                    "TaskTypeBug",
+                    "TaskTypeChore",
+                    "TaskTypeRefactor",
+                    "TaskTypeDocs"
+                ]
+            },
+            "handler.UpdateTaskRequest": {
                 "properties": {
-                    "items": {
+                    "assignee": {
+                        "$ref": "#/components/schemas/handler.Assignee"
+                    },
+                    "clearAssignee": {
+                        "type": "boolean"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "dueDate": {
+                        "format": "date",
+                        "type": "string"
+                    },
+                    "labels": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "priority": {
+                        "$ref": "#/components/schemas/handler.TaskPriority"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/handler.TaskStatus"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "$ref": "#/components/schemas/handler.TaskType"
+                    }
+                },
+                "type": "object"
+            },
+            "httpx.ErrorResponse": {
+                "properties": {
+                    "data": {},
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "required": [
+                    "error"
+                ],
+                "type": "object"
+            },
+            "httpx.Meta": {
+                "properties": {
+                    "nextCursor": {
+                        "type": "string"
+                    },
+                    "total": {
+                        "type": "integer"
+                    }
+                },
+                "type": "object"
+            },
+            "httpx.Response-app_HealthStatus": {
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/app.HealthStatus"
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
+            "httpx.Response-array_handler_Activity": {
+                "properties": {
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/handler.Activity"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
+            "httpx.Response-array_handler_Task": {
+                "properties": {
+                    "data": {
                         "items": {
                             "$ref": "#/components/schemas/handler.Task"
                         },
                         "type": "array",
                         "uniqueItems": false
                     },
-                    "total": {
-                        "type": "integer"
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
                     }
                 },
-                "required": [
-                    "items",
-                    "total"
-                ],
                 "type": "object"
             },
-            "handler.TaskPriority": {
-                "enum": [
-                    "none",
-                    "low",
-                    "medium",
-                    "high"
-                ],
-                "type": "string",
-                "x-enum-varnames": [
-                    "TaskPriorityNone",
-                    "TaskPriorityLow",
-                    "TaskPriorityMedium",
-                    "TaskPriorityHigh"
-                ]
+            "httpx.Response-handler_Activity": {
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/handler.Activity"
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
             },
-            "handler.TaskSource": {
-                "enum": [
-                    "github",
-                    "jira",
-                    "sentry",
-                    "custom"
-                ],
-                "type": "string",
-                "x-enum-varnames": [
-                    "TaskSourceGitHub",
-                    "TaskSourceJira",
-                    "TaskSourceSentry",
-                    "TaskSourceCustom"
-                ]
-            },
-            "handler.TaskStatus": {
-                "enum": [
-                    "backlog",
-                    "spec",
-                    "inProgress",
-                    "inReview",
-                    "done"
-                ],
-                "type": "string",
-                "x-enum-varnames": [
-                    "TaskStatusBacklog",
-                    "TaskStatusSpec",
-                    "TaskStatusInProgress",
-                    "TaskStatusInReview",
-                    "TaskStatusDone"
-                ]
-            },
-            "handler.TaskType": {
-                "enum": [
-                    "feature",
-                    "bug",
-                    "chore",
-                    "incident"
-                ],
-                "type": "string",
-                "x-enum-varnames": [
-                    "TaskTypeFeature",
-                    "TaskTypeBug",
-                    "TaskTypeChore",
-                    "TaskTypeIncident"
-                ]
+            "httpx.Response-handler_Task": {
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/handler.Task"
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
             }
         }
     },
     "info": {
-        "description": "Web-based mission control dashboard for AI coding agents",
+        "description": "Opus API specification.",
         "title": "Opus API",
-        "version": "1.0.0"
+        "version": "0.1.0"
     },
     "externalDocs": {
         "description": "",
         "url": ""
     },
     "paths": {
+        "/health": {
+            "get": {
+                "description": "Returns system operational status",
+                "operationId": "healthCheck",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-app_HealthStatus"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    }
+                },
+                "summary": "System health check",
+                "tags": [
+                    "system"
+                ]
+            }
+        },
         "/tasks": {
             "get": {
                 "description": "Returns every task, normalised from its source tracker.",
@@ -261,14 +446,77 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/handler.TaskList"
+                                    "$ref": "#/components/schemas/httpx.Response-array_handler_Task"
                                 }
                             }
                         },
                         "description": "OK"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
                     }
                 },
                 "summary": "List tasks",
+                "tags": [
+                    "tasks"
+                ]
+            },
+            "post": {
+                "description": "Creates a new task with given details.",
+                "operationId": "create-task",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/handler.CreateTaskRequest",
+                                "summary": "request",
+                                "description": "Create Task Request"
+                            }
+                        }
+                    },
+                    "description": "Create Task Request",
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-handler_Task"
+                                }
+                            }
+                        },
+                        "description": "Created"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Create task",
                 "tags": [
                     "tasks"
                 ]
@@ -294,7 +542,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/handler.Task"
+                                    "$ref": "#/components/schemas/httpx.Response-handler_Task"
                                 }
                             }
                         },
@@ -304,14 +552,98 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/handler.ErrorResponse"
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
                                 }
                             }
                         },
                         "description": "Not Found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
                     }
                 },
                 "summary": "Get a task",
+                "tags": [
+                    "tasks"
+                ]
+            },
+            "patch": {
+                "description": "Updates fields of an existing task.",
+                "operationId": "update-task",
+                "parameters": [
+                    {
+                        "description": "Task ID",
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/handler.UpdateTaskRequest",
+                                "summary": "request",
+                                "description": "Update Task Request"
+                            }
+                        }
+                    },
+                    "description": "Update Task Request",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-handler_Task"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Update task",
                 "tags": [
                     "tasks"
                 ]
@@ -319,7 +651,7 @@
         },
         "/tasks/{id}/activity": {
             "get": {
-                "description": "Returns the chatter timeline of a task, oldest first.",
+                "description": "Returns chatter timeline of a task, oldest first.",
                 "operationId": "list-task-activity",
                 "parameters": [
                     {
@@ -337,7 +669,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/handler.ActivityList"
+                                    "$ref": "#/components/schemas/httpx.Response-array_handler_Activity"
                                 }
                             }
                         },
@@ -347,14 +679,98 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "$ref": "#/components/schemas/handler.ErrorResponse"
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
                                 }
                             }
                         },
                         "description": "Not Found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
                     }
                 },
                 "summary": "List task activity",
+                "tags": [
+                    "tasks"
+                ]
+            },
+            "post": {
+                "description": "Adds an activity comment/event to task chatter timeline.",
+                "operationId": "create-task-activity",
+                "parameters": [
+                    {
+                        "description": "Task ID",
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/handler.CreateActivityRequest",
+                                "summary": "request",
+                                "description": "Create Activity Request"
+                            }
+                        }
+                    },
+                    "description": "Create Activity Request",
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-handler_Activity"
+                                }
+                            }
+                        },
+                        "description": "Created"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Create task activity",
                 "tags": [
                     "tasks"
                 ]
