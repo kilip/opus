@@ -4,4 +4,7 @@
 
 # React Router
 /.react-router/
-/build/
+/build/*
+!/build/client/
+/build/client/*
+!/build/client/.keep
