@@ -70,9 +70,8 @@ export function KanbanBoard({ tasks }: { tasks: Task[] }) {
                     createTask({
                       title,
                       status: stage.id,
-                      priority: "none",
-                      assignee: CURRENT_USER,
-                      dueDate: null,
+                      priority: "1",
+                      assignee: { id: CURRENT_USER, name: CURRENT_USER },
                       labels: [],
                       description: "",
                     });

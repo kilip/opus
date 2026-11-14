@@ -1,65 +1,74 @@
 import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api, unwrap } from "~/shared/api/client";
+import { TASK_ERRORS } from "./errors";
 import { taskKeys } from "./keys";
-import type { TaskList } from "./types";
+import type { Activity, Task } from "./types";
 
-/*
- * Interim: the API is read-only and serves static data, and writes are applied
- * to this cache locally (see actions.ts). Cached tasks therefore never go stale
- * on their own. Once write endpoints exist, remove this and invalidate
- * `taskKeys` after each mutation instead.
- */
-const staleTime = Number.POSITIVE_INFINITY;
-
-export const taskListQuery = () =>
+export const tasksQueryOptions = () =>
   queryOptions({
     queryKey: taskKeys.list(),
-    queryFn: async ({ signal }) => unwrap(await api.GET("/tasks", { signal })),
-    staleTime,
+    queryFn: async ({ signal }): Promise<Task[]> =>
+      unwrap(api.GET("/tasks" as never, { signal } as never), TASK_ERRORS),
   });
 
-export const taskQuery = (id: string) =>
+export const taskQueryOptions = (id: string) =>
   queryOptions({
     queryKey: taskKeys.detail(id),
-    queryFn: async ({ signal }) =>
+    queryFn: async ({ signal }): Promise<Task> =>
       unwrap(
-        await api.GET("/tasks/{id}", { params: { path: { id } }, signal }),
+        api.GET(
+          "/tasks/{id}" as never,
+          {
+            params: { path: { id } },
+            signal,
+          } as never,
+        ),
+        TASK_ERRORS,
       ),
-    staleTime,
   });
 
-export const taskActivityQuery = (id: string) =>
+export const taskActivityQueryOptions = (id: string) =>
   queryOptions({
     queryKey: taskKeys.activity(id),
-    queryFn: async ({ signal }) =>
+    queryFn: async ({ signal }): Promise<Activity[]> =>
       unwrap(
-        await api.GET("/tasks/{id}/activity", {
-          params: { path: { id } },
-          signal,
-        }),
+        api.GET(
+          "/tasks/{id}/activity" as never,
+          {
+            params: { path: { id } },
+            signal,
+          } as never,
+        ),
+        TASK_ERRORS,
       ),
-    staleTime,
   });
 
+export const taskListQuery = tasksQueryOptions;
+export const taskQuery = taskQueryOptions;
+export const taskActivityQuery = taskActivityQueryOptions;
+
 export function useTasks() {
-  return useQuery(taskListQuery());
+  return useQuery(tasksQueryOptions());
 }
 
-/** A single task. Pass `undefined` to disable the query (e.g. a new task). */
+/** Fetch a single task. Pass `undefined` to disable the query (e.g. for a new task). */
 export function useTask(id: string | undefined) {
   const queryClient = useQueryClient();
   return useQuery({
-    ...taskQuery(id ?? ""),
+    ...taskQueryOptions(id ?? ""),
     enabled: Boolean(id),
     // Opening a task from the board needs no extra request.
     initialData: () =>
       queryClient
-        .getQueryData<TaskList>(taskKeys.list())
-        ?.items.find((task) => task.id === id),
+        .getQueryData<Task[]>(taskKeys.list())
+        ?.find((task) => task.id === id),
   });
 }
 
 export function useTaskActivity(id: string | undefined) {
-  return useQuery({ ...taskActivityQuery(id ?? ""), enabled: Boolean(id) });
+  return useQuery({
+    ...taskActivityQueryOptions(id ?? ""),
+    enabled: Boolean(id),
+  });
 }

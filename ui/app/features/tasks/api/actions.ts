@@ -1,220 +1,159 @@
-import { type QueryClient, useQueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { CURRENT_USER, stageName } from "../model";
+import { api, unwrap } from "~/shared/api/client";
+import { TASK_ERRORS } from "./errors";
 import { taskKeys } from "./keys";
-import { taskActivityQuery } from "./queries";
 import type {
   Activity,
   ActivityKind,
-  ActivityList,
+  CreateActivityRequest,
+  CreateTaskRequest,
   Task,
-  TaskList,
-  TaskPriority,
   TaskStatus,
+  UpdateTaskRequest,
 } from "./types";
 
-/*
- * INTERIM, LOCAL-ONLY WRITES.
- *
- * The API is GET-only for now, so these actions edit the TanStack Query cache
- * and nothing is persisted: a reload restores the server data. They keep the
- * board's create / edit / drag / chatter interactions working. When write
- * endpoints land, replace each action with a `useMutation` that calls the API
- * and invalidates `taskKeys`; the hook's return shape can stay the same.
- */
-
-export type TaskInput = {
-  title: string;
-  status: TaskStatus;
-  priority: TaskPriority;
-  /** Assignee display name; `null` for unassigned. */
-  assignee: string | null;
-  /** YYYY-MM-DD */
-  dueDate: string | null;
-  labels: string[];
-  description: string;
+export type AssigneePreset = {
+  id: string;
+  name: string;
 };
 
-let seq = 0;
+export const ASSIGNEE_PRESETS: AssigneePreset[] = [
+  { id: "planner-agent", name: "planner-agent" },
+  { id: "coder-agent", name: "coder-agent" },
+  { id: "reviewer-agent", name: "reviewer-agent" },
+];
 
-function localId() {
-  seq += 1;
-  return `local-${Date.now().toString(36)}-${seq}`;
-}
-
-function toAssignee(name: string | null): Task["assignee"] {
-  return name
-    ? { id: name.toLowerCase().replace(/\s+/g, "-"), name }
-    : undefined;
-}
-
-function activity(kind: ActivityKind, body: string): Activity {
-  return {
-    id: localId(),
-    kind,
-    author: CURRENT_USER,
-    body,
-    createdAt: new Date().toISOString(),
-  };
-}
-
-const tracking = (body: string) => activity("tracking", body);
-
-function nextKeyNumber(tasks: Task[]) {
-  let max = 0;
-  for (const task of tasks) {
-    const match = /^OPUS-(\d+)$/.exec(task.key);
-    if (match) max = Math.max(max, Number(match[1]));
-  }
-  return max + 1;
-}
-
-function findTask(queryClient: QueryClient, id: string) {
-  return (
-    queryClient.getQueryData<Task>(taskKeys.detail(id)) ??
-    queryClient
-      .getQueryData<TaskList>(taskKeys.list())
-      ?.items.find((task) => task.id === id)
-  );
-}
-
-/** Apply `patch` to a task in both the list and the detail cache. */
-function patchTask(
-  queryClient: QueryClient,
-  id: string,
-  patch: (task: Task) => Task,
-) {
-  queryClient.setQueryData<TaskList>(
-    taskKeys.list(),
-    (old) =>
-      old && {
-        ...old,
-        items: old.items.map((task) => (task.id === id ? patch(task) : task)),
-      },
-  );
-  queryClient.setQueryData<Task>(
-    taskKeys.detail(id),
-    (old) => old && patch(old),
-  );
-}
-
-async function appendActivity(
-  queryClient: QueryClient,
-  id: string,
-  entries: Activity[],
-) {
-  if (entries.length === 0) return;
-  try {
-    // Make sure the server timeline is in the cache first, so local entries
-    // are appended to it instead of replacing it.
-    await queryClient.ensureQueryData(taskActivityQuery(id));
-  } catch {
-    // Local tracking is best effort; skip it if the timeline cannot load.
-    return;
-  }
-  queryClient.setQueryData<ActivityList>(taskKeys.activity(id), (old) => ({
-    items: [...(old?.items ?? []), ...entries],
-  }));
-}
-
-function createTask(queryClient: QueryClient, input: TaskInput): string {
-  const items =
-    queryClient.getQueryData<TaskList>(taskKeys.list())?.items ?? [];
-  const number = nextKeyNumber(items);
-  const now = new Date().toISOString();
-
-  const task: Task = {
-    id: `local-${number}`,
-    key: `OPUS-${number}`,
-    source: "custom",
-    title: input.title,
-    description: input.description,
-    status: input.status,
-    priority: input.priority,
-    type: "feature",
-    assignee: toAssignee(input.assignee),
-    dueDate: input.dueDate ?? undefined,
-    labels: input.labels,
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  queryClient.setQueryData<TaskList>(taskKeys.list(), (old) => ({
-    items: [...(old?.items ?? []), task],
-    total: (old?.total ?? 0) + 1,
-  }));
-  queryClient.setQueryData(taskKeys.detail(task.id), task);
-  queryClient.setQueryData<ActivityList>(taskKeys.activity(task.id), {
-    items: [tracking("Task created")],
-  });
-  return task.id;
-}
-
-function updateTask(
-  queryClient: QueryClient,
-  id: string,
-  patch: Partial<TaskInput>,
-) {
-  const current = findTask(queryClient, id);
-  if (!current) return;
-
-  const { assignee, dueDate, ...rest } = patch;
-  const entries: Activity[] = [];
-
-  if (patch.status && patch.status !== current.status) {
-    entries.push(
-      tracking(
-        `Stage: ${stageName(current.status)} → ${stageName(patch.status)}`,
-      ),
-    );
-  }
-  if (assignee !== undefined && assignee !== (current.assignee?.name ?? null)) {
-    entries.push(
-      tracking(
-        `Assignee: ${current.assignee?.name ?? "Unassigned"} → ${assignee ?? "Unassigned"}`,
-      ),
-    );
-  }
-
-  patchTask(queryClient, id, (task) => ({
-    ...task,
-    ...rest,
-    ...(assignee !== undefined && { assignee: toAssignee(assignee) }),
-    ...(dueDate !== undefined && { dueDate: dueDate ?? undefined }),
-    updatedAt: new Date().toISOString(),
-  }));
-  void appendActivity(queryClient, id, entries);
-}
-
-function moveTask(queryClient: QueryClient, id: string, status: TaskStatus) {
-  if (findTask(queryClient, id)?.status !== status) {
-    updateTask(queryClient, id, { status });
-  }
-}
-
-function addMessage(
-  queryClient: QueryClient,
-  id: string,
-  kind: "message" | "note",
-  body: string,
-) {
-  void appendActivity(queryClient, id, [activity(kind, body)]);
-}
-
-/** Write actions for tasks. See the note at the top of this file. */
-export function useTaskActions() {
+export function useCreateTask() {
   const queryClient = useQueryClient();
-  return useMemo(
-    () => ({
-      createTask: (input: TaskInput) => createTask(queryClient, input),
-      updateTask: (id: string, patch: Partial<TaskInput>) =>
-        updateTask(queryClient, id, patch),
-      moveTask: (id: string, status: TaskStatus) =>
-        moveTask(queryClient, id, status),
-      addMessage: (id: string, kind: "message" | "note", body: string) =>
-        addMessage(queryClient, id, kind, body),
-    }),
-    [queryClient],
-  );
+  return useMutation({
+    mutationFn: async (req: CreateTaskRequest): Promise<Task> =>
+      unwrap(
+        api.POST(
+          "/tasks" as never,
+          {
+            body: req,
+          } as never,
+        ),
+        TASK_ERRORS,
+      ),
+    onSuccess: (newTask) => {
+      queryClient.setQueryData<Task[]>(taskKeys.list(), (old) =>
+        old ? [...old, newTask] : [newTask],
+      );
+      queryClient.setQueryData(taskKeys.detail(newTask.id), newTask);
+      queryClient.invalidateQueries({ queryKey: taskKeys.all });
+    },
+  });
+}
+
+export function useUpdateTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      ...patch
+    }: UpdateTaskRequest & { id: string }): Promise<Task> =>
+      unwrap(
+        api.PATCH(
+          "/tasks/{id}" as never,
+          {
+            params: { path: { id } },
+            body: patch,
+          } as never,
+        ),
+        TASK_ERRORS,
+      ),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<Task[]>(taskKeys.list(), (old) =>
+        old ? old.map((t) => (t.id === updated.id ? updated : t)) : [updated],
+      );
+      queryClient.setQueryData(taskKeys.detail(updated.id), updated);
+      queryClient.invalidateQueries({ queryKey: taskKeys.all });
+    },
+  });
+}
+
+export function useMoveTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      status,
+    }: {
+      id: string;
+      status: TaskStatus;
+    }): Promise<Task> =>
+      unwrap(
+        api.PATCH(
+          "/tasks/{id}" as never,
+          {
+            params: { path: { id } },
+            body: { status },
+          } as never,
+        ),
+        TASK_ERRORS,
+      ),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<Task[]>(taskKeys.list(), (old) =>
+        old ? old.map((t) => (t.id === updated.id ? updated : t)) : [updated],
+      );
+      queryClient.setQueryData(taskKeys.detail(updated.id), updated);
+      queryClient.invalidateQueries({ queryKey: taskKeys.all });
+    },
+  });
+}
+
+export function useAddTaskActivity() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      ...req
+    }: CreateActivityRequest & { id: string }): Promise<Activity> =>
+      unwrap(
+        api.POST(
+          "/tasks/{id}/activity" as never,
+          {
+            params: { path: { id } },
+            body: req,
+          } as never,
+        ),
+        TASK_ERRORS,
+      ),
+    onSuccess: (activity, variables) => {
+      queryClient.setQueryData<Activity[]>(
+        taskKeys.activity(variables.id),
+        (old) => (old ? [...old, activity] : [activity]),
+      );
+      queryClient.invalidateQueries({
+        queryKey: taskKeys.activity(variables.id),
+      });
+      queryClient.invalidateQueries({
+        queryKey: taskKeys.detail(variables.id),
+      });
+    },
+  });
+}
+
+/** Legacy adapter providing synchronous-like hooks if needed */
+export function useTaskActions() {
+  const createTask = useCreateTask();
+  const updateTask = useUpdateTask();
+  const moveTask = useMoveTask();
+  const addActivity = useAddTaskActivity();
+
+  return {
+    createTask: (input: CreateTaskRequest) => createTask.mutate(input),
+    updateTask: (id: string, patch: UpdateTaskRequest) =>
+      updateTask.mutate({ id, ...patch }),
+    moveTask: (id: string, status: TaskStatus) =>
+      moveTask.mutate({ id, status }),
+    addMessage: (
+      id: string,
+      kind: ActivityKind,
+      body: string,
+      author = "You",
+    ) => addActivity.mutate({ id, kind, body, author }),
+  };
 }
