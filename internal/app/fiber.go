@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"strings"
@@ -74,6 +75,12 @@ func GetFiber(cfg Config, logger *slog.Logger) *fiber.App {
 			"ip", c.IP(),
 		)
 		return err
+	})
+
+	// ponytail: serve dynamic runtime configuration for SPA from system environment
+	app.Get("/config.js", func(c fiber.Ctx) error {
+		c.Set(fiber.HeaderContentType, "application/javascript; charset=utf-8")
+		return c.SendString(fmt.Sprintf("window.__CONFIG__ = Object.assign(window.__CONFIG__ || {}, {\"APP_VERSION\": %q, \"SENTRY_DSN\": %q});\n", cfg.AppVersion, cfg.SentryDSN))
 	})
 
 	api := app.Group("/api")
