@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!**/public", "!**/api/swagger.json", "!**/shared/api/schema.d.ts"]
+    "includes": ["**", "!**/public", "!**/api/swagger.json", "!**/shared/api/schema.d.ts", "!**/charts"]
   },
   "formatter": {
     "useEditorconfig": true
