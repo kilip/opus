@@ -13,13 +13,17 @@ func InitSentry(cfg Config, logger *slog.Logger) func() {
 	if cfg.SentryDSN == "" {
 		return func() {}
 	}
-	err := sentry.Init(sentry.ClientOptions{
+	opts := sentry.ClientOptions{
 		Dsn:              cfg.SentryDSN,
 		Environment:      cfg.SentryEnvironment,
 		TracesSampleRate: cfg.SentryTracesSampleRate,
 		EnableTracing:    true,
 		AttachStacktrace: true,
-	})
+	}
+	if cfg.AppVersion != "" {
+		opts.Release = cfg.AppName + "@" + cfg.AppVersion
+	}
+	err := sentry.Init(opts)
 	if err != nil {
 		logger.Error("failed to initialize sentry", "error", err)
 		return func() {}

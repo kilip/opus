@@ -21,6 +21,7 @@ type Config struct {
 	ShutdownTimeout        time.Duration `env:"SHUTDOWN_TIMEOUT, default=10s"`
 	BodyLimit              int           `env:"BODY_LIMIT, default=4194304"`
 	DatabaseURL            string        `env:"DATABASE_URL, default=file:opus.db?_pragma=foreign_keys(ON)&_pragma=busy_timeout(5000)"`
+	AppVersion             string        `env:"APP_VERSION"`
 	SentryDSN              string        `env:"SENTRY_DSN, default="`
 	SentryEnvironment      string        `env:"SENTRY_ENVIRONMENT, default=development"`
 	SentryTracesSampleRate float64       `env:"SENTRY_TRACES_SAMPLE_RATE, default=1.0"`
