@@ -16,8 +16,12 @@ func newServeCmd() *cobra.Command {
 				return err
 			}
 			logger := app.GetLogger(cfg)
+			db, err := app.OpenDB(ctx, cfg.DatabaseURL)
+			if err != nil {
+				return err
+			}
 			fiberApp := app.GetFiber(cfg, logger)
-			return app.New(cfg, fiberApp, logger).Serve(ctx)
+			return app.New(cfg, fiberApp, logger, db).Serve(ctx)
 		},
 	}
 }
