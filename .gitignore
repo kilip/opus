@@ -12,8 +12,6 @@ mise.local.toml
 *.out
 *.cover
 coverage.out
-# Go module files
-go.sum
 # Vendor directory (uncomment if used)
 # vendor/
 # IDE/editor files
