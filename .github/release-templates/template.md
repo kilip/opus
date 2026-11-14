@@ -1,0 +1,3 @@
+## [{{version}}]({{compareUrl}}) ({{date}})
+
+{{sections}}

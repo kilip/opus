@@ -1,0 +1,1 @@
+- {{scopePrefix}}{{subject}} ([{{shortHash}}]({{commitUrl}}))
