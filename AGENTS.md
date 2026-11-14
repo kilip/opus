@@ -17,6 +17,9 @@ Opus is a single-binary **Modular Monolith** web dashboard for AI coding agents 
 - **Commit messages** are enforced by `commitlint.config.ts` and `.husky/commit-msg`:
   - Format: `<type>(<scope>): <subject>` (header and body lines ≤ 80 chars).
   - Required `<scope>`: `api`, `ui`, `deps`, `release`, `tools`, `deploy`, `docs`.
+  - **Default to non-release types** (`chore`, `ci`, `build`, `docs`, `refactor`, `test`, `style`). NEVER use `feat`, `fix`, `perf`, or `revert` unless the change modifies shipped runtime code (`cmd/`, `internal/`, `ent/`, `ui/app/`) and MUST cut a new release version (per `.github/release-please.json`).
+  - Scope-to-type rule of thumb: `deploy` → `build`/`chore`, `release` → `ci`/`chore`, `tools` → `ci`/`chore`, `docs` → `docs`, `deps` → `chore(deps)` (only `api`/`ui` runtime changes use `feat`/`fix`/`perf`).
+  - **Multi-stage atomic commits**: NEVER bundle unrelated files or scopes into one commit (`git add -A` is forbidden across topics). Group and commit files in separate stages by `<type>(<scope>)`.
 
 ## 2. Modular Monolith Architecture ("Feature" Terminology)
 
