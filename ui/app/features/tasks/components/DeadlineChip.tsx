@@ -1,6 +1,6 @@
 import { Icon } from "~/shared/components/Icon";
+import { formatDeadline, todayISO } from "~/shared/util/dates";
 import type { Task } from "../api/types";
-import { formatDeadline, todayISO } from "../dates";
 
 export function DeadlineChip({ task }: { task: Task }) {
   if (!task.dueDate) return null;

@@ -7,9 +7,14 @@ import { Chatter, type ChatterMessage } from "~/shared/components/Chatter";
 import { ControlPanel } from "~/shared/components/ControlPanel";
 import { Priority } from "~/shared/components/Priority";
 import { Statusbar } from "~/shared/components/Statusbar";
-import { type TaskInput, useTaskActions } from "../api/actions";
+import {
+  useAddTaskActivity,
+  useCreateTask,
+  useMoveTask,
+  useUpdateTask,
+} from "../api/actions";
 import { useTask, useTaskActivity } from "../api/queries";
-import type { Task, TaskStatus } from "../api/types";
+import type { Task, TaskStatus, UpdateTaskRequest } from "../api/types";
 import {
   ASSIGNEES,
   CURRENT_USER,
@@ -22,7 +27,7 @@ export const meta = () => [{ title: "Task · Opus" }];
 
 type Draft = {
   title: string;
-  /** 0–3, the star widget level. */
+  /** 0–3, star widget level. */
   priority: number;
   /** Assignee display name; empty for unassigned. */
   assignee: string;
@@ -89,14 +94,17 @@ export default function TaskFormPage() {
     );
   }
 
-  // Render the form only once the task is loaded, and remount per record, so
-  // the draft starts from real data and never leaks between tasks.
+  // Render form only once task is loaded, and remount per record, so
+  // draft starts with real data and never leaks between tasks.
   return <TaskForm key={isNew ? "new" : taskId} task={task} />;
 }
 
 function TaskForm({ task }: { task?: Task }) {
   const navigate = useNavigate();
-  const { createTask, updateTask, moveTask, addMessage } = useTaskActions();
+  const createTaskMutation = useCreateTask();
+  const updateTaskMutation = useUpdateTask();
+  const moveTaskMutation = useMoveTask();
+  const addActivityMutation = useAddTaskActivity();
   const { data: activity } = useTaskActivity(task?.id);
   const ids = {
     title: useId(),
@@ -113,8 +121,14 @@ function TaskForm({ task }: { task?: Task }) {
 
   const messages = useMemo<ChatterMessage[]>(
     () =>
-      (activity?.items ?? []).map(({ createdAt, ...rest }) => ({
+      (activity ?? []).map(({ createdAt, kind, ...rest }) => ({
         ...rest,
+        kind:
+          kind === "status" || kind === "assign"
+            ? "tracking"
+            : kind === "comment"
+              ? "message"
+              : "note",
         at: createdAt,
       })),
     [activity],
@@ -139,28 +153,45 @@ function TaskForm({ task }: { task?: Task }) {
     setDraft((d) => ({ ...d, [key]: value }));
   }
 
-  function save() {
+  async function save() {
     const title = draft.title.trim();
     if (!title) {
       setAttempted(true);
       return;
     }
     const labels = parseTags(draft.tagsText);
-    const patch: Omit<TaskInput, "status"> = {
-      title,
-      priority: priorityFromLevel(draft.priority),
-      assignee: draft.assignee || null,
-      dueDate: draft.deadline || null,
-      labels,
-      description: draft.description,
-    };
+    const assigneeKey = draft.assignee.trim();
+    const assigneeObj = assigneeKey
+      ? {
+          id: assigneeKey.toLowerCase().replace(/\s+/g, "-"),
+          name: assigneeKey,
+        }
+      : undefined;
 
     if (task) {
-      updateTask(task.id, patch);
+      const patch: UpdateTaskRequest & { id: string } = {
+        id: task.id,
+        title,
+        priority: priorityFromLevel(draft.priority),
+        assignee: assigneeObj,
+        clearAssignee: !assigneeKey,
+        dueDate: draft.deadline || undefined,
+        labels,
+        description: draft.description,
+      };
+      await updateTaskMutation.mutateAsync(patch);
       setDraft({ ...draft, title, tagsText: labels.join(", ") });
     } else {
-      const id = createTask({ ...patch, status: newStage });
-      navigate(`/tasks/${id}`, { replace: true });
+      const created = await createTaskMutation.mutateAsync({
+        title,
+        status: newStage,
+        priority: priorityFromLevel(draft.priority),
+        assignee: assigneeObj,
+        dueDate: draft.deadline || undefined,
+        labels,
+        description: draft.description,
+      });
+      navigate(`/tasks/${created.id}`, { replace: true });
     }
   }
 
@@ -174,7 +205,14 @@ function TaskForm({ task }: { task?: Task }) {
         actions={
           dirty && (
             <div className="flex items-center gap-2">
-              <Button variant="primary" type="submit" form="task-form">
+              <Button
+                variant="primary"
+                type="submit"
+                form="task-form"
+                disabled={
+                  createTaskMutation.isPending || updateTaskMutation.isPending
+                }
+              >
                 Save
               </Button>
               <Button
@@ -200,7 +238,11 @@ function TaskForm({ task }: { task?: Task }) {
         <Statusbar
           stages={STAGES}
           current={status}
-          onSelect={(id) => (task ? moveTask(task.id, id) : setNewStage(id))}
+          onSelect={(id) =>
+            task
+              ? moveTaskMutation.mutate({ id: task.id, status: id })
+              : setNewStage(id)
+          }
         />
       </div>
 
@@ -289,9 +331,17 @@ function TaskForm({ task }: { task?: Task }) {
             <Chatter
               messages={messages}
               disabledReason={
-                task ? undefined : "Save the task to start the conversation."
+                task ? undefined : "Save task to start conversation."
               }
-              onPost={(kind, body) => task && addMessage(task.id, kind, body)}
+              onPost={(kind, body) =>
+                task &&
+                addActivityMutation.mutate({
+                  id: task.id,
+                  kind: kind === "message" ? "comment" : "review",
+                  body,
+                  author: CURRENT_USER,
+                })
+              }
             />
           </aside>
         </div>

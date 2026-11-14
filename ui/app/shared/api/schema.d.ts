@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+    "/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * System health check
+         * @description Returns system operational status
+         */
+        get: operations["healthCheck"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tasks": {
         parameters: {
             query?: never;
@@ -17,7 +37,11 @@ export interface paths {
          */
         get: operations["list-tasks"];
         put?: never;
-        post?: never;
+        /**
+         * Create task
+         * @description Creates a new task with given details.
+         */
+        post: operations["create-task"];
         delete?: never;
         options?: never;
         head?: never;
@@ -41,7 +65,11 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update task
+         * @description Updates fields of an existing task.
+         */
+        patch: operations["update-task"];
         trace?: never;
     };
     "/tasks/{id}/activity": {
@@ -53,11 +81,15 @@ export interface paths {
         };
         /**
          * List task activity
-         * @description Returns the chatter timeline of a task, oldest first.
+         * @description Returns chatter timeline of a task, oldest first.
          */
         get: operations["list-task-activity"];
         put?: never;
-        post?: never;
+        /**
+         * Create task activity
+         * @description Adds an activity comment/event to task chatter timeline.
+         */
+        post: operations["create-task-activity"];
         delete?: never;
         options?: never;
         head?: never;
@@ -68,6 +100,9 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        "app.HealthStatus": {
+            status?: string;
+        };
         "handler.Activity": {
             author: string;
             body: string;
@@ -76,16 +111,26 @@ export interface components {
             kind: components["schemas"]["handler.ActivityKind"];
         };
         /** @enum {string} */
-        "handler.ActivityKind": "message" | "note" | "tracking";
-        "handler.ActivityList": {
-            items: components["schemas"]["handler.Activity"][];
-        };
+        "handler.ActivityKind": "status" | "comment" | "assign" | "commit" | "review";
         "handler.Assignee": {
             id: string;
             name: string;
         };
-        "handler.ErrorResponse": {
-            message: string;
+        "handler.CreateActivityRequest": {
+            author?: string;
+            body: string;
+            kind?: components["schemas"]["handler.ActivityKind"];
+        };
+        "handler.CreateTaskRequest": {
+            assignee?: components["schemas"]["handler.Assignee"];
+            description?: string;
+            /** Format: date */
+            dueDate?: string;
+            labels?: string[];
+            priority?: components["schemas"]["handler.TaskPriority"];
+            status?: components["schemas"]["handler.TaskStatus"];
+            title: string;
+            type?: components["schemas"]["handler.TaskType"];
         };
         "handler.Task": {
             assignee?: components["schemas"]["handler.Assignee"];
@@ -93,39 +138,78 @@ export interface components {
             description: string;
             /**
              * Format: date
-             * @description DueDate is a calendar date (YYYY-MM-DD).
+             * @description DueDate is calendar date (YYYY-MM-DD).
              */
             dueDate?: string;
-            /** @description ExternalID is the identifier in the source tracker. */
             externalId?: string;
-            /** @description ExternalURL links to the issue in the source tracker. */
             externalUrl?: string;
-            /** @description ID is the Opus identifier. */
+            /** @description ID is Opus identifier. */
             id: string;
-            /** @description Key is the human-readable reference, e.g. OPUS-12. */
+            /** @description Key is human-readable reference, e.g. OP-12. */
             key: string;
             labels: string[];
             priority: components["schemas"]["handler.TaskPriority"];
             source: components["schemas"]["handler.TaskSource"];
-            /** @description SourceStatus is the status name as reported by the source tracker. */
             sourceStatus?: string;
             status: components["schemas"]["handler.TaskStatus"];
             title: string;
             type: components["schemas"]["handler.TaskType"];
             updatedAt: string;
         };
-        "handler.TaskList": {
-            items: components["schemas"]["handler.Task"][];
-            total: number;
+        /** @enum {string} */
+        "handler.TaskPriority": "0" | "1" | "2" | "3";
+        /** @enum {string} */
+        "handler.TaskSource": "github" | "linear" | "sentry" | "agent" | "manual";
+        /** @enum {string} */
+        "handler.TaskStatus": "backlog" | "todo" | "in_progress" | "review" | "done";
+        /** @enum {string} */
+        "handler.TaskType": "feat" | "bug" | "chore" | "refactor" | "docs";
+        "handler.UpdateTaskRequest": {
+            assignee?: components["schemas"]["handler.Assignee"];
+            clearAssignee?: boolean;
+            description?: string;
+            /** Format: date */
+            dueDate?: string;
+            labels?: string[];
+            priority?: components["schemas"]["handler.TaskPriority"];
+            status?: components["schemas"]["handler.TaskStatus"];
+            title?: string;
+            type?: components["schemas"]["handler.TaskType"];
         };
-        /** @enum {string} */
-        "handler.TaskPriority": "none" | "low" | "medium" | "high";
-        /** @enum {string} */
-        "handler.TaskSource": "github" | "jira" | "sentry" | "custom";
-        /** @enum {string} */
-        "handler.TaskStatus": "backlog" | "spec" | "inProgress" | "inReview" | "done";
-        /** @enum {string} */
-        "handler.TaskType": "feature" | "bug" | "chore" | "incident";
+        "httpx.ErrorResponse": {
+            data?: unknown;
+            error: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Meta": {
+            nextCursor?: string;
+            total?: number;
+        };
+        "httpx.Response-app_HealthStatus": {
+            data?: components["schemas"]["app.HealthStatus"];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Response-array_handler_Activity": {
+            data?: components["schemas"]["handler.Activity"][];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Response-array_handler_Task": {
+            data?: components["schemas"]["handler.Task"][];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Response-handler_Activity": {
+            data?: components["schemas"]["handler.Activity"];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Response-handler_Task": {
+            data?: components["schemas"]["handler.Task"];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
     };
     responses: never;
     parameters: never;
@@ -135,6 +219,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    healthCheck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-app_HealthStatus"];
+                };
+            };
+        };
+    };
     "list-tasks": {
         parameters: {
             query?: never;
@@ -150,7 +254,59 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["handler.TaskList"];
+                    "application/json": components["schemas"]["httpx.Response-array_handler_Task"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "create-task": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Create Task Request */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["handler.CreateTaskRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-handler_Task"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
                 };
             };
         };
@@ -173,7 +329,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["handler.Task"];
+                    "application/json": components["schemas"]["httpx.Response-handler_Task"];
                 };
             };
             /** @description Not Found */
@@ -182,7 +338,71 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["handler.ErrorResponse"];
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "update-task": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Task ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** @description Update Task Request */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["handler.UpdateTaskRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-handler_Task"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
                 };
             };
         };
@@ -205,7 +425,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["handler.ActivityList"];
+                    "application/json": components["schemas"]["httpx.Response-array_handler_Activity"];
                 };
             };
             /** @description Not Found */
@@ -214,7 +434,71 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["handler.ErrorResponse"];
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "create-task-activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Task ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** @description Create Activity Request */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["handler.CreateActivityRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-handler_Activity"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
                 };
             };
         };

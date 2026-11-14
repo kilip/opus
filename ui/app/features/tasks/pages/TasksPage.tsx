@@ -8,7 +8,7 @@ import { SearchBar } from "~/shared/components/SearchBar";
 import { useTasks } from "../api/queries";
 import { KanbanBoard } from "../components/KanbanBoard";
 import { TaskList } from "../components/TaskList";
-import { filterTasks, TASK_FILTERS } from "../filters";
+import { filterTasks, TASK_FILTERS } from "../model";
 
 export const meta = () => [
   { title: "Tasks · Opus" },
@@ -19,16 +19,19 @@ export const meta = () => [
 ];
 
 export default function TasksPage() {
-  const { data, isPending, isError, error, refetch } = useTasks();
+  const tasksQuery = useTasks();
   const [params, setParams] = useSearchParams();
   const view = params.get("view") === "list" ? "list" : "kanban";
 
   const [query, setQuery] = useState("");
   const [active, setActive] = useState<ReadonlySet<string>>(new Set());
 
+  const tasks = tasksQuery.data ?? [];
+  const total = tasks.length;
+
   const visible = useMemo(
-    () => filterTasks(data?.items ?? [], query, active),
-    [data, query, active],
+    () => filterTasks(tasks, query, active),
+    [tasks, query, active],
   );
 
   function toggleFilter(id: string) {
@@ -40,14 +43,14 @@ export default function TasksPage() {
   }
 
   let content: ReactNode;
-  if (isPending) {
+  if (tasksQuery.isPending) {
     content = <p className="p-8 text-center text-muted">Loading tasks…</p>;
-  } else if (isError) {
+  } else if (tasksQuery.isError) {
     content = (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
         <p className="text-lg font-semibold">Could not load tasks</p>
-        <p className="text-muted">{error.message}</p>
-        <Button variant="primary" onClick={() => refetch()}>
+        <p className="text-muted">{tasksQuery.error?.message}</p>
+        <Button variant="primary" onClick={() => tasksQuery.refetch()}>
           Retry
         </Button>
       </div>
@@ -61,7 +64,7 @@ export default function TasksPage() {
   return (
     <>
       <ControlPanel
-        breadcrumbs={[{ label: "Tasks" }]}
+        breadcrumbs={[{ label: `Tasks (${total})` }]}
         actions={
           <Link to="/tasks/new" className={buttonClass("primary")}>
             New
