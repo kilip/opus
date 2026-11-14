@@ -1,0 +1,184 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - depguard
+  settings:
+    depguard:
+      rules:
+        platform:
+          list-mode: lax
+          files:
+            - "**/internal/platform/**"
+          deny:
+            - pkg: "github.com/kilip/opus/internal/omp"
+              desc: "internal/platform must not import any module"
+            - pkg: "github.com/kilip/opus/internal/tasks"
+              desc: "internal/platform must not import any module"
+            - pkg: "github.com/kilip/opus/internal/doctor"
+              desc: "internal/platform must not import any module"
+            - pkg: "github.com/kilip/opus/internal/systemd"
+              desc: "internal/platform must not import any module"
+            - pkg: "github.com/kilip/opus/internal/installer"
+              desc: "internal/platform must not import any module"
+            - pkg: "github.com/kilip/opus/internal/config"
+              desc: "internal/platform must not import config"
+            - pkg: "github.com/kilip/opus/internal/app"
+              desc: "internal/platform must not import app"
+            - pkg: "github.com/kilip/opus/cmd"
+              desc: "internal/platform must not import cmd"
+
+        module-omp:
+          list-mode: lax
+          files:
+            - "**/internal/omp/**"
+          deny:
+            - pkg: "github.com/kilip/opus/internal/tasks"
+              desc: "internal/omp must not import other modules"
+            - pkg: "github.com/kilip/opus/internal/doctor"
+              desc: "internal/omp must not import other modules"
+            - pkg: "github.com/kilip/opus/internal/systemd"
+              desc: "internal/omp must not import other modules"
+            - pkg: "github.com/kilip/opus/internal/installer"
+              desc: "internal/omp must not import other modules"
+            - pkg: "github.com/kilip/opus/internal/config"
+              desc: "internal/omp must not import config"
+            - pkg: "github.com/kilip/opus/internal/app"
+              desc: "internal/omp must not import app"
+            - pkg: "github.com/kilip/opus/cmd"
+              desc: "internal/omp must not import cmd"
+
+        module-tasks:
+          list-mode: lax
+          files:
+            - "**/internal/tasks/**"
+          deny:
+            - pkg: "github.com/kilip/opus/internal/omp"
+              desc: "internal/tasks must not import other modules"
+            - pkg: "github.com/kilip/opus/internal/doctor"
+              desc: "internal/tasks must not import other modules"
+            - pkg: "github.com/kilip/opus/internal/systemd"
+              desc: "internal/tasks must not import other modules"
+            - pkg: "github.com/kilip/opus/internal/installer"
+              desc: "internal/tasks must not import other modules"
+            - pkg: "github.com/kilip/opus/internal/config"
+              desc: "internal/tasks must not import config"
+            - pkg: "github.com/kilip/opus/internal/app"
+              desc: "internal/tasks must not import app"
+            - pkg: "github.com/kilip/opus/cmd"
+              desc: "internal/tasks must not import cmd"
+
+        module-systemd:
+          list-mode: lax
+          files:
+            - "**/internal/systemd/**"
+          deny:
+            - pkg: "github.com/kilip/opus/internal/omp"
+              desc: "internal/systemd must not import other modules"
+            - pkg: "github.com/kilip/opus/internal/tasks"
+              desc: "internal/systemd must not import other modules"
+            - pkg: "github.com/kilip/opus/internal/doctor"
+              desc: "internal/systemd must not import other modules"
+            - pkg: "github.com/kilip/opus/internal/installer"
+              desc: "internal/systemd must not import other modules"
+            - pkg: "github.com/kilip/opus/internal/config"
+              desc: "internal/systemd must not import config"
+            - pkg: "github.com/kilip/opus/internal/app"
+              desc: "internal/systemd must not import app"
+            - pkg: "github.com/kilip/opus/cmd"
+              desc: "internal/systemd must not import cmd"
+
+        module-installer:
+          list-mode: lax
+          files:
+            - "**/internal/installer/**"
+          deny:
+            - pkg: "github.com/kilip/opus/internal/omp"
+              desc: "internal/installer must not import other modules"
+            - pkg: "github.com/kilip/opus/internal/tasks"
+              desc: "internal/installer must not import other modules"
+            - pkg: "github.com/kilip/opus/internal/doctor"
+              desc: "internal/installer must not import other modules"
+            - pkg: "github.com/kilip/opus/internal/systemd"
+              desc: "internal/installer must not import other modules"
+            - pkg: "github.com/kilip/opus/internal/config"
+              desc: "internal/installer must not import config"
+            - pkg: "github.com/kilip/opus/internal/app"
+              desc: "internal/installer must not import app"
+            - pkg: "github.com/kilip/opus/cmd"
+              desc: "internal/installer must not import cmd"
+
+        module-doctor:
+          list-mode: lax
+          files:
+            - "**/internal/doctor/**"
+          deny:
+            - pkg: "github.com/kilip/opus/internal/omp"
+              desc: "internal/doctor must not import other modules"
+            - pkg: "github.com/kilip/opus/internal/tasks"
+              desc: "internal/doctor must not import other modules"
+            - pkg: "github.com/kilip/opus/internal/systemd"
+              desc: "internal/doctor must not import other modules"
+            - pkg: "github.com/kilip/opus/internal/installer"
+              desc: "internal/doctor must not import other modules"
+            - pkg: "github.com/kilip/opus/internal/config"
+              desc: "internal/doctor must not import config"
+            - pkg: "github.com/kilip/opus/internal/app"
+              desc: "internal/doctor must not import app"
+            - pkg: "github.com/kilip/opus/cmd"
+              desc: "internal/doctor must not import cmd"
+
+        config:
+          list-mode: lax
+          files:
+            - "**/internal/config/**"
+          deny:
+            - pkg: "github.com/kilip/opus/internal/omp"
+              desc: "internal/config must not import any module"
+            - pkg: "github.com/kilip/opus/internal/tasks"
+              desc: "internal/config must not import any module"
+            - pkg: "github.com/kilip/opus/internal/doctor"
+              desc: "internal/config must not import any module"
+            - pkg: "github.com/kilip/opus/internal/systemd"
+              desc: "internal/config must not import any module"
+            - pkg: "github.com/kilip/opus/internal/installer"
+              desc: "internal/config must not import any module"
+            - pkg: "github.com/kilip/opus/internal/app"
+              desc: "internal/config must not import app"
+            - pkg: "github.com/kilip/opus/cmd"
+              desc: "internal/config must not import cmd"
+
+        app:
+          list-mode: lax
+          files:
+            - "**/internal/app/**"
+          deny:
+            - pkg: "github.com/kilip/opus/internal/omp/"
+              desc: "internal/app must not import omp subpackages"
+            - pkg: "github.com/kilip/opus/internal/tasks/"
+              desc: "internal/app must not import tasks subpackages"
+            - pkg: "github.com/kilip/opus/internal/doctor/"
+              desc: "internal/app must not import doctor subpackages"
+            - pkg: "github.com/kilip/opus/internal/systemd/"
+              desc: "internal/app must not import systemd subpackages"
+            - pkg: "github.com/kilip/opus/internal/installer/"
+              desc: "internal/app must not import installer subpackages"
+            - pkg: "github.com/kilip/opus/cmd"
+              desc: "internal/app must not import cmd"
+
+        cmd:
+          list-mode: lax
+          files:
+            - "**/cmd/**"
+          deny:
+            - pkg: "github.com/kilip/opus/internal/omp/"
+              desc: "cmd/opus must not import omp subpackages"
+            - pkg: "github.com/kilip/opus/internal/tasks/"
+              desc: "cmd/opus must not import tasks subpackages"
+            - pkg: "github.com/kilip/opus/internal/doctor/"
+              desc: "cmd/opus must not import doctor subpackages"
+            - pkg: "github.com/kilip/opus/internal/systemd/"
+              desc: "cmd/opus must not import systemd subpackages"
+            - pkg: "github.com/kilip/opus/internal/installer/"
+              desc: "cmd/opus must not import installer subpackages"

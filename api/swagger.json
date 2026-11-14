@@ -1,0 +1,370 @@
+{
+    "components": {
+        "schemas": {
+            "handler.Activity": {
+                "properties": {
+                    "author": {
+                        "type": "string"
+                    },
+                    "body": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "kind": {
+                        "$ref": "#/components/schemas/handler.ActivityKind"
+                    }
+                },
+                "required": [
+                    "author",
+                    "body",
+                    "createdAt",
+                    "id",
+                    "kind"
+                ],
+                "type": "object"
+            },
+            "handler.ActivityKind": {
+                "enum": [
+                    "message",
+                    "note",
+                    "tracking"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "ActivityKindMessage",
+                    "ActivityKindNote",
+                    "ActivityKindTracking"
+                ]
+            },
+            "handler.ActivityList": {
+                "properties": {
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/handler.Activity"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    }
+                },
+                "required": [
+                    "items"
+                ],
+                "type": "object"
+            },
+            "handler.Assignee": {
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "type": "object"
+            },
+            "handler.ErrorResponse": {
+                "properties": {
+                    "message": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "message"
+                ],
+                "type": "object"
+            },
+            "handler.Task": {
+                "properties": {
+                    "assignee": {
+                        "$ref": "#/components/schemas/handler.Assignee"
+                    },
+                    "createdAt": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "dueDate": {
+                        "description": "DueDate is a calendar date (YYYY-MM-DD).",
+                        "format": "date",
+                        "type": "string"
+                    },
+                    "externalId": {
+                        "description": "ExternalID is the identifier in the source tracker.",
+                        "type": "string"
+                    },
+                    "externalUrl": {
+                        "description": "ExternalURL links to the issue in the source tracker.",
+                        "type": "string"
+                    },
+                    "id": {
+                        "description": "ID is the Opus identifier.",
+                        "type": "string"
+                    },
+                    "key": {
+                        "description": "Key is the human-readable reference, e.g. OPUS-12.",
+                        "type": "string"
+                    },
+                    "labels": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "priority": {
+                        "$ref": "#/components/schemas/handler.TaskPriority"
+                    },
+                    "source": {
+                        "$ref": "#/components/schemas/handler.TaskSource"
+                    },
+                    "sourceStatus": {
+                        "description": "SourceStatus is the status name as reported by the source tracker.",
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/handler.TaskStatus"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "$ref": "#/components/schemas/handler.TaskType"
+                    },
+                    "updatedAt": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "createdAt",
+                    "description",
+                    "id",
+                    "key",
+                    "labels",
+                    "priority",
+                    "source",
+                    "status",
+                    "title",
+                    "type",
+                    "updatedAt"
+                ],
+                "type": "object"
+            },
+            "handler.TaskList": {
+                "properties": {
+                    "items": {
+                        "items": {
+                            "$ref": "#/components/schemas/handler.Task"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "total": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "items",
+                    "total"
+                ],
+                "type": "object"
+            },
+            "handler.TaskPriority": {
+                "enum": [
+                    "none",
+                    "low",
+                    "medium",
+                    "high"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "TaskPriorityNone",
+                    "TaskPriorityLow",
+                    "TaskPriorityMedium",
+                    "TaskPriorityHigh"
+                ]
+            },
+            "handler.TaskSource": {
+                "enum": [
+                    "github",
+                    "jira",
+                    "sentry",
+                    "custom"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "TaskSourceGitHub",
+                    "TaskSourceJira",
+                    "TaskSourceSentry",
+                    "TaskSourceCustom"
+                ]
+            },
+            "handler.TaskStatus": {
+                "enum": [
+                    "backlog",
+                    "spec",
+                    "inProgress",
+                    "inReview",
+                    "done"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "TaskStatusBacklog",
+                    "TaskStatusSpec",
+                    "TaskStatusInProgress",
+                    "TaskStatusInReview",
+                    "TaskStatusDone"
+                ]
+            },
+            "handler.TaskType": {
+                "enum": [
+                    "feature",
+                    "bug",
+                    "chore",
+                    "incident"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "TaskTypeFeature",
+                    "TaskTypeBug",
+                    "TaskTypeChore",
+                    "TaskTypeIncident"
+                ]
+            }
+        }
+    },
+    "info": {
+        "description": "Web-based mission control dashboard for AI coding agents",
+        "title": "Opus API",
+        "version": "1.0.0"
+    },
+    "externalDocs": {
+        "description": "",
+        "url": ""
+    },
+    "paths": {
+        "/tasks": {
+            "get": {
+                "description": "Returns every task, normalised from its source tracker.",
+                "operationId": "list-tasks",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/handler.TaskList"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    }
+                },
+                "summary": "List tasks",
+                "tags": [
+                    "tasks"
+                ]
+            }
+        },
+        "/tasks/{id}": {
+            "get": {
+                "description": "Returns a single task by its Opus identifier.",
+                "operationId": "get-task",
+                "parameters": [
+                    {
+                        "description": "Task ID",
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/handler.Task"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/handler.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    }
+                },
+                "summary": "Get a task",
+                "tags": [
+                    "tasks"
+                ]
+            }
+        },
+        "/tasks/{id}/activity": {
+            "get": {
+                "description": "Returns the chatter timeline of a task, oldest first.",
+                "operationId": "list-task-activity",
+                "parameters": [
+                    {
+                        "description": "Task ID",
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/handler.ActivityList"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/handler.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    }
+                },
+                "summary": "List task activity",
+                "tags": [
+                    "tasks"
+                ]
+            }
+        }
+    },
+    "openapi": "3.1.0",
+    "servers": [
+        {
+            "url": "/api"
+        }
+    ]
+}

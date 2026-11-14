@@ -1,0 +1,3 @@
+#/usr/bin/env sh
+.husky/fix-emoji "$1"
+bunx --no -- commitlint --edit "$1"

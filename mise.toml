@@ -1,0 +1,48 @@
+[tools]
+air = "latest"
+biome = "latest"
+bun = "latest"
+go = "latest"
+golangci-lint = "latest"
+node = "latest"
+swag = "v2.0.0-rc6"
+
+[tasks.dev]
+depends = ["dev-api", "dev-ui"]
+
+[tasks.dev-api]
+run = "air"
+
+[tasks.dev-ui]
+dir = "ui"
+run = "bun run dev"
+
+[tasks.build-ui]
+dir = "ui"
+run = "bun run build"
+
+[tasks.api-spec]
+description = "Generate the OpenAPI 3.1 spec (api/swagger.json) from swag annotations"
+run = "swag init --v3.1 -g main.go -d ./cmd/opus,./internal --parseInternal --outputTypes json -o api"
+
+[tasks.api-types]
+description = "Generate ui/app/shared/api/schema.d.ts from the OpenAPI spec"
+depends = ["api-spec"]
+dir = "ui"
+run = "bun run api:types"
+
+[tasks.api]
+description = "Regenerate the OpenAPI spec and the UI API types"
+depends = ["api-types"]
+
+
+[tasks.lint]
+description = "Run Go and UI linters"
+run = """
+if [ -n "$(go list ./... 2>/dev/null)" ]; then
+  test -z "$(gofmt -l .)"
+  go vet ./...
+  golangci-lint run
+fi
+bun run --cwd ui typecheck
+"""

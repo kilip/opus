@@ -1,0 +1,23 @@
+.env
+mise.local.toml
+/tmp/
+/node_modules/
+# Go binaries and build artefacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.cover
+coverage.out
+# Go module files
+go.sum
+# Vendor directory (uncomment if used)
+# vendor/
+# IDE/editor files
+.idea/
+.vscode/
+*~
+*.swp
