@@ -16,6 +16,9 @@ func newServeCmd() *cobra.Command {
 				return err
 			}
 			logger := app.GetLogger(cfg)
+			flushSentry := app.InitSentry(cfg, logger)
+			defer flushSentry()
+
 			db, err := app.OpenDB(ctx, cfg.DatabaseURL)
 			if err != nil {
 				return err

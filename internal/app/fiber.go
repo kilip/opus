@@ -1,11 +1,13 @@
 package app
 
 import (
+	"errors"
 	"io/fs"
 	"log/slog"
 	"strings"
 	"time"
 
+	sentryfiber "github.com/getsentry/sentry-go/fiberv3"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
@@ -44,10 +46,23 @@ func GetFiber(cfg Config, logger *slog.Logger) *fiber.App {
 
 	app.Use(requestid.New())
 	app.Use(recover.New())
+	if cfg.SentryDSN != "" {
+		app.Use(sentryfiber.New(sentryfiber.Options{
+			Repanic:         true,
+			WaitForDelivery: true,
+		}))
+	}
 	app.Use(func(c fiber.Ctx) error {
 		start := time.Now()
 		err := c.Next()
 		if err != nil {
+			var fErr *fiber.Error
+			isClientErr := errors.As(err, &fErr) && fErr.Code < 500
+			if !isClientErr && cfg.SentryDSN != "" {
+				if hub := sentryfiber.GetHubFromContext(c); hub != nil {
+					hub.CaptureException(err)
+				}
+			}
 			_ = c.App().ErrorHandler(c, err)
 		}
 		logger.InfoContext(c.Context(), "http request",
