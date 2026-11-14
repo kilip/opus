@@ -30,9 +30,13 @@ Domain units across both backend and frontend are called **features** (never "mo
 ├── ent/                          # Entgo unified schema (ent/schema/) & generated graph client
 ├── internal/
 │   ├── app/                      # HTTP server lifecycle, config, Fiber router wiring
+│   ├── platform/
+│   │   └── httpx/                # { data, meta, error } envelope, sentinel errors, ErrorHandler
 │   └── <feature>/                # Go feature (e.g. internal/task, internal/user)
-│       ├── <feature>.go          # Public feature facade: Register(r fiber.Router, ...)
-│       └── handler/              # Fiber handlers, DTOs (dto.go), handler tests
+│       ├── <feature>.go          # Public feature facade: New(...), Register(r fiber.Router)
+│       ├── domain/               # Leaf domain entities, enums, sentinel errors (errors.go)
+│       ├── repo/                 # Storage implementation (in-memory or Ent client)
+│       └── handler/              # Fiber handlers, DTOs (dto.go), Swag annotations, handler tests
 ├── api/
 │   └── swagger.json              # Generated OpenAPI 3.1 spec (DO NOT EDIT)
 └── ui/
@@ -40,18 +44,33 @@ Domain units across both backend and frontend are called **features** (never "mo
     └── app/
         ├── routes.ts             # Root route aggregator
         ├── apps.ts               # App switcher registry
-        ├── shared/               # Cross-feature UI primitives, theme, typed openapi-fetch client
-        └── features/<feature>/   # UI feature (routes.ts, app.ts, pages/, components/, api/)
+        ├── shared/               # Cross-feature UI primitives, theme, api/client.ts, util/
+        │   ├── api/              # client.ts (api, unwrap, unwrapMeta, ApiError), errors.ts
+        │   └── util/             # dates.ts, cross-feature pure utility functions
+        └── features/<feature>/   # UI feature
+            ├── app.ts            # App switcher entry (AppDef)
+            ├── routes.ts         # React Router route entries
+            ├── model.ts          # Feature domain constants, stages, filters, helpers
+            ├── api/
+            │   ├── keys.ts       # TanStack Query key factory
+            │   ├── types.ts      # Schema type aliases from ~/shared/api/schema
+            │   ├── errors.ts     # Feature error code -> message map
+            │   ├── queries.ts    # queryOptions + useQuery hooks (unwrap)
+            │   └── actions.ts    # useMutation hooks + cache invalidation
+            ├── components/       # Feature-scoped components
+            └── pages/            # Route page components
 ```
 
 ### Feature Boundary Rules
 
 1. **Go Feature Isolation**:
-   - External packages (`internal/app` or sibling features) MUST import only the feature root package `internal/<feature>`, NEVER its subpackages (`internal/<feature>/handler`, etc.).
-   - Keep features lean: `<feature>.go` + `handler/`. Query `*ent.Client` directly from handlers or the feature package; do not add `service/` or `repository/` layers unless complex domain logic requires them.
+   - External packages (`internal/app` or sibling features) MUST import only the feature root package `internal/<feature>`, NEVER its subpackages (`internal/<feature>/handler`, `internal/<feature>/repo`, etc.).
+   - Backend feature layout follows `<feature>.go` facade (`New(...)` + `Register(r fiber.Router)`), `domain/` for domain models and sentinel errors, `repo/` for storage implementations, and `handler/` for HTTP endpoints and DTOs.
+   - Unified HTTP response envelope `{ data, meta, error }` and status mapping are provided by `internal/platform/httpx`.
 2. **UI Feature Isolation**:
    - Files in `ui/app/features/<feature>/` MUST NOT import from sibling `~/features/*`.
-   - Shared components, hooks, and utilities belong in `ui/app/shared/`.
+   - Shared components, hooks, api client helpers (`unwrap`, `unwrapMeta`), base error resolvers, and utilities belong in `ui/app/shared/` (`ui/app/shared/util/`).
+   - Feature UI topology organizes data access under `api/` (`keys.ts`, `types.ts`, `errors.ts`, `queries.ts`, `actions.ts`), domain helpers/filters in `model.ts`, components in `components/`, and routes in `pages/`.
    - Cross-feature composition happens only in `ui/app/routes.ts` and `ui/app/apps.ts`.
 
 ## 3. Backend: Fiber v3, Entgo, Swag & OpenAPI 3.1
