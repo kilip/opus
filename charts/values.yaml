@@ -80,7 +80,6 @@ persistence:
   # -- Mount path for data volume.
   mountPath: /data
 
-
 hpa:
   enabled: false
   minReplicas: 2

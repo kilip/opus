@@ -36,19 +36,19 @@ Typical setup:
 import { createBrowserRouter, RouterProvider } from "react-router";
 
 const router = createBrowserRouter([
-  {
-    path: "/",
-    Component: Root,
-    loader: rootLoader,
-    children: [
-      { index: true, Component: Home },
-      {
-        path: "projects/:projectId",
-        Component: Project,
-        loader: projectLoader,
-      },
-    ],
-  },
+	{
+		path: "/",
+		Component: Root,
+		loader: rootLoader,
+		children: [
+			{ index: true, Component: Home },
+			{
+				path: "projects/:projectId",
+				Component: Project,
+				loader: projectLoader,
+			},
+		],
+	},
 ]);
 
 root.render(<RouterProvider router={router} />);
