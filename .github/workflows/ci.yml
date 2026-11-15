@@ -34,8 +34,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Run Biome lint
-        run: bunx biome lint ui
-        working-directory: .
+        run: bunx biome lint .
 
       - name: Run typecheck
         run: bun run typecheck
