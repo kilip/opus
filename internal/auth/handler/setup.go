@@ -35,6 +35,7 @@ func (h *Handler) setupStatus(c fiber.Ctx) error {
 // @Success 202 "Accepted"
 // @Failure 400 {object} httpx.ErrorResponse
 // @Failure 409 {object} httpx.ErrorResponse
+// @Failure 429 {object} httpx.ErrorResponse
 // @Router /setup/otp [post]
 func (h *Handler) setupRequestOTP(c fiber.Ctx) error {
 	var body domain.OTPRequestBody

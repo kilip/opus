@@ -351,3 +351,168 @@ func TestVerifyOTP_AlreadyLockedOut(t *testing.T) {
 		t.Fatalf("want 429 (already locked), got %d", resp.StatusCode)
 	}
 }
+
+// --- Rate limiting tests ---
+
+func postJSONFromIP(t *testing.T, app *fiber.App, path string, body any, ip string) *http.Response {
+	t.Helper()
+	req := httptest.NewRequest(http.MethodPost, path, jsonBody(body))
+	req.Header.Set("Content-Type", "application/json")
+	if ip != "" {
+		req.Header.Set("X-Forwarded-For", ip)
+		req.RemoteAddr = ip + ":12345"
+	}
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("POST %s: %v", path, err)
+	}
+	t.Cleanup(func() { _ = resp.Body.Close() })
+	return resp
+}
+
+func checkRateLimitedResponse(t *testing.T, resp *http.Response) {
+	t.Helper()
+	if resp.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("want status 429, got %d", resp.StatusCode)
+	}
+	retryAfter := resp.Header.Get("Retry-After")
+	if retryAfter == "" {
+		t.Fatal("expected Retry-After header on 429 response")
+	}
+	var errResp httpx.ErrorResponse
+	if err := json.NewDecoder(resp.Body).Decode(&errResp); err != nil {
+		t.Fatalf("failed to decode error response: %v", err)
+	}
+	if errResp.Error != "RATE_LIMITED" {
+		t.Fatalf("want error code RATE_LIMITED, got %q", errResp.Error)
+	}
+}
+
+func setupAppWithRateLimit(t *testing.T, rl handler.RateLimitConfig) *fiber.App {
+	t.Helper()
+	sessRepo := newFakeRepo()
+	otpRepo := newFakeOTPRepo()
+	svc := service.New(sessRepo, otpRepo, &fakeMailer{}, service.Config{
+		Secret:     testSecret,
+		SessionTTL: 24 * time.Hour,
+	})
+	cc := handler.CookieConfig{Secure: false, MaxAge: 86400}
+	h := handler.New(svc, cc, rl)
+	app := fiber.New(fiber.Config{ErrorHandler: httpx.ErrorHandler(newDiscardLogger())})
+	h.RegisterPublic(app.Group("/auth"))
+	h.RegisterSetup(app.Group("/setup"))
+	return app
+}
+
+func TestOTP_PerEmailLimit_AuthAndSetup(t *testing.T) {
+	app := setupAppWithRateLimit(t, handler.RateLimitConfig{})
+
+	// 3 requests allowed with different IPs for the same email
+	for i := 1; i <= 3; i++ {
+		resp := postJSONFromIP(t, app, "/auth/otp/request", map[string]string{"email": "user@example.com"}, fmt.Sprintf("192.168.1.%d", i))
+		if resp.StatusCode != http.StatusAccepted {
+			t.Fatalf("request %d: want 202, got %d", i, resp.StatusCode)
+		}
+	}
+
+	// 4th request exceeds per-email limit
+	resp := postJSONFromIP(t, app, "/auth/otp/request", map[string]string{"email": "user@example.com"}, "192.168.1.99")
+	checkRateLimitedResponse(t, resp)
+
+	// Another email from the same blocked IP should succeed (IP limit is 10)
+	respOther := postJSONFromIP(t, app, "/auth/otp/request", map[string]string{"email": "other@example.com"}, "192.168.1.99")
+	if respOther.StatusCode != http.StatusAccepted {
+		t.Fatalf("other email: want 202, got %d", respOther.StatusCode)
+	}
+}
+
+func TestOTP_EmailNormalization_CountsAgainstSameLimit(t *testing.T) {
+	app := setupAppWithRateLimit(t, handler.RateLimitConfig{})
+
+	variants := []string{
+		"target@example.com",
+		"Target@example.com",
+		"  target@example.com  ",
+	}
+
+	for i, email := range variants {
+		resp := postJSONFromIP(t, app, "/auth/otp/request", map[string]string{"email": email}, fmt.Sprintf("10.0.1.%d", i+1))
+		if resp.StatusCode != http.StatusAccepted {
+			t.Fatalf("variant %d (%q): want 202, got %d", i+1, email, resp.StatusCode)
+		}
+	}
+
+	// 4th variant with uppercase & whitespace should be blocked
+	resp := postJSONFromIP(t, app, "/auth/otp/request", map[string]string{"email": " TARGET@EXAMPLE.COM "}, "10.0.1.99")
+	checkRateLimitedResponse(t, resp)
+}
+
+func TestOTP_PerIPLimit_AuthAndSetup(t *testing.T) {
+	app := setupAppWithRateLimit(t, handler.RateLimitConfig{})
+	ip := "10.20.30.40"
+
+	// 10 requests allowed from same IP with different emails
+	for i := 1; i <= 10; i++ {
+		email := fmt.Sprintf("user%d@example.com", i)
+		resp := postJSONFromIP(t, app, "/auth/otp/request", map[string]string{"email": email}, ip)
+		if resp.StatusCode != http.StatusAccepted {
+			t.Fatalf("request %d: want 202, got %d", i, resp.StatusCode)
+		}
+	}
+
+	// 11th request from same IP should be blocked
+	resp := postJSONFromIP(t, app, "/auth/otp/request", map[string]string{"email": "user11@example.com"}, ip)
+	checkRateLimitedResponse(t, resp)
+
+	// Same email from a different IP should succeed
+	respDiffIP := postJSONFromIP(t, app, "/auth/otp/request", map[string]string{"email": "user11@example.com"}, "10.20.30.41")
+	if respDiffIP.StatusCode != http.StatusAccepted {
+		t.Fatalf("diff IP: want 202, got %d", respDiffIP.StatusCode)
+	}
+}
+
+func TestOTP_SetupOTPRateLimit(t *testing.T) {
+	app := setupAppWithRateLimit(t, handler.RateLimitConfig{})
+
+	// 3 requests to /setup/otp for the same email
+	for i := 1; i <= 3; i++ {
+		resp := postJSONFromIP(t, app, "/setup/otp", map[string]string{"email": "setup@example.com"}, fmt.Sprintf("172.16.0.%d", i))
+		if resp.StatusCode != http.StatusAccepted {
+			t.Fatalf("setup request %d: want 202, got %d", i, resp.StatusCode)
+		}
+	}
+
+	// 4th request exceeds limit
+	resp := postJSONFromIP(t, app, "/setup/otp", map[string]string{"email": "setup@example.com"}, "172.16.0.99")
+	checkRateLimitedResponse(t, resp)
+}
+
+func TestOTP_WindowRecovery(t *testing.T) {
+	app := setupAppWithRateLimit(t, handler.RateLimitConfig{
+		MaxEmailRequests: 2,
+		Window:           1 * time.Second,
+	})
+
+	email := "recover@example.com"
+
+	// 2 requests hit max
+	for i := 1; i <= 2; i++ {
+		resp := postJSONFromIP(t, app, "/auth/otp/request", map[string]string{"email": email}, fmt.Sprintf("10.0.2.%d", i))
+		if resp.StatusCode != http.StatusAccepted {
+			t.Fatalf("request %d: want 202, got %d", i, resp.StatusCode)
+		}
+	}
+
+	// 3rd request blocked
+	resp := postJSONFromIP(t, app, "/auth/otp/request", map[string]string{"email": email}, "10.0.2.99")
+	checkRateLimitedResponse(t, resp)
+
+	// Wait for window to expire (>1s)
+	time.Sleep(1100 * time.Millisecond)
+
+	// Request should now succeed
+	respAfter := postJSONFromIP(t, app, "/auth/otp/request", map[string]string{"email": email}, "10.0.2.99")
+	if respAfter.StatusCode != http.StatusAccepted {
+		t.Fatalf("after window recovery: want 202, got %d", respAfter.StatusCode)
+	}
+}

@@ -21,13 +21,24 @@ type CookieConfig struct {
 
 // Handler holds auth HTTP handlers.
 type Handler struct {
-	svc    *service.Auth
-	cookie CookieConfig
+	svc          *service.Auth
+	cookie       CookieConfig
+	emailLimiter fiber.Handler
+	ipLimiter    fiber.Handler
 }
 
 // New returns a Handler backed by the auth service.
-func New(svc *service.Auth, cc CookieConfig) *Handler {
-	return &Handler{svc: svc, cookie: cc}
+func New(svc *service.Auth, cc CookieConfig, rl ...RateLimitConfig) *Handler {
+	var rlCfg RateLimitConfig
+	if len(rl) > 0 {
+		rlCfg = rl[0]
+	}
+	return &Handler{
+		svc:          svc,
+		cookie:       cc,
+		emailLimiter: newEmailLimiter(rlCfg),
+		ipLimiter:    newIPLimiter(rlCfg),
+	}
 }
 
 // Register mounts protected auth routes on r.
@@ -38,14 +49,14 @@ func (h *Handler) Register(r fiber.Router) {
 
 // RegisterPublic mounts public OTP routes (before auth middleware).
 func (h *Handler) RegisterPublic(r fiber.Router) {
-	r.Post("/otp/request", h.requestOTP)
+	r.Post("/otp/request", h.ipLimiter, h.emailLimiter, h.requestOTP)
 	r.Post("/otp/verify", h.verifyOTP)
 }
 
 // RegisterSetup mounts public setup routes (before auth middleware).
 func (h *Handler) RegisterSetup(r fiber.Router) {
 	r.Get("/status", h.setupStatus)
-	r.Post("/otp", h.setupRequestOTP)
+	r.Post("/otp", h.ipLimiter, h.emailLimiter, h.setupRequestOTP)
 	r.Post("", h.setupComplete)
 }
 
@@ -99,7 +110,7 @@ func mapErr(err error) error {
 		return httpx.Unauthorized()
 	case errors.Is(err, domain.ErrInvalidOTP), errors.Is(err, domain.ErrOTPExpired):
 		return httpx.NewError(fiber.StatusUnauthorized, err)
-	case errors.Is(err, domain.ErrTooManyAttempts):
+	case errors.Is(err, domain.ErrTooManyAttempts), errors.Is(err, domain.ErrRateLimited):
 		return httpx.NewError(fiber.StatusTooManyRequests, err)
 	case errors.Is(err, domain.ErrSetupClosed):
 		return httpx.Conflict(err)

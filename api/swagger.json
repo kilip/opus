@@ -1,1081 +1,1173 @@
 {
-	"components": {
-		"schemas": {
-			"app.HealthStatus": {
-				"properties": {
-					"status": {
-						"type": "string"
-					}
-				},
-				"type": "object"
-			},
-			"domain.Activity": {
-				"properties": {
-					"author": {
-						"type": "string"
-					},
-					"body": {
-						"type": "string"
-					},
-					"createdAt": {
-						"type": "string"
-					},
-					"id": {
-						"type": "string"
-					},
-					"kind": {
-						"$ref": "#/components/schemas/domain.ActivityKind"
-					}
-				},
-				"required": ["author", "body", "createdAt", "id", "kind"],
-				"type": "object"
-			},
-			"domain.ActivityKind": {
-				"enum": ["status", "comment", "assign", "commit", "review"],
-				"type": "string",
-				"x-enum-varnames": [
-					"ActivityKindStatus",
-					"ActivityKindComment",
-					"ActivityKindAssign",
-					"ActivityKindCommit",
-					"ActivityKindReview"
-				]
-			},
-			"domain.Assignee": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"name": {
-						"type": "string"
-					}
-				},
-				"required": ["id", "name"],
-				"type": "object"
-			},
-			"domain.CreateActivityRequest": {
-				"properties": {
-					"author": {
-						"type": "string"
-					},
-					"body": {
-						"type": "string"
-					},
-					"kind": {
-						"$ref": "#/components/schemas/domain.ActivityKind"
-					}
-				},
-				"required": ["body"],
-				"type": "object"
-			},
-			"domain.CreateTaskRequest": {
-				"properties": {
-					"assignee": {
-						"$ref": "#/components/schemas/domain.Assignee"
-					},
-					"description": {
-						"type": "string"
-					},
-					"dueDate": {
-						"format": "date",
-						"type": "string"
-					},
-					"labels": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array",
-						"uniqueItems": false
-					},
-					"priority": {
-						"$ref": "#/components/schemas/domain.TaskPriority"
-					},
-					"status": {
-						"$ref": "#/components/schemas/domain.TaskStatus"
-					},
-					"title": {
-						"type": "string"
-					},
-					"type": {
-						"$ref": "#/components/schemas/domain.TaskType"
-					}
-				},
-				"required": ["title"],
-				"type": "object"
-			},
-			"domain.OTPRequestBody": {
-				"properties": {
-					"email": {
-						"type": "string"
-					}
-				},
-				"type": "object"
-			},
-			"domain.OTPVerifyBody": {
-				"properties": {
-					"code": {
-						"type": "string"
-					},
-					"email": {
-						"type": "string"
-					}
-				},
-				"type": "object"
-			},
-			"domain.SetupStatusResponse": {
-				"properties": {
-					"needs_setup": {
-						"type": "boolean"
-					}
-				},
-				"type": "object"
-			},
-			"domain.Task": {
-				"properties": {
-					"assignee": {
-						"$ref": "#/components/schemas/domain.Assignee"
-					},
-					"createdAt": {
-						"type": "string"
-					},
-					"description": {
-						"type": "string"
-					},
-					"dueDate": {
-						"description": "DueDate is calendar date (YYYY-MM-DD).",
-						"format": "date",
-						"type": "string"
-					},
-					"externalId": {
-						"type": "string"
-					},
-					"externalUrl": {
-						"type": "string"
-					},
-					"id": {
-						"description": "ID is Opus identifier.",
-						"type": "string"
-					},
-					"key": {
-						"description": "Key is human-readable reference, e.g. OP-12.",
-						"type": "string"
-					},
-					"labels": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array",
-						"uniqueItems": false
-					},
-					"priority": {
-						"$ref": "#/components/schemas/domain.TaskPriority"
-					},
-					"source": {
-						"$ref": "#/components/schemas/domain.TaskSource"
-					},
-					"sourceStatus": {
-						"type": "string"
-					},
-					"status": {
-						"$ref": "#/components/schemas/domain.TaskStatus"
-					},
-					"title": {
-						"type": "string"
-					},
-					"type": {
-						"$ref": "#/components/schemas/domain.TaskType"
-					},
-					"updatedAt": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"createdAt",
-					"description",
-					"id",
-					"key",
-					"labels",
-					"priority",
-					"source",
-					"status",
-					"title",
-					"type",
-					"updatedAt"
-				],
-				"type": "object"
-			},
-			"domain.TaskPriority": {
-				"enum": ["0", "1", "2", "3"],
-				"type": "string",
-				"x-enum-varnames": [
-					"TaskPriorityP0",
-					"TaskPriorityP1",
-					"TaskPriorityP2",
-					"TaskPriorityP3"
-				]
-			},
-			"domain.TaskSource": {
-				"enum": ["github", "linear", "sentry", "agent", "manual"],
-				"type": "string",
-				"x-enum-varnames": [
-					"TaskSourceGitHub",
-					"TaskSourceLinear",
-					"TaskSourceSentry",
-					"TaskSourceAgent",
-					"TaskSourceManual"
-				]
-			},
-			"domain.TaskStatus": {
-				"enum": ["backlog", "todo", "in_progress", "review", "done"],
-				"type": "string",
-				"x-enum-varnames": [
-					"TaskStatusBacklog",
-					"TaskStatusTodo",
-					"TaskStatusInProgress",
-					"TaskStatusReview",
-					"TaskStatusDone"
-				]
-			},
-			"domain.TaskType": {
-				"enum": ["feat", "bug", "chore", "refactor", "docs"],
-				"type": "string",
-				"x-enum-varnames": [
-					"TaskTypeFeat",
-					"TaskTypeBug",
-					"TaskTypeChore",
-					"TaskTypeRefactor",
-					"TaskTypeDocs"
-				]
-			},
-			"domain.UpdateTaskRequest": {
-				"properties": {
-					"assignee": {
-						"$ref": "#/components/schemas/domain.Assignee"
-					},
-					"clearAssignee": {
-						"type": "boolean"
-					},
-					"description": {
-						"type": "string"
-					},
-					"dueDate": {
-						"format": "date",
-						"type": "string"
-					},
-					"labels": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array",
-						"uniqueItems": false
-					},
-					"priority": {
-						"$ref": "#/components/schemas/domain.TaskPriority"
-					},
-					"status": {
-						"$ref": "#/components/schemas/domain.TaskStatus"
-					},
-					"title": {
-						"type": "string"
-					},
-					"type": {
-						"$ref": "#/components/schemas/domain.TaskType"
-					}
-				},
-				"type": "object"
-			},
-			"domain.UserResponse": {
-				"properties": {
-					"email": {
-						"description": "Email is the authenticated user's email address.",
-						"type": "string"
-					},
-					"id": {
-						"description": "ID is the authenticated user's UUID.",
-						"type": "string"
-					}
-				},
-				"type": "object"
-			},
-			"httpx.ErrorResponse": {
-				"properties": {
-					"data": {},
-					"error": {
-						"type": "string"
-					},
-					"meta": {
-						"$ref": "#/components/schemas/httpx.Meta"
-					}
-				},
-				"required": ["error"],
-				"type": "object"
-			},
-			"httpx.Meta": {
-				"properties": {
-					"nextCursor": {
-						"type": "string"
-					},
-					"total": {
-						"type": "integer"
-					}
-				},
-				"type": "object"
-			},
-			"httpx.Response-app_HealthStatus": {
-				"properties": {
-					"data": {
-						"$ref": "#/components/schemas/app.HealthStatus"
-					},
-					"error": {
-						"type": "string"
-					},
-					"meta": {
-						"$ref": "#/components/schemas/httpx.Meta"
-					}
-				},
-				"type": "object"
-			},
-			"httpx.Response-array_domain_Activity": {
-				"properties": {
-					"data": {
-						"items": {
-							"$ref": "#/components/schemas/domain.Activity"
-						},
-						"type": "array",
-						"uniqueItems": false
-					},
-					"error": {
-						"type": "string"
-					},
-					"meta": {
-						"$ref": "#/components/schemas/httpx.Meta"
-					}
-				},
-				"type": "object"
-			},
-			"httpx.Response-array_domain_Task": {
-				"properties": {
-					"data": {
-						"items": {
-							"$ref": "#/components/schemas/domain.Task"
-						},
-						"type": "array",
-						"uniqueItems": false
-					},
-					"error": {
-						"type": "string"
-					},
-					"meta": {
-						"$ref": "#/components/schemas/httpx.Meta"
-					}
-				},
-				"type": "object"
-			},
-			"httpx.Response-domain_Activity": {
-				"properties": {
-					"data": {
-						"$ref": "#/components/schemas/domain.Activity"
-					},
-					"error": {
-						"type": "string"
-					},
-					"meta": {
-						"$ref": "#/components/schemas/httpx.Meta"
-					}
-				},
-				"type": "object"
-			},
-			"httpx.Response-domain_SetupStatusResponse": {
-				"properties": {
-					"data": {
-						"$ref": "#/components/schemas/domain.SetupStatusResponse"
-					},
-					"error": {
-						"type": "string"
-					},
-					"meta": {
-						"$ref": "#/components/schemas/httpx.Meta"
-					}
-				},
-				"type": "object"
-			},
-			"httpx.Response-domain_Task": {
-				"properties": {
-					"data": {
-						"$ref": "#/components/schemas/domain.Task"
-					},
-					"error": {
-						"type": "string"
-					},
-					"meta": {
-						"$ref": "#/components/schemas/httpx.Meta"
-					}
-				},
-				"type": "object"
-			},
-			"httpx.Response-domain_UserResponse": {
-				"properties": {
-					"data": {
-						"$ref": "#/components/schemas/domain.UserResponse"
-					},
-					"error": {
-						"type": "string"
-					},
-					"meta": {
-						"$ref": "#/components/schemas/httpx.Meta"
-					}
-				},
-				"type": "object"
-			}
-		}
-	},
-	"info": {
-		"description": "Opus API specification.",
-		"title": "Opus API",
-		"version": "0.1.0"
-	},
-	"externalDocs": {
-		"description": "",
-		"url": ""
-	},
-	"paths": {
-		"/auth/logout": {
-			"post": {
-				"description": "Deletes the current session and clears the session cookie",
-				"operationId": "authLogout",
-				"responses": {
-					"204": {
-						"description": "No Content"
-					}
-				},
-				"summary": "Logout",
-				"tags": ["auth"]
-			}
-		},
-		"/auth/me": {
-			"get": {
-				"description": "Returns the authenticated user's profile",
-				"operationId": "authMe",
-				"responses": {
-					"200": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.Response-domain_UserResponse"
-								}
-							}
-						},
-						"description": "OK"
-					},
-					"401": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.ErrorResponse"
-								}
-							}
-						},
-						"description": "Unauthorized"
-					}
-				},
-				"summary": "Get current user",
-				"tags": ["auth"]
-			}
-		},
-		"/auth/otp/request": {
-			"post": {
-				"description": "Sends a one-time code to the given email if it matches the owner",
-				"operationId": "authOTPRequest",
-				"requestBody": {
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/domain.OTPRequestBody",
-								"summary": "body",
-								"description": "Email"
-							}
-						}
-					},
-					"description": "Email",
-					"required": true
-				},
-				"responses": {
-					"202": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"type": "object"
-								}
-							}
-						},
-						"description": "Accepted"
-					},
-					"400": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.ErrorResponse"
-								}
-							}
-						},
-						"description": "Bad Request"
-					}
-				},
-				"summary": "Request OTP",
-				"tags": ["auth"]
-			}
-		},
-		"/auth/otp/verify": {
-			"post": {
-				"description": "Verifies the one-time code, creates a session, sets the session cookie, and returns the user",
-				"operationId": "authOTPVerify",
-				"requestBody": {
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/domain.OTPVerifyBody",
-								"summary": "body",
-								"description": "Email and code"
-							}
-						}
-					},
-					"description": "Email and code",
-					"required": true
-				},
-				"responses": {
-					"200": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.Response-domain_UserResponse"
-								}
-							}
-						},
-						"description": "OK"
-					},
-					"400": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.ErrorResponse"
-								}
-							}
-						},
-						"description": "Bad Request"
-					},
-					"401": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.ErrorResponse"
-								}
-							}
-						},
-						"description": "Unauthorized"
-					},
-					"429": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.ErrorResponse"
-								}
-							}
-						},
-						"description": "Too Many Requests"
-					}
-				},
-				"summary": "Verify OTP",
-				"tags": ["auth"]
-			}
-		},
-		"/health": {
-			"get": {
-				"description": "Returns system operational status",
-				"operationId": "healthCheck",
-				"responses": {
-					"200": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.Response-app_HealthStatus"
-								}
-							}
-						},
-						"description": "OK"
-					}
-				},
-				"summary": "System health check",
-				"tags": ["system"]
-			}
-		},
-		"/setup": {
-			"post": {
-				"description": "Verifies the OTP, creates the owner user and session in one transaction, sets cookie",
-				"operationId": "setupComplete",
-				"requestBody": {
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/domain.OTPVerifyBody",
-								"summary": "body",
-								"description": "Email and code"
-							}
-						}
-					},
-					"description": "Email and code",
-					"required": true
-				},
-				"responses": {
-					"200": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.Response-domain_UserResponse"
-								}
-							}
-						},
-						"description": "OK"
-					},
-					"400": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.ErrorResponse"
-								}
-							}
-						},
-						"description": "Bad Request"
-					},
-					"401": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.ErrorResponse"
-								}
-							}
-						},
-						"description": "Unauthorized"
-					},
-					"409": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.ErrorResponse"
-								}
-							}
-						},
-						"description": "Conflict"
-					}
-				},
-				"summary": "Setup: complete owner creation",
-				"tags": ["setup"]
-			}
-		},
-		"/setup/otp": {
-			"post": {
-				"description": "Sends a one-time code to the given email for initial owner setup",
-				"operationId": "setupRequestOTP",
-				"requestBody": {
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/domain.OTPRequestBody",
-								"summary": "body",
-								"description": "Email"
-							}
-						}
-					},
-					"description": "Email",
-					"required": true
-				},
-				"responses": {
-					"202": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"type": "object"
-								}
-							}
-						},
-						"description": "Accepted"
-					},
-					"400": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.ErrorResponse"
-								}
-							}
-						},
-						"description": "Bad Request"
-					},
-					"409": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.ErrorResponse"
-								}
-							}
-						},
-						"description": "Conflict"
-					}
-				},
-				"summary": "Setup: request OTP",
-				"tags": ["setup"]
-			}
-		},
-		"/setup/status": {
-			"get": {
-				"description": "Returns whether initial owner setup is required",
-				"operationId": "setupStatus",
-				"responses": {
-					"200": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.Response-domain_SetupStatusResponse"
-								}
-							}
-						},
-						"description": "OK"
-					}
-				},
-				"summary": "Setup status",
-				"tags": ["setup"]
-			}
-		},
-		"/tasks": {
-			"get": {
-				"description": "Returns every task, normalised from its source tracker.",
-				"operationId": "list-tasks",
-				"responses": {
-					"200": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.Response-array_domain_Task"
-								}
-							}
-						},
-						"description": "OK"
-					},
-					"500": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.ErrorResponse"
-								}
-							}
-						},
-						"description": "Internal Server Error"
-					}
-				},
-				"summary": "List tasks",
-				"tags": ["tasks"]
-			},
-			"post": {
-				"description": "Creates a new task with given details.",
-				"operationId": "create-task",
-				"requestBody": {
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/domain.CreateTaskRequest",
-								"summary": "request",
-								"description": "Create Task Request"
-							}
-						}
-					},
-					"description": "Create Task Request",
-					"required": true
-				},
-				"responses": {
-					"201": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.Response-domain_Task"
-								}
-							}
-						},
-						"description": "Created"
-					},
-					"400": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.ErrorResponse"
-								}
-							}
-						},
-						"description": "Bad Request"
-					},
-					"500": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.ErrorResponse"
-								}
-							}
-						},
-						"description": "Internal Server Error"
-					}
-				},
-				"summary": "Create task",
-				"tags": ["tasks"]
-			}
-		},
-		"/tasks/{id}": {
-			"get": {
-				"description": "Returns a single task by its Opus identifier.",
-				"operationId": "get-task",
-				"parameters": [
-					{
-						"description": "Task ID",
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				],
-				"responses": {
-					"200": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.Response-domain_Task"
-								}
-							}
-						},
-						"description": "OK"
-					},
-					"404": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.ErrorResponse"
-								}
-							}
-						},
-						"description": "Not Found"
-					},
-					"500": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.ErrorResponse"
-								}
-							}
-						},
-						"description": "Internal Server Error"
-					}
-				},
-				"summary": "Get a task",
-				"tags": ["tasks"]
-			},
-			"patch": {
-				"description": "Updates fields of an existing task.",
-				"operationId": "update-task",
-				"parameters": [
-					{
-						"description": "Task ID",
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				],
-				"requestBody": {
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/domain.UpdateTaskRequest",
-								"summary": "request",
-								"description": "Update Task Request"
-							}
-						}
-					},
-					"description": "Update Task Request",
-					"required": true
-				},
-				"responses": {
-					"200": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.Response-domain_Task"
-								}
-							}
-						},
-						"description": "OK"
-					},
-					"400": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.ErrorResponse"
-								}
-							}
-						},
-						"description": "Bad Request"
-					},
-					"404": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.ErrorResponse"
-								}
-							}
-						},
-						"description": "Not Found"
-					},
-					"500": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.ErrorResponse"
-								}
-							}
-						},
-						"description": "Internal Server Error"
-					}
-				},
-				"summary": "Update task",
-				"tags": ["tasks"]
-			}
-		},
-		"/tasks/{id}/activity": {
-			"get": {
-				"description": "Returns chatter timeline of a task, oldest first.",
-				"operationId": "list-task-activity",
-				"parameters": [
-					{
-						"description": "Task ID",
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				],
-				"responses": {
-					"200": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.Response-array_domain_Activity"
-								}
-							}
-						},
-						"description": "OK"
-					},
-					"404": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.ErrorResponse"
-								}
-							}
-						},
-						"description": "Not Found"
-					},
-					"500": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.ErrorResponse"
-								}
-							}
-						},
-						"description": "Internal Server Error"
-					}
-				},
-				"summary": "List task activity",
-				"tags": ["tasks"]
-			},
-			"post": {
-				"description": "Adds an activity comment/event to task chatter timeline.",
-				"operationId": "create-task-activity",
-				"parameters": [
-					{
-						"description": "Task ID",
-						"in": "path",
-						"name": "id",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				],
-				"requestBody": {
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/domain.CreateActivityRequest",
-								"summary": "request",
-								"description": "Create Activity Request"
-							}
-						}
-					},
-					"description": "Create Activity Request",
-					"required": true
-				},
-				"responses": {
-					"201": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.Response-domain_Activity"
-								}
-							}
-						},
-						"description": "Created"
-					},
-					"400": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.ErrorResponse"
-								}
-							}
-						},
-						"description": "Bad Request"
-					},
-					"404": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.ErrorResponse"
-								}
-							}
-						},
-						"description": "Not Found"
-					},
-					"500": {
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/httpx.ErrorResponse"
-								}
-							}
-						},
-						"description": "Internal Server Error"
-					}
-				},
-				"summary": "Create task activity",
-				"tags": ["tasks"]
-			}
-		}
-	},
-	"openapi": "3.1.0",
-	"servers": [
-		{
-			"url": "/api"
-		}
-	]
+    "components": {
+        "schemas": {
+            "app.HealthStatus": {
+                "properties": {
+                    "status": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "domain.Activity": {
+                "properties": {
+                    "author": {
+                        "type": "string"
+                    },
+                    "body": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "kind": {
+                        "$ref": "#/components/schemas/domain.ActivityKind"
+                    }
+                },
+                "required": [
+                    "author",
+                    "body",
+                    "createdAt",
+                    "id",
+                    "kind"
+                ],
+                "type": "object"
+            },
+            "domain.ActivityKind": {
+                "enum": [
+                    "status",
+                    "comment",
+                    "assign",
+                    "commit",
+                    "review"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "ActivityKindStatus",
+                    "ActivityKindComment",
+                    "ActivityKindAssign",
+                    "ActivityKindCommit",
+                    "ActivityKindReview"
+                ]
+            },
+            "domain.Assignee": {
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "type": "object"
+            },
+            "domain.CreateActivityRequest": {
+                "properties": {
+                    "author": {
+                        "type": "string"
+                    },
+                    "body": {
+                        "type": "string"
+                    },
+                    "kind": {
+                        "$ref": "#/components/schemas/domain.ActivityKind"
+                    }
+                },
+                "required": [
+                    "body"
+                ],
+                "type": "object"
+            },
+            "domain.CreateTaskRequest": {
+                "properties": {
+                    "assignee": {
+                        "$ref": "#/components/schemas/domain.Assignee"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "dueDate": {
+                        "format": "date",
+                        "type": "string"
+                    },
+                    "labels": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "priority": {
+                        "$ref": "#/components/schemas/domain.TaskPriority"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/domain.TaskStatus"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "$ref": "#/components/schemas/domain.TaskType"
+                    }
+                },
+                "required": [
+                    "title"
+                ],
+                "type": "object"
+            },
+            "domain.OTPRequestBody": {
+                "properties": {
+                    "email": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "domain.OTPVerifyBody": {
+                "properties": {
+                    "code": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "domain.SetupStatusResponse": {
+                "properties": {
+                    "needs_setup": {
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            },
+            "domain.Task": {
+                "properties": {
+                    "assignee": {
+                        "$ref": "#/components/schemas/domain.Assignee"
+                    },
+                    "createdAt": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "dueDate": {
+                        "description": "DueDate is calendar date (YYYY-MM-DD).",
+                        "format": "date",
+                        "type": "string"
+                    },
+                    "externalId": {
+                        "type": "string"
+                    },
+                    "externalUrl": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "description": "ID is Opus identifier.",
+                        "type": "string"
+                    },
+                    "key": {
+                        "description": "Key is human-readable reference, e.g. OP-12.",
+                        "type": "string"
+                    },
+                    "labels": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "priority": {
+                        "$ref": "#/components/schemas/domain.TaskPriority"
+                    },
+                    "source": {
+                        "$ref": "#/components/schemas/domain.TaskSource"
+                    },
+                    "sourceStatus": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/domain.TaskStatus"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "$ref": "#/components/schemas/domain.TaskType"
+                    },
+                    "updatedAt": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "createdAt",
+                    "description",
+                    "id",
+                    "key",
+                    "labels",
+                    "priority",
+                    "source",
+                    "status",
+                    "title",
+                    "type",
+                    "updatedAt"
+                ],
+                "type": "object"
+            },
+            "domain.TaskPriority": {
+                "enum": [
+                    "0",
+                    "1",
+                    "2",
+                    "3"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "TaskPriorityP0",
+                    "TaskPriorityP1",
+                    "TaskPriorityP2",
+                    "TaskPriorityP3"
+                ]
+            },
+            "domain.TaskSource": {
+                "enum": [
+                    "github",
+                    "linear",
+                    "sentry",
+                    "agent",
+                    "manual"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "TaskSourceGitHub",
+                    "TaskSourceLinear",
+                    "TaskSourceSentry",
+                    "TaskSourceAgent",
+                    "TaskSourceManual"
+                ]
+            },
+            "domain.TaskStatus": {
+                "enum": [
+                    "backlog",
+                    "todo",
+                    "in_progress",
+                    "review",
+                    "done"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "TaskStatusBacklog",
+                    "TaskStatusTodo",
+                    "TaskStatusInProgress",
+                    "TaskStatusReview",
+                    "TaskStatusDone"
+                ]
+            },
+            "domain.TaskType": {
+                "enum": [
+                    "feat",
+                    "bug",
+                    "chore",
+                    "refactor",
+                    "docs"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "TaskTypeFeat",
+                    "TaskTypeBug",
+                    "TaskTypeChore",
+                    "TaskTypeRefactor",
+                    "TaskTypeDocs"
+                ]
+            },
+            "domain.UpdateTaskRequest": {
+                "properties": {
+                    "assignee": {
+                        "$ref": "#/components/schemas/domain.Assignee"
+                    },
+                    "clearAssignee": {
+                        "type": "boolean"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "dueDate": {
+                        "format": "date",
+                        "type": "string"
+                    },
+                    "labels": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "priority": {
+                        "$ref": "#/components/schemas/domain.TaskPriority"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/domain.TaskStatus"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "$ref": "#/components/schemas/domain.TaskType"
+                    }
+                },
+                "type": "object"
+            },
+            "domain.UserResponse": {
+                "properties": {
+                    "email": {
+                        "description": "Email is the authenticated user's email address.",
+                        "type": "string"
+                    },
+                    "id": {
+                        "description": "ID is the authenticated user's UUID.",
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "httpx.ErrorResponse": {
+                "properties": {
+                    "data": {},
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "required": [
+                    "error"
+                ],
+                "type": "object"
+            },
+            "httpx.Meta": {
+                "properties": {
+                    "nextCursor": {
+                        "type": "string"
+                    },
+                    "total": {
+                        "type": "integer"
+                    }
+                },
+                "type": "object"
+            },
+            "httpx.Response-app_HealthStatus": {
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/app.HealthStatus"
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
+            "httpx.Response-array_domain_Activity": {
+                "properties": {
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/domain.Activity"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
+            "httpx.Response-array_domain_Task": {
+                "properties": {
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/domain.Task"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
+            "httpx.Response-domain_Activity": {
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/domain.Activity"
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
+            "httpx.Response-domain_SetupStatusResponse": {
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/domain.SetupStatusResponse"
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
+            "httpx.Response-domain_Task": {
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/domain.Task"
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
+            "httpx.Response-domain_UserResponse": {
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/domain.UserResponse"
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            }
+        }
+    },
+    "info": {
+        "description": "Opus API specification.",
+        "title": "Opus API",
+        "version": "0.1.0"
+    },
+    "externalDocs": {
+        "description": "",
+        "url": ""
+    },
+    "paths": {
+        "/auth/logout": {
+            "post": {
+                "description": "Deletes the current session and clears the session cookie",
+                "operationId": "authLogout",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                },
+                "summary": "Logout",
+                "tags": [
+                    "auth"
+                ]
+            }
+        },
+        "/auth/me": {
+            "get": {
+                "description": "Returns the authenticated user's profile",
+                "operationId": "authMe",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-domain_UserResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    }
+                },
+                "summary": "Get current user",
+                "tags": [
+                    "auth"
+                ]
+            }
+        },
+        "/auth/otp/request": {
+            "post": {
+                "description": "Sends a one-time code to the given email if it matches the owner",
+                "operationId": "authOTPRequest",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.OTPRequestBody",
+                                "summary": "body",
+                                "description": "Email"
+                            }
+                        }
+                    },
+                    "description": "Email",
+                    "required": true
+                },
+                "responses": {
+                    "202": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        },
+                        "description": "Accepted"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Too Many Requests"
+                    }
+                },
+                "summary": "Request OTP",
+                "tags": [
+                    "auth"
+                ]
+            }
+        },
+        "/auth/otp/verify": {
+            "post": {
+                "description": "Verifies the one-time code, creates a session, sets the session cookie, and returns the user",
+                "operationId": "authOTPVerify",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.OTPVerifyBody",
+                                "summary": "body",
+                                "description": "Email and code"
+                            }
+                        }
+                    },
+                    "description": "Email and code",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-domain_UserResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Too Many Requests"
+                    }
+                },
+                "summary": "Verify OTP",
+                "tags": [
+                    "auth"
+                ]
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Returns system operational status",
+                "operationId": "healthCheck",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-app_HealthStatus"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    }
+                },
+                "summary": "System health check",
+                "tags": [
+                    "system"
+                ]
+            }
+        },
+        "/setup": {
+            "post": {
+                "description": "Verifies the OTP, creates the owner user and session in one transaction, sets cookie",
+                "operationId": "setupComplete",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.OTPVerifyBody",
+                                "summary": "body",
+                                "description": "Email and code"
+                            }
+                        }
+                    },
+                    "description": "Email and code",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-domain_UserResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    }
+                },
+                "summary": "Setup: complete owner creation",
+                "tags": [
+                    "setup"
+                ]
+            }
+        },
+        "/setup/otp": {
+            "post": {
+                "description": "Sends a one-time code to the given email for initial owner setup",
+                "operationId": "setupRequestOTP",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.OTPRequestBody",
+                                "summary": "body",
+                                "description": "Email"
+                            }
+                        }
+                    },
+                    "description": "Email",
+                    "required": true
+                },
+                "responses": {
+                    "202": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        },
+                        "description": "Accepted"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Too Many Requests"
+                    }
+                },
+                "summary": "Setup: request OTP",
+                "tags": [
+                    "setup"
+                ]
+            }
+        },
+        "/setup/status": {
+            "get": {
+                "description": "Returns whether initial owner setup is required",
+                "operationId": "setupStatus",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-domain_SetupStatusResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    }
+                },
+                "summary": "Setup status",
+                "tags": [
+                    "setup"
+                ]
+            }
+        },
+        "/tasks": {
+            "get": {
+                "description": "Returns every task, normalised from its source tracker.",
+                "operationId": "list-tasks",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-array_domain_Task"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "List tasks",
+                "tags": [
+                    "tasks"
+                ]
+            },
+            "post": {
+                "description": "Creates a new task with given details.",
+                "operationId": "create-task",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.CreateTaskRequest",
+                                "summary": "request",
+                                "description": "Create Task Request"
+                            }
+                        }
+                    },
+                    "description": "Create Task Request",
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-domain_Task"
+                                }
+                            }
+                        },
+                        "description": "Created"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Create task",
+                "tags": [
+                    "tasks"
+                ]
+            }
+        },
+        "/tasks/{id}": {
+            "get": {
+                "description": "Returns a single task by its Opus identifier.",
+                "operationId": "get-task",
+                "parameters": [
+                    {
+                        "description": "Task ID",
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-domain_Task"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Get a task",
+                "tags": [
+                    "tasks"
+                ]
+            },
+            "patch": {
+                "description": "Updates fields of an existing task.",
+                "operationId": "update-task",
+                "parameters": [
+                    {
+                        "description": "Task ID",
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.UpdateTaskRequest",
+                                "summary": "request",
+                                "description": "Update Task Request"
+                            }
+                        }
+                    },
+                    "description": "Update Task Request",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-domain_Task"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Update task",
+                "tags": [
+                    "tasks"
+                ]
+            }
+        },
+        "/tasks/{id}/activity": {
+            "get": {
+                "description": "Returns chatter timeline of a task, oldest first.",
+                "operationId": "list-task-activity",
+                "parameters": [
+                    {
+                        "description": "Task ID",
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-array_domain_Activity"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "List task activity",
+                "tags": [
+                    "tasks"
+                ]
+            },
+            "post": {
+                "description": "Adds an activity comment/event to task chatter timeline.",
+                "operationId": "create-task-activity",
+                "parameters": [
+                    {
+                        "description": "Task ID",
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.CreateActivityRequest",
+                                "summary": "request",
+                                "description": "Create Activity Request"
+                            }
+                        }
+                    },
+                    "description": "Create Activity Request",
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-domain_Activity"
+                                }
+                            }
+                        },
+                        "description": "Created"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Create task activity",
+                "tags": [
+                    "tasks"
+                ]
+            }
+        }
+    },
+    "openapi": "3.1.0",
+    "servers": [
+        {
+            "url": "/api"
+        }
+    ]
 }

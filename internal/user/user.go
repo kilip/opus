@@ -39,3 +39,8 @@ func (u *User) ByEmail(ctx context.Context, email string) (*domain.User, error) 
 func (u *User) Create(ctx context.Context, email string) (*domain.User, error) {
 	return u.repo.Create(ctx, email)
 }
+
+// NormalizeEmail normalises an email by trimming whitespace and converting to lowercase.
+func NormalizeEmail(email string) string {
+	return domain.NormalizeEmail(email)
+}
