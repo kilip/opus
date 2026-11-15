@@ -6,7 +6,7 @@ description: Autonomous Issue-to-PR workflow orchestrator that resolves GitHub i
 
 # Vibe Orchestrator
 
-Execute GitHub issues (`#ID`) end-to-end as a thin **Orchestrator** delegating heavy work to four isolated subagents: `planner` (`flash`), `coder` (`flash`), `verifier` (`flash`), and `pr-manager` (`flash`). Pass `Model` (`pro`, `flash`, `flash_lite`, `inherit`) to `invoke_subagent` only when the user explicitly requests a tier override.
+Execute GitHub issues (`#ID`) end-to-end as a thin **Orchestrator** delegating heavy work to five isolated subagents: `scout` (`flash`), `planner` (`flash`), `coder` (`flash`), `verifier` (`flash`), and `pr-manager` (`flash`). Pass `Model` (`pro`, `flash`, `flash_lite`, `inherit`) to `invoke_subagent` only when the user explicitly requests a tier override.
 
 ---
 
@@ -36,14 +36,21 @@ Execute GitHub issues (`#ID`) end-to-end as a thin **Orchestrator** delegating h
 
 ---
 
-## Phase 2: Reconnaissance & Plan (`planner`)
+## Phase 2: Reconnaissance (`scout`) & Plan (`planner`)
 
-Invoke `planner` via `invoke_subagent`:
+1. **Codebase Recon (`scout`)**:
+   Invoke `scout` via `invoke_subagent`:
+   - `TypeName`: `"scout"`
+   - `Role`: `"Issue #<ID> Scout"`
+   - `Workspace`: `"inherit"`
+   - `Prompt`: Pass issue `#<ID>`, title, body, and `AC1..ACn` to locate target files, line ranges, and reuse pointers.
 
-- `TypeName`: `"planner"`
-- `Role`: `"Issue #<ID> Planner"`
-- `Workspace`: `"inherit"`
-- `Prompt`: Pass issue `#<ID>`, title, body, `AC1..ACn`, and Definition of Done.
+2. **Architectural Plan (`planner`)**:
+   Once `scout` returns its `<= 30` line pointer report, invoke `planner` via `invoke_subagent`:
+   - `TypeName`: `"planner"`
+   - `Role`: `"Issue #<ID> Planner"`
+   - `Workspace`: `"inherit"`
+   - `Prompt`: Pass issue `#<ID>`, title, body, `AC1..ACn`, Definition of Done, and `scout`'s pointer report in-memory.
 
 Wait for the `<= 40` line pointer-based Implementation Plan, then save it as an artifact at `<appDataDir>/brain/<conversation-id>/issue-<ID>-plan.md` using `write_file` with `ArtifactMetadata` (`UserFacing: true`, `RequestFeedback: false`).
 
