@@ -44,6 +44,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/oauth/{provider}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * OAuth authorize
+         * @description Initiates OAuth login flow, redirecting to provider
+         */
+        get: operations["authOAuthAuthorize"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/oauth/{provider}/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * OAuth callback
+         * @description Handles OAuth provider callback, sets session cookie and redirects
+         */
+        get: operations["authOAuthCallback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/otp/request": {
         parameters: {
             query?: never;
@@ -78,6 +118,26 @@ export interface paths {
          * @description Verifies the one-time code, creates a session, sets the session cookie, and returns the user
          */
         post: operations["authOTPVerify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List enabled OAuth providers
+         * @description Returns a list of configured and enabled OAuth identity providers
+         */
+        get: operations["authListProviders"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -279,6 +339,10 @@ export interface components {
             code?: string;
             email?: string;
         };
+        "domain.ProviderItem": {
+            label?: string;
+            name?: string;
+        };
         "domain.SetupStatusResponse": {
             needs_setup?: boolean;
         };
@@ -348,6 +412,11 @@ export interface components {
         };
         "httpx.Response-array_domain_Activity": {
             data?: components["schemas"]["domain.Activity"][];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Response-array_domain_ProviderItem": {
+            data?: components["schemas"]["domain.ProviderItem"][];
             error?: string;
             meta?: components["schemas"]["httpx.Meta"];
         };
@@ -423,6 +492,71 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    authOAuthAuthorize: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Provider name (e.g. github, google, facebook) */
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to provider auth URL */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    authOAuthCallback: {
+        parameters: {
+            query?: {
+                /** @description Authorization code */
+                code?: string;
+                /** @description OAuth state parameter */
+                state?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Provider name */
+                provider: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Redirect to / on success or /login?error=<code> on failure */
+            302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -523,6 +657,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    authListProviders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-array_domain_ProviderItem"];
                 };
             };
         };
