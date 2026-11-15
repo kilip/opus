@@ -2,7 +2,7 @@
 
 name: verifier
 description: Read-and-execute QA auditor (no file write tools) that verifies diffs against Acceptance Criteria, runs lint/tests, and checks off GitHub issue tasks.
-model: flash_lite
+model: flash
 subagent: true
 tools:
 
