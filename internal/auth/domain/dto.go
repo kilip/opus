@@ -27,3 +27,9 @@ type OTPVerifyBody struct {
 type SetupStatusResponse struct {
 	NeedsSetup bool `json:"needs_setup"`
 }
+
+// ProviderItem describes an enabled OAuth identity provider.
+type ProviderItem struct {
+	Name  string `json:"name"`
+	Label string `json:"label"`
+}

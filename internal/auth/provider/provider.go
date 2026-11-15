@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"golang.org/x/oauth2"
 )
@@ -22,6 +23,7 @@ type Profile struct {
 // Provider represents an OAuth2 identity provider.
 type Provider interface {
 	Name() string
+	Label() string
 	AuthCodeURL(state, verifier string) string
 	Exchange(ctx context.Context, code, verifier string) (Profile, error)
 }
@@ -29,21 +31,49 @@ type Provider interface {
 // BaseProvider is an OAuth2 provider implementation wrapping oauth2.Config.
 type BaseProvider struct {
 	name       string
+	label      string
 	cfg        oauth2.Config
 	exchangeFn func(ctx context.Context, code, verifier string) (Profile, error)
 }
 
 // NewBaseProvider creates a new BaseProvider with the specified name and OAuth2 configuration.
-func NewBaseProvider(name string, cfg oauth2.Config) *BaseProvider {
+func NewBaseProvider(name string, cfg oauth2.Config, label ...string) *BaseProvider {
+	l := ""
+	if len(label) > 0 {
+		l = label[0]
+	}
 	return &BaseProvider{
-		name: name,
-		cfg:  cfg,
+		name:  name,
+		label: l,
+		cfg:   cfg,
 	}
 }
 
 // Name returns the provider identifier.
 func (p *BaseProvider) Name() string {
 	return p.name
+}
+
+// Label returns the human-readable display label for the provider.
+func (p *BaseProvider) Label() string {
+	if p.label != "" {
+		return p.label
+	}
+	switch strings.ToLower(p.name) {
+	case "github":
+		return "GitHub"
+	case "google":
+		return "Google"
+	case "facebook":
+		return "Facebook"
+	default:
+		return p.name
+	}
+}
+
+// SetLabel sets the display label for the provider.
+func (p *BaseProvider) SetLabel(label string) {
+	p.label = label
 }
 
 // AuthCodeURL returns the provider authorization code URL, optionally configuring PKCE challenge.

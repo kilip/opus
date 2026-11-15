@@ -7,7 +7,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kilip/opus/ent"
+	"github.com/kilip/opus/ent/account"
 	"github.com/kilip/opus/ent/session"
+	"github.com/kilip/opus/ent/user"
 	"github.com/kilip/opus/internal/auth/domain"
 )
 
@@ -23,6 +25,12 @@ type Repo interface {
 	CountUsers(ctx context.Context) (int, error)
 	// CreateUserAndSession atomically creates an owner user and a session in one transaction.
 	CreateUserAndSession(ctx context.Context, email, tokenHash string, expiresAt time.Time) (*domain.Session, error)
+	// FindAccount looks up a linked account by provider and provider user id.
+	FindAccount(ctx context.Context, provider, providerUserID string) (*domain.Account, error)
+	// CreateAccount links an external provider account to an existing user.
+	CreateAccount(ctx context.Context, userID uuid.UUID, provider, providerUserID, email string) (*domain.Account, error)
+	// GetOwner returns the owner user, or nil if no users exist.
+	GetOwner(ctx context.Context) (*domain.User, error)
 }
 
 // EntRepo implements Repo using an Ent client.
@@ -92,6 +100,54 @@ func (r *EntRepo) CreateUserAndSession(ctx context.Context, email, tokenHash str
 		return nil, err
 	}
 	return toDomain(s, u), nil
+}
+
+func (r *EntRepo) FindAccount(ctx context.Context, providerName, providerUserID string) (*domain.Account, error) {
+	acc, err := r.db.Account.Query().
+		Where(account.ProviderEQ(providerName), account.ProviderUserIDEQ(providerUserID)).
+		Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return toDomainAccount(acc), nil
+}
+
+func (r *EntRepo) CreateAccount(ctx context.Context, userID uuid.UUID, providerName, providerUserID, email string) (*domain.Account, error) {
+	acc, err := r.db.Account.Create().
+		SetUserID(userID).
+		SetProvider(providerName).
+		SetProviderUserID(providerUserID).
+		SetEmail(email).
+		SetEmailVerified(true).
+		Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return toDomainAccount(acc), nil
+}
+
+func (r *EntRepo) GetOwner(ctx context.Context) (*domain.User, error) {
+	u, err := r.db.User.Query().Order(ent.Asc(user.FieldCreatedAt)).First(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &domain.User{ID: u.ID, Email: u.Email}, nil
+}
+
+func toDomainAccount(a *ent.Account) *domain.Account {
+	return &domain.Account{
+		ID:             a.ID,
+		UserID:         a.UserID,
+		Provider:       a.Provider,
+		ProviderUserID: a.ProviderUserID,
+		Email:          a.Email,
+	}
 }
 
 func toDomain(s *ent.Session, u *ent.User) *domain.Session {

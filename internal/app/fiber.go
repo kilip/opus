@@ -89,10 +89,20 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client) *fiber.App {
 	api.Get("/health", healthCheck)
 
 	if db != nil {
+		reg := auth.NewProviderRegistry(auth.ProviderConfig{
+			BaseURL:              cfg.BaseURL,
+			GitHubClientID:       cfg.GitHubClientID,
+			GitHubClientSecret:   cfg.GitHubClientSecret,
+			GoogleClientID:       cfg.GoogleClientID,
+			GoogleClientSecret:   cfg.GoogleClientSecret,
+			FacebookClientID:     cfg.FacebookClientID,
+			FacebookClientSecret: cfg.FacebookClientSecret,
+		})
 		authFeature := auth.NewWithMailer(db, auth.AuthConfig{
 			BaseURL:       cfg.BaseURL,
 			SessionSecret: cfg.SessionSecret,
 			SessionTTL:    cfg.SessionTTL,
+			Registry:      reg,
 		}, NewMailer(cfg, logger))
 		authRoutes := api.Group("/auth")
 		setupRoutes := api.Group("/setup")

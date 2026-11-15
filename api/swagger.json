@@ -141,6 +141,17 @@
                 },
                 "type": "object"
             },
+            "domain.ProviderItem": {
+                "properties": {
+                    "label": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "domain.SetupStatusResponse": {
                 "properties": {
                     "needs_setup": {
@@ -397,6 +408,24 @@
                 },
                 "type": "object"
             },
+            "httpx.Response-array_domain_ProviderItem": {
+                "properties": {
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/domain.ProviderItem"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
             "httpx.Response-array_domain_Task": {
                 "properties": {
                     "data": {
@@ -530,6 +559,94 @@
                 ]
             }
         },
+        "/auth/oauth/{provider}": {
+            "get": {
+                "description": "Initiates OAuth login flow, redirecting to provider",
+                "operationId": "authOAuthAuthorize",
+                "parameters": [
+                    {
+                        "description": "Provider name (e.g. github, google, facebook)",
+                        "in": "path",
+                        "name": "provider",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Redirect to provider auth URL"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    }
+                },
+                "summary": "OAuth authorize",
+                "tags": [
+                    "auth"
+                ]
+            }
+        },
+        "/auth/oauth/{provider}/callback": {
+            "get": {
+                "description": "Handles OAuth provider callback, sets session cookie and redirects",
+                "operationId": "authOAuthCallback",
+                "parameters": [
+                    {
+                        "description": "Provider name",
+                        "in": "path",
+                        "name": "provider",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Authorization code",
+                        "in": "query",
+                        "name": "code",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "OAuth state parameter",
+                        "in": "query",
+                        "name": "state",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Redirect to / on success or /login?error=\u003ccode\u003e on failure"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    }
+                },
+                "summary": "OAuth callback",
+                "tags": [
+                    "auth"
+                ]
+            }
+        },
         "/auth/otp/request": {
             "post": {
                 "description": "Sends a one-time code to the given email if it matches the owner",
@@ -645,6 +762,28 @@
                     }
                 },
                 "summary": "Verify OTP",
+                "tags": [
+                    "auth"
+                ]
+            }
+        },
+        "/auth/providers": {
+            "get": {
+                "description": "Returns a list of configured and enabled OAuth identity providers",
+                "operationId": "authListProviders",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-array_domain_ProviderItem"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    }
+                },
+                "summary": "List enabled OAuth providers",
                 "tags": [
                     "auth"
                 ]

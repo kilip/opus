@@ -26,20 +26,29 @@ import (
 
 type fakeRepo struct {
 	sessions map[string]*domain.Session
+	accounts map[string]*domain.Account
+	owner    *domain.User
 }
 
 func newFakeRepo() *fakeRepo {
-	return &fakeRepo{sessions: map[string]*domain.Session{}}
+	return &fakeRepo{
+		sessions: map[string]*domain.Session{},
+		accounts: map[string]*domain.Account{},
+	}
 }
 
 func (f *fakeRepo) CreateSession(_ context.Context, userID uuid.UUID, tokenHash string, expiresAt time.Time) (*domain.Session, error) {
+	u := f.owner
+	if u == nil || u.ID != userID {
+		u = &domain.User{ID: userID, Email: "test@example.com"}
+	}
 	s := &domain.Session{
 		ID:        uuid.New(),
 		UserID:    userID,
 		TokenHash: tokenHash,
 		ExpiresAt: expiresAt,
 		CreatedAt: time.Now(),
-		User:      &domain.User{ID: userID, Email: "test@example.com"},
+		User:      u,
 	}
 	f.sessions[tokenHash] = s
 	return s, nil
@@ -59,11 +68,49 @@ func (f *fakeRepo) DeleteByTokenHash(_ context.Context, hash string) error {
 }
 
 func (f *fakeRepo) CountUsers(_ context.Context) (int, error) {
-	return 0, nil // fakeRepo used in session tests; no users needed
+	if f.owner != nil {
+		return 1, nil
+	}
+	return 0, nil
 }
 
-func (f *fakeRepo) CreateUserAndSession(_ context.Context, _ string, _ string, _ time.Time) (*domain.Session, error) {
-	return nil, nil // unused in session tests
+func (f *fakeRepo) CreateUserAndSession(_ context.Context, email, tokenHash string, expiresAt time.Time) (*domain.Session, error) {
+	u := &domain.User{ID: uuid.New(), Email: email}
+	f.owner = u
+	s := &domain.Session{
+		ID:        uuid.New(),
+		UserID:    u.ID,
+		TokenHash: tokenHash,
+		ExpiresAt: expiresAt,
+		CreatedAt: time.Now(),
+		User:      u,
+	}
+	f.sessions[tokenHash] = s
+	return s, nil
+}
+
+func (f *fakeRepo) FindAccount(_ context.Context, provider, providerUserID string) (*domain.Account, error) {
+	acc, ok := f.accounts[provider+":"+providerUserID]
+	if !ok {
+		return nil, nil
+	}
+	return acc, nil
+}
+
+func (f *fakeRepo) CreateAccount(_ context.Context, userID uuid.UUID, provider, providerUserID, email string) (*domain.Account, error) {
+	acc := &domain.Account{
+		ID:             uuid.New(),
+		UserID:         userID,
+		Provider:       provider,
+		ProviderUserID: providerUserID,
+		Email:          email,
+	}
+	f.accounts[provider+":"+providerUserID] = acc
+	return acc, nil
+}
+
+func (f *fakeRepo) GetOwner(_ context.Context) (*domain.User, error) {
+	return f.owner, nil
 }
 
 var _ repo.Repo = (*fakeRepo)(nil)
