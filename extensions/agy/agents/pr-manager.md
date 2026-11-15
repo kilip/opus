@@ -106,7 +106,7 @@ Triggered when asked to pull/merge an existing non-deps PR (`#<PR_NUMBER>`).
    git merge --ff-only FETCH_HEAD
    ```
 
-   Run stack verification (`mise run lint`, `go test -race ./...`, `bun test --cwd ui --pass-with-no-tests`) unless skipped for docs-only changes.
+   Run the project's test and lint verification commands (as defined by workspace rules) unless skipped for docs-only changes.
 4. **Push to `origin main`**:
 
    ```bash
