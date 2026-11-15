@@ -82,6 +82,7 @@ Domain units across both backend and frontend are called **features** (never "mo
 ## 3. Backend: Fiber v3, Entgo, Swag & OpenAPI 3.1
 
 - **Fiber v3**: Register feature routes under the `/api` group in `internal/app/fiber.go` via `<feature>.Register(api)`. Use `fiber.Ctx` (v3 signature: `func(c fiber.Ctx) error`).
+- **Feature Environment Variables**: Prefix feature-specific env vars with the uppercase feature name (e.g. `AUTH_*`, `TASK_*`).
 - **Entgo (`ent/`)**: All database schemas live in `ent/schema/`. Share the generated `*ent.Client` across features via dependency injection in `Register` / `New`.
 - **Strict DTO Boundary**:
   - NEVER expose generated `ent` models directly in HTTP responses or Swag annotations.
