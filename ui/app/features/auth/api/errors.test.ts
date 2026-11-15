@@ -48,6 +48,12 @@ describe("auth errors mapping (AC4)", () => {
 		assert.match(msg, /provider was not found/i);
 	});
 
+	it("maps ACCOUNT_ALREADY_LINKED to readable message (AC4)", () => {
+		const msg = resolveErrorMessage("ACCOUNT_ALREADY_LINKED", AUTH_ERRORS);
+		assert.strictEqual(msg, AUTH_ERRORS.ACCOUNT_ALREADY_LINKED);
+		assert.match(msg, /already linked/i);
+	});
+
 	it("RateLimitError creates 429 RATE_LIMITED error with retry-after message (AC3)", () => {
 		const errWithRetry = new RateLimitError(45);
 		assert.ok(errWithRetry instanceof ApiError);

@@ -3,7 +3,7 @@ import { queryOptions, useQuery } from "@tanstack/react-query";
 import { api, unwrap } from "~/shared/api/client";
 import { AUTH_ERRORS } from "./errors";
 import { authKeys } from "./keys";
-import type { ProviderItem, SetupStatus, User } from "./types";
+import type { Account, ProviderItem, SetupStatus, User } from "./types";
 
 export const sessionQueryOptions = () =>
 	queryOptions({
@@ -42,4 +42,20 @@ export function useSetupStatus() {
 
 export function useProviders() {
 	return useQuery(providersQueryOptions());
+}
+
+export const accountsQueryOptions = () =>
+	queryOptions({
+		queryKey: authKeys.accounts(),
+		queryFn: async ({ signal }): Promise<Account[]> => {
+			const data = await unwrap<Account[]>(
+				api.GET("/auth/accounts", { signal }),
+				AUTH_ERRORS,
+			);
+			return data ?? [];
+		},
+	});
+
+export function useAccounts() {
+	return useQuery(accountsQueryOptions());
 }
