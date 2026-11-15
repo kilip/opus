@@ -8,6 +8,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/kilip/opus/internal/task/handler"
 	"github.com/kilip/opus/internal/task/repo"
+	"github.com/kilip/opus/internal/task/service"
 )
 
 // Task is the task feature facade.
@@ -18,7 +19,7 @@ type Task struct {
 // ponytail: in-memory mutex store seeded with initial tasks; replace with Ent client when schema lands.
 func New() *Task {
 	r := repo.NewMemory(time.Now)
-	return &Task{handler: handler.New(r)}
+	return &Task{handler: handler.New(service.New(r))}
 }
 
 // Register mounts the task HTTP routes on r.
