@@ -33,10 +33,11 @@ Domain units across both backend and frontend are called **features** (never "mo
 │   ├── platform/
 │   │   └── httpx/                # { data, meta, error } envelope, sentinel errors, ErrorHandler
 │   └── <feature>/                # Go feature (e.g. internal/task, internal/user)
-│       ├── <feature>.go          # Public feature facade: New(...), Register(r fiber.Router)
-│       ├── domain/               # Leaf domain entities, enums, sentinel errors (errors.go)
+│       ├── <feature>.go          # Public feature facade: New(...), Register(r fiber.Router); wiring only
+│       ├── domain/               # Entities, enums, sentinel errors (errors.go), ALL request/response DTOs (dto.go)
 │       ├── repo/                 # Storage implementation (in-memory or Ent client)
-│       └── handler/              # Fiber handlers, DTOs (dto.go), Swag annotations, handler tests
+│       ├── service/              # ALL business logic; depends on domain/ and repo/
+│       └── handler/              # Thin Fiber handlers + Swag annotations + handler tests (no DTOs, no business logic)
 ├── api/
 │   └── swagger.json              # Generated OpenAPI 3.1 spec (DO NOT EDIT)
 └── ui/
@@ -64,8 +65,11 @@ Domain units across both backend and frontend are called **features** (never "mo
 ### Feature Boundary Rules
 
 1. **Go Feature Isolation**:
-   - External packages (`internal/app` or sibling features) MUST import only the feature root package `internal/<feature>`, NEVER its subpackages (`internal/<feature>/handler`, `internal/<feature>/repo`, etc.).
-   - Backend feature layout follows `<feature>.go` facade (`New(...)` + `Register(r fiber.Router)`), `domain/` for domain models and sentinel errors, `repo/` for storage implementations, and `handler/` for HTTP endpoints and DTOs.
+   - External packages (`internal/app` or sibling features) MUST import only the feature root package `internal/<feature>`, NEVER its subpackages (`internal/<feature>/handler`, `internal/<feature>/service`, `internal/<feature>/repo`, etc.).
+   - Backend feature layout follows `<feature>.go` facade (`New(...)` + `Register(r fiber.Router)`), `domain/` for domain models, sentinel errors, and all DTOs, `repo/` for storage implementations, `service/` for business logic, and `handler/` for HTTP endpoints.
+   - **Dependency direction**: `handler → service → repo → domain`. `<feature>.go` wires `repo`, `service`, and `handler` together inside `New(...)`.
+   - **Thin handlers**: a handler only parses/validates the request, calls `service`, and maps the result or error to the `httpx` envelope. NEVER put business logic in `handler/`, and NEVER call `repo/` from `handler/`.
+   - **Service**: owns all business rules and orchestration. It uses `domain` types only; it MUST NOT import `fiber`, `handler`, or `httpx`.
    - Unified HTTP response envelope `{ data, meta, error }` and status mapping are provided by `internal/platform/httpx`.
 2. **UI Feature Isolation**:
    - Files in `ui/app/features/<feature>/` MUST NOT import from sibling `~/features/*`.
@@ -79,7 +83,7 @@ Domain units across both backend and frontend are called **features** (never "mo
 - **Entgo (`ent/`)**: All database schemas live in `ent/schema/`. Share the generated `*ent.Client` across features via dependency injection in `Register` / `New`.
 - **Strict DTO Boundary**:
   - NEVER expose generated `ent` models directly in HTTP responses or Swag annotations.
-  - Define dedicated request/response structs in `internal/<feature>/handler/dto.go`.
+  - ALL request/response DTOs are defined in `internal/<feature>/domain/dto.go`. Handlers, services, and Swag annotations reference `domain.<Dto>`; NEVER define DTOs in `handler/`.
 - **OpenAPI 3.1 Contract Pipeline**:
   - Every handler MUST carry Swag v2 godoc annotations (`@Summary`, `@Description`, `@ID`, `@Tags`, `@Produce`, `@Param`, `@Success`, `@Failure`, `@Router`).
   - After changing any handler annotation or DTO, regenerate the OpenAPI 3.1 spec and TypeScript schema:
@@ -114,7 +118,7 @@ Lazy means efficient, not careless. The best code is the code never written.
   4. **Existing dependency**: Already in `go.mod` or `package.json`? Use it; never add a new package for what a few lines can do.
   5. **One-liner**: Can it be one clear line? Write one line.
   6. **Minimum working code**: Fewest files, shortest working diff, deletion over addition, boring over clever.
-- **No Speculative Abstraction**: No interface with one implementation, no factory for one product, no config knob for a constant, no `service/` or `repository/` wrapper without real domain complexity.
+- **No Speculative Abstraction**: No interface with one implementation, no factory for one product, no config knob for a constant, no `repository/` wrapper without real domain complexity. `service/` is mandatory per feature (it is the home of business logic), but keep it plain structs and functions: no service interface unless there are 2+ implementations.
 - **`ponytail:` Comments**: Mark deliberate simplifications inline with a `ponytail:` comment naming the ceiling and upgrade path:
   ```go
   // ponytail: in-memory slice filter; move to Ent predicate when tasks > 1k
