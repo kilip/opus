@@ -16,7 +16,6 @@ import (
 	"github.com/kilip/opus/ent"
 	"github.com/kilip/opus/internal/auth"
 	"github.com/kilip/opus/internal/platform/httpx"
-	"github.com/kilip/opus/internal/platform/mailer"
 	"github.com/kilip/opus/internal/task"
 	"github.com/kilip/opus/ui"
 )
@@ -94,7 +93,7 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client) *fiber.App {
 			BaseURL:       cfg.BaseURL,
 			SessionSecret: cfg.SessionSecret,
 			SessionTTL:    cfg.SessionTTL,
-		}, mailer.NewConsole(logger))
+		}, NewMailer(cfg, logger))
 		authRoutes := api.Group("/auth")
 		setupRoutes := api.Group("/setup")
 		authFeature.RegisterSetup(setupRoutes) // GET /status, POST /otp, POST "" (public)

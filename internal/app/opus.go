@@ -7,7 +7,27 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/kilip/opus/ent"
+	"github.com/kilip/opus/internal/platform/mailer"
 )
+
+// NewMailer creates a mailer.Mailer based on configuration.
+// If SMTPHost is empty, it returns a console mailer and logs a startup warning.
+// Otherwise, it returns an SMTP mailer configured with SMTP settings.
+func NewMailer(cfg Config, logger *slog.Logger) mailer.Mailer {
+	if cfg.SMTPHost == "" {
+		if logger != nil {
+			logger.Warn("SMTP_HOST not set, falling back to console mailer")
+		}
+		return mailer.NewConsole(logger)
+	}
+	return mailer.NewSMTP(mailer.SMTPConfig{
+		Host:     cfg.SMTPHost,
+		Port:     cfg.SMTPPort,
+		Username: cfg.SMTPUsername,
+		Password: cfg.SMTPPassword,
+		From:     cfg.SMTPFrom,
+	})
+}
 
 type Opus struct {
 	cfg    Config
