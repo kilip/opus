@@ -126,13 +126,13 @@ func TestRegistry_CallbackURL(t *testing.T) {
 				t.Fatal("expected github provider to be registered")
 			}
 
-			bp, ok := p.(*provider.BaseProvider)
+			ghp, ok := p.(*provider.GitHubProvider)
 			if !ok {
-				t.Fatalf("expected *provider.BaseProvider, got %T", p)
+				t.Fatalf("expected *provider.GitHubProvider, got %T", p)
 			}
 
-			if bp.OAuthConfig().RedirectURL != tc.expectedCallback {
-				t.Errorf("got redirect url %q, want %q", bp.OAuthConfig().RedirectURL, tc.expectedCallback)
+			if ghp.OAuthConfig().RedirectURL != tc.expectedCallback {
+				t.Errorf("got redirect url %q, want %q", ghp.OAuthConfig().RedirectURL, tc.expectedCallback)
 			}
 		})
 	}
@@ -197,13 +197,13 @@ func TestProvider_AuthCodeURL_PKCE(t *testing.T) {
 func TestProvider_Exchange(t *testing.T) {
 	reg := provider.NewRegistry(provider.Config{
 		BaseURL:            "http://localhost:7880",
-		GitHubClientID:     "gh-id",
-		GitHubClientSecret: "gh-secret",
+		GoogleClientID:     "google-id",
+		GoogleClientSecret: "google-secret",
 	})
 
-	p, ok := reg.Get("github")
+	p, ok := reg.Get("google")
 	if !ok {
-		t.Fatal("expected github provider")
+		t.Fatal("expected google provider")
 	}
 
 	// Default implementation returns ErrNotImplemented
@@ -217,10 +217,10 @@ func TestProvider_Exchange(t *testing.T) {
 	bp.SetExchangeFunc(func(ctx context.Context, code, verifier string) (provider.Profile, error) {
 		return provider.Profile{
 			ProviderUserID: "12345",
-			Email:          "user@github.com",
+			Email:          "user@google.com",
 			EmailVerified:  true,
-			Name:           "GitHub User",
-			AvatarURL:      "https://github.com/avatar.png",
+			Name:           "Google User",
+			AvatarURL:      "https://google.com/avatar.png",
 		}, nil
 	})
 
@@ -228,7 +228,7 @@ func TestProvider_Exchange(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected exchange error: %v", err)
 	}
-	if profile.ProviderUserID != "12345" || profile.Email != "user@github.com" || !profile.EmailVerified {
+	if profile.ProviderUserID != "12345" || profile.Email != "user@google.com" || !profile.EmailVerified {
 		t.Errorf("unexpected profile: %+v", profile)
 	}
 }
