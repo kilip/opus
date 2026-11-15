@@ -1,15 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SKILL_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+SETTINGS_FILE="${SKILL_DIR}/settings.json"
+
 usage() {
   cat <<'EOF'
 Usage: send.sh [OPTIONS] [MESSAGE]
 
 Send a message or file to a Telegram chat via the Bot API.
 
-Environment variables:
-  TELEGRAM_BOT_TOKEN   Telegram bot token (required)
-  TELEGRAM_CHAT_ID     Target chat ID (required unless --chat-id is set)
+Configuration (checked in order):
+  1. Environment variables: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+  2. Skill config file:     <skill-dir>/settings.json (bot_token, chat_id)
 
 Options:
   -m, --message <text>      Message text to send (max 4096 chars)
@@ -93,14 +97,30 @@ if ! command -v curl >/dev/null 2>&1; then
   exit 1
 fi
 
+read_setting() {
+  local key="$1"
+  [[ -f "$SETTINGS_FILE" ]] || return 0
+  if command -v jq >/dev/null 2>&1; then
+    jq -r --arg k "$key" '.[$k] // empty' "$SETTINGS_FILE" 2>/dev/null || true
+  elif command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get(sys.argv[2],"") or "")' "$SETTINGS_FILE" "$key" 2>/dev/null || true
+  fi
+}
+
 TOKEN="${TELEGRAM_BOT_TOKEN:-}"
 if [[ -z "$TOKEN" ]]; then
-  echo "Error: TELEGRAM_BOT_TOKEN is not set." >&2
+  TOKEN="$(read_setting "bot_token")"
+fi
+if [[ -z "$TOKEN" ]]; then
+  echo "Error: bot_token is not set. Set TELEGRAM_BOT_TOKEN or configure ${SETTINGS_FILE}." >&2
   exit 1
 fi
 
 if [[ -z "$CHAT_ID" ]]; then
-  echo "Error: TELEGRAM_CHAT_ID is not set and --chat-id was not provided." >&2
+  CHAT_ID="$(read_setting "chat_id")"
+fi
+if [[ -z "$CHAT_ID" ]]; then
+  echo "Error: chat_id is not set. Set TELEGRAM_CHAT_ID, pass --chat-id, or configure ${SETTINGS_FILE}." >&2
   exit 1
 fi
 

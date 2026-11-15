@@ -10,25 +10,23 @@ description: >-
 
 Send text messages or document attachments to the user's Telegram chat using [send.sh](./scripts/send.sh).
 
-## Prerequisites
+## Prerequisites & Configuration
 
-The script requires two environment variables (do **not** print or echo their values):
+Credentials are read in this order:
+1. Environment variables: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`
+2. Local git-ignored config: `<skill-dir>/settings.json` (see [settings.example.json](./settings.example.json))
 
-- `TELEGRAM_BOT_TOKEN` — Bot token from `@BotFather`
-- `TELEGRAM_CHAT_ID` — Target user/group chat ID (can also be overridden via `--chat-id`)
-
-If either variable is missing, stop and ask the user to export them in their shell environment before retrying:
-
-```bash
-export TELEGRAM_BOT_TOKEN="<bot-token>"
-export TELEGRAM_CHAT_ID="<chat-id>"
+```json
+{
+  "bot_token": "<bot-token>",
+  "chat_id": "<chat-id>"
+}
 ```
 
-To discover a `chat_id` after messaging the bot once, the user can run:
-
-```bash
-curl -s "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getUpdates"
-```
+**If `settings.json` is missing or `bot_token` / `chat_id` is empty** (and env vars are unset):
+1. **Ask the user** directly for their Telegram `bot_token` (from `@BotFather`) and `chat_id` (tell them they can get `chat_id` by messaging the bot once and checking `https://api.telegram.org/bot<TOKEN>/getUpdates`).
+2. Save the values to `<skill-dir>/settings.json` and restrict permissions (`chmod 600 <skill-dir>/settings.json`).
+3. Confirm `settings.json` is git-ignored (`git check-ignore -q <skill-dir>/settings.json`) and **never** print `bot_token` in terminal output or chat replies.
 
 ## Usage
 
