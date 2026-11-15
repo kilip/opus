@@ -32,6 +32,40 @@ config:
   shutdownTimeout: 10s
   bodyLimit: 4194304
 
+# -- Base URL where the application is accessible.
+baseUrl: ""
+
+auth:
+  # -- Name of an existing Kubernetes Secret containing sensitive credentials.
+  # Expected keys:
+  #   - SESSION_SECRET: Secret key used to sign session cookies
+  #   - SMTP_PASSWORD: Password for SMTP authentication
+  #   - GITHUB_CLIENT_SECRET: OAuth client secret for GitHub
+  #   - GOOGLE_CLIENT_SECRET: OAuth client secret for Google
+  #   - FACEBOOK_CLIENT_SECRET: OAuth client secret for Facebook
+  existingSecret: ""
+
+smtp:
+  # -- SMTP server hostname.
+  host: ""
+  # -- SMTP server port.
+  port: 587
+  # -- SMTP username for authentication.
+  username: ""
+  # -- Sender email address for outgoing mail.
+  from: ""
+
+oauth:
+  github:
+    # -- GitHub OAuth client ID.
+    clientId: ""
+  google:
+    # -- Google OAuth client ID.
+    clientId: ""
+  facebook:
+    # -- Facebook OAuth client ID.
+    clientId: ""
+
 # -- Extra environment variables for container.
 extraEnv: []
 
