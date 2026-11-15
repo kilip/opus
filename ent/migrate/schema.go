@@ -8,6 +8,50 @@ import (
 )
 
 var (
+	// OtPsColumns holds the columns for the "ot_ps" table.
+	OtPsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "email", Type: field.TypeString},
+		{Name: "code_hash", Type: field.TypeString},
+		{Name: "expires_at", Type: field.TypeTime},
+		{Name: "attempts", Type: field.TypeInt, Default: 0},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// OtPsTable holds the schema information for the "ot_ps" table.
+	OtPsTable = &schema.Table{
+		Name:       "ot_ps",
+		Columns:    OtPsColumns,
+		PrimaryKey: []*schema.Column{OtPsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "otp_email",
+				Unique:  false,
+				Columns: []*schema.Column{OtPsColumns[1]},
+			},
+		},
+	}
+	// SessionsColumns holds the columns for the "sessions" table.
+	SessionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "token_hash", Type: field.TypeString, Unique: true},
+		{Name: "expires_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "user_id", Type: field.TypeUUID},
+	}
+	// SessionsTable holds the schema information for the "sessions" table.
+	SessionsTable = &schema.Table{
+		Name:       "sessions",
+		Columns:    SessionsColumns,
+		PrimaryKey: []*schema.Column{SessionsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "sessions_users_sessions",
+				Columns:    []*schema.Column{SessionsColumns[4]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -22,9 +66,12 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		OtPsTable,
+		SessionsTable,
 		UsersTable,
 	}
 )
 
 func init() {
+	SessionsTable.ForeignKeys[0].RefTable = UsersTable
 }
