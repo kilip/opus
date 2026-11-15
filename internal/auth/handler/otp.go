@@ -16,6 +16,7 @@ import (
 // @Param body body domain.OTPRequestBody true "Email"
 // @Success 202 "Accepted"
 // @Failure 400 {object} httpx.ErrorResponse
+// @Failure 429 {object} httpx.ErrorResponse
 // @Router /auth/otp/request [post]
 func (h *Handler) requestOTP(c fiber.Ctx) error {
 	var body domain.OTPRequestBody

@@ -12,6 +12,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 	"github.com/kilip/opus/ent"
+	"github.com/kilip/opus/internal/auth/domain"
 	"github.com/kilip/opus/internal/auth/handler"
 	"github.com/kilip/opus/internal/auth/repo"
 	"github.com/kilip/opus/internal/auth/service"
@@ -24,11 +25,17 @@ type contextKey string
 
 const userIDKey contextKey = "auth_user_id"
 
+var ErrRateLimited = domain.ErrRateLimited
+
+// RateLimitConfig configures OTP request rate limits.
+type RateLimitConfig = handler.RateLimitConfig
+
 // AuthConfig holds auth-specific configuration.
 type AuthConfig struct {
 	BaseURL       string
 	SessionSecret string
 	SessionTTL    time.Duration
+	RateLimit     RateLimitConfig
 }
 
 // Auth is the auth feature facade.
@@ -63,7 +70,7 @@ func NewWithMailer(db *ent.Client, cfg AuthConfig, m mailer.Mailer) *Auth {
 		Secure: strings.HasPrefix(cfg.BaseURL, "https"),
 		MaxAge: int(cfg.SessionTTL.Seconds()),
 	}
-	return &Auth{handler: handler.New(svc, cc), svc: svc}
+	return &Auth{handler: handler.New(svc, cc, cfg.RateLimit), svc: svc}
 }
 
 // RegisterPublic mounts public OTP routes (before auth middleware).

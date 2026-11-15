@@ -11,6 +11,7 @@ var (
 	ErrInvalidOTP      = errors.New("INVALID_OTP")
 	ErrOTPExpired      = errors.New("OTP_EXPIRED")
 	ErrTooManyAttempts = errors.New("TOO_MANY_ATTEMPTS")
+	ErrRateLimited     = errors.New("RATE_LIMITED")
 )
 
 // MaxOTPAttempts is the number of wrong-code attempts before the OTP is invalidated.
