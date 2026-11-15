@@ -1,0 +1,7 @@
+{
+	"name": "agy",
+	"displayName": "AGY Builder & PR Workflow",
+	"version": "1.0.0",
+	"description": "Token-efficient Issue-to-PR autonomous workflow skill and specialized subagents (planner, coder, verifier, pr-manager).",
+	"logo": "assets/logo.svg"
+}
