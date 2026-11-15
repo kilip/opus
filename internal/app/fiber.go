@@ -15,6 +15,7 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/static"
 	"github.com/kilip/opus/ent"
 	"github.com/kilip/opus/internal/auth"
+	"github.com/kilip/opus/internal/platform/csrf"
 	"github.com/kilip/opus/internal/platform/httpx"
 	"github.com/kilip/opus/internal/task"
 	"github.com/kilip/opus/ui"
@@ -78,6 +79,11 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client) *fiber.App {
 		)
 		return err
 	})
+
+	app.Use(csrf.New(csrf.Config{
+		BaseURL:        cfg.BaseURL,
+		TrustedOrigins: cfg.TrustedOrigins,
+	}))
 
 	// ponytail: serve dynamic runtime configuration for SPA from system environment
 	app.Get("/config.js", func(c fiber.Ctx) error {

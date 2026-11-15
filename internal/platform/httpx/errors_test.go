@@ -21,3 +21,17 @@ func TestUnauthorized(t *testing.T) {
 		t.Errorf("got message %q, want %q", fiberErr.Message, httpx.ErrUnauthorized.Error())
 	}
 }
+
+func TestCSRFForbidden(t *testing.T) {
+	err := httpx.CSRFForbidden()
+	var fiberErr *fiber.Error
+	if !errors.As(err, &fiberErr) {
+		t.Fatalf("expected *fiber.Error, got %T", err)
+	}
+	if fiberErr.Code != fiber.StatusForbidden {
+		t.Errorf("got status %d, want %d", fiberErr.Code, fiber.StatusForbidden)
+	}
+	if fiberErr.Message != httpx.ErrCSRFForbidden.Error() {
+		t.Errorf("got message %q, want %q", fiberErr.Message, httpx.ErrCSRFForbidden.Error())
+	}
+}

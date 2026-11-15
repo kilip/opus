@@ -9,12 +9,13 @@ import (
 )
 
 var (
-	ErrBadRequest   = errors.New("BAD_REQUEST")
-	ErrUnauthorized = errors.New("UNAUTHORIZED")
-	ErrForbidden    = errors.New("FORBIDDEN")
-	ErrNotFound     = errors.New("RESOURCE_NOT_FOUND")
-	ErrConflict     = errors.New("CONFLICT")
-	ErrInternal     = errors.New("INTERNAL_SERVER_ERROR")
+	ErrBadRequest    = errors.New("BAD_REQUEST")
+	ErrUnauthorized  = errors.New("UNAUTHORIZED")
+	ErrForbidden     = errors.New("FORBIDDEN")
+	ErrCSRFForbidden = errors.New("CSRF_FORBIDDEN")
+	ErrNotFound      = errors.New("RESOURCE_NOT_FOUND")
+	ErrConflict      = errors.New("CONFLICT")
+	ErrInternal      = errors.New("INTERNAL_SERVER_ERROR")
 )
 
 func NewError(status int, err error) error {
@@ -27,6 +28,10 @@ func BadRequest(err error) error {
 
 func Unauthorized() error {
 	return NewError(fiber.StatusUnauthorized, ErrUnauthorized)
+}
+
+func CSRFForbidden() error {
+	return NewError(fiber.StatusForbidden, ErrCSRFForbidden)
 }
 
 func NotFound(err error) error {

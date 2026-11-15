@@ -115,3 +115,17 @@ func TestConfig_OAuthEnv(t *testing.T) {
 		t.Errorf("unexpected facebook oauth config: id=%q secret=%q", cfg.FacebookClientID, cfg.FacebookClientSecret)
 	}
 }
+
+func TestConfig_TrustedOrigins(t *testing.T) {
+	t.Setenv("TRUSTED_ORIGINS", "http://localhost:5173,http://localhost:3000")
+	cfg, err := app.GetConfig(context.Background())
+	if err != nil {
+		t.Fatalf("GetConfig returned unexpected error: %v", err)
+	}
+	if len(cfg.TrustedOrigins) != 2 {
+		t.Fatalf("expected 2 trusted origins, got %d", len(cfg.TrustedOrigins))
+	}
+	if cfg.TrustedOrigins[0] != "http://localhost:5173" || cfg.TrustedOrigins[1] != "http://localhost:3000" {
+		t.Errorf("unexpected trusted origins: %v", cfg.TrustedOrigins)
+	}
+}

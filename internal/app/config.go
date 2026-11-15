@@ -22,6 +22,7 @@ type Config struct {
 	BodyLimit              int           `env:"BODY_LIMIT, default=4194304"`
 	DatabaseURL            string        `env:"DATABASE_URL, default=file:opus.db?_pragma=foreign_keys(ON)&_pragma=busy_timeout(5000)"`
 	BaseURL                string        `env:"BASE_URL, default=http://localhost:7880"`
+	TrustedOrigins         []string      `env:"TRUSTED_ORIGINS"`
 	SessionSecret          string        `env:"SESSION_SECRET, default="`
 	SessionTTL             time.Duration `env:"SESSION_TTL, default=720h"`
 	AppVersion             string        `env:"APP_VERSION"`
