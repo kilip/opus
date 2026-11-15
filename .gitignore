@@ -21,3 +21,4 @@ coverage.out
 *.swap
 opus.db
 /data/
+extensions/agy/skills/*/settings.json
