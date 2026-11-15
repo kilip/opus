@@ -17,7 +17,7 @@ Operate in one of three modes based on the caller's prompt:
 
 ---
 
-## Mode 1: `builder-publish-and-merge` (Default for Builder Phase 5)
+## Mode 1: `vibe-publish-and-merge` (Default for Vibe Phase 5)
 
 Triggered after `verifier` returns `PASS` on a feature branch (`<type>/issue-<ID>-<slug>`).
 
