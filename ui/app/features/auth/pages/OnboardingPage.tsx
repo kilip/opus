@@ -4,8 +4,14 @@ import { Navigate, useNavigate } from "react-router";
 import { ApiError } from "~/shared/api/client";
 import { Button } from "~/shared/components/Button";
 import { useCompleteSetup, useRequestSetupOTP } from "../api/actions";
+import { RateLimitError } from "../api/errors";
 import { useSession, useSetupStatus } from "../api/queries";
 import { OtpInput } from "../components/OtpInput";
+import {
+	formatCooldownLabel,
+	nextCooldownTick,
+	OTP_RESEND_COOLDOWN_SECONDS,
+} from "../model";
 
 export const meta = () => [{ title: "Welcome · Opus" }];
 
@@ -19,6 +25,7 @@ export default function OnboardingPage() {
 	const [email, setEmail] = useState("");
 	const [code, setCode] = useState("");
 	const [error, setError] = useState<string | null>(null);
+	const [cooldown, setCooldown] = useState(0);
 
 	const { data: setupStatus, isLoading: isSetupLoading } = useSetupStatus();
 	const { data: user, isLoading: isSessionLoading } = useSession();
@@ -33,6 +40,14 @@ export default function OnboardingPage() {
 			codeInputRef.current?.focus();
 		}
 	}, [step]);
+
+	useEffect(() => {
+		if (cooldown <= 0) return;
+		const timer = setTimeout(() => {
+			setCooldown((prev) => nextCooldownTick(prev));
+		}, 1000);
+		return () => clearTimeout(timer);
+	}, [cooldown]);
 
 	if (isSetupLoading || isSessionLoading) {
 		return null;
@@ -56,6 +71,7 @@ export default function OnboardingPage() {
 
 		try {
 			await requestSetupOTP.mutateAsync({ email: cleanEmail });
+			setCooldown(OTP_RESEND_COOLDOWN_SECONDS);
 			setStep(2);
 		} catch (err) {
 			if (
@@ -65,10 +81,42 @@ export default function OnboardingPage() {
 				navigate("/login", { replace: true });
 				return;
 			}
-			if (err instanceof ApiError) {
+			if (err instanceof RateLimitError) {
+				if (err.retryAfter && err.retryAfter > 0) {
+					setCooldown(err.retryAfter);
+				}
+				setError(err.message);
+			} else if (err instanceof ApiError) {
 				setError(err.message);
 			} else {
 				setError("Failed to send verification code. Please try again.");
+			}
+		}
+	};
+
+	const handleResendOTP = async () => {
+		if (cooldown > 0 || isPending) return;
+		setError(null);
+		try {
+			await requestSetupOTP.mutateAsync({ email: email.trim() });
+			setCooldown(OTP_RESEND_COOLDOWN_SECONDS);
+		} catch (err) {
+			if (
+				err instanceof ApiError &&
+				(err.status === 409 || err.code === "SETUP_CLOSED")
+			) {
+				navigate("/login", { replace: true });
+				return;
+			}
+			if (err instanceof RateLimitError) {
+				if (err.retryAfter && err.retryAfter > 0) {
+					setCooldown(err.retryAfter);
+				}
+				setError(err.message);
+			} else if (err instanceof ApiError) {
+				setError(err.message);
+			} else {
+				setError("Failed to resend code.");
 			}
 		}
 	};
@@ -195,37 +243,20 @@ export default function OnboardingPage() {
 									setStep(1);
 									setCode("");
 									setError(null);
+									setCooldown(0);
 								}}
 								className="cursor-pointer underline hover:text-fg"
 								disabled={isPending}
 							>
-								Use different email
+								Use a different email
 							</button>
 							<button
 								type="button"
-								onClick={async () => {
-									setError(null);
-									try {
-										await requestSetupOTP.mutateAsync({ email: email.trim() });
-									} catch (err) {
-										if (
-											err instanceof ApiError &&
-											(err.status === 409 || err.code === "SETUP_CLOSED")
-										) {
-											navigate("/login", { replace: true });
-											return;
-										}
-										if (err instanceof ApiError) {
-											setError(err.message);
-										} else {
-											setError("Failed to resend code.");
-										}
-									}
-								}}
-								className="cursor-pointer underline hover:text-fg"
-								disabled={isPending}
+								onClick={handleResendOTP}
+								className="cursor-pointer underline hover:text-fg disabled:cursor-not-allowed disabled:opacity-50 disabled:no-underline"
+								disabled={isPending || cooldown > 0}
 							>
-								Resend code
+								{formatCooldownLabel(cooldown)}
 							</button>
 						</div>
 					</>

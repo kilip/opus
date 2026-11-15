@@ -2,19 +2,34 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 
 import { api, unwrap } from "~/shared/api/client";
-import { AUTH_ERRORS } from "./errors";
+import { parseRetryAfter } from "../model";
+import { AUTH_ERRORS, RateLimitError } from "./errors";
 import { authKeys } from "./keys";
 import type { OTPRequestBody, OTPVerifyBody, User } from "./types";
+
+async function handleOtpRequest(
+	requestPromise: Promise<{
+		data?: unknown;
+		error?: unknown;
+		response: Response;
+	}>,
+): Promise<string> {
+	const res = await requestPromise;
+	if (res.response.status === 429) {
+		const retryAfter = parseRetryAfter(res.response.headers.get("Retry-After"));
+		throw new RateLimitError(retryAfter);
+	}
+	return unwrap<string>(res, AUTH_ERRORS);
+}
 
 export function useRequestOTP() {
 	return useMutation({
 		mutationFn: async (req: OTPRequestBody): Promise<string> =>
-			unwrap(
+			handleOtpRequest(
 				api.POST("/auth/otp/request", {
 					body: req,
 					parseAs: "text" as never,
 				}),
-				AUTH_ERRORS,
 			),
 	});
 }
@@ -39,12 +54,11 @@ export function useVerifyOTP() {
 export function useRequestSetupOTP() {
 	return useMutation({
 		mutationFn: async (req: OTPRequestBody): Promise<string> =>
-			unwrap(
+			handleOtpRequest(
 				api.POST("/setup/otp", {
 					body: req,
 					parseAs: "text" as never,
 				}),
-				AUTH_ERRORS,
 			),
 	});
 }
