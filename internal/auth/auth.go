@@ -64,13 +64,18 @@ func NewWithMailer(db *ent.Client, cfg AuthConfig, m mailer.Mailer) *Auth {
 		MaxAge:  int(cfg.SessionTTL.Seconds()),
 		BaseURL: cfg.BaseURL,
 	}
-	h := handler.NewWithOTP(r, otpR, m, secret, cc)
+	h := handler.NewWithOTPAndDB(r, otpR, m, db, secret, cc)
 	return &Auth{handler: h, secret: secret, repo: r}
 }
 
 // RegisterPublic mounts public OTP routes (before auth middleware).
 func (a *Auth) RegisterPublic(r fiber.Router) {
 	a.handler.RegisterPublic(r)
+}
+
+// RegisterSetup mounts public setup routes (before auth middleware).
+func (a *Auth) RegisterSetup(r fiber.Router) {
+	a.handler.RegisterSetup(r)
 }
 
 // Register mounts auth routes (me, logout) on r.
