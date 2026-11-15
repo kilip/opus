@@ -1,8 +1,9 @@
 import assert from "node:assert";
 import { describe, it } from "node:test";
 
+import { ApiError } from "~/shared/api/client";
 import { resolveErrorMessage } from "~/shared/api/errors";
-import { AUTH_ERRORS } from "./errors";
+import { AUTH_ERRORS, RateLimitError } from "./errors";
 
 describe("auth errors mapping (AC4)", () => {
 	it("maps INVALID_OTP to readable message", () => {
@@ -27,5 +28,26 @@ describe("auth errors mapping (AC4)", () => {
 		const msg = resolveErrorMessage("SETUP_CLOSED", AUTH_ERRORS);
 		assert.strictEqual(msg, AUTH_ERRORS.SETUP_CLOSED);
 		assert.match(msg, /completed/i);
+	});
+
+	it("RateLimitError creates 429 RATE_LIMITED error with retry-after message (AC3)", () => {
+		const errWithRetry = new RateLimitError(45);
+		assert.ok(errWithRetry instanceof ApiError);
+		assert.strictEqual(errWithRetry.status, 429);
+		assert.strictEqual(errWithRetry.code, "RATE_LIMITED");
+		assert.strictEqual(errWithRetry.retryAfter, 45);
+		assert.strictEqual(
+			errWithRetry.message,
+			"Too many requests. Please try again in 45 seconds.",
+		);
+
+		const errWithoutRetry = new RateLimitError();
+		assert.strictEqual(errWithoutRetry.status, 429);
+		assert.strictEqual(errWithoutRetry.code, "RATE_LIMITED");
+		assert.strictEqual(errWithoutRetry.retryAfter, undefined);
+		assert.strictEqual(
+			errWithoutRetry.message,
+			"Too many requests. Please try again later.",
+		);
 	});
 });
