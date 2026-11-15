@@ -25,6 +25,10 @@ func BadRequest(err error) error {
 	return NewError(fiber.StatusBadRequest, err)
 }
 
+func Unauthorized() error {
+	return NewError(fiber.StatusUnauthorized, ErrUnauthorized)
+}
+
 func NotFound(err error) error {
 	return NewError(fiber.StatusNotFound, err)
 }

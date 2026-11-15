@@ -23,7 +23,7 @@ func newServeCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fiberApp := app.GetFiber(cfg, logger)
+			fiberApp := app.GetFiber(cfg, logger, db)
 			return app.New(cfg, fiberApp, logger, db).Serve(ctx)
 		},
 	}
