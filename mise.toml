@@ -39,33 +39,41 @@ depends = ["api-types"]
 [tasks.format]
 description = "Format Go and UI code"
 run = """
-gofmt -w .
-bunx --cwd ui biome check --write .
+status=0
+gofmt -w . || status=1
+bunx --cwd ui biome check --write . || status=1
+exit $status
 """
 
 [tasks.lint]
 description = "Run Go and UI linters"
 run = """
+status=0
 if [ -n "$(go list ./... 2>/dev/null)" ]; then
-  test -z "$(gofmt -l .)"
-  go vet ./...
-  golangci-lint run
+  test -z "$(gofmt -l .)" || status=1
+  go vet ./... || status=1
+  golangci-lint run || status=1
 fi
-bunx --cwd ui biome check .
-bun run --cwd ui typecheck
+bunx --cwd ui biome check . || status=1
+bun run --cwd ui typecheck || status=1
+exit $status
 """
 
 [tasks.test]
 description = "Run Go and UI tests"
 run = """
-go test -race ./...
-bun test --cwd ui --pass-with-no-tests
+status=0
+go test -race ./... || status=1
+bun test --cwd ui --pass-with-no-tests || status=1
+exit $status
 """
 
 [tasks.qc]
 description = "Run format, lint, and test for UI and API"
 run = """
-mise run format
-mise run lint
-mise run test
+status=0
+mise run format || status=1
+mise run lint || status=1
+mise run test || status=1
+exit $status
 """
