@@ -7,7 +7,7 @@ import type { components } from "~/shared/api/schema";
  */
 type Schemas = components["schemas"];
 
-export type Task = Schemas extends { "handler.Task": infer T }
+export type Task = Schemas extends { "domain.Task": infer T }
   ? T
   : {
       id: string;
@@ -28,30 +28,30 @@ export type Task = Schemas extends { "handler.Task": infer T }
       updatedAt: string;
     };
 
-export type TaskStatus = Schemas extends { "handler.TaskStatus": infer T }
+export type TaskStatus = Schemas extends { "domain.TaskStatus": infer T }
   ? T
   : "backlog" | "spec" | "inProgress" | "inReview" | "done";
 
-export type TaskPriority = Schemas extends { "handler.TaskPriority": infer T }
+export type TaskPriority = Schemas extends { "domain.TaskPriority": infer T }
   ? T
   : "none" | "low" | "medium" | "high";
 
-export type TaskSource = Schemas extends { "handler.TaskSource": infer T }
+export type TaskSource = Schemas extends { "domain.TaskSource": infer T }
   ? T
   : "github" | "jira" | "sentry" | "custom";
 
-export type TaskType = Schemas extends { "handler.TaskType": infer T }
+export type TaskType = Schemas extends { "domain.TaskType": infer T }
   ? T
   : "feature" | "bug" | "chore" | "incident";
 
-export type Assignee = Schemas extends { "handler.Assignee": infer T }
+export type Assignee = Schemas extends { "domain.Assignee": infer T }
   ? T
   : {
       id: string;
       name: string;
     };
 
-export type Activity = Schemas extends { "handler.Activity": infer T }
+export type Activity = Schemas extends { "domain.Activity": infer T }
   ? T
   : {
       id: string;
@@ -61,12 +61,12 @@ export type Activity = Schemas extends { "handler.Activity": infer T }
       createdAt: string;
     };
 
-export type ActivityKind = Schemas extends { "handler.ActivityKind": infer T }
+export type ActivityKind = Schemas extends { "domain.ActivityKind": infer T }
   ? T
   : "message" | "note" | "tracking";
 
 export type CreateTaskRequest = Schemas extends {
-  "handler.CreateTaskRequest": infer T;
+  "domain.CreateTaskRequest": infer T;
 }
   ? T
   : {
@@ -81,7 +81,7 @@ export type CreateTaskRequest = Schemas extends {
     };
 
 export type UpdateTaskRequest = Schemas extends {
-  "handler.UpdateTaskRequest": infer T;
+  "domain.UpdateTaskRequest": infer T;
 }
   ? T
   : {
@@ -97,7 +97,7 @@ export type UpdateTaskRequest = Schemas extends {
     };
 
 export type CreateActivityRequest = Schemas extends {
-  "handler.CreateActivityRequest": infer T;
+  "domain.CreateActivityRequest": infer T;
 }
   ? T
   : {
