@@ -1,10 +1,6 @@
 ---
-
 name: telegram
-description: >-
-Send messages or files to a user via the Telegram Bot API.
-Use this skill when the user asks to send a Telegram notification,
-alert, status update, summary, or file/report to their Telegram chat.
+description: Send messages or files to a user via the Telegram Bot API. Use this skill when the user asks to send a Telegram notification, alert, status update, summary, or file/report to their Telegram chat.
 ---
 
 # Telegram Sender

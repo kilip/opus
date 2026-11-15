@@ -1,5 +1,4 @@
 ---
-
 name: vibe
 description: Autonomous Issue-to-PR workflow orchestrator that resolves GitHub issues end-to-end without human intervention. Triggered explicitly with /vibe.
 ---
