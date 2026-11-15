@@ -92,4 +92,6 @@ Once `verifier` returns `PASS`, invoke `pr-manager` via `invoke_subagent`:
 - `Prompt`: Run Mode `vibe-publish-and-merge` for Issue `#<ID>` on branch `<branch>`, commit `<hash>`, with title `<type>(<scope>): <summary>` and verified `AC1..ACn`.
 
 - **If `pr-manager` returns `CI_FAIL`**: Resume `coder` via `send_message` with the failed CI log (max 1 CI auto-fix), re-run `verifier`, then resume `pr-manager` via `send_message` to push and merge.
-- **If `MERGED`**: Report final PR URL, merged `main` commit SHA, and closed Issue `#<ID>` to the user.
+- **If `MERGED`**:
+  1. **Telegram Summary (Optional)**: Check if the `telegram` skill is configured (`TELEGRAM_BOT_TOKEN` & `TELEGRAM_CHAT_ID` env vars set, or `../telegram/settings.json` exists with non-empty `bot_token` and `chat_id`). If configured, send a concise summary (Issue `#<ID>`, PR URL, merged `main` commit SHA, and verified `AC1..ACn`) via `bash <telegram-skill-dir>/scripts/send.sh` (using `HTML` parse mode, never leaking secrets). If not configured, skip without prompting the user.
+  2. Report final PR URL, merged `main` commit SHA, and closed Issue `#<ID>` to the user.
