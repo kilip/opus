@@ -3,9 +3,7 @@
 package auth
 
 import (
-	"crypto/hmac"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/base64"
 	"log/slog"
 	"strings"
@@ -16,6 +14,7 @@ import (
 	"github.com/kilip/opus/ent"
 	"github.com/kilip/opus/internal/auth/handler"
 	"github.com/kilip/opus/internal/auth/repo"
+	"github.com/kilip/opus/internal/auth/service"
 	"github.com/kilip/opus/internal/platform/httpx"
 	"github.com/kilip/opus/internal/platform/mailer"
 )
@@ -35,8 +34,7 @@ type AuthConfig struct {
 // Auth is the auth feature facade.
 type Auth struct {
 	handler *handler.Handler
-	secret  string
-	repo    repo.Repo
+	svc     *service.Auth
 }
 
 // New creates an Auth feature from an Ent client and config.
@@ -57,15 +55,15 @@ func NewWithMailer(db *ent.Client, cfg AuthConfig, m mailer.Mailer) *Auth {
 			"warning", "sessions will not survive restarts")
 	}
 
-	r := repo.New(db)
-	otpR := repo.NewOTPRepo(db)
+	svc := service.New(repo.New(db), repo.NewOTPRepo(db), m, service.Config{
+		Secret:     secret,
+		SessionTTL: cfg.SessionTTL,
+	})
 	cc := handler.CookieConfig{
-		Secure:  strings.HasPrefix(cfg.BaseURL, "https"),
-		MaxAge:  int(cfg.SessionTTL.Seconds()),
-		BaseURL: cfg.BaseURL,
+		Secure: strings.HasPrefix(cfg.BaseURL, "https"),
+		MaxAge: int(cfg.SessionTTL.Seconds()),
 	}
-	h := handler.NewWithOTPAndDB(r, otpR, m, db, secret, cc)
-	return &Auth{handler: h, secret: secret, repo: r}
+	return &Auth{handler: handler.New(svc, cc), svc: svc}
 }
 
 // RegisterPublic mounts public OTP routes (before auth middleware).
@@ -87,17 +85,8 @@ func (a *Auth) Register(r fiber.Router) {
 // It populates the user ID in locals so UserID() can retrieve it.
 func (a *Auth) Middleware() fiber.Handler {
 	return func(c fiber.Ctx) error {
-		raw := c.Cookies("opus_session")
-		if raw == "" {
-			return httpx.Unauthorized()
-		}
-		// ponytail: duplicate hash logic avoids a cross-call back into handler subpackage
-		mac := hmacHash(raw, a.secret)
-		sess, err := a.repo.FindByTokenHash(c.Context(), mac)
-		if err != nil || sess == nil {
-			return httpx.Unauthorized()
-		}
-		if time.Now().After(sess.ExpiresAt) {
+		sess, err := a.svc.Session(c.Context(), c.Cookies(handler.SessionCookie))
+		if err != nil {
 			return httpx.Unauthorized()
 		}
 		c.Locals(string(userIDKey), sess.UserID)
@@ -113,11 +102,4 @@ func UserID(c fiber.Ctx) uuid.UUID {
 		return id
 	}
 	return uuid.Nil
-}
-
-// hmacHash returns the HMAC-SHA256 base64url hash of raw keyed with secret.
-func hmacHash(raw, secret string) string {
-	mac := hmac.New(sha256.New, []byte(secret))
-	mac.Write([]byte(raw))
-	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 }

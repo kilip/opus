@@ -18,6 +18,7 @@ import (
 	"github.com/kilip/opus/internal/auth/domain"
 	"github.com/kilip/opus/internal/auth/handler"
 	"github.com/kilip/opus/internal/auth/repo"
+	"github.com/kilip/opus/internal/auth/service"
 	"github.com/kilip/opus/internal/platform/httpx"
 )
 
@@ -71,7 +72,7 @@ var _ repo.Repo = (*fakeRepo)(nil)
 
 const testSecret = "test-secret"
 
-// computeHash replicates the HMAC logic from handler/token.go.
+// computeHash replicates the HMAC logic from service/auth.go.
 func computeHash(raw, secret string) string {
 	mac := hmac.New(sha256.New, []byte(secret))
 	mac.Write([]byte(raw))
@@ -82,7 +83,7 @@ func setupApp(r repo.Repo) *fiber.App {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	app := fiber.New(fiber.Config{ErrorHandler: httpx.ErrorHandler(logger)})
 	cc := handler.CookieConfig{Secure: false, MaxAge: 86400}
-	h := handler.New(r, testSecret, cc)
+	h := handler.New(service.New(r, nil, nil, service.Config{Secret: testSecret}), cc)
 	h.Register(app.Group("/auth"))
 	return app
 }
@@ -113,7 +114,7 @@ func TestMe_ValidSession(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
-	var env httpx.Response[handler.MeResponse]
+	var env httpx.Response[domain.UserResponse]
 	if err := json.NewDecoder(resp.Body).Decode(&env); err != nil {
 		t.Fatal(err)
 	}
