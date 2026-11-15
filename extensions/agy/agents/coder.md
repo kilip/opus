@@ -10,7 +10,6 @@ tools:
 - write_file
 - edit_file
 - run_command
-- grep_search
 
 ---
 
