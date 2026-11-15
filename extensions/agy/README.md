@@ -1,6 +1,6 @@
 # AGY Builder & PR Workflow Plugin
 
-Custom Antigravity plugin providing a token-efficient Issue-to-PR pipeline (`builder` skill and `orchestrator` main agent) backed by four isolated subagents:
+Custom Antigravity plugin providing a token-efficient Issue-to-PR pipeline (`vibe` skill and `orchestrator` main agent) backed by four isolated subagents:
 
 - **`orchestrator`** (`agents/orchestrator.md`): Main session orchestrator executing the end-to-end Issue-to-PR workflow by delegating to the four subagents below.
 - **`planner`** (`agents/planner.md`): Read-only codebase reconnaissance that outputs a pointer-based implementation plan (`<= 40` lines, zero code blocks).
