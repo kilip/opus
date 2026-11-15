@@ -36,6 +36,13 @@ description = "Regenerate the OpenAPI spec and the UI API types"
 depends = ["api-types"]
 
 
+[tasks.format]
+description = "Format Go and UI code"
+run = """
+gofmt -w .
+bunx --cwd ui biome check --write .
+"""
+
 [tasks.lint]
 description = "Run Go and UI linters"
 run = """
@@ -44,5 +51,21 @@ if [ -n "$(go list ./... 2>/dev/null)" ]; then
   go vet ./...
   golangci-lint run
 fi
+bunx --cwd ui biome check .
 bun run --cwd ui typecheck
+"""
+
+[tasks.test]
+description = "Run Go and UI tests"
+run = """
+go test -race ./...
+bun test --cwd ui --pass-with-no-tests
+"""
+
+[tasks.qc]
+description = "Run format, lint, and test for UI and API"
+run = """
+mise run format
+mise run lint
+mise run test
 """
