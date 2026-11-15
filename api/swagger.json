@@ -135,6 +135,36 @@
                 },
                 "type": "object"
             },
+            "handler.OTPRequestBody": {
+                "properties": {
+                    "email": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "handler.OTPVerifyBody": {
+                "properties": {
+                    "code": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "handler.OTPVerifyResponse": {
+                "properties": {
+                    "email": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "handler.Task": {
                 "properties": {
                     "assignee": {
@@ -416,6 +446,20 @@
                 },
                 "type": "object"
             },
+            "httpx.Response-handler_OTPVerifyResponse": {
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/handler.OTPVerifyResponse"
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
             "httpx.Response-handler_Task": {
                 "properties": {
                     "data": {
@@ -484,6 +528,116 @@
                     }
                 },
                 "summary": "Get current user",
+                "tags": [
+                    "auth"
+                ]
+            }
+        },
+        "/auth/otp/request": {
+            "post": {
+                "description": "Sends a one-time code to the given email if it matches the owner",
+                "operationId": "authOTPRequest",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/handler.OTPRequestBody",
+                                "summary": "body",
+                                "description": "Email"
+                            }
+                        }
+                    },
+                    "description": "Email",
+                    "required": true
+                },
+                "responses": {
+                    "202": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        },
+                        "description": "Accepted"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    }
+                },
+                "summary": "Request OTP",
+                "tags": [
+                    "auth"
+                ]
+            }
+        },
+        "/auth/otp/verify": {
+            "post": {
+                "description": "Verifies the one-time code, creates a session, sets the session cookie, and returns the user",
+                "operationId": "authOTPVerify",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/handler.OTPVerifyBody",
+                                "summary": "body",
+                                "description": "Email and code"
+                            }
+                        }
+                    },
+                    "description": "Email and code",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-handler_OTPVerifyResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Too Many Requests"
+                    }
+                },
+                "summary": "Verify OTP",
                 "tags": [
                     "auth"
                 ]

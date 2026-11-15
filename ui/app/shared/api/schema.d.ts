@@ -44,6 +44,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/otp/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request OTP
+         * @description Sends a one-time code to the given email if it matches the owner
+         */
+        post: operations["authOTPRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/otp/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify OTP
+         * @description Verifies the one-time code, creates a session, sets the session cookie, and returns the user
+         */
+        post: operations["authOTPVerify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -178,6 +218,17 @@ export interface components {
             /** @description ID is the authenticated user's UUID. */
             id?: string;
         };
+        "handler.OTPRequestBody": {
+            email?: string;
+        };
+        "handler.OTPVerifyBody": {
+            code?: string;
+            email?: string;
+        };
+        "handler.OTPVerifyResponse": {
+            email?: string;
+            id?: string;
+        };
         "handler.Task": {
             assignee?: components["schemas"]["handler.Assignee"];
             createdAt: string;
@@ -256,6 +307,11 @@ export interface components {
             error?: string;
             meta?: components["schemas"]["httpx.Meta"];
         };
+        "httpx.Response-handler_OTPVerifyResponse": {
+            data?: components["schemas"]["handler.OTPVerifyResponse"];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
         "httpx.Response-handler_Task": {
             data?: components["schemas"]["handler.Task"];
             error?: string;
@@ -308,6 +364,92 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    authOTPRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Email */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["handler.OTPRequestBody"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    authOTPVerify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Email and code */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["handler.OTPVerifyBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-handler_OTPVerifyResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
