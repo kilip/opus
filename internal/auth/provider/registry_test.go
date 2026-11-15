@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/kilip/opus/internal/auth/provider"
+	"golang.org/x/oauth2"
 )
 
 func TestRegistry_EnabledProviders(t *testing.T) {
@@ -194,41 +195,31 @@ func TestProvider_AuthCodeURL_PKCE(t *testing.T) {
 	}
 }
 
-func TestProvider_Exchange(t *testing.T) {
-	reg := provider.NewRegistry(provider.Config{
-		BaseURL:              "http://localhost:7880",
-		FacebookClientID:     "facebook-id",
-		FacebookClientSecret: "facebook-secret",
-	})
-
-	p, ok := reg.Get("facebook")
-	if !ok {
-		t.Fatal("expected facebook provider")
-	}
+func TestBaseProvider_Exchange(t *testing.T) {
+	bp := provider.NewBaseProvider("custom", oauth2.Config{})
 
 	// Default implementation returns ErrNotImplemented
-	_, err := p.Exchange(context.Background(), "code123", "verifier123")
+	_, err := bp.Exchange(context.Background(), "code123", "verifier123")
 	if err != provider.ErrNotImplemented {
 		t.Errorf("got error %v, want %v", err, provider.ErrNotImplemented)
 	}
 
 	// Custom Exchange hook
-	bp := p.(*provider.BaseProvider)
 	bp.SetExchangeFunc(func(ctx context.Context, code, verifier string) (provider.Profile, error) {
 		return provider.Profile{
 			ProviderUserID: "12345",
-			Email:          "user@facebook.com",
+			Email:          "user@example.com",
 			EmailVerified:  true,
-			Name:           "Facebook User",
-			AvatarURL:      "https://facebook.com/avatar.png",
+			Name:           "Example User",
+			AvatarURL:      "https://example.com/avatar.png",
 		}, nil
 	})
 
-	profile, err := p.Exchange(context.Background(), "code123", "verifier123")
+	profile, err := bp.Exchange(context.Background(), "code123", "verifier123")
 	if err != nil {
 		t.Fatalf("unexpected exchange error: %v", err)
 	}
-	if profile.ProviderUserID != "12345" || profile.Email != "user@facebook.com" || !profile.EmailVerified {
+	if profile.ProviderUserID != "12345" || profile.Email != "user@example.com" || !profile.EmailVerified {
 		t.Errorf("unexpected profile: %+v", profile)
 	}
 }

@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/endpoints"
+	"golang.org/x/oauth2/facebook"
 	"golang.org/x/oauth2/github"
 	"golang.org/x/oauth2/google"
 )
@@ -56,10 +56,10 @@ func NewRegistry(cfg Config) *Registry {
 	}
 
 	if cfg.FacebookClientID != "" && cfg.FacebookClientSecret != "" {
-		r.providers["facebook"] = NewBaseProvider("facebook", oauth2.Config{
+		r.providers["facebook"] = NewFacebookProvider(oauth2.Config{
 			ClientID:     cfg.FacebookClientID,
 			ClientSecret: cfg.FacebookClientSecret,
-			Endpoint:     endpoints.Facebook,
+			Endpoint:     facebook.Endpoint,
 			RedirectURL:  base + "/api/auth/oauth/facebook/callback",
 			Scopes:       []string{"email", "public_profile"},
 		})
