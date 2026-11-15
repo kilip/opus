@@ -58,35 +58,41 @@ const (
 
 // Assignee is person or agent task assigned to.
 type Assignee struct {
-	ID   string
-	Name string
+	ID   string `json:"id" validate:"required"`
+	Name string `json:"name" validate:"required"`
 }
 
 // Task is issue normalised from source tracker.
+//
+// ponytail: entity doubles as response DTO (json/validate tags); split into
+// a dedicated response type once wire shape diverges from storage shape.
 type Task struct {
-	ID           string
-	Key          string
-	Source       TaskSource
-	ExternalID   string
-	ExternalURL  string
-	Title        string
-	Description  string
-	Status       TaskStatus
-	SourceStatus string
-	Priority     TaskPriority
-	Type         TaskType
-	Assignee     *Assignee
-	DueDate      string
-	Labels       []string
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	// ID is Opus identifier.
+	ID string `json:"id" validate:"required"`
+	// Key is human-readable reference, e.g. OP-12.
+	Key          string       `json:"key" validate:"required"`
+	Source       TaskSource   `json:"source" validate:"required"`
+	ExternalID   string       `json:"externalId,omitempty"`
+	ExternalURL  string       `json:"externalUrl,omitempty"`
+	Title        string       `json:"title" validate:"required"`
+	Description  string       `json:"description" validate:"required"`
+	Status       TaskStatus   `json:"status" validate:"required"`
+	SourceStatus string       `json:"sourceStatus,omitempty"`
+	Priority     TaskPriority `json:"priority" validate:"required"`
+	Type         TaskType     `json:"type" validate:"required"`
+	Assignee     *Assignee    `json:"assignee,omitempty"`
+	// DueDate is calendar date (YYYY-MM-DD).
+	DueDate   string    `json:"dueDate,omitempty" format:"date"`
+	Labels    []string  `json:"labels" validate:"required"`
+	CreatedAt time.Time `json:"createdAt" validate:"required"`
+	UpdatedAt time.Time `json:"updatedAt" validate:"required"`
 }
 
-// Activity is entry in task timeline.
+// Activity is one entry of task chatter timeline.
 type Activity struct {
-	ID        string
-	Kind      ActivityKind
-	Author    string
-	Body      string
-	CreatedAt time.Time
+	ID        string       `json:"id" validate:"required"`
+	Kind      ActivityKind `json:"kind" validate:"required"`
+	Author    string       `json:"author" validate:"required"`
+	Body      string       `json:"body" validate:"required"`
+	CreatedAt time.Time    `json:"createdAt" validate:"required"`
 }

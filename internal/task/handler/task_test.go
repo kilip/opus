@@ -12,8 +12,10 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/kilip/opus/internal/platform/httpx"
+	"github.com/kilip/opus/internal/task/domain"
 	"github.com/kilip/opus/internal/task/handler"
 	"github.com/kilip/opus/internal/task/repo"
+	"github.com/kilip/opus/internal/task/service"
 )
 
 func setupApp() *fiber.App {
@@ -25,7 +27,7 @@ func setupApp() *fiber.App {
 	r := repo.NewMemory(func() time.Time {
 		return time.Date(2026, 11, 14, 12, 0, 0, 0, time.UTC)
 	})
-	h := handler.New(r)
+	h := handler.New(service.New(r))
 	h.Register(app.Group("/api"))
 	return app
 }
@@ -72,7 +74,7 @@ func TestListTasks(t *testing.T) {
 		t.Fatalf("expected status 200, got %d", resp.StatusCode)
 	}
 
-	envelope := decode[httpx.Response[[]handler.Task]](t, resp)
+	envelope := decode[httpx.Response[[]domain.Task]](t, resp)
 	if envelope.Meta == nil || envelope.Meta.Total == nil {
 		t.Fatal("expected meta.total to be present")
 	}
@@ -92,7 +94,7 @@ func TestGetTask(t *testing.T) {
 		t.Fatalf("expected status 200, got %d", resp.StatusCode)
 	}
 
-	envelope := decode[httpx.Response[handler.Task]](t, resp)
+	envelope := decode[httpx.Response[domain.Task]](t, resp)
 	if envelope.Data.ID != "t1" {
 		t.Fatalf("expected task t1, got %s", envelope.Data.ID)
 	}
@@ -126,7 +128,7 @@ func TestCreateTask(t *testing.T) {
 	app := setupApp()
 
 	// 400 Bad Request if title empty
-	resp := req(t, app, http.MethodPost, "/api/tasks", handler.CreateTaskRequest{
+	resp := req(t, app, http.MethodPost, "/api/tasks", domain.CreateTaskRequest{
 		Title: "   ",
 	})
 	if resp.StatusCode != http.StatusBadRequest {
@@ -139,15 +141,15 @@ func TestCreateTask(t *testing.T) {
 
 	// 201 Created on valid task
 	title := "New test task"
-	status := handler.TaskStatusTodo
-	resp2 := req(t, app, http.MethodPost, "/api/tasks", handler.CreateTaskRequest{
+	status := domain.TaskStatusTodo
+	resp2 := req(t, app, http.MethodPost, "/api/tasks", domain.CreateTaskRequest{
 		Title:  title,
 		Status: &status,
 	})
 	if resp2.StatusCode != http.StatusCreated {
 		t.Fatalf("expected status 201, got %d", resp2.StatusCode)
 	}
-	created := decode[httpx.Response[handler.Task]](t, resp2)
+	created := decode[httpx.Response[domain.Task]](t, resp2)
 	if created.Data.ID != "OP-200" {
 		t.Fatalf("expected task ID OP-200, got %s", created.Data.ID)
 	}
@@ -161,7 +163,7 @@ func TestUpdateTask(t *testing.T) {
 
 	// 400 on empty title update
 	emptyTitle := ""
-	resp := req(t, app, http.MethodPatch, "/api/tasks/t1", handler.UpdateTaskRequest{
+	resp := req(t, app, http.MethodPatch, "/api/tasks/t1", domain.UpdateTaskRequest{
 		Title: &emptyTitle,
 	})
 	if resp.StatusCode != http.StatusBadRequest {
@@ -169,14 +171,14 @@ func TestUpdateTask(t *testing.T) {
 	}
 
 	// 200 on stage update + appends activity
-	newStatus := handler.TaskStatusInProgress
-	resp2 := req(t, app, http.MethodPatch, "/api/tasks/t1", handler.UpdateTaskRequest{
+	newStatus := domain.TaskStatusInProgress
+	resp2 := req(t, app, http.MethodPatch, "/api/tasks/t1", domain.UpdateTaskRequest{
 		Status: &newStatus,
 	})
 	if resp2.StatusCode != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", resp2.StatusCode)
 	}
-	updated := decode[httpx.Response[handler.Task]](t, resp2)
+	updated := decode[httpx.Response[domain.Task]](t, resp2)
 	if updated.Data.Status != newStatus {
 		t.Fatalf("expected status %s, got %s", newStatus, updated.Data.Status)
 	}
@@ -186,12 +188,12 @@ func TestUpdateTask(t *testing.T) {
 	if resp3.StatusCode != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", resp3.StatusCode)
 	}
-	actEnvelope := decode[httpx.Response[[]handler.Activity]](t, resp3)
+	actEnvelope := decode[httpx.Response[[]domain.Activity]](t, resp3)
 	if len(actEnvelope.Data) != 3 {
 		t.Fatalf("expected 3 activities after stage update, got %d", len(actEnvelope.Data))
 	}
 	lastAct := actEnvelope.Data[2]
-	if lastAct.Kind != handler.ActivityKindStatus {
+	if lastAct.Kind != domain.ActivityKindStatus {
 		t.Fatalf("expected activity kind status, got %s", lastAct.Kind)
 	}
 	expectedBody := "moved stage done → in_progress"
@@ -214,7 +216,7 @@ func TestListTaskActivity(t *testing.T) {
 	if resp2.StatusCode != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", resp2.StatusCode)
 	}
-	envelope := decode[httpx.Response[[]handler.Activity]](t, resp2)
+	envelope := decode[httpx.Response[[]domain.Activity]](t, resp2)
 	if len(envelope.Data) != 2 {
 		t.Fatalf("expected 2 activities for t1, got %d", len(envelope.Data))
 	}
@@ -224,7 +226,7 @@ func TestCreateTaskActivity(t *testing.T) {
 	app := setupApp()
 
 	// 400 on empty body
-	resp := req(t, app, http.MethodPost, "/api/tasks/t1/activity", handler.CreateActivityRequest{
+	resp := req(t, app, http.MethodPost, "/api/tasks/t1/activity", domain.CreateActivityRequest{
 		Body: "   ",
 	})
 	if resp.StatusCode != http.StatusBadRequest {
@@ -236,7 +238,7 @@ func TestCreateTaskActivity(t *testing.T) {
 	}
 
 	// 404 on missing task
-	resp2 := req(t, app, http.MethodPost, "/api/tasks/nonexistent/activity", handler.CreateActivityRequest{
+	resp2 := req(t, app, http.MethodPost, "/api/tasks/nonexistent/activity", domain.CreateActivityRequest{
 		Body: "test comment",
 	})
 	if resp2.StatusCode != http.StatusNotFound {
@@ -244,20 +246,20 @@ func TestCreateTaskActivity(t *testing.T) {
 	}
 
 	// 201 on valid activity
-	resp3 := req(t, app, http.MethodPost, "/api/tasks/t1/activity", handler.CreateActivityRequest{
+	resp3 := req(t, app, http.MethodPost, "/api/tasks/t1/activity", domain.CreateActivityRequest{
 		Body: "New review comment",
 	})
 	if resp3.StatusCode != http.StatusCreated {
 		t.Fatalf("expected status 201, got %d", resp3.StatusCode)
 	}
-	created := decode[httpx.Response[handler.Activity]](t, resp3)
+	created := decode[httpx.Response[domain.Activity]](t, resp3)
 	if created.Data.Body != "New review comment" {
 		t.Fatalf("expected body 'New review comment', got %s", created.Data.Body)
 	}
 	if created.Data.Author != "toni" {
 		t.Fatalf("expected default author 'toni', got %s", created.Data.Author)
 	}
-	if created.Data.Kind != handler.ActivityKindComment {
+	if created.Data.Kind != domain.ActivityKindComment {
 		t.Fatalf("expected default kind 'comment', got %s", created.Data.Kind)
 	}
 }

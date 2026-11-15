@@ -2,22 +2,21 @@ package handler
 
 import (
 	"errors"
-	"strings"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/kilip/opus/internal/platform/httpx"
 	"github.com/kilip/opus/internal/task/domain"
-	"github.com/kilip/opus/internal/task/repo"
+	"github.com/kilip/opus/internal/task/service"
 )
 
 // Handler serves task endpoints.
 type Handler struct {
-	repo *repo.Memory
+	svc *service.Task
 }
 
-// New returns Handler backed by Memory repo.
-func New(r *repo.Memory) *Handler {
-	return &Handler{repo: r}
+// New returns Handler backed by task service.
+func New(svc *service.Task) *Handler {
+	return &Handler{svc: svc}
 }
 
 // Register mounts task routes on r.
@@ -38,17 +37,13 @@ func (h *Handler) Register(r fiber.Router) {
 //	@ID				list-tasks
 //	@Tags			tasks
 //	@Produce		json
-//	@Success		200	{object}	httpx.Response[[]Task]
+//	@Success		200	{object}	httpx.Response[[]domain.Task]
 //	@Failure		500	{object}	httpx.ErrorResponse
 //	@Router			/tasks [get]
 func (h *Handler) List(c fiber.Ctx) error {
-	tasks := h.repo.List()
-	items := make([]Task, len(tasks))
-	for i, t := range tasks {
-		items[i] = toTaskDTO(t)
-	}
-	total := len(items)
-	return httpx.List(c, items, &httpx.Meta{Total: &total})
+	tasks := h.svc.List()
+	total := len(tasks)
+	return httpx.List(c, tasks, &httpx.Meta{Total: &total})
 }
 
 // Create godoc
@@ -59,59 +54,21 @@ func (h *Handler) List(c fiber.Ctx) error {
 //	@Tags			tasks
 //	@Accept			json
 //	@Produce		json
-//	@Param			request	body		CreateTaskRequest	true	"Create Task Request"
-//	@Success		201		{object}	httpx.Response[Task]
+//	@Param			request	body		domain.CreateTaskRequest	true	"Create Task Request"
+//	@Success		201		{object}	httpx.Response[domain.Task]
 //	@Failure		400		{object}	httpx.ErrorResponse
 //	@Failure		500		{object}	httpx.ErrorResponse
 //	@Router			/tasks [post]
 func (h *Handler) Create(c fiber.Ctx) error {
-	var req CreateTaskRequest
+	var req domain.CreateTaskRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return httpx.BadRequest(err)
 	}
-
-	if strings.TrimSpace(req.Title) == "" {
-		return httpx.BadRequest(domain.ErrTaskTitleEmpty)
+	t, err := h.svc.Create(req)
+	if err != nil {
+		return mapErr(err)
 	}
-
-	var status *domain.TaskStatus
-	if req.Status != nil {
-		s := domain.TaskStatus(*req.Status)
-		status = &s
-	}
-
-	var priority *domain.TaskPriority
-	if req.Priority != nil {
-		p := domain.TaskPriority(*req.Priority)
-		priority = &p
-	}
-
-	var kind *domain.TaskType
-	if req.Type != nil {
-		t := domain.TaskType(*req.Type)
-		kind = &t
-	}
-
-	var assignee *domain.Assignee
-	if req.Assignee != nil {
-		assignee = &domain.Assignee{
-			ID:   req.Assignee.ID,
-			Name: req.Assignee.Name,
-		}
-	}
-
-	created := h.repo.Create(repo.CreateInput{
-		Title:       req.Title,
-		Description: req.Description,
-		Status:      status,
-		Priority:    priority,
-		Type:        kind,
-		Assignee:    assignee,
-		DueDate:     req.DueDate,
-		Labels:      req.Labels,
-	})
-
-	return httpx.Created(c, toTaskDTO(created))
+	return httpx.Created(c, t)
 }
 
 // Get godoc
@@ -122,19 +79,16 @@ func (h *Handler) Create(c fiber.Ctx) error {
 //	@Tags			tasks
 //	@Produce		json
 //	@Param			id	path		string	true	"Task ID"
-//	@Success		200	{object}	httpx.Response[Task]
+//	@Success		200	{object}	httpx.Response[domain.Task]
 //	@Failure		404	{object}	httpx.ErrorResponse
 //	@Failure		500	{object}	httpx.ErrorResponse
 //	@Router			/tasks/{id} [get]
 func (h *Handler) Get(c fiber.Ctx) error {
-	t, err := h.repo.Get(c.Params("id"))
+	t, err := h.svc.Get(c.Params("id"))
 	if err != nil {
-		if errors.Is(err, domain.ErrTaskNotFound) {
-			return httpx.NotFound(domain.ErrTaskNotFound)
-		}
-		return err
+		return mapErr(err)
 	}
-	return httpx.OK(c, toTaskDTO(t))
+	return httpx.OK(c, t)
 }
 
 // Update godoc
@@ -145,68 +99,23 @@ func (h *Handler) Get(c fiber.Ctx) error {
 //	@Tags			tasks
 //	@Accept			json
 //	@Produce		json
-//	@Param			id		path		string				true	"Task ID"
-//	@Param			request	body		UpdateTaskRequest	true	"Update Task Request"
-//	@Success		200		{object}	httpx.Response[Task]
+//	@Param			id		path		string						true	"Task ID"
+//	@Param			request	body		domain.UpdateTaskRequest	true	"Update Task Request"
+//	@Success		200		{object}	httpx.Response[domain.Task]
 //	@Failure		400		{object}	httpx.ErrorResponse
 //	@Failure		404		{object}	httpx.ErrorResponse
 //	@Failure		500		{object}	httpx.ErrorResponse
 //	@Router			/tasks/{id} [patch]
 func (h *Handler) Update(c fiber.Ctx) error {
-	var req UpdateTaskRequest
+	var req domain.UpdateTaskRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return httpx.BadRequest(err)
 	}
-
-	if req.Title != nil && strings.TrimSpace(*req.Title) == "" {
-		return httpx.BadRequest(domain.ErrTaskTitleEmpty)
-	}
-
-	var status *domain.TaskStatus
-	if req.Status != nil {
-		s := domain.TaskStatus(*req.Status)
-		status = &s
-	}
-
-	var priority *domain.TaskPriority
-	if req.Priority != nil {
-		p := domain.TaskPriority(*req.Priority)
-		priority = &p
-	}
-
-	var kind *domain.TaskType
-	if req.Type != nil {
-		t := domain.TaskType(*req.Type)
-		kind = &t
-	}
-
-	var assignee *domain.Assignee
-	if req.Assignee != nil {
-		assignee = &domain.Assignee{
-			ID:   req.Assignee.ID,
-			Name: req.Assignee.Name,
-		}
-	}
-
-	updated, err := h.repo.Update(c.Params("id"), repo.UpdateInput{
-		Title:         req.Title,
-		Description:   req.Description,
-		Status:        status,
-		Priority:      priority,
-		Type:          kind,
-		Assignee:      assignee,
-		ClearAssignee: req.ClearAssignee,
-		DueDate:       req.DueDate,
-		Labels:        req.Labels,
-	})
+	t, err := h.svc.Update(c.Params("id"), req)
 	if err != nil {
-		if errors.Is(err, domain.ErrTaskNotFound) {
-			return httpx.NotFound(domain.ErrTaskNotFound)
-		}
-		return err
+		return mapErr(err)
 	}
-
-	return httpx.OK(c, toTaskDTO(updated))
+	return httpx.OK(c, t)
 }
 
 // ListActivity godoc
@@ -217,25 +126,17 @@ func (h *Handler) Update(c fiber.Ctx) error {
 //	@Tags			tasks
 //	@Produce		json
 //	@Param			id	path		string	true	"Task ID"
-//	@Success		200	{object}	httpx.Response[[]Activity]
+//	@Success		200	{object}	httpx.Response[[]domain.Activity]
 //	@Failure		404	{object}	httpx.ErrorResponse
 //	@Failure		500	{object}	httpx.ErrorResponse
 //	@Router			/tasks/{id}/activity [get]
 func (h *Handler) ListActivity(c fiber.Ctx) error {
-	acts, err := h.repo.ListActivity(c.Params("id"))
+	acts, err := h.svc.ListActivity(c.Params("id"))
 	if err != nil {
-		if errors.Is(err, domain.ErrTaskNotFound) {
-			return httpx.NotFound(domain.ErrTaskNotFound)
-		}
-		return err
+		return mapErr(err)
 	}
-
-	items := make([]Activity, len(acts))
-	for i, a := range acts {
-		items[i] = toActivityDTO(a)
-	}
-	total := len(items)
-	return httpx.List(c, items, &httpx.Meta{Total: &total})
+	total := len(acts)
+	return httpx.List(c, acts, &httpx.Meta{Total: &total})
 }
 
 // CreateActivity godoc
@@ -246,72 +147,33 @@ func (h *Handler) ListActivity(c fiber.Ctx) error {
 //	@Tags			tasks
 //	@Accept			json
 //	@Produce		json
-//	@Param			id		path		string					true	"Task ID"
-//	@Param			request	body		CreateActivityRequest	true	"Create Activity Request"
-//	@Success		201		{object}	httpx.Response[Activity]
+//	@Param			id		path		string							true	"Task ID"
+//	@Param			request	body		domain.CreateActivityRequest	true	"Create Activity Request"
+//	@Success		201		{object}	httpx.Response[domain.Activity]
 //	@Failure		400		{object}	httpx.ErrorResponse
 //	@Failure		404		{object}	httpx.ErrorResponse
 //	@Failure		500		{object}	httpx.ErrorResponse
 //	@Router			/tasks/{id}/activity [post]
 func (h *Handler) CreateActivity(c fiber.Ctx) error {
-	var req CreateActivityRequest
+	var req domain.CreateActivityRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return httpx.BadRequest(err)
 	}
-
-	if strings.TrimSpace(req.Body) == "" {
-		return httpx.BadRequest(domain.ErrActivityBodyEmpty)
-	}
-
-	var kind domain.ActivityKind
-	if req.Kind != nil {
-		kind = domain.ActivityKind(*req.Kind)
-	}
-
-	act, err := h.repo.AddActivity(c.Params("id"), kind, req.Author, req.Body)
+	a, err := h.svc.CreateActivity(c.Params("id"), req)
 	if err != nil {
-		if errors.Is(err, domain.ErrTaskNotFound) {
-			return httpx.NotFound(domain.ErrTaskNotFound)
-		}
+		return mapErr(err)
+	}
+	return httpx.Created(c, a)
+}
+
+// mapErr maps domain sentinel errors to httpx status errors.
+func mapErr(err error) error {
+	switch {
+	case errors.Is(err, domain.ErrTaskNotFound):
+		return httpx.NotFound(err)
+	case errors.Is(err, domain.ErrTaskTitleEmpty), errors.Is(err, domain.ErrActivityBodyEmpty):
+		return httpx.BadRequest(err)
+	default:
 		return err
-	}
-
-	return httpx.Created(c, toActivityDTO(act))
-}
-
-func toTaskDTO(t domain.Task) Task {
-	dto := Task{
-		ID:           t.ID,
-		Key:          t.Key,
-		Source:       TaskSource(t.Source),
-		ExternalID:   t.ExternalID,
-		ExternalURL:  t.ExternalURL,
-		Title:        t.Title,
-		Description:  t.Description,
-		Status:       TaskStatus(t.Status),
-		SourceStatus: t.SourceStatus,
-		Priority:     TaskPriority(t.Priority),
-		Type:         TaskType(t.Type),
-		DueDate:      t.DueDate,
-		Labels:       t.Labels,
-		CreatedAt:    t.CreatedAt,
-		UpdatedAt:    t.UpdatedAt,
-	}
-	if t.Assignee != nil {
-		dto.Assignee = &Assignee{
-			ID:   t.Assignee.ID,
-			Name: t.Assignee.Name,
-		}
-	}
-	return dto
-}
-
-func toActivityDTO(a domain.Activity) Activity {
-	return Activity{
-		ID:        a.ID,
-		Kind:      ActivityKind(a.Kind),
-		Author:    a.Author,
-		Body:      a.Body,
-		CreatedAt: a.CreatedAt,
 	}
 }
