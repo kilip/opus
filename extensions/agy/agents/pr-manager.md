@@ -2,7 +2,7 @@
 
 name: pr-manager
 description: Git and GitHub PR lifecycle subagent handling branch publishing, CI monitoring, fast-forward linear merges (pr-pull-ff), and bot squash merges (pr-deps-squash).
-model: flash
+model: flash_lite
 subagent: true
 tools:
 

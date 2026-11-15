@@ -6,7 +6,7 @@ description: Autonomous Issue-to-PR workflow orchestrator. Use when asked to res
 
 # Builder Orchestrator
 
-Execute GitHub issues (`#ID`) end-to-end as a thin **Orchestrator** delegating heavy work to four isolated subagents: `planner`, `coder`, `verifier`, and `pr-manager`.
+Execute GitHub issues (`#ID`) end-to-end as a thin **Orchestrator** delegating heavy work to four isolated subagents: `planner` (`flash_lite`), `coder` (`flash`), `verifier` (`flash_lite`), and `pr-manager` (`flash_lite`). Pass `Model` (`pro`, `flash`, `flash_lite`, `inherit`) to `invoke_subagent` only when the user explicitly requests a tier override.
 
 ---
 
@@ -27,7 +27,7 @@ Execute GitHub issues (`#ID`) end-to-end as a thin **Orchestrator** delegating h
    gh issue edit <ID> --remove-label "status:todo,status:blocked" --add-label "status:in-progress"
    ```
 4. **Branch Gate** (never write code on `main`):
-   Map label to prefix (`type:feature` -> `feat`, `type:bug` -> `fix`, `type:chore` -> `chore`):
+   Map label to prefix (`type:feat`/`type:feature` -> `feat`, `type:bug`/`type:fix` -> `fix`, `type:chore` -> `chore`):
 
    ```bash
    git checkout main && git pull --ff-only

@@ -2,7 +2,7 @@
 
 name: coder
 description: Precision implementation subagent that executes pointer-based plans, runs targeted tests, and creates atomic conventional commits.
-model: inherit
+model: flash
 subagent: true
 tools:
 
