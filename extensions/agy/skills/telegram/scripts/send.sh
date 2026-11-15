@@ -152,7 +152,7 @@ post_telegram() {
   local raw_resp http_code body
 
   while true; do
-    if raw_resp="$(curl -s --connect-timeout 10 --max-time 30 -w $'\n%{http_code}' -X POST "$@" "${API_BASE}/${endpoint}")"; then
+    if raw_resp="$(curl -sS --connect-timeout 10 --max-time 30 -w $'\n%{http_code}' -X POST "$@" "${API_BASE}/${endpoint}")"; then
       http_code="${raw_resp##*$'\n'}"
       body="${raw_resp%$'\n'*}"
 
