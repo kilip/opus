@@ -14,6 +14,7 @@ import (
 	"github.com/kilip/opus/ent"
 	"github.com/kilip/opus/internal/auth/domain"
 	"github.com/kilip/opus/internal/auth/handler"
+	"github.com/kilip/opus/internal/auth/provider"
 	"github.com/kilip/opus/internal/auth/repo"
 	"github.com/kilip/opus/internal/auth/service"
 	"github.com/kilip/opus/internal/platform/httpx"
@@ -30,12 +31,27 @@ var ErrRateLimited = domain.ErrRateLimited
 // RateLimitConfig configures OTP request rate limits.
 type RateLimitConfig = handler.RateLimitConfig
 
+// Provider is an alias for provider.Provider.
+type Provider = provider.Provider
+
+// ProviderRegistry is an alias for provider.Registry.
+type ProviderRegistry = provider.Registry
+
+// ProviderConfig is an alias for provider.Config.
+type ProviderConfig = provider.Config
+
+// NewProviderRegistry creates an OAuth2 provider registry.
+func NewProviderRegistry(cfg ProviderConfig) *ProviderRegistry {
+	return provider.NewRegistry(cfg)
+}
+
 // AuthConfig holds auth-specific configuration.
 type AuthConfig struct {
 	BaseURL       string
 	SessionSecret string
 	SessionTTL    time.Duration
 	RateLimit     RateLimitConfig
+	Registry      *provider.Registry
 }
 
 // Auth is the auth feature facade.
@@ -65,6 +81,7 @@ func NewWithMailer(db *ent.Client, cfg AuthConfig, m mailer.Mailer) *Auth {
 	svc := service.New(repo.New(db), repo.NewOTPRepo(db), m, service.Config{
 		Secret:     secret,
 		SessionTTL: cfg.SessionTTL,
+		Registry:   cfg.Registry,
 	})
 	cc := handler.CookieConfig{
 		Secure: strings.HasPrefix(cfg.BaseURL, "https"),

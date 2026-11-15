@@ -95,6 +95,23 @@ func (f *fakeSetupRepo) CreateUserAndSession(_ context.Context, email, tokenHash
 	return s, nil
 }
 
+func (f *fakeSetupRepo) FindAccount(_ context.Context, _, _ string) (*domain.Account, error) {
+	return nil, nil
+}
+
+func (f *fakeSetupRepo) CreateAccount(_ context.Context, _ uuid.UUID, _, _, _ string) (*domain.Account, error) {
+	return nil, nil
+}
+
+func (f *fakeSetupRepo) GetOwner(_ context.Context) (*domain.User, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, u := range f.users {
+		return u, nil
+	}
+	return nil, nil
+}
+
 var _ repo.Repo = (*fakeSetupRepo)(nil)
 
 // --- fakeSetupOTPRepo ---

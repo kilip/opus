@@ -47,10 +47,13 @@ func (h *Handler) Register(r fiber.Router) {
 	r.Post("/logout", h.logout)
 }
 
-// RegisterPublic mounts public OTP routes (before auth middleware).
+// RegisterPublic mounts public routes (before auth middleware).
 func (h *Handler) RegisterPublic(r fiber.Router) {
 	r.Post("/otp/request", h.ipLimiter, h.emailLimiter, h.requestOTP)
 	r.Post("/otp/verify", h.verifyOTP)
+	r.Get("/providers", h.listProviders)
+	r.Get("/oauth/:provider", h.oauthAuthorize)
+	r.Get("/oauth/:provider/callback", h.oauthCallback)
 }
 
 // RegisterSetup mounts public setup routes (before auth middleware).
@@ -114,6 +117,10 @@ func mapErr(err error) error {
 		return httpx.NewError(fiber.StatusTooManyRequests, err)
 	case errors.Is(err, domain.ErrSetupClosed):
 		return httpx.Conflict(err)
+	case errors.Is(err, domain.ErrProviderNotFound):
+		return httpx.NotFound(err)
+	case errors.Is(err, domain.ErrAccountNotAllowed), errors.Is(err, domain.ErrSetupRequired), errors.Is(err, domain.ErrStateMismatch):
+		return httpx.NewError(fiber.StatusBadRequest, err)
 	default:
 		return err
 	}

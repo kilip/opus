@@ -12,9 +12,11 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/kilip/opus/internal/auth/domain"
+	"github.com/kilip/opus/internal/auth/provider"
 	"github.com/kilip/opus/internal/auth/repo"
 	"github.com/kilip/opus/internal/platform/mailer"
 )
@@ -32,6 +34,8 @@ type Config struct {
 	SessionTTL time.Duration
 	// Now is the clock; defaults to time.Now. Injectable for tests.
 	Now func() time.Time
+	// Registry holds configured OAuth2 identity providers.
+	Registry *provider.Registry
 }
 
 // Auth owns OTP, session and setup business rules.
@@ -39,6 +43,7 @@ type Auth struct {
 	sessions repo.Repo
 	otps     repo.OTPRepo
 	mailer   mailer.Mailer
+	registry *provider.Registry
 	secret   string
 	ttl      time.Duration
 	now      func() time.Time
@@ -54,7 +59,15 @@ func New(sessions repo.Repo, otps repo.OTPRepo, m mailer.Mailer, cfg Config) *Au
 	if now == nil {
 		now = time.Now
 	}
-	return &Auth{sessions: sessions, otps: otps, mailer: m, secret: cfg.Secret, ttl: ttl, now: now}
+	return &Auth{
+		sessions: sessions,
+		otps:     otps,
+		mailer:   m,
+		registry: cfg.Registry,
+		secret:   cfg.Secret,
+		ttl:      ttl,
+		now:      now,
+	}
 }
 
 // Session resolves a raw session token to a live session.
@@ -241,4 +254,165 @@ func generateOTPCode() (string, error) {
 		return "", err
 	}
 	return fmt.Sprintf("%06d", binary.BigEndian.Uint32(b)%1_000_000), nil
+}
+
+// EnabledProviders returns the list of configured and enabled OAuth identity providers.
+func (s *Auth) EnabledProviders() []domain.ProviderItem {
+	if s.registry == nil {
+		return []domain.ProviderItem{}
+	}
+	names := s.registry.Enabled()
+	items := make([]domain.ProviderItem, 0, len(names))
+	for _, name := range names {
+		p, ok := s.registry.Get(name)
+		if !ok {
+			continue
+		}
+		items = append(items, domain.ProviderItem{
+			Name:  p.Name(),
+			Label: p.Label(),
+		})
+	}
+	return items
+}
+
+// HasProvider reports whether providerName is registered and enabled.
+func (s *Auth) HasProvider(providerName string) bool {
+	if s.registry == nil {
+		return false
+	}
+	_, ok := s.registry.Get(strings.ToLower(providerName))
+	return ok
+}
+
+// OAuthAuthorize generates an authorization URL, state, and PKCE verifier for providerName.
+func (s *Auth) OAuthAuthorize(providerName string) (authURL, state, verifier string, err error) {
+	if s.registry == nil {
+		return "", "", "", domain.ErrProviderNotFound
+	}
+	p, ok := s.registry.Get(strings.ToLower(providerName))
+	if !ok {
+		return "", "", "", domain.ErrProviderNotFound
+	}
+
+	state, err = randomString(32)
+	if err != nil {
+		return "", "", "", err
+	}
+	verifier, err = randomString(32)
+	if err != nil {
+		return "", "", "", err
+	}
+
+	authURL = p.AuthCodeURL(state, verifier)
+	return authURL, state, verifier, nil
+}
+
+const oauthCookieSeparator = "."
+
+// SignOAuthCookie signs the state and verifier using HMAC-SHA256 keyed with s.secret.
+func (s *Auth) SignOAuthCookie(state, verifier string) string {
+	payload := base64.RawURLEncoding.EncodeToString([]byte(state + ":" + verifier))
+	mac := hmac.New(sha256.New, []byte(s.secret))
+	mac.Write([]byte(payload))
+	sig := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+	return payload + oauthCookieSeparator + sig
+}
+
+// VerifyOAuthCookie checks the HMAC signature of val and extracts state and verifier.
+func (s *Auth) VerifyOAuthCookie(val string) (state, verifier string, ok bool) {
+	parts := strings.Split(val, oauthCookieSeparator)
+	if len(parts) != 2 {
+		return "", "", false
+	}
+	payload, sig := parts[0], parts[1]
+	mac := hmac.New(sha256.New, []byte(s.secret))
+	mac.Write([]byte(payload))
+	expectedSig := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+	if subtle.ConstantTimeCompare([]byte(sig), []byte(expectedSig)) != 1 {
+		return "", "", false
+	}
+	data, err := base64.RawURLEncoding.DecodeString(payload)
+	if err != nil {
+		return "", "", false
+	}
+	pieces := strings.SplitN(string(data), ":", 2)
+	if len(pieces) != 2 {
+		return "", "", false
+	}
+	return pieces[0], pieces[1], true
+}
+
+// OAuthCallback validates the OAuth callback parameters, exchanges the code with the provider,
+// and enforces linking policy. Returns a new raw session token on success.
+func (s *Auth) OAuthCallback(ctx context.Context, providerName, code, cookieState, queryState, verifier string) (string, error) {
+	if s.registry == nil {
+		return "", domain.ErrProviderNotFound
+	}
+	p, ok := s.registry.Get(strings.ToLower(providerName))
+	if !ok {
+		return "", domain.ErrProviderNotFound
+	}
+
+	if cookieState == "" || queryState == "" || subtle.ConstantTimeCompare([]byte(cookieState), []byte(queryState)) != 1 {
+		return "", domain.ErrStateMismatch
+	}
+
+	profile, err := p.Exchange(ctx, code, verifier)
+	if err != nil {
+		return "", err
+	}
+
+	if profile.ProviderUserID == "" {
+		return "", domain.ErrAccountNotAllowed
+	}
+
+	// Policy (a): existing account link -> log in as its user
+	acc, err := s.sessions.FindAccount(ctx, p.Name(), profile.ProviderUserID)
+	if err != nil {
+		return "", err
+	}
+	if acc != nil {
+		raw, hash, err := s.newToken()
+		if err != nil {
+			return "", err
+		}
+		if _, err = s.sessions.CreateSession(ctx, acc.UserID, hash, s.now().Add(s.ttl)); err != nil {
+			return "", err
+		}
+		return raw, nil
+	}
+
+	// Policy (b) & (c): linking requires an existing owner
+	owner, err := s.sessions.GetOwner(ctx)
+	if err != nil {
+		return "", err
+	}
+	if owner == nil {
+		return "", domain.ErrSetupRequired
+	}
+
+	if profile.EmailVerified && profile.Email != "" && strings.EqualFold(profile.Email, owner.Email) {
+		if _, err := s.sessions.CreateAccount(ctx, owner.ID, p.Name(), profile.ProviderUserID, profile.Email); err != nil {
+			return "", err
+		}
+		raw, hash, err := s.newToken()
+		if err != nil {
+			return "", err
+		}
+		if _, err = s.sessions.CreateSession(ctx, owner.ID, hash, s.now().Add(s.ttl)); err != nil {
+			return "", err
+		}
+		return raw, nil
+	}
+
+	return "", domain.ErrAccountNotAllowed
+}
+
+func randomString(n int) (string, error) {
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
