@@ -4,6 +4,8 @@ go 1.27.1
 
 require (
 	entgo.io/ent v0.14.6
+	github.com/getsentry/sentry-go v0.50.0
+	github.com/getsentry/sentry-go/fiberv3 v0.50.0
 	github.com/gofiber/fiber/v3 v3.7.0
 	github.com/google/uuid v1.6.0
 	github.com/sethvargo/go-envconfig v1.4.3
@@ -17,8 +19,6 @@ require (
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/bmatcuk/doublestar v1.3.4 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/getsentry/sentry-go v0.50.0 // indirect
-	github.com/getsentry/sentry-go/fiberv3 v0.50.0 // indirect
 	github.com/go-openapi/inflect v0.19.0 // indirect
 	github.com/gofiber/schema v1.9.3 // indirect
 	github.com/gofiber/utils/v2 v2.6.4 // indirect
