@@ -8,77 +8,33 @@ description: >-
 
 # Telegram Sender
 
-Send text messages or document attachments to the user's Telegram chat using [send.sh](./scripts/send.sh).
+Send messages or files via [send.sh](./scripts/send.sh).
 
-## Prerequisites & Configuration
+## Configuration
 
-Credentials are read in this order:
-1. Environment variables: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`
-2. Local git-ignored config: `<skill-dir>/settings.json` (see [settings.example.json](./settings.example.json))
+Checked in order:
+1. Env vars: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
+2. Git-ignored `<skill-dir>/settings.json` (`{"bot_token": "...", "chat_id": "..."}`, see [settings.example.json](./settings.example.json))
 
-```json
-{
-  "bot_token": "<bot-token>",
-  "chat_id": "<chat-id>"
-}
-```
+**If unconfigured**: Ask the user for `bot_token` (`@BotFather`) and `chat_id` (from `https://api.telegram.org/bot<TOKEN>/getUpdates`), save to `<skill-dir>/settings.json` with `chmod 600`, and verify `git check-ignore -q <skill-dir>/settings.json`. Never echo `bot_token`.
 
-**If `settings.json` is missing or `bot_token` / `chat_id` is empty** (and env vars are unset):
-1. **Ask the user** directly for their Telegram `bot_token` (from `@BotFather`) and `chat_id` (tell them they can get `chat_id` by messaging the bot once and checking `https://api.telegram.org/bot<TOKEN>/getUpdates`).
-2. Save the values to `<skill-dir>/settings.json` and restrict permissions (`chmod 600 <skill-dir>/settings.json`).
-3. Confirm `settings.json` is git-ignored (`git check-ignore -q <skill-dir>/settings.json`) and **never** print `bot_token` in terminal output or chat replies.
-
-## Usage
-
-Resolve the path to `scripts/send.sh` relative to this skill directory and run it via `bash`:
-
-### 1. Send a plain text message
+## Usage & Options
 
 ```bash
-bash <skill-dir>/scripts/send.sh --message "Build finished: all tests passed."
-```
-
-Or pipe multiline text via stdin:
-
-```bash
-cat <<'EOF' | bash <skill-dir>/scripts/send.sh
-Task completed:
-- Lint: PASS
-- Tests: PASS
+# Plain text or stdin
+bash <skill-dir>/scripts/send.sh -m "Build finished: all tests passed."
+cat <<'EOF' | bash <skill-dir>/scripts/send.sh -p HTML
+<b>Deploy complete</b>: <code>v1.2.3</code>
 EOF
+
+# File attachment (>4096 chars, logs, or reports)
+bash <skill-dir>/scripts/send.sh -f ./report.md -c "Verification report"
 ```
 
-### 2. Send formatted text (`HTML` or `MarkdownV2`)
+- `-m, --message <text>` (max 4096 chars) | `-f, --file <path>` | `-c, --caption <text>` (max 1024 chars)
+- `-p, --parse-mode <HTML|Markdown|MarkdownV2>` (prefer `HTML`) | `-s, --silent` | `-r, --reply-to <id>` | `-t, --chat-id <id>`
 
-Prefer `HTML` for formatting (fewer escaping pitfalls than `MarkdownV2`):
+## Rules
 
-```bash
-bash <skill-dir>/scripts/send.sh \
-  --parse-mode HTML \
-  --message "<b>Deploy complete</b>: <code>v1.2.3</code>"
-```
-
-### 3. Send a file or report (`sendDocument`)
-
-Use `--file` for logs, diffs, or reports longer than Telegram's 4096-character message limit:
-
-```bash
-bash <skill-dir>/scripts/send.sh \
-  --file ./report.md \
-  --caption "Verification report"
-```
-
-### Options
-
-- `-m, --message <text>` — Text message (max 4096 chars)
-- `-f, --file <path>` — File to send as document
-- `-c, --caption <text>` — Caption for `--file` (max 1024 chars)
-- `-p, --parse-mode <mode>` — `HTML`, `Markdown`, or `MarkdownV2`
-- `-s, --silent` — Deliver without notification sound
-- `-r, --reply-to <id>` — Reply to a specific message ID
-- `-t, --chat-id <id>` — Override `TELEGRAM_CHAT_ID`
-
-## Rules & Verification
-
-1. **Never leak secrets**: Never include tokens, API keys, `.env` contents, or credentials in Telegram messages, and never echo `$TELEGRAM_BOT_TOKEN` in terminal output.
-2. **Verify delivery**: Confirm `send.sh` exits `0` and returns JSON containing `"ok":true`.
+1. **No secret leaks**: Never send or print tokens, keys, or `.env` contents.
+2. **Verify delivery**: Confirm exit code `0` and `"ok":true` in JSON output.
