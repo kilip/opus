@@ -30,6 +30,64 @@ export class ApiError extends Error {
 	}
 }
 
+export function isAuthOrSetupPath(urlOrPath: string): boolean {
+	let path = urlOrPath;
+	try {
+		path = new URL(urlOrPath, "http://localhost").pathname;
+	} catch {
+		// ponytail: fallback if urlOrPath is not a full URL or valid path
+	}
+	if (path.startsWith("/api/")) {
+		path = path.slice(4);
+	} else if (path === "/api") {
+		path = "/";
+	}
+	return (
+		path === "/auth" ||
+		path.startsWith("/auth/") ||
+		path === "/setup" ||
+		path.startsWith("/setup/")
+	);
+}
+
+export type QueryCacheRemover = {
+	removeQueries: (filters: { queryKey: readonly unknown[] }) => void;
+};
+
+export type UnauthorizedRedirectFn = (to: string) => void;
+
+let activeQueryClient: QueryCacheRemover | null = null;
+
+export function setActiveQueryClient(client: QueryCacheRemover | null) {
+	activeQueryClient = client;
+}
+
+let redirectFn: UnauthorizedRedirectFn = (to: string) => {
+	if (typeof window !== "undefined" && window.location.pathname !== to) {
+		window.location.assign(to);
+	}
+};
+
+export function setUnauthorizedRedirect(fn: UnauthorizedRedirectFn) {
+	redirectFn = fn;
+}
+
+export function handleUnauthorized(url: string) {
+	if (isAuthOrSetupPath(url)) {
+		return;
+	}
+	activeQueryClient?.removeQueries({ queryKey: ["session"] });
+	redirectFn("/login");
+}
+
+api.use({
+	async onResponse({ request, response }) {
+		if (response.status === 401) {
+			handleUnauthorized(request.url);
+		}
+	},
+});
+
 function extractErrorCode(error: unknown, status: number): string {
 	if (typeof error === "object" && error !== null) {
 		if ("error" in error && typeof error.error === "string" && error.error) {
