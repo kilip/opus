@@ -17,6 +17,7 @@ import (
 	"github.com/kilip/opus/internal/auth/handler"
 	"github.com/kilip/opus/internal/auth/repo"
 	"github.com/kilip/opus/internal/platform/httpx"
+	"github.com/kilip/opus/internal/platform/mailer"
 )
 
 // contextKey is a private type for context values.
@@ -42,6 +43,11 @@ type Auth struct {
 // If cfg.SessionSecret is empty, a random ephemeral secret is generated.
 // ponytail: ephemeral secret; sessions do not survive restarts without SESSION_SECRET
 func New(db *ent.Client, cfg AuthConfig) *Auth {
+	return NewWithMailer(db, cfg, nil)
+}
+
+// NewWithMailer creates an Auth feature with a mailer for OTP support.
+func NewWithMailer(db *ent.Client, cfg AuthConfig, m mailer.Mailer) *Auth {
 	secret := cfg.SessionSecret
 	if secret == "" {
 		b := make([]byte, 32)
@@ -52,13 +58,19 @@ func New(db *ent.Client, cfg AuthConfig) *Auth {
 	}
 
 	r := repo.New(db)
+	otpR := repo.NewOTPRepo(db)
 	cc := handler.CookieConfig{
 		Secure:  strings.HasPrefix(cfg.BaseURL, "https"),
 		MaxAge:  int(cfg.SessionTTL.Seconds()),
 		BaseURL: cfg.BaseURL,
 	}
-	h := handler.New(r, secret, cc)
+	h := handler.NewWithOTP(r, otpR, m, secret, cc)
 	return &Auth{handler: h, secret: secret, repo: r}
+}
+
+// RegisterPublic mounts public OTP routes (before auth middleware).
+func (a *Auth) RegisterPublic(r fiber.Router) {
+	a.handler.RegisterPublic(r)
 }
 
 // Register mounts auth routes (me, logout) on r.
