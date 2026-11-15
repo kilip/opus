@@ -91,3 +91,27 @@ func TestConfig_SMTPDefaults(t *testing.T) {
 		t.Errorf("expected default SMTPFrom to be empty, got %q", cfg.SMTPFrom)
 	}
 }
+
+func TestConfig_OAuthEnv(t *testing.T) {
+	t.Setenv("GITHUB_CLIENT_ID", "test-gh-id")
+	t.Setenv("GITHUB_CLIENT_SECRET", "test-gh-secret")
+	t.Setenv("GOOGLE_CLIENT_ID", "test-g-id")
+	t.Setenv("GOOGLE_CLIENT_SECRET", "test-g-secret")
+	t.Setenv("FACEBOOK_CLIENT_ID", "test-fb-id")
+	t.Setenv("FACEBOOK_CLIENT_SECRET", "test-fb-secret")
+
+	cfg, err := app.GetConfig(context.Background())
+	if err != nil {
+		t.Fatalf("GetConfig returned unexpected error: %v", err)
+	}
+
+	if cfg.GitHubClientID != "test-gh-id" || cfg.GitHubClientSecret != "test-gh-secret" {
+		t.Errorf("unexpected github oauth config: id=%q secret=%q", cfg.GitHubClientID, cfg.GitHubClientSecret)
+	}
+	if cfg.GoogleClientID != "test-g-id" || cfg.GoogleClientSecret != "test-g-secret" {
+		t.Errorf("unexpected google oauth config: id=%q secret=%q", cfg.GoogleClientID, cfg.GoogleClientSecret)
+	}
+	if cfg.FacebookClientID != "test-fb-id" || cfg.FacebookClientSecret != "test-fb-secret" {
+		t.Errorf("unexpected facebook oauth config: id=%q secret=%q", cfg.FacebookClientID, cfg.FacebookClientSecret)
+	}
+}

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kilip/opus/ent/account"
 	"github.com/kilip/opus/ent/otp"
 	"github.com/kilip/opus/ent/schema"
 	"github.com/kilip/opus/ent/session"
@@ -16,6 +17,32 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	accountFields := schema.Account{}.Fields()
+	_ = accountFields
+	// accountDescProvider is the schema descriptor for provider field.
+	accountDescProvider := accountFields[2].Descriptor()
+	// account.ProviderValidator is a validator for the "provider" field. It is called by the builders before save.
+	account.ProviderValidator = accountDescProvider.Validators[0].(func(string) error)
+	// accountDescProviderUserID is the schema descriptor for provider_user_id field.
+	accountDescProviderUserID := accountFields[3].Descriptor()
+	// account.ProviderUserIDValidator is a validator for the "provider_user_id" field. It is called by the builders before save.
+	account.ProviderUserIDValidator = accountDescProviderUserID.Validators[0].(func(string) error)
+	// accountDescEmail is the schema descriptor for email field.
+	accountDescEmail := accountFields[4].Descriptor()
+	// account.EmailValidator is a validator for the "email" field. It is called by the builders before save.
+	account.EmailValidator = accountDescEmail.Validators[0].(func(string) error)
+	// accountDescEmailVerified is the schema descriptor for email_verified field.
+	accountDescEmailVerified := accountFields[5].Descriptor()
+	// account.DefaultEmailVerified holds the default value on creation for the email_verified field.
+	account.DefaultEmailVerified = accountDescEmailVerified.Default.(bool)
+	// accountDescCreatedAt is the schema descriptor for created_at field.
+	accountDescCreatedAt := accountFields[6].Descriptor()
+	// account.DefaultCreatedAt holds the default value on creation for the created_at field.
+	account.DefaultCreatedAt = accountDescCreatedAt.Default.(func() time.Time)
+	// accountDescID is the schema descriptor for id field.
+	accountDescID := accountFields[0].Descriptor()
+	// account.DefaultID holds the default value on creation for the id field.
+	account.DefaultID = accountDescID.Default.(func() uuid.UUID)
 	otpFields := schema.OTP{}.Fields()
 	_ = otpFields
 	// otpDescEmail is the schema descriptor for email field.
