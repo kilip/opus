@@ -1,9 +1,9 @@
 import { QueryClient } from "@tanstack/react-query";
 
-import { ApiError } from "./client";
+import { ApiError, setActiveQueryClient } from "./client";
 
 export function createQueryClient() {
-	return new QueryClient({
+	const client = new QueryClient({
 		defaultOptions: {
 			queries: {
 				staleTime: 30_000,
@@ -18,4 +18,6 @@ export function createQueryClient() {
 			},
 		},
 	});
+	setActiveQueryClient(client);
+	return client;
 }

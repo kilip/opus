@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation } from "react-router";
 
 import { apps } from "~/apps";
+import { useLogout } from "~/shared/auth/session";
 import { Avatar } from "~/shared/components/Avatar";
 import { Icon, type IconName } from "~/shared/components/Icon";
 import { Popover } from "~/shared/components/Popover";
@@ -96,6 +97,7 @@ const THEMES: { id: ThemePref; label: string; icon: IconName }[] = [
 
 function UserMenu() {
 	const { pref, setPref } = useTheme();
+	const logout = useLogout();
 
 	return (
 		<Popover
@@ -135,6 +137,10 @@ function UserMenu() {
 			</fieldset>
 			<Link
 				to="/login"
+				onClick={(e) => {
+					e.preventDefault();
+					logout.mutate();
+				}}
 				className="flex items-center gap-2 rounded-md px-2 py-2 hover:bg-surface-2"
 			>
 				<Icon name="logout" size={16} />
