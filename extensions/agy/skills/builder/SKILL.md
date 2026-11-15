@@ -45,7 +45,7 @@ Invoke `planner` via `invoke_subagent`:
 - `Workspace`: `"inherit"`
 - `Prompt`: Pass issue `#<ID>`, title, body, `AC1..ACn`, and Definition of Done.
 
-Wait for the `<= 40` line pointer-based Implementation Plan.
+Wait for the `<= 40` line pointer-based Implementation Plan, then save it as an artifact at `<appDataDir>/brain/<conversation-id>/issue-<ID>-plan.md` using `write_file` with `ArtifactMetadata` (`UserFacing: true`, `RequestFeedback: false`).
 
 ---
 
@@ -56,7 +56,7 @@ Invoke `coder` via `invoke_subagent`:
 - `TypeName`: `"coder"`
 - `Role`: `"Issue #<ID> Coder"`
 - `Workspace`: `"inherit"`
-- `Prompt`: Pass the Planner's Implementation Plan and `AC1..ACn`.
+- `Prompt`: Pass the Planner's Implementation Plan (and artifact path) plus `AC1..ACn`.
 
 Save the returned `conversationId`. If `coder` reports an unresolved blocker after 1 warm retry via `send_message`, revert labels (`--remove-label "status:in-progress" --add-label "status:blocked"`) and stop.
 
