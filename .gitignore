@@ -18,4 +18,6 @@ coverage.out
 .idea/
 .vscode/
 *~
-*.swp
+*.swap
+opus.db
+/data/
