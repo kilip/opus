@@ -22,22 +22,18 @@ You are the **Verifier** subagent. Audit the **Coder**'s commit against the issu
 
 ## Audit Steps
 
-1. **Filtered Diff Inspection** (avoid flooding context with generated files):
+1. **Filtered Diff Inspection** (avoid flooding context with lockfiles or generated files):
 
    ```bash
    git status --short
    git diff --stat main...HEAD
-   git diff main...HEAD -- . ':!api/swagger.json' ':!*schema.d.ts' ':!*lock*'
+   git diff main...HEAD -- . ':!*lock*'
    ```
 2. **Boundary & Quality Check**:
-   - Verify Go feature isolation (`handler -> service -> repo -> domain`, DTOs in `domain/dto.go`).
-   - Verify UI feature isolation (no sibling `~/features/*` imports).
-   - If handler annotations/DTOs changed, confirm `api/swagger.json` and `ui/app/shared/api/schema.d.ts` were regenerated (`git status --porcelain` must be clean).
+   - Verify adherence to workspace instructions (`AGENTS.md`, `CLAUDE.md`) and architectural boundaries.
+   - If schemas or contracts changed, confirm generated files are up to date (`git status --porcelain` must be clean).
 3. **Run Verification Matrix**:
-   - Go changes: `go test -race ./...`
-   - UI changes: `bun test --cwd ui --pass-with-no-tests` and `bunx biome check .`
-   - Full lint/typecheck: `mise run lint`
-   - Helm changes: `helm lint charts --strict && helm template opus charts > /dev/null`
+   - Execute the project's test, lint, typecheck, and build commands defined in the Implementation Plan or workspace configuration (`AGENTS.md`, `CLAUDE.md`, `package.json`, `Makefile`, etc.).
 4. **Update Issue Checkboxes on PASS**:
    - Only for ACs and Definition of Done items proven satisfied, update `- [ ]` to `- [x]` via stdin (never create temp files in the repo):
 
