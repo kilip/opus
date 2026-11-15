@@ -25,6 +25,12 @@ var ErrSetupRequired = errors.New("SETUP_REQUIRED")
 // ErrStateMismatch indicates an invalid or mismatched OAuth state parameter.
 var ErrStateMismatch = errors.New("STATE_MISMATCH")
 
+// ErrAccountAlreadyLinked indicates the OAuth account is already linked to another user.
+var ErrAccountAlreadyLinked = errors.New("ACCOUNT_ALREADY_LINKED")
+
+// ErrAccountNotFound indicates the requested account does not exist or does not belong to the user.
+var ErrAccountNotFound = errors.New("ACCOUNT_NOT_FOUND")
+
 // User represents the leaf user entity within auth domain.
 type User struct {
 	ID    uuid.UUID
@@ -38,6 +44,7 @@ type Account struct {
 	Provider       string
 	ProviderUserID string
 	Email          string
+	CreatedAt      time.Time
 }
 
 // Session represents an authenticated session.

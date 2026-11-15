@@ -103,6 +103,14 @@ func (f *fakeSetupRepo) CreateAccount(_ context.Context, _ uuid.UUID, _, _, _ st
 	return nil, nil
 }
 
+func (f *fakeSetupRepo) ListAccountsByUserID(_ context.Context, _ uuid.UUID) ([]*domain.Account, error) {
+	return nil, nil
+}
+
+func (f *fakeSetupRepo) DeleteAccount(_ context.Context, _, _ uuid.UUID) error {
+	return nil
+}
+
 func (f *fakeSetupRepo) GetOwner(_ context.Context) (*domain.User, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

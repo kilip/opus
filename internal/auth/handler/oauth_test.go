@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
@@ -181,7 +182,7 @@ func TestOAuth_Authorize(t *testing.T) {
 	}
 
 	// Verify cookie signature
-	state, verifier, ok := svc.VerifyOAuthCookie(cookie.Value)
+	state, verifier, _, ok := svc.VerifyOAuthCookie(cookie.Value)
 	if !ok || state == "" || verifier == "" {
 		t.Fatalf("failed to verify signed cookie: state=%q, verifier=%q, ok=%v", state, verifier, ok)
 	}
@@ -645,5 +646,228 @@ func TestOAuth_Callback_ExchangeError(t *testing.T) {
 	}
 	if loc := resp.Header.Get("Location"); loc != "/login?error=exchange_failed" {
 		t.Errorf("location: want /login?error=exchange_failed, got %s", loc)
+	}
+}
+
+// --- Account Linking tests (Issue #27) ---
+
+// AC2 & AC5: GET /api/auth/oauth/:provider?link=1 without valid session returns 401.
+func TestOAuth_Authorize_Link_Unauthenticated(t *testing.T) {
+	r := newFakeRepo()
+	reg := provider.NewRegistry(provider.Config{})
+	reg.Register(&fakeProvider{
+		name:        "github",
+		authCodeURL: "https://github.com/login/oauth/authorize",
+	})
+	app, _ := setupOAuthApp(r, reg)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/oauth/github?link=1", nil)
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("authorize link: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("status: want 401, got %d", resp.StatusCode)
+	}
+}
+
+// AC2: GET /api/auth/oauth/:provider?link=1 with valid session signs linkUserID into state cookie.
+func TestOAuth_Authorize_Link_Authenticated(t *testing.T) {
+	r := newFakeRepo()
+	userID := uuid.New()
+	hash := computeHash("link-auth-token", testSecret)
+	_, _ = r.CreateSession(context.Background(), userID, hash, time.Now().Add(time.Hour))
+
+	reg := provider.NewRegistry(provider.Config{})
+	reg.Register(&fakeProvider{
+		name:        "github",
+		authCodeURL: "https://github.com/login/oauth/authorize",
+	})
+	app, svc := setupOAuthApp(r, reg)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/oauth/github?link=1", nil)
+	req.Header.Set("Cookie", handler.SessionCookie+"=link-auth-token")
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("authorize link: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusFound {
+		t.Fatalf("status: want 302, got %d", resp.StatusCode)
+	}
+
+	cookie := findCookie(resp, handler.OAuthStateCookie)
+	if cookie == nil {
+		t.Fatal("expected opus_oauth cookie to be set")
+	}
+
+	state, verifier, linkUID, ok := svc.VerifyOAuthCookie(cookie.Value)
+	if !ok || state == "" || verifier == "" {
+		t.Fatalf("failed to verify signed cookie: state=%q, verifier=%q, ok=%v", state, verifier, ok)
+	}
+	if linkUID != userID.String() {
+		t.Fatalf("linkUID: want %s, got %s", userID.String(), linkUID)
+	}
+}
+
+// AC2 & AC5: Callback creates Account for authenticated user instead of logging in.
+func TestOAuth_Link_Success(t *testing.T) {
+	r := newFakeRepo()
+	userID := uuid.New()
+	r.owner = &domain.User{ID: userID, Email: "owner@example.com"}
+
+	reg := provider.NewRegistry(provider.Config{})
+	reg.Register(&fakeProvider{
+		name: "github",
+		profile: provider.Profile{
+			ProviderUserID: "gh-42",
+			Email:          "linked@github.com",
+			EmailVerified:  true,
+		},
+	})
+	app, svc := setupOAuthApp(r, reg)
+
+	const state = "link-state-ok"
+	cookieVal := svc.SignOAuthCookie(state, "verifier-val", userID.String())
+
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/oauth/github/callback?code=c1&state="+state, nil)
+	req.Header.Set("Cookie", handler.OAuthStateCookie+"="+cookieVal)
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("callback: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusFound {
+		t.Fatalf("status: want 302, got %d", resp.StatusCode)
+	}
+	if loc := resp.Header.Get("Location"); loc != "/" {
+		t.Fatalf("location: want /, got %s", loc)
+	}
+
+	// Verify no new session cookie was created (link flow does not log in)
+	sessCookie := findCookie(resp, handler.SessionCookie)
+	if sessCookie != nil && sessCookie.Value != "" {
+		t.Errorf("expected no session cookie in link callback response, got %s", sessCookie.Value)
+	}
+
+	// Verify account is created and linked to userID
+	acc, err := r.FindAccount(context.Background(), "github", "gh-42")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if acc == nil {
+		t.Fatal("expected account to be created")
+	}
+	if acc.UserID != userID {
+		t.Fatalf("account user ID: want %s, got %s", userID, acc.UserID)
+	}
+	if acc.Email != "linked@github.com" {
+		t.Fatalf("account email: want linked@github.com, got %s", acc.Email)
+	}
+}
+
+// AC3 & AC5: Linking an already linked account for the same user is idempotent.
+func TestOAuth_Link_Idempotent(t *testing.T) {
+	r := newFakeRepo()
+	userID := uuid.New()
+	r.owner = &domain.User{ID: userID, Email: "owner@example.com"}
+
+	// Pre-create linked account for userID
+	_, err := r.CreateAccount(context.Background(), userID, "github", "gh-idempotent", "idem@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reg := provider.NewRegistry(provider.Config{})
+	reg.Register(&fakeProvider{
+		name: "github",
+		profile: provider.Profile{
+			ProviderUserID: "gh-idempotent",
+			Email:          "idem@example.com",
+			EmailVerified:  true,
+		},
+	})
+	app, svc := setupOAuthApp(r, reg)
+
+	const state = "link-state-idem"
+	cookieVal := svc.SignOAuthCookie(state, "verifier-val", userID.String())
+
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/oauth/github/callback?code=c1&state="+state, nil)
+	req.Header.Set("Cookie", handler.OAuthStateCookie+"="+cookieVal)
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("callback: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusFound {
+		t.Fatalf("status: want 302, got %d", resp.StatusCode)
+	}
+	if loc := resp.Header.Get("Location"); loc != "/" {
+		t.Fatalf("location: want /, got %s", loc)
+	}
+
+	// Account count remains 1
+	accounts, _ := r.ListAccountsByUserID(context.Background(), userID)
+	if len(accounts) != 1 {
+		t.Fatalf("expected 1 account, got %d", len(accounts))
+	}
+}
+
+// AC3 & AC5: Linking an account already linked to a different user returns 409 ACCOUNT_ALREADY_LINKED.
+func TestOAuth_Link_CrossUserConflict(t *testing.T) {
+	r := newFakeRepo()
+	userA := uuid.New()
+	userB := uuid.New()
+
+	// Account is already linked to userA
+	_, err := r.CreateAccount(context.Background(), userA, "github", "gh-conflict", "a@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reg := provider.NewRegistry(provider.Config{})
+	reg.Register(&fakeProvider{
+		name: "github",
+		profile: provider.Profile{
+			ProviderUserID: "gh-conflict",
+			Email:          "conflict@example.com",
+			EmailVerified:  true,
+		},
+	})
+	app, svc := setupOAuthApp(r, reg)
+
+	// UserB attempts to link the same account
+	const state = "link-state-conflict"
+	cookieVal := svc.SignOAuthCookie(state, "verifier-val", userB.String())
+
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/oauth/github/callback?code=c1&state="+state, nil)
+	req.Header.Set("Cookie", handler.OAuthStateCookie+"="+cookieVal)
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("callback: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusConflict {
+		t.Fatalf("status: want 409 Conflict, got %d", resp.StatusCode)
+	}
+
+	var errResp httpx.ErrorResponse
+	if err := json.NewDecoder(resp.Body).Decode(&errResp); err != nil {
+		t.Fatal(err)
+	}
+	if errResp.Error != "ACCOUNT_ALREADY_LINKED" {
+		t.Fatalf("expected error ACCOUNT_ALREADY_LINKED, got %s", errResp.Error)
+	}
+
+	// Verify account still belongs to userA
+	acc, _ := r.FindAccount(context.Background(), "github", "gh-conflict")
+	if acc.UserID != userA {
+		t.Fatalf("account user ID changed to %s, should still be userA %s", acc.UserID, userA)
 	}
 }

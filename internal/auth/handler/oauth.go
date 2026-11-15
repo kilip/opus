@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
 	"github.com/kilip/opus/internal/auth/domain"
 	"github.com/kilip/opus/internal/platform/httpx"
 )
@@ -33,17 +34,28 @@ func (h *Handler) listProviders(c fiber.Ctx) error {
 // @ID authOAuthAuthorize
 // @Tags auth
 // @Param provider path string true "Provider name (e.g. github, google, facebook)"
+// @Param link query string false "Set to 1 to link provider to current authenticated user"
 // @Success 302 "Redirect to provider auth URL"
+// @Failure 401 {object} httpx.ErrorResponse
 // @Failure 404 {object} httpx.ErrorResponse
 // @Router /auth/oauth/{provider} [get]
 func (h *Handler) oauthAuthorize(c fiber.Ctx) error {
 	providerName := strings.ToLower(c.Params("provider"))
+	var linkUserID string
+	if c.Query("link") == "1" {
+		sess, err := h.svc.Session(c.Context(), c.Cookies(SessionCookie))
+		if err != nil {
+			return mapErr(err)
+		}
+		linkUserID = sess.UserID.String()
+	}
+
 	authURL, state, verifier, err := h.svc.OAuthAuthorize(providerName)
 	if err != nil {
 		return mapErr(err)
 	}
 
-	cookieVal := h.svc.SignOAuthCookie(state, verifier)
+	cookieVal := h.svc.SignOAuthCookie(state, verifier, linkUserID)
 	c.Cookie(&fiber.Cookie{
 		Name:     OAuthStateCookie,
 		Value:    cookieVal,
@@ -67,6 +79,7 @@ func (h *Handler) oauthAuthorize(c fiber.Ctx) error {
 // @Param state query string false "OAuth state parameter"
 // @Success 302 "Redirect to / on success or /login?error=<code> on failure"
 // @Failure 404 {object} httpx.ErrorResponse
+// @Failure 409 {object} httpx.ErrorResponse
 // @Router /auth/oauth/{provider}/callback [get]
 func (h *Handler) oauthCallback(c fiber.Ctx) error {
 	providerName := strings.ToLower(c.Params("provider"))
@@ -91,13 +104,24 @@ func (h *Handler) oauthCallback(c fiber.Ctx) error {
 	}
 
 	cookieVal := c.Cookies(OAuthStateCookie)
-	cookieState, verifier, ok := h.svc.VerifyOAuthCookie(cookieVal)
+	cookieState, verifier, linkUserID, ok := h.svc.VerifyOAuthCookie(cookieVal)
 	if !ok || cookieState == "" {
 		return c.Redirect().Status(fiber.StatusFound).To("/login?error=STATE_MISMATCH")
 	}
 
 	queryState := c.Query("state")
 	code := c.Query("code")
+
+	if linkUserID != "" {
+		parsedUID, err := uuid.Parse(linkUserID)
+		if err != nil {
+			return httpx.NewError(fiber.StatusBadRequest, domain.ErrUnauthorized)
+		}
+		if err := h.svc.OAuthLinkCallback(c.Context(), parsedUID, providerName, code, cookieState, queryState, verifier); err != nil {
+			return mapErr(err)
+		}
+		return c.Redirect().Status(fiber.StatusFound).To("/")
+	}
 
 	token, err := h.svc.OAuthCallback(c.Context(), providerName, code, cookieState, queryState, verifier)
 	if err != nil {

@@ -45,6 +45,8 @@ func New(svc *service.Auth, cc CookieConfig, rl ...RateLimitConfig) *Handler {
 func (h *Handler) Register(r fiber.Router) {
 	r.Get("/me", h.me)
 	r.Post("/logout", h.logout)
+	r.Get("/accounts", h.listAccounts)
+	r.Delete("/accounts/:id", h.unlinkAccount)
 }
 
 // RegisterPublic mounts public routes (before auth middleware).
@@ -115,9 +117,9 @@ func mapErr(err error) error {
 		return httpx.NewError(fiber.StatusUnauthorized, err)
 	case errors.Is(err, domain.ErrTooManyAttempts), errors.Is(err, domain.ErrRateLimited):
 		return httpx.NewError(fiber.StatusTooManyRequests, err)
-	case errors.Is(err, domain.ErrSetupClosed):
+	case errors.Is(err, domain.ErrSetupClosed), errors.Is(err, domain.ErrAccountAlreadyLinked):
 		return httpx.Conflict(err)
-	case errors.Is(err, domain.ErrProviderNotFound):
+	case errors.Is(err, domain.ErrProviderNotFound), errors.Is(err, domain.ErrAccountNotFound):
 		return httpx.NotFound(err)
 	case errors.Is(err, domain.ErrAccountNotAllowed), errors.Is(err, domain.ErrSetupRequired), errors.Is(err, domain.ErrStateMismatch):
 		return httpx.NewError(fiber.StatusBadRequest, err)

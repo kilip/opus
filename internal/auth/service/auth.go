@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/kilip/opus/internal/auth/domain"
 	"github.com/kilip/opus/internal/auth/provider"
 	"github.com/kilip/opus/internal/auth/repo"
@@ -310,37 +311,46 @@ func (s *Auth) OAuthAuthorize(providerName string) (authURL, state, verifier str
 
 const oauthCookieSeparator = "."
 
-// SignOAuthCookie signs the state and verifier using HMAC-SHA256 keyed with s.secret.
-func (s *Auth) SignOAuthCookie(state, verifier string) string {
-	payload := base64.RawURLEncoding.EncodeToString([]byte(state + ":" + verifier))
+// SignOAuthCookie signs the state, verifier, and optional linkUserID using HMAC-SHA256 keyed with s.secret.
+func (s *Auth) SignOAuthCookie(state, verifier string, linkUserID ...string) string {
+	raw := state + ":" + verifier
+	if len(linkUserID) > 0 && linkUserID[0] != "" {
+		raw += ":" + linkUserID[0]
+	}
+	payload := base64.RawURLEncoding.EncodeToString([]byte(raw))
 	mac := hmac.New(sha256.New, []byte(s.secret))
 	mac.Write([]byte(payload))
 	sig := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 	return payload + oauthCookieSeparator + sig
 }
 
-// VerifyOAuthCookie checks the HMAC signature of val and extracts state and verifier.
-func (s *Auth) VerifyOAuthCookie(val string) (state, verifier string, ok bool) {
+// VerifyOAuthCookie checks the HMAC signature of val and extracts state, verifier, and optional linkUserID.
+func (s *Auth) VerifyOAuthCookie(val string) (state, verifier, linkUserID string, ok bool) {
 	parts := strings.Split(val, oauthCookieSeparator)
 	if len(parts) != 2 {
-		return "", "", false
+		return "", "", "", false
 	}
 	payload, sig := parts[0], parts[1]
 	mac := hmac.New(sha256.New, []byte(s.secret))
 	mac.Write([]byte(payload))
 	expectedSig := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
 	if subtle.ConstantTimeCompare([]byte(sig), []byte(expectedSig)) != 1 {
-		return "", "", false
+		return "", "", "", false
 	}
 	data, err := base64.RawURLEncoding.DecodeString(payload)
 	if err != nil {
-		return "", "", false
+		return "", "", "", false
 	}
-	pieces := strings.SplitN(string(data), ":", 2)
-	if len(pieces) != 2 {
-		return "", "", false
+	pieces := strings.SplitN(string(data), ":", 3)
+	if len(pieces) < 2 {
+		return "", "", "", false
 	}
-	return pieces[0], pieces[1], true
+	state = pieces[0]
+	verifier = pieces[1]
+	if len(pieces) == 3 {
+		linkUserID = pieces[2]
+	}
+	return state, verifier, linkUserID, true
 }
 
 // OAuthCallback validates the OAuth callback parameters, exchanges the code with the provider,
@@ -407,6 +417,57 @@ func (s *Auth) OAuthCallback(ctx context.Context, providerName, code, cookieStat
 	}
 
 	return "", domain.ErrAccountNotAllowed
+}
+
+// OAuthLinkCallback handles the OAuth provider callback specifically for linking an external account
+// to an existing authenticated user.
+func (s *Auth) OAuthLinkCallback(ctx context.Context, userID uuid.UUID, providerName, code, cookieState, queryState, verifier string) error {
+	if s.registry == nil {
+		return domain.ErrProviderNotFound
+	}
+	p, ok := s.registry.Get(strings.ToLower(providerName))
+	if !ok {
+		return domain.ErrProviderNotFound
+	}
+
+	if cookieState == "" || queryState == "" || subtle.ConstantTimeCompare([]byte(cookieState), []byte(queryState)) != 1 {
+		return domain.ErrStateMismatch
+	}
+
+	profile, err := p.Exchange(ctx, code, verifier)
+	if err != nil {
+		return err
+	}
+
+	if profile.ProviderUserID == "" {
+		return domain.ErrAccountNotAllowed
+	}
+
+	acc, err := s.sessions.FindAccount(ctx, p.Name(), profile.ProviderUserID)
+	if err != nil {
+		return err
+	}
+	if acc != nil {
+		if acc.UserID != userID {
+			return domain.ErrAccountAlreadyLinked
+		}
+		// Idempotent: already linked to the current user
+		return nil
+	}
+
+	_, err = s.sessions.CreateAccount(ctx, userID, p.Name(), profile.ProviderUserID, profile.Email)
+	return err
+}
+
+// ListAccounts returns all external OAuth accounts linked to userID.
+func (s *Auth) ListAccounts(ctx context.Context, userID uuid.UUID) ([]*domain.Account, error) {
+	return s.sessions.ListAccountsByUserID(ctx, userID)
+}
+
+// UnlinkAccount removes the linked account with accountID belonging to userID.
+// Returns domain.ErrAccountNotFound if the account does not exist or belongs to another user.
+func (s *Auth) UnlinkAccount(ctx context.Context, userID, accountID uuid.UUID) error {
+	return s.sessions.DeleteAccount(ctx, userID, accountID)
 }
 
 func randomString(n int) (string, error) {
