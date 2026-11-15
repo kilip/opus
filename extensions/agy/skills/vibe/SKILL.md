@@ -1,7 +1,7 @@
 ---
 
 name: vibe
-description: Autonomous Issue-to-PR workflow orchestrator that resolves GitHub issues end-to-end without human intervention. Use when asked to vibe, resolve, fix, handle, implement, or work on GitHub issues end-to-end from code to PR (including "vibe issue", "garap issue", "kerjakan issue", "kerjakan #N", "selesaikan issue").
+description: Autonomous Issue-to-PR workflow orchestrator that resolves GitHub issues end-to-end without human intervention. Triggered explicitly with /vibe.
 ---
 
 # Vibe Orchestrator
