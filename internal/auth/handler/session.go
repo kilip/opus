@@ -56,6 +56,11 @@ func (h *Handler) RegisterPublic(r fiber.Router) {
 	r.Post("/otp/verify", h.verifyOTP)
 }
 
+// SetNow overrides the clock function; intended for tests only.
+func (h *Handler) SetNow(fn func() time.Time) {
+	h.now = fn
+}
+
 // me godoc
 // @Summary Get current user
 // @Description Returns the authenticated user's profile
