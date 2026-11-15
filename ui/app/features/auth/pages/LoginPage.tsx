@@ -1,11 +1,12 @@
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
-import { Navigate, useNavigate } from "react-router";
+import { Navigate, useNavigate, useSearchParams } from "react-router";
 
 import { ApiError } from "~/shared/api/client";
-import { Button } from "~/shared/components/Button";
+import { Button, buttonClass } from "~/shared/components/Button";
+import { Icon, type IconName, isIconName } from "~/shared/components/Icon";
 import { useRequestOTP, useVerifyOTP } from "../api/actions";
-import { RateLimitError } from "../api/errors";
-import { useSession, useSetupStatus } from "../api/queries";
+import { RateLimitError, resolveAuthError } from "../api/errors";
+import { useProviders, useSession, useSetupStatus } from "../api/queries";
 import { OtpInput } from "../components/OtpInput";
 import {
 	formatCooldownLabel,
@@ -17,6 +18,7 @@ export const meta = () => [{ title: "Log in · Opus" }];
 
 export default function LoginPage() {
 	const navigate = useNavigate();
+	const [searchParams] = useSearchParams();
 	const emailId = useId();
 	const codeId = useId();
 	const codeInputRef = useRef<HTMLInputElement>(null);
@@ -24,16 +26,26 @@ export default function LoginPage() {
 	const [step, setStep] = useState<1 | 2>(1);
 	const [email, setEmail] = useState("");
 	const [code, setCode] = useState("");
-	const [error, setError] = useState<string | null>(null);
+	const [error, setError] = useState<string | null>(() =>
+		resolveAuthError(searchParams.get("error")),
+	);
 	const [cooldown, setCooldown] = useState(0);
 
 	const { data: setupStatus, isLoading: isSetupLoading } = useSetupStatus();
 	const { data: user, isLoading: isSessionLoading } = useSession();
+	const { data: providers } = useProviders();
 
 	const requestOTP = useRequestOTP();
 	const verifyOTP = useVerifyOTP();
 
 	const isPending = requestOTP.isPending || verifyOTP.isPending;
+
+	useEffect(() => {
+		const urlError = resolveAuthError(searchParams.get("error"));
+		if (urlError) {
+			setError(urlError);
+		}
+	}, [searchParams]);
 
 	useEffect(() => {
 		if (step === 2) {
@@ -161,6 +173,40 @@ export default function LoginPage() {
 
 				{step === 1 ? (
 					<>
+						{providers && providers.length > 0 && (
+							<>
+								<div className="flex flex-col gap-2">
+									{providers.map((provider) => {
+										const name = provider.name ?? "";
+										const lowerName = name.toLowerCase();
+										const iconName = isIconName(lowerName)
+											? (lowerName as IconName)
+											: undefined;
+										return (
+											<a
+												key={name}
+												href={`/api/auth/oauth/${name}`}
+												className={buttonClass(
+													"secondary",
+													"h-10 w-full gap-2",
+												)}
+											>
+												{iconName && <Icon name={iconName} size={18} />}
+												<span>{`Continue with ${provider.label || name}`}</span>
+											</a>
+										);
+									})}
+								</div>
+
+								<div className="relative flex items-center justify-center">
+									<div className="w-full border-t border-line" />
+									<span className="bg-surface px-2 text-xs uppercase tracking-wider text-muted">
+										or
+									</span>
+								</div>
+							</>
+						)}
+
 						<div className="flex flex-col gap-1.5">
 							<label htmlFor={emailId} className="font-medium text-muted">
 								Email

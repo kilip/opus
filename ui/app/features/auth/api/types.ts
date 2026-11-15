@@ -10,3 +10,4 @@ export type User = Schemas["domain.UserResponse"];
 export type SetupStatus = Schemas["domain.SetupStatusResponse"];
 export type OTPRequestBody = Schemas["domain.OTPRequestBody"];
 export type OTPVerifyBody = Schemas["domain.OTPVerifyBody"];
+export type ProviderItem = Schemas["domain.ProviderItem"];
