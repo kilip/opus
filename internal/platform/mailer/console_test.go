@@ -28,3 +28,14 @@ func TestConsoleMailer_Send(t *testing.T) {
 		t.Errorf("log output missing body; got: %s", out)
 	}
 }
+
+func TestConsoleMailer_HeaderInjection(t *testing.T) {
+	m := mailer.NewConsole(nil)
+
+	if err := m.Send(context.Background(), "user@example.com\nBcc: evil@example.com", "Hi", "Body"); err == nil {
+		t.Error("expected error for recipient header injection")
+	}
+	if err := m.Send(context.Background(), "user@example.com", "Hi\rSubject: evil", "Body"); err == nil {
+		t.Error("expected error for subject header injection")
+	}
+}

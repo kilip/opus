@@ -28,6 +28,11 @@ type Config struct {
 	SentryDSN              string        `env:"SENTRY_DSN, default="`
 	SentryEnvironment      string        `env:"SENTRY_ENVIRONMENT, default=development"`
 	SentryTracesSampleRate float64       `env:"SENTRY_TRACES_SAMPLE_RATE, default=1.0"`
+	SMTPHost               string        `env:"SMTP_HOST, default="`
+	SMTPPort               int           `env:"SMTP_PORT, default=587"`
+	SMTPUsername           string        `env:"SMTP_USERNAME, default="`
+	SMTPPassword           string        `env:"SMTP_PASSWORD, default="`
+	SMTPFrom               string        `env:"SMTP_FROM, default="`
 }
 
 func loadEnvFile(path string) {
