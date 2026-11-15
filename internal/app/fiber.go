@@ -13,6 +13,8 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"github.com/gofiber/fiber/v3/middleware/static"
+	"github.com/kilip/opus/ent"
+	"github.com/kilip/opus/internal/auth"
 	"github.com/kilip/opus/internal/platform/httpx"
 	"github.com/kilip/opus/internal/task"
 	"github.com/kilip/opus/ui"
@@ -35,7 +37,7 @@ func healthCheck(c fiber.Ctx) error {
 }
 
 // GetFiber initializes HTTP server.
-func GetFiber(cfg Config, logger *slog.Logger) *fiber.App {
+func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client) *fiber.App {
 	app := fiber.New(fiber.Config{
 		AppName:      cfg.AppName,
 		ReadTimeout:  cfg.ReadTimeout,
@@ -85,6 +87,17 @@ func GetFiber(cfg Config, logger *slog.Logger) *fiber.App {
 
 	api := app.Group("/api")
 	api.Get("/health", healthCheck)
+
+	if db != nil {
+		authFeature := auth.New(db, auth.AuthConfig{
+			BaseURL:       cfg.BaseURL,
+			SessionSecret: cfg.SessionSecret,
+			SessionTTL:    cfg.SessionTTL,
+		})
+		authRoutes := api.Group("/auth")
+		authFeature.Register(authRoutes)
+		api.Use(authFeature.Middleware())
+	}
 	task.New().Register(api)
 
 	// ponytail: serves embedded SPA without custom Cache-Control headers; add immutable asset caching when CDN/traffic requires.

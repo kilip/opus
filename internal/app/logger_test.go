@@ -32,7 +32,7 @@ func TestGetFiber(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	f := GetFiber(cfg, GetLogger(cfg))
+	f := GetFiber(cfg, GetLogger(cfg), nil)
 
 	req := httptest.NewRequest("GET", "/api/health", nil)
 	resp, err := f.Test(req)
