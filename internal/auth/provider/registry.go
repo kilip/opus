@@ -6,6 +6,7 @@ import (
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/endpoints"
+	"golang.org/x/oauth2/github"
 )
 
 // Config holds OAuth provider credentials and base URL.
@@ -34,10 +35,10 @@ func NewRegistry(cfg Config) *Registry {
 	base := strings.TrimRight(cfg.BaseURL, "/")
 
 	if cfg.GitHubClientID != "" && cfg.GitHubClientSecret != "" {
-		r.providers["github"] = NewBaseProvider("github", oauth2.Config{
+		r.providers["github"] = NewGitHubProvider(oauth2.Config{
 			ClientID:     cfg.GitHubClientID,
 			ClientSecret: cfg.GitHubClientSecret,
-			Endpoint:     endpoints.GitHub,
+			Endpoint:     github.Endpoint,
 			RedirectURL:  base + "/api/auth/oauth/github/callback",
 			Scopes:       []string{"read:user", "user:email"},
 		})
