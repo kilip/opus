@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kilip/opus/ent/otp"
 	"github.com/kilip/opus/ent/schema"
+	"github.com/kilip/opus/ent/session"
 	"github.com/kilip/opus/ent/user"
 )
 
@@ -14,6 +16,42 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	otpFields := schema.OTP{}.Fields()
+	_ = otpFields
+	// otpDescEmail is the schema descriptor for email field.
+	otpDescEmail := otpFields[1].Descriptor()
+	// otp.EmailValidator is a validator for the "email" field. It is called by the builders before save.
+	otp.EmailValidator = otpDescEmail.Validators[0].(func(string) error)
+	// otpDescCodeHash is the schema descriptor for code_hash field.
+	otpDescCodeHash := otpFields[2].Descriptor()
+	// otp.CodeHashValidator is a validator for the "code_hash" field. It is called by the builders before save.
+	otp.CodeHashValidator = otpDescCodeHash.Validators[0].(func(string) error)
+	// otpDescAttempts is the schema descriptor for attempts field.
+	otpDescAttempts := otpFields[4].Descriptor()
+	// otp.DefaultAttempts holds the default value on creation for the attempts field.
+	otp.DefaultAttempts = otpDescAttempts.Default.(int)
+	// otpDescCreatedAt is the schema descriptor for created_at field.
+	otpDescCreatedAt := otpFields[5].Descriptor()
+	// otp.DefaultCreatedAt holds the default value on creation for the created_at field.
+	otp.DefaultCreatedAt = otpDescCreatedAt.Default.(func() time.Time)
+	// otpDescID is the schema descriptor for id field.
+	otpDescID := otpFields[0].Descriptor()
+	// otp.DefaultID holds the default value on creation for the id field.
+	otp.DefaultID = otpDescID.Default.(func() uuid.UUID)
+	sessionFields := schema.Session{}.Fields()
+	_ = sessionFields
+	// sessionDescTokenHash is the schema descriptor for token_hash field.
+	sessionDescTokenHash := sessionFields[2].Descriptor()
+	// session.TokenHashValidator is a validator for the "token_hash" field. It is called by the builders before save.
+	session.TokenHashValidator = sessionDescTokenHash.Validators[0].(func(string) error)
+	// sessionDescCreatedAt is the schema descriptor for created_at field.
+	sessionDescCreatedAt := sessionFields[4].Descriptor()
+	// session.DefaultCreatedAt holds the default value on creation for the created_at field.
+	session.DefaultCreatedAt = sessionDescCreatedAt.Default.(func() time.Time)
+	// sessionDescID is the schema descriptor for id field.
+	sessionDescID := sessionFields[0].Descriptor()
+	// session.DefaultID holds the default value on creation for the id field.
+	session.DefaultID = sessionDescID.Default.(func() uuid.UUID)
 	userFields := schema.User{}.Fields()
 	_ = userFields
 	// userDescEmail is the schema descriptor for email field.
