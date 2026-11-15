@@ -1,5 +1,4 @@
 {
-	"root": false,
 	"$schema": "https://biomejs.dev/schemas/2.6.7/schema.json",
 	"vcs": {
 		"enabled": true,
@@ -8,13 +7,7 @@
 	},
 	"files": {
 		"ignoreUnknown": true,
-		"includes": [
-			"**",
-			"!**/public",
-			"!**/api/swagger.json",
-			"!**/shared/api/schema.d.ts",
-			"!**/charts"
-		]
+		"includes": ["**", "!**/public", "!**/shared/api/schema.d.ts"]
 	},
 	"formatter": {
 		"useEditorconfig": true
