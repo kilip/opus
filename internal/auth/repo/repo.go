@@ -19,6 +19,10 @@ type Repo interface {
 	FindByTokenHash(ctx context.Context, hash string) (*domain.Session, error)
 	// DeleteByTokenHash removes the session with the given hash (noop if absent).
 	DeleteByTokenHash(ctx context.Context, hash string) error
+	// CountUsers returns the number of user records in the database.
+	CountUsers(ctx context.Context) (int, error)
+	// CreateUserAndSession atomically creates an owner user and a session in one transaction.
+	CreateUserAndSession(ctx context.Context, email, tokenHash string, expiresAt time.Time) (*domain.Session, error)
 }
 
 // EntRepo implements Repo using an Ent client.
@@ -63,6 +67,31 @@ func (r *EntRepo) DeleteByTokenHash(ctx context.Context, hash string) error {
 		Where(session.TokenHashEQ(hash)).
 		Exec(ctx)
 	return err
+}
+
+func (r *EntRepo) CountUsers(ctx context.Context) (int, error) {
+	return r.db.User.Query().Count(ctx)
+}
+
+func (r *EntRepo) CreateUserAndSession(ctx context.Context, email, tokenHash string, expiresAt time.Time) (*domain.Session, error) {
+	tx, err := r.db.Tx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	u, err := tx.User.Create().SetEmail(email).Save(ctx)
+	if err != nil {
+		_ = tx.Rollback()
+		return nil, err
+	}
+	s, err := tx.Session.Create().SetUserID(u.ID).SetTokenHash(tokenHash).SetExpiresAt(expiresAt).Save(ctx)
+	if err != nil {
+		_ = tx.Rollback()
+		return nil, err
+	}
+	if err = tx.Commit(); err != nil {
+		return nil, err
+	}
+	return toDomain(s, u), nil
 }
 
 func toDomain(s *ent.Session, u *ent.User) *domain.Session {
