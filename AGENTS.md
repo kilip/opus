@@ -137,6 +137,9 @@ Run the narrowest verification covering your change before finishing:
 
 | Scope                             | Command                                                              |
 | :-------------------------------- | :------------------------------------------------------------------- |
+| Full QC (format + lint + test)    | `mise run qc`                                                        |
+| Format Go & UI                    | `mise run format`                                                    |
+| All tests (Go + UI)               | `mise run test`                                                      |
 | Regenerate OpenAPI 3.1 + UI types | `mise run api`                                                       |
 | Go tests (race detector)          | `go test -race ./...`                                                |
 | Go vulnerability check            | `govulncheck ./...`                                                  |
