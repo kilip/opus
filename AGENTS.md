@@ -140,7 +140,7 @@ Run the narrowest verification covering your change before finishing:
 | Go tests (race detector)          | `go test -race ./...`                                                |
 | Go vulnerability check            | `govulncheck ./...`                                                  |
 | Full lint & typecheck (Go + UI)   | `mise run lint`                                                      |
-| UI format / lint check            | `bunx biome check .`                                                 |
+| UI format / lint check            | `bunx --cwd ui biome check .`                                        |
 | UI tests                          | `bun test --cwd ui --pass-with-no-tests`                             |
 | Build embedded UI assets          | `mise run build-ui`                                                  |
 | Helm chart lint & render          | `helm lint charts --strict && helm template opus charts > /dev/null` |
