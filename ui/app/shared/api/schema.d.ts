@@ -104,6 +104,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Setup: complete owner creation
+         * @description Verifies the OTP, creates the owner user and session in one transaction, sets cookie
+         */
+        post: operations["setupComplete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/setup/otp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Setup: request OTP
+         * @description Sends a one-time code to the given email for initial owner setup
+         */
+        post: operations["setupRequestOTP"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/setup/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Setup status
+         * @description Returns whether initial owner setup is required
+         */
+        get: operations["setupStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tasks": {
         parameters: {
             query?: never;
@@ -229,6 +289,20 @@ export interface components {
             email?: string;
             id?: string;
         };
+        "handler.SetupCompleteBody": {
+            code?: string;
+            email?: string;
+        };
+        "handler.SetupOTPBody": {
+            email?: string;
+        };
+        "handler.SetupStatusResponse": {
+            needs_setup?: boolean;
+        };
+        "handler.SetupUserResponse": {
+            email?: string;
+            id?: string;
+        };
         "handler.Task": {
             assignee?: components["schemas"]["handler.Assignee"];
             createdAt: string;
@@ -309,6 +383,16 @@ export interface components {
         };
         "httpx.Response-handler_OTPVerifyResponse": {
             data?: components["schemas"]["handler.OTPVerifyResponse"];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Response-handler_SetupStatusResponse": {
+            data?: components["schemas"]["handler.SetupStatusResponse"];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Response-handler_SetupUserResponse": {
+            data?: components["schemas"]["handler.SetupUserResponse"];
             error?: string;
             meta?: components["schemas"]["httpx.Meta"];
         };
@@ -475,6 +559,121 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["httpx.Response-app_HealthStatus"];
+                };
+            };
+        };
+    };
+    setupComplete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Email and code */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["handler.SetupCompleteBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-handler_SetupUserResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    setupRequestOTP: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Email */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["handler.SetupOTPBody"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    setupStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-handler_SetupStatusResponse"];
                 };
             };
         };

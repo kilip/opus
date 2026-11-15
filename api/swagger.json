@@ -165,6 +165,44 @@
                 },
                 "type": "object"
             },
+            "handler.SetupCompleteBody": {
+                "properties": {
+                    "code": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "handler.SetupOTPBody": {
+                "properties": {
+                    "email": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "handler.SetupStatusResponse": {
+                "properties": {
+                    "needs_setup": {
+                        "type": "boolean"
+                    }
+                },
+                "type": "object"
+            },
+            "handler.SetupUserResponse": {
+                "properties": {
+                    "email": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "handler.Task": {
                 "properties": {
                     "assignee": {
@@ -460,6 +498,34 @@
                 },
                 "type": "object"
             },
+            "httpx.Response-handler_SetupStatusResponse": {
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/handler.SetupStatusResponse"
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
+            "httpx.Response-handler_SetupUserResponse": {
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/handler.SetupUserResponse"
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
             "httpx.Response-handler_Task": {
                 "properties": {
                     "data": {
@@ -662,6 +728,148 @@
                 "summary": "System health check",
                 "tags": [
                     "system"
+                ]
+            }
+        },
+        "/setup": {
+            "post": {
+                "description": "Verifies the OTP, creates the owner user and session in one transaction, sets cookie",
+                "operationId": "setupComplete",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/handler.SetupCompleteBody",
+                                "summary": "body",
+                                "description": "Email and code"
+                            }
+                        }
+                    },
+                    "description": "Email and code",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-handler_SetupUserResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    }
+                },
+                "summary": "Setup: complete owner creation",
+                "tags": [
+                    "setup"
+                ]
+            }
+        },
+        "/setup/otp": {
+            "post": {
+                "description": "Sends a one-time code to the given email for initial owner setup",
+                "operationId": "setupRequestOTP",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/handler.SetupOTPBody",
+                                "summary": "body",
+                                "description": "Email"
+                            }
+                        }
+                    },
+                    "description": "Email",
+                    "required": true
+                },
+                "responses": {
+                    "202": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        },
+                        "description": "Accepted"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    }
+                },
+                "summary": "Setup: request OTP",
+                "tags": [
+                    "setup"
+                ]
+            }
+        },
+        "/setup/status": {
+            "get": {
+                "description": "Returns whether initial owner setup is required",
+                "operationId": "setupStatus",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-handler_SetupStatusResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    }
+                },
+                "summary": "Setup status",
+                "tags": [
+                    "setup"
                 ]
             }
         },
