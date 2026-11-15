@@ -1,10 +1,10 @@
 ---
 
-name: builder
-description: Autonomous Issue-to-PR workflow orchestrator. Use when asked to resolve, fix, handle, implement, or work on GitHub issues end-to-end from code to PR (including "garap issue", "kerjakan issue", "kerjakan #N", "selesaikan issue").
+name: vibe
+description: Autonomous Issue-to-PR workflow orchestrator that resolves GitHub issues end-to-end without human intervention. Use when asked to vibe, resolve, fix, handle, implement, or work on GitHub issues end-to-end from code to PR (including "vibe issue", "garap issue", "kerjakan issue", "kerjakan #N", "selesaikan issue").
 ---
 
-# Builder Orchestrator
+# Vibe Orchestrator
 
 Execute GitHub issues (`#ID`) end-to-end as a thin **Orchestrator** delegating heavy work to four isolated subagents: `planner` (`flash`), `coder` (`flash`), `verifier` (`flash`), and `pr-manager` (`flash`). Pass `Model` (`pro`, `flash`, `flash_lite`, `inherit`) to `invoke_subagent` only when the user explicitly requests a tier override.
 
@@ -82,7 +82,7 @@ Once `verifier` returns `PASS`, invoke `pr-manager` via `invoke_subagent`:
 - `TypeName`: `"pr-manager"`
 - `Role`: `"Issue #<ID> PR Manager"`
 - `Workspace`: `"inherit"`
-- `Prompt`: Run Mode `builder-publish-and-merge` for Issue `#<ID>` on branch `<branch>`, commit `<hash>`, with title `<type>(<scope>): <summary>` and verified `AC1..ACn`.
+- `Prompt`: Run Mode `vibe-publish-and-merge` for Issue `#<ID>` on branch `<branch>`, commit `<hash>`, with title `<type>(<scope>): <summary>` and verified `AC1..ACn`.
 
 - **If `pr-manager` returns `CI_FAIL`**: Resume `coder` via `send_message` with the failed CI log (max 1 CI auto-fix), re-run `verifier`, then resume `pr-manager` via `send_message` to push and merge.
 - **If `MERGED`**: Report final PR URL, merged `main` commit SHA, and closed Issue `#<ID>` to the user.
