@@ -8,6 +8,37 @@ import (
 )
 
 var (
+	// AccountsColumns holds the columns for the "accounts" table.
+	AccountsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "provider", Type: field.TypeString},
+		{Name: "provider_user_id", Type: field.TypeString},
+		{Name: "email", Type: field.TypeString},
+		{Name: "email_verified", Type: field.TypeBool, Default: false},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "user_id", Type: field.TypeUUID},
+	}
+	// AccountsTable holds the schema information for the "accounts" table.
+	AccountsTable = &schema.Table{
+		Name:       "accounts",
+		Columns:    AccountsColumns,
+		PrimaryKey: []*schema.Column{AccountsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "accounts_users_accounts",
+				Columns:    []*schema.Column{AccountsColumns[6]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "account_provider_provider_user_id",
+				Unique:  true,
+				Columns: []*schema.Column{AccountsColumns[1], AccountsColumns[2]},
+			},
+		},
+	}
 	// OtPsColumns holds the columns for the "ot_ps" table.
 	OtPsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -66,6 +97,7 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		AccountsTable,
 		OtPsTable,
 		SessionsTable,
 		UsersTable,
@@ -73,5 +105,6 @@ var (
 )
 
 func init() {
+	AccountsTable.ForeignKeys[0].RefTable = UsersTable
 	SessionsTable.ForeignKeys[0].RefTable = UsersTable
 }

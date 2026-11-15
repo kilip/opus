@@ -33,6 +33,12 @@ type Config struct {
 	SMTPUsername           string        `env:"SMTP_USERNAME, default="`
 	SMTPPassword           string        `env:"SMTP_PASSWORD, default="`
 	SMTPFrom               string        `env:"SMTP_FROM, default="`
+	GitHubClientID         string        `env:"GITHUB_CLIENT_ID, default="`
+	GitHubClientSecret     string        `env:"GITHUB_CLIENT_SECRET, default="`
+	GoogleClientID         string        `env:"GOOGLE_CLIENT_ID, default="`
+	GoogleClientSecret     string        `env:"GOOGLE_CLIENT_SECRET, default="`
+	FacebookClientID       string        `env:"FACEBOOK_CLIENT_ID, default="`
+	FacebookClientSecret   string        `env:"FACEBOOK_CLIENT_SECRET, default="`
 }
 
 func loadEnvFile(path string) {
