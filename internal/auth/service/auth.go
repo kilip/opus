@@ -1,0 +1,244 @@
+// Package service holds auth business logic: OTP issue/verify, session
+// lifecycle and owner setup. It depends on domain, repo and platform/mailer
+// only; HTTP concerns (cookies, status codes) stay in handler.
+package service
+
+import (
+	"context"
+	"crypto/hmac"
+	"crypto/rand"
+	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/base64"
+	"encoding/binary"
+	"fmt"
+	"time"
+
+	"github.com/kilip/opus/internal/auth/domain"
+	"github.com/kilip/opus/internal/auth/repo"
+	"github.com/kilip/opus/internal/platform/mailer"
+)
+
+const (
+	otpTTL         = 10 * time.Minute
+	defaultSession = 24 * time.Hour
+)
+
+// Config holds service parameters.
+type Config struct {
+	// Secret keys the HMAC used to hash OTP codes and session tokens.
+	Secret string
+	// SessionTTL is session lifetime; defaults to 24h when <= 0.
+	SessionTTL time.Duration
+	// Now is the clock; defaults to time.Now. Injectable for tests.
+	Now func() time.Time
+}
+
+// Auth owns OTP, session and setup business rules.
+type Auth struct {
+	sessions repo.Repo
+	otps     repo.OTPRepo
+	mailer   mailer.Mailer
+	secret   string
+	ttl      time.Duration
+	now      func() time.Time
+}
+
+// New returns an Auth service.
+func New(sessions repo.Repo, otps repo.OTPRepo, m mailer.Mailer, cfg Config) *Auth {
+	ttl := cfg.SessionTTL
+	if ttl <= 0 {
+		ttl = defaultSession
+	}
+	now := cfg.Now
+	if now == nil {
+		now = time.Now
+	}
+	return &Auth{sessions: sessions, otps: otps, mailer: m, secret: cfg.Secret, ttl: ttl, now: now}
+}
+
+// Session resolves a raw session token to a live session.
+// Returns domain.ErrUnauthorized on any failure.
+func (s *Auth) Session(ctx context.Context, raw string) (*domain.Session, error) {
+	if raw == "" {
+		return nil, domain.ErrUnauthorized
+	}
+	sess, err := s.sessions.FindByTokenHash(ctx, s.hash(raw))
+	if err != nil || sess == nil || s.now().After(sess.ExpiresAt) {
+		return nil, domain.ErrUnauthorized
+	}
+	return sess, nil
+}
+
+// Logout deletes the session for raw token; noop when raw is empty or unknown.
+func (s *Auth) Logout(ctx context.Context, raw string) {
+	if raw == "" {
+		return
+	}
+	_ = s.sessions.DeleteByTokenHash(ctx, s.hash(raw))
+}
+
+// NeedsSetup reports whether no owner exists yet.
+func (s *Auth) NeedsSetup(ctx context.Context) (bool, error) {
+	n, err := s.sessions.CountUsers(ctx)
+	if err != nil {
+		return false, err
+	}
+	return n == 0, nil
+}
+
+// RequestOTP mails a login code when email belongs to an existing user.
+// Unknown emails are silently ignored so callers cannot enumerate users.
+func (s *Auth) RequestOTP(ctx context.Context, email string) error {
+	user, err := s.otps.FindUserByEmail(ctx, email)
+	if err != nil || user == nil {
+		return nil
+	}
+	return s.issueOTP(ctx, email, "Your OTP code")
+}
+
+// VerifyOTP checks code for email, consumes the OTP and opens a session.
+// Returns the user and the raw session token for the caller to deliver.
+func (s *Auth) VerifyOTP(ctx context.Context, email, code string) (*domain.User, string, error) {
+	otp, err := s.otps.FindByEmail(ctx, email)
+	if err != nil || otp == nil {
+		return nil, "", domain.ErrInvalidOTP
+	}
+
+	// lockout before checking code
+	if otp.Attempts >= domain.MaxOTPAttempts {
+		_ = s.otps.DeleteByEmail(ctx, email)
+		return nil, "", domain.ErrTooManyAttempts
+	}
+	if s.now().After(otp.ExpiresAt) {
+		return nil, "", domain.ErrOTPExpired
+	}
+	if !s.codeMatches(otp.CodeHash, code) {
+		attempts, _ := s.otps.IncrementAttempts(ctx, otp.ID)
+		if attempts >= domain.MaxOTPAttempts {
+			_ = s.otps.DeleteByEmail(ctx, email)
+			return nil, "", domain.ErrTooManyAttempts
+		}
+		return nil, "", domain.ErrInvalidOTP
+	}
+
+	// single-use: delete OTP before creating session
+	_ = s.otps.DeleteByEmail(ctx, email)
+
+	user, err := s.otps.FindUserByEmail(ctx, email)
+	if err != nil || user == nil {
+		return nil, "", domain.ErrInvalidOTP
+	}
+
+	raw, hash, err := s.newToken()
+	if err != nil {
+		return nil, "", err
+	}
+	if _, err = s.sessions.CreateSession(ctx, user.ID, hash, s.now().Add(s.ttl)); err != nil {
+		return nil, "", err
+	}
+	return user, raw, nil
+}
+
+// RequestSetupOTP mails a setup code while no owner exists.
+func (s *Auth) RequestSetupOTP(ctx context.Context, email string) error {
+	if err := s.requireOpenSetup(ctx); err != nil {
+		return err
+	}
+	return s.issueOTP(ctx, email, "Your setup OTP code")
+}
+
+// CompleteSetup verifies the setup code, creates the owner and opens a session.
+// Returns the owner and the raw session token for the caller to deliver.
+//
+// ponytail: unlike VerifyOTP there is no attempt counter here; add lockout
+// before exposing setup to the internet.
+func (s *Auth) CompleteSetup(ctx context.Context, email, code string) (*domain.User, string, error) {
+	if err := s.requireOpenSetup(ctx); err != nil {
+		return nil, "", err
+	}
+
+	otp, err := s.otps.FindByEmail(ctx, email)
+	if err != nil || otp == nil {
+		return nil, "", domain.ErrInvalidOTP
+	}
+	if s.now().After(otp.ExpiresAt) {
+		return nil, "", domain.ErrOTPExpired
+	}
+	if !s.codeMatches(otp.CodeHash, code) {
+		return nil, "", domain.ErrInvalidOTP
+	}
+	_ = s.otps.DeleteByEmail(ctx, email)
+
+	raw, hash, err := s.newToken()
+	if err != nil {
+		return nil, "", err
+	}
+	sess, err := s.sessions.CreateUserAndSession(ctx, email, hash, s.now().Add(s.ttl))
+	if err != nil {
+		// concurrent call hit the unique constraint: treat as setup closed
+		if n, _ := s.sessions.CountUsers(ctx); n > 0 {
+			return nil, "", domain.ErrSetupClosed
+		}
+		return nil, "", err
+	}
+	return sess.User, raw, nil
+}
+
+func (s *Auth) requireOpenSetup(ctx context.Context) error {
+	needs, err := s.NeedsSetup(ctx)
+	if err != nil {
+		return err
+	}
+	if !needs {
+		return domain.ErrSetupClosed
+	}
+	return nil
+}
+
+// issueOTP stores a fresh code for email and mails it. Mail failure is
+// ignored on purpose: the response must not reveal delivery state.
+func (s *Auth) issueOTP(ctx context.Context, email, subject string) error {
+	code, err := generateOTPCode()
+	if err != nil {
+		return err
+	}
+	if _, err := s.otps.CreateOTP(ctx, email, s.hash(code), s.now().Add(otpTTL)); err != nil {
+		return err
+	}
+	_ = s.mailer.Send(ctx, email, subject,
+		fmt.Sprintf("Your one-time code is: %s (valid for %d minutes)", code, int(otpTTL.Minutes())))
+	return nil
+}
+
+// newToken returns a random session token and its stored hash.
+func (s *Auth) newToken() (raw, hash string, err error) {
+	b := make([]byte, 32)
+	if _, err = rand.Read(b); err != nil {
+		return "", "", err
+	}
+	raw = base64.RawURLEncoding.EncodeToString(b)
+	return raw, s.hash(raw), nil
+}
+
+// codeMatches compares the stored code hash with the hash of the given code
+// in constant time.
+func (s *Auth) codeMatches(storedHash, code string) bool {
+	return subtle.ConstantTimeCompare([]byte(storedHash), []byte(s.hash(code))) == 1
+}
+
+// hash returns the HMAC-SHA256 base64url hash of raw keyed with the secret.
+func (s *Auth) hash(raw string) string {
+	mac := hmac.New(sha256.New, []byte(s.secret))
+	mac.Write([]byte(raw))
+	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+}
+
+// generateOTPCode returns a random 6-digit string from crypto/rand.
+func generateOTPCode() (string, error) {
+	b := make([]byte, 4)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%06d", binary.BigEndian.Uint32(b)%1_000_000), nil
+}

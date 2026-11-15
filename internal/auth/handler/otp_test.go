@@ -17,6 +17,7 @@ import (
 	"github.com/kilip/opus/internal/auth/domain"
 	"github.com/kilip/opus/internal/auth/handler"
 	"github.com/kilip/opus/internal/auth/repo"
+	"github.com/kilip/opus/internal/auth/service"
 	"github.com/kilip/opus/internal/platform/httpx"
 	"github.com/kilip/opus/internal/platform/mailer"
 )
@@ -104,10 +105,12 @@ var _ mailer.Mailer = (*fakeMailer)(nil)
 func setupOTPApp(t *testing.T, sessRepo repo.Repo, otpRepo repo.OTPRepo, m mailer.Mailer, now func() time.Time) *fiber.App {
 	t.Helper()
 	cc := handler.CookieConfig{Secure: false, MaxAge: 86400}
-	h := handler.NewWithOTP(sessRepo, otpRepo, m, testSecret, cc)
-	if now != nil {
-		h.SetNow(now)
-	}
+	svc := service.New(sessRepo, otpRepo, m, service.Config{
+		Secret:     testSecret,
+		SessionTTL: 24 * time.Hour,
+		Now:        now,
+	})
+	h := handler.New(svc, cc)
 	app := fiber.New(fiber.Config{ErrorHandler: httpx.ErrorHandler(newDiscardLogger())})
 	g := app.Group("/auth")
 	h.RegisterPublic(g)
@@ -226,7 +229,7 @@ func TestVerifyOTP_Success(t *testing.T) {
 		t.Fatal("session cookie not set")
 	}
 	// Response body should include user.
-	var env httpx.Response[handler.OTPVerifyResponse]
+	var env httpx.Response[domain.UserResponse]
 	if err := json.NewDecoder(resp.Body).Decode(&env); err != nil {
 		t.Fatal(err)
 	}

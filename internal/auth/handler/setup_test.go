@@ -17,6 +17,7 @@ import (
 	"github.com/kilip/opus/internal/auth/domain"
 	"github.com/kilip/opus/internal/auth/handler"
 	"github.com/kilip/opus/internal/auth/repo"
+	"github.com/kilip/opus/internal/auth/service"
 	"github.com/kilip/opus/internal/platform/httpx"
 )
 
@@ -153,7 +154,7 @@ func newSetupApp(r *fakeSetupRepo, otpR *fakeSetupOTPRepo) *fiber.App {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	app := fiber.New(fiber.Config{ErrorHandler: httpx.ErrorHandler(logger)})
 	cc := handler.CookieConfig{Secure: false, MaxAge: 86400}
-	h := handler.NewWithOTP(r, otpR, &fakeMailer{}, testSecret, cc)
+	h := handler.New(service.New(r, otpR, &fakeMailer{}, service.Config{Secret: testSecret, SessionTTL: 24 * time.Hour}), cc)
 	h.RegisterSetup(app.Group("/setup"))
 	return app
 }
@@ -185,7 +186,7 @@ func TestSetupStatus_NeedsSetup(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
-	var env httpx.Response[handler.SetupStatusResponse]
+	var env httpx.Response[domain.SetupStatusResponse]
 	if err := json.NewDecoder(resp.Body).Decode(&env); err != nil {
 		t.Fatal(err)
 	}
@@ -214,7 +215,7 @@ func TestSetupStatus_AfterSetup(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
-	var env httpx.Response[handler.SetupStatusResponse]
+	var env httpx.Response[domain.SetupStatusResponse]
 	if err := json.NewDecoder(resp.Body).Decode(&env); err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +263,7 @@ func TestSetupComplete_HappyPath(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
-	var env httpx.Response[handler.SetupUserResponse]
+	var env httpx.Response[domain.UserResponse]
 	if err := json.NewDecoder(resp.Body).Decode(&env); err != nil {
 		t.Fatal(err)
 	}
