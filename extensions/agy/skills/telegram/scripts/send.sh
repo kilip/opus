@@ -148,19 +148,22 @@ if [[ -n "$FILE_PATH" ]]; then
     echo "Error: file not found: $FILE_PATH" >&2
     exit 1
   fi
+  if [[ -z "$CAPTION" && -n "$MESSAGE" ]]; then
+    CAPTION="$MESSAGE"
+  fi
   if [[ ${#CAPTION} -gt 1024 ]]; then
     echo "Error: caption exceeds Telegram 1024-character limit (${#CAPTION} chars)." >&2
     exit 2
   fi
 
   CURL_ARGS=(
-    -sS
+    -s
     -w $'\n%{http_code}'
     -X POST
     -F "chat_id=${CHAT_ID}"
     -F "document=@${FILE_PATH}"
   )
-  [[ -n "$CAPTION" ]] && CURL_ARGS+=(-F "caption=${CAPTION}")
+  [[ -n "$CAPTION" ]] && CURL_ARGS+=(--form-string "caption=${CAPTION}")
   [[ -n "$PARSE_MODE" ]] && CURL_ARGS+=(-F "parse_mode=${PARSE_MODE}")
   [[ "$SILENT" == "true" ]] && CURL_ARGS+=(-F "disable_notification=true")
   [[ -n "$REPLY_TO" ]] && CURL_ARGS+=(-F "reply_to_message_id=${REPLY_TO}")
@@ -176,7 +179,7 @@ else
   fi
 
   CURL_ARGS=(
-    -sS
+    -s
     -w $'\n%{http_code}'
     -X POST
     --data-urlencode "chat_id=${CHAT_ID}"
