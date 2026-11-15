@@ -4,922 +4,935 @@
  */
 
 export interface paths {
-	"/auth/logout": {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		get?: never;
-		put?: never;
-		/**
-		 * Logout
-		 * @description Deletes the current session and clears the session cookie
-		 */
-		post: operations["authLogout"];
-		delete?: never;
-		options?: never;
-		head?: never;
-		patch?: never;
-		trace?: never;
-	};
-	"/auth/me": {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		/**
-		 * Get current user
-		 * @description Returns the authenticated user's profile
-		 */
-		get: operations["authMe"];
-		put?: never;
-		post?: never;
-		delete?: never;
-		options?: never;
-		head?: never;
-		patch?: never;
-		trace?: never;
-	};
-	"/auth/otp/request": {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		get?: never;
-		put?: never;
-		/**
-		 * Request OTP
-		 * @description Sends a one-time code to the given email if it matches the owner
-		 */
-		post: operations["authOTPRequest"];
-		delete?: never;
-		options?: never;
-		head?: never;
-		patch?: never;
-		trace?: never;
-	};
-	"/auth/otp/verify": {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		get?: never;
-		put?: never;
-		/**
-		 * Verify OTP
-		 * @description Verifies the one-time code, creates a session, sets the session cookie, and returns the user
-		 */
-		post: operations["authOTPVerify"];
-		delete?: never;
-		options?: never;
-		head?: never;
-		patch?: never;
-		trace?: never;
-	};
-	"/health": {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		/**
-		 * System health check
-		 * @description Returns system operational status
-		 */
-		get: operations["healthCheck"];
-		put?: never;
-		post?: never;
-		delete?: never;
-		options?: never;
-		head?: never;
-		patch?: never;
-		trace?: never;
-	};
-	"/setup": {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		get?: never;
-		put?: never;
-		/**
-		 * Setup: complete owner creation
-		 * @description Verifies the OTP, creates the owner user and session in one transaction, sets cookie
-		 */
-		post: operations["setupComplete"];
-		delete?: never;
-		options?: never;
-		head?: never;
-		patch?: never;
-		trace?: never;
-	};
-	"/setup/otp": {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		get?: never;
-		put?: never;
-		/**
-		 * Setup: request OTP
-		 * @description Sends a one-time code to the given email for initial owner setup
-		 */
-		post: operations["setupRequestOTP"];
-		delete?: never;
-		options?: never;
-		head?: never;
-		patch?: never;
-		trace?: never;
-	};
-	"/setup/status": {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		/**
-		 * Setup status
-		 * @description Returns whether initial owner setup is required
-		 */
-		get: operations["setupStatus"];
-		put?: never;
-		post?: never;
-		delete?: never;
-		options?: never;
-		head?: never;
-		patch?: never;
-		trace?: never;
-	};
-	"/tasks": {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		/**
-		 * List tasks
-		 * @description Returns every task, normalised from its source tracker.
-		 */
-		get: operations["list-tasks"];
-		put?: never;
-		/**
-		 * Create task
-		 * @description Creates a new task with given details.
-		 */
-		post: operations["create-task"];
-		delete?: never;
-		options?: never;
-		head?: never;
-		patch?: never;
-		trace?: never;
-	};
-	"/tasks/{id}": {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		/**
-		 * Get a task
-		 * @description Returns a single task by its Opus identifier.
-		 */
-		get: operations["get-task"];
-		put?: never;
-		post?: never;
-		delete?: never;
-		options?: never;
-		head?: never;
-		/**
-		 * Update task
-		 * @description Updates fields of an existing task.
-		 */
-		patch: operations["update-task"];
-		trace?: never;
-	};
-	"/tasks/{id}/activity": {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		/**
-		 * List task activity
-		 * @description Returns chatter timeline of a task, oldest first.
-		 */
-		get: operations["list-task-activity"];
-		put?: never;
-		/**
-		 * Create task activity
-		 * @description Adds an activity comment/event to task chatter timeline.
-		 */
-		post: operations["create-task-activity"];
-		delete?: never;
-		options?: never;
-		head?: never;
-		patch?: never;
-		trace?: never;
-	};
+    "/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Logout
+         * @description Deletes the current session and clears the session cookie
+         */
+        post: operations["authLogout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get current user
+         * @description Returns the authenticated user's profile
+         */
+        get: operations["authMe"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/otp/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request OTP
+         * @description Sends a one-time code to the given email if it matches the owner
+         */
+        post: operations["authOTPRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/otp/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Verify OTP
+         * @description Verifies the one-time code, creates a session, sets the session cookie, and returns the user
+         */
+        post: operations["authOTPVerify"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * System health check
+         * @description Returns system operational status
+         */
+        get: operations["healthCheck"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Setup: complete owner creation
+         * @description Verifies the OTP, creates the owner user and session in one transaction, sets cookie
+         */
+        post: operations["setupComplete"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/setup/otp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Setup: request OTP
+         * @description Sends a one-time code to the given email for initial owner setup
+         */
+        post: operations["setupRequestOTP"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/setup/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Setup status
+         * @description Returns whether initial owner setup is required
+         */
+        get: operations["setupStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List tasks
+         * @description Returns every task, normalised from its source tracker.
+         */
+        get: operations["list-tasks"];
+        put?: never;
+        /**
+         * Create task
+         * @description Creates a new task with given details.
+         */
+        post: operations["create-task"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a task
+         * @description Returns a single task by its Opus identifier.
+         */
+        get: operations["get-task"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Update task
+         * @description Updates fields of an existing task.
+         */
+        patch: operations["update-task"];
+        trace?: never;
+    };
+    "/tasks/{id}/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List task activity
+         * @description Returns chatter timeline of a task, oldest first.
+         */
+        get: operations["list-task-activity"];
+        put?: never;
+        /**
+         * Create task activity
+         * @description Adds an activity comment/event to task chatter timeline.
+         */
+        post: operations["create-task-activity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-	schemas: {
-		"app.HealthStatus": {
-			status?: string;
-		};
-		"domain.Activity": {
-			author: string;
-			body: string;
-			createdAt: string;
-			id: string;
-			kind: components["schemas"]["domain.ActivityKind"];
-		};
-		/** @enum {string} */
-		"domain.ActivityKind":
-			| "status"
-			| "comment"
-			| "assign"
-			| "commit"
-			| "review";
-		"domain.Assignee": {
-			id: string;
-			name: string;
-		};
-		"domain.CreateActivityRequest": {
-			author?: string;
-			body: string;
-			kind?: components["schemas"]["domain.ActivityKind"];
-		};
-		"domain.CreateTaskRequest": {
-			assignee?: components["schemas"]["domain.Assignee"];
-			description?: string;
-			/** Format: date */
-			dueDate?: string;
-			labels?: string[];
-			priority?: components["schemas"]["domain.TaskPriority"];
-			status?: components["schemas"]["domain.TaskStatus"];
-			title: string;
-			type?: components["schemas"]["domain.TaskType"];
-		};
-		"domain.OTPRequestBody": {
-			email?: string;
-		};
-		"domain.OTPVerifyBody": {
-			code?: string;
-			email?: string;
-		};
-		"domain.SetupStatusResponse": {
-			needs_setup?: boolean;
-		};
-		"domain.Task": {
-			assignee?: components["schemas"]["domain.Assignee"];
-			createdAt: string;
-			description: string;
-			/**
-			 * Format: date
-			 * @description DueDate is calendar date (YYYY-MM-DD).
-			 */
-			dueDate?: string;
-			externalId?: string;
-			externalUrl?: string;
-			/** @description ID is Opus identifier. */
-			id: string;
-			/** @description Key is human-readable reference, e.g. OP-12. */
-			key: string;
-			labels: string[];
-			priority: components["schemas"]["domain.TaskPriority"];
-			source: components["schemas"]["domain.TaskSource"];
-			sourceStatus?: string;
-			status: components["schemas"]["domain.TaskStatus"];
-			title: string;
-			type: components["schemas"]["domain.TaskType"];
-			updatedAt: string;
-		};
-		/** @enum {string} */
-		"domain.TaskPriority": "0" | "1" | "2" | "3";
-		/** @enum {string} */
-		"domain.TaskSource": "github" | "linear" | "sentry" | "agent" | "manual";
-		/** @enum {string} */
-		"domain.TaskStatus": "backlog" | "todo" | "in_progress" | "review" | "done";
-		/** @enum {string} */
-		"domain.TaskType": "feat" | "bug" | "chore" | "refactor" | "docs";
-		"domain.UpdateTaskRequest": {
-			assignee?: components["schemas"]["domain.Assignee"];
-			clearAssignee?: boolean;
-			description?: string;
-			/** Format: date */
-			dueDate?: string;
-			labels?: string[];
-			priority?: components["schemas"]["domain.TaskPriority"];
-			status?: components["schemas"]["domain.TaskStatus"];
-			title?: string;
-			type?: components["schemas"]["domain.TaskType"];
-		};
-		"domain.UserResponse": {
-			/** @description Email is the authenticated user's email address. */
-			email?: string;
-			/** @description ID is the authenticated user's UUID. */
-			id?: string;
-		};
-		"httpx.ErrorResponse": {
-			data?: unknown;
-			error: string;
-			meta?: components["schemas"]["httpx.Meta"];
-		};
-		"httpx.Meta": {
-			nextCursor?: string;
-			total?: number;
-		};
-		"httpx.Response-app_HealthStatus": {
-			data?: components["schemas"]["app.HealthStatus"];
-			error?: string;
-			meta?: components["schemas"]["httpx.Meta"];
-		};
-		"httpx.Response-array_domain_Activity": {
-			data?: components["schemas"]["domain.Activity"][];
-			error?: string;
-			meta?: components["schemas"]["httpx.Meta"];
-		};
-		"httpx.Response-array_domain_Task": {
-			data?: components["schemas"]["domain.Task"][];
-			error?: string;
-			meta?: components["schemas"]["httpx.Meta"];
-		};
-		"httpx.Response-domain_Activity": {
-			data?: components["schemas"]["domain.Activity"];
-			error?: string;
-			meta?: components["schemas"]["httpx.Meta"];
-		};
-		"httpx.Response-domain_SetupStatusResponse": {
-			data?: components["schemas"]["domain.SetupStatusResponse"];
-			error?: string;
-			meta?: components["schemas"]["httpx.Meta"];
-		};
-		"httpx.Response-domain_Task": {
-			data?: components["schemas"]["domain.Task"];
-			error?: string;
-			meta?: components["schemas"]["httpx.Meta"];
-		};
-		"httpx.Response-domain_UserResponse": {
-			data?: components["schemas"]["domain.UserResponse"];
-			error?: string;
-			meta?: components["schemas"]["httpx.Meta"];
-		};
-	};
-	responses: never;
-	parameters: never;
-	requestBodies: never;
-	headers: never;
-	pathItems: never;
+    schemas: {
+        "app.HealthStatus": {
+            status?: string;
+        };
+        "domain.Activity": {
+            author: string;
+            body: string;
+            createdAt: string;
+            id: string;
+            kind: components["schemas"]["domain.ActivityKind"];
+        };
+        /** @enum {string} */
+        "domain.ActivityKind": "status" | "comment" | "assign" | "commit" | "review";
+        "domain.Assignee": {
+            id: string;
+            name: string;
+        };
+        "domain.CreateActivityRequest": {
+            author?: string;
+            body: string;
+            kind?: components["schemas"]["domain.ActivityKind"];
+        };
+        "domain.CreateTaskRequest": {
+            assignee?: components["schemas"]["domain.Assignee"];
+            description?: string;
+            /** Format: date */
+            dueDate?: string;
+            labels?: string[];
+            priority?: components["schemas"]["domain.TaskPriority"];
+            status?: components["schemas"]["domain.TaskStatus"];
+            title: string;
+            type?: components["schemas"]["domain.TaskType"];
+        };
+        "domain.OTPRequestBody": {
+            email?: string;
+        };
+        "domain.OTPVerifyBody": {
+            code?: string;
+            email?: string;
+        };
+        "domain.SetupStatusResponse": {
+            needs_setup?: boolean;
+        };
+        "domain.Task": {
+            assignee?: components["schemas"]["domain.Assignee"];
+            createdAt: string;
+            description: string;
+            /**
+             * Format: date
+             * @description DueDate is calendar date (YYYY-MM-DD).
+             */
+            dueDate?: string;
+            externalId?: string;
+            externalUrl?: string;
+            /** @description ID is Opus identifier. */
+            id: string;
+            /** @description Key is human-readable reference, e.g. OP-12. */
+            key: string;
+            labels: string[];
+            priority: components["schemas"]["domain.TaskPriority"];
+            source: components["schemas"]["domain.TaskSource"];
+            sourceStatus?: string;
+            status: components["schemas"]["domain.TaskStatus"];
+            title: string;
+            type: components["schemas"]["domain.TaskType"];
+            updatedAt: string;
+        };
+        /** @enum {string} */
+        "domain.TaskPriority": "0" | "1" | "2" | "3";
+        /** @enum {string} */
+        "domain.TaskSource": "github" | "linear" | "sentry" | "agent" | "manual";
+        /** @enum {string} */
+        "domain.TaskStatus": "backlog" | "todo" | "in_progress" | "review" | "done";
+        /** @enum {string} */
+        "domain.TaskType": "feat" | "bug" | "chore" | "refactor" | "docs";
+        "domain.UpdateTaskRequest": {
+            assignee?: components["schemas"]["domain.Assignee"];
+            clearAssignee?: boolean;
+            description?: string;
+            /** Format: date */
+            dueDate?: string;
+            labels?: string[];
+            priority?: components["schemas"]["domain.TaskPriority"];
+            status?: components["schemas"]["domain.TaskStatus"];
+            title?: string;
+            type?: components["schemas"]["domain.TaskType"];
+        };
+        "domain.UserResponse": {
+            /** @description Email is the authenticated user's email address. */
+            email?: string;
+            /** @description ID is the authenticated user's UUID. */
+            id?: string;
+        };
+        "httpx.ErrorResponse": {
+            data?: unknown;
+            error: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Meta": {
+            nextCursor?: string;
+            total?: number;
+        };
+        "httpx.Response-app_HealthStatus": {
+            data?: components["schemas"]["app.HealthStatus"];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Response-array_domain_Activity": {
+            data?: components["schemas"]["domain.Activity"][];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Response-array_domain_Task": {
+            data?: components["schemas"]["domain.Task"][];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Response-domain_Activity": {
+            data?: components["schemas"]["domain.Activity"];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Response-domain_SetupStatusResponse": {
+            data?: components["schemas"]["domain.SetupStatusResponse"];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Response-domain_Task": {
+            data?: components["schemas"]["domain.Task"];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Response-domain_UserResponse": {
+            data?: components["schemas"]["domain.UserResponse"];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+    };
+    responses: never;
+    parameters: never;
+    requestBodies: never;
+    headers: never;
+    pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-	authLogout: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		requestBody?: never;
-		responses: {
-			/** @description No Content */
-			204: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content?: never;
-			};
-		};
-	};
-	authMe: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		requestBody?: never;
-		responses: {
-			/** @description OK */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.Response-domain_UserResponse"];
-				};
-			};
-			/** @description Unauthorized */
-			401: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.ErrorResponse"];
-				};
-			};
-		};
-	};
-	authOTPRequest: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		/** @description Email */
-		requestBody: {
-			content: {
-				"application/json": components["schemas"]["domain.OTPRequestBody"];
-			};
-		};
-		responses: {
-			/** @description Accepted */
-			202: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": Record<string, never>;
-				};
-			};
-			/** @description Bad Request */
-			400: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.ErrorResponse"];
-				};
-			};
-		};
-	};
-	authOTPVerify: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		/** @description Email and code */
-		requestBody: {
-			content: {
-				"application/json": components["schemas"]["domain.OTPVerifyBody"];
-			};
-		};
-		responses: {
-			/** @description OK */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.Response-domain_UserResponse"];
-				};
-			};
-			/** @description Bad Request */
-			400: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.ErrorResponse"];
-				};
-			};
-			/** @description Unauthorized */
-			401: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.ErrorResponse"];
-				};
-			};
-			/** @description Too Many Requests */
-			429: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.ErrorResponse"];
-				};
-			};
-		};
-	};
-	healthCheck: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		requestBody?: never;
-		responses: {
-			/** @description OK */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.Response-app_HealthStatus"];
-				};
-			};
-		};
-	};
-	setupComplete: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		/** @description Email and code */
-		requestBody: {
-			content: {
-				"application/json": components["schemas"]["domain.OTPVerifyBody"];
-			};
-		};
-		responses: {
-			/** @description OK */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.Response-domain_UserResponse"];
-				};
-			};
-			/** @description Bad Request */
-			400: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.ErrorResponse"];
-				};
-			};
-			/** @description Unauthorized */
-			401: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.ErrorResponse"];
-				};
-			};
-			/** @description Conflict */
-			409: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.ErrorResponse"];
-				};
-			};
-		};
-	};
-	setupRequestOTP: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		/** @description Email */
-		requestBody: {
-			content: {
-				"application/json": components["schemas"]["domain.OTPRequestBody"];
-			};
-		};
-		responses: {
-			/** @description Accepted */
-			202: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": Record<string, never>;
-				};
-			};
-			/** @description Bad Request */
-			400: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.ErrorResponse"];
-				};
-			};
-			/** @description Conflict */
-			409: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.ErrorResponse"];
-				};
-			};
-		};
-	};
-	setupStatus: {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		requestBody?: never;
-		responses: {
-			/** @description OK */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.Response-domain_SetupStatusResponse"];
-				};
-			};
-		};
-	};
-	"list-tasks": {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		requestBody?: never;
-		responses: {
-			/** @description OK */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.Response-array_domain_Task"];
-				};
-			};
-			/** @description Internal Server Error */
-			500: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.ErrorResponse"];
-				};
-			};
-		};
-	};
-	"create-task": {
-		parameters: {
-			query?: never;
-			header?: never;
-			path?: never;
-			cookie?: never;
-		};
-		/** @description Create Task Request */
-		requestBody: {
-			content: {
-				"application/json": components["schemas"]["domain.CreateTaskRequest"];
-			};
-		};
-		responses: {
-			/** @description Created */
-			201: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.Response-domain_Task"];
-				};
-			};
-			/** @description Bad Request */
-			400: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.ErrorResponse"];
-				};
-			};
-			/** @description Internal Server Error */
-			500: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.ErrorResponse"];
-				};
-			};
-		};
-	};
-	"get-task": {
-		parameters: {
-			query?: never;
-			header?: never;
-			path: {
-				/** @description Task ID */
-				id: string;
-			};
-			cookie?: never;
-		};
-		requestBody?: never;
-		responses: {
-			/** @description OK */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.Response-domain_Task"];
-				};
-			};
-			/** @description Not Found */
-			404: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.ErrorResponse"];
-				};
-			};
-			/** @description Internal Server Error */
-			500: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.ErrorResponse"];
-				};
-			};
-		};
-	};
-	"update-task": {
-		parameters: {
-			query?: never;
-			header?: never;
-			path: {
-				/** @description Task ID */
-				id: string;
-			};
-			cookie?: never;
-		};
-		/** @description Update Task Request */
-		requestBody: {
-			content: {
-				"application/json": components["schemas"]["domain.UpdateTaskRequest"];
-			};
-		};
-		responses: {
-			/** @description OK */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.Response-domain_Task"];
-				};
-			};
-			/** @description Bad Request */
-			400: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.ErrorResponse"];
-				};
-			};
-			/** @description Not Found */
-			404: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.ErrorResponse"];
-				};
-			};
-			/** @description Internal Server Error */
-			500: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.ErrorResponse"];
-				};
-			};
-		};
-	};
-	"list-task-activity": {
-		parameters: {
-			query?: never;
-			header?: never;
-			path: {
-				/** @description Task ID */
-				id: string;
-			};
-			cookie?: never;
-		};
-		requestBody?: never;
-		responses: {
-			/** @description OK */
-			200: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.Response-array_domain_Activity"];
-				};
-			};
-			/** @description Not Found */
-			404: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.ErrorResponse"];
-				};
-			};
-			/** @description Internal Server Error */
-			500: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.ErrorResponse"];
-				};
-			};
-		};
-	};
-	"create-task-activity": {
-		parameters: {
-			query?: never;
-			header?: never;
-			path: {
-				/** @description Task ID */
-				id: string;
-			};
-			cookie?: never;
-		};
-		/** @description Create Activity Request */
-		requestBody: {
-			content: {
-				"application/json": components["schemas"]["domain.CreateActivityRequest"];
-			};
-		};
-		responses: {
-			/** @description Created */
-			201: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.Response-domain_Activity"];
-				};
-			};
-			/** @description Bad Request */
-			400: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.ErrorResponse"];
-				};
-			};
-			/** @description Not Found */
-			404: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.ErrorResponse"];
-				};
-			};
-			/** @description Internal Server Error */
-			500: {
-				headers: {
-					[name: string]: unknown;
-				};
-				content: {
-					"application/json": components["schemas"]["httpx.ErrorResponse"];
-				};
-			};
-		};
-	};
+    authLogout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    authMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-domain_UserResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    authOTPRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Email */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["domain.OTPRequestBody"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    authOTPVerify: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Email and code */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["domain.OTPVerifyBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-domain_UserResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    healthCheck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-app_HealthStatus"];
+                };
+            };
+        };
+    };
+    setupComplete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Email and code */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["domain.OTPVerifyBody"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-domain_UserResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    setupRequestOTP: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Email */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["domain.OTPRequestBody"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    setupStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-domain_SetupStatusResponse"];
+                };
+            };
+        };
+    };
+    "list-tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-array_domain_Task"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "create-task": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Create Task Request */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["domain.CreateTaskRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-domain_Task"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "get-task": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Task ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-domain_Task"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "update-task": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Task ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** @description Update Task Request */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["domain.UpdateTaskRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-domain_Task"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "list-task-activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Task ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-array_domain_Activity"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "create-task-activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Task ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** @description Create Activity Request */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["domain.CreateActivityRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-domain_Activity"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
 }
