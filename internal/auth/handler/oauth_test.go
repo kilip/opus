@@ -518,6 +518,48 @@ func TestOAuth_Callback_EmailMismatchRejected(t *testing.T) {
 	}
 }
 
+// AC4: Facebook login for unlinked account is rejected with ACCOUNT_NOT_ALLOWED
+// even when the email equals the owner email (P3-2 policy: EmailVerified=false cannot auto-link).
+func TestOAuth_Callback_FacebookUnlinkedRejected(t *testing.T) {
+	r := newFakeRepo()
+	owner := &domain.User{ID: uuid.New(), Email: "owner@example.com"}
+	r.owner = owner
+
+	reg := provider.NewRegistry(provider.Config{})
+	reg.Register(&fakeProvider{
+		name: "facebook",
+		profile: provider.Profile{
+			ProviderUserID: "fb-12345",
+			Email:          "owner@example.com",
+			EmailVerified:  false, // Facebook does not verify email
+		},
+	})
+	app, svc := setupOAuthApp(r, reg)
+
+	const state = "fb-unlinked-state"
+	cookieVal := svc.SignOAuthCookie(state, "verifier-val")
+
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/oauth/facebook/callback?code=c1&state="+state, nil)
+	req.Header.Set("Cookie", handler.OAuthStateCookie+"="+cookieVal)
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("callback: %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusFound {
+		t.Fatalf("status: want 302, got %d", resp.StatusCode)
+	}
+	if loc := resp.Header.Get("Location"); loc != "/login?error=ACCOUNT_NOT_ALLOWED" {
+		t.Errorf("location: want /login?error=ACCOUNT_NOT_ALLOWED, got %s", loc)
+	}
+
+	sessCookie := findCookie(resp, handler.SessionCookie)
+	if sessCookie != nil && sessCookie.Value != "" {
+		t.Error("expected no session cookie on rejection")
+	}
+}
+
 // AC5: When no owner exists yet -> SETUP_REQUIRED.
 func TestOAuth_Callback_SetupRequired(t *testing.T) {
 	r := newFakeRepo()
