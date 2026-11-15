@@ -4,6 +4,46 @@
  */
 
 export interface paths {
+    "/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Logout
+         * @description Deletes the current session and clears the session cookie
+         */
+        post: operations["authLogout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get current user
+         * @description Returns the authenticated user's profile
+         */
+        get: operations["authMe"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -132,6 +172,12 @@ export interface components {
             title: string;
             type?: components["schemas"]["handler.TaskType"];
         };
+        "handler.MeResponse": {
+            /** @description Email is the authenticated user's email address. */
+            email?: string;
+            /** @description ID is the authenticated user's UUID. */
+            id?: string;
+        };
         "handler.Task": {
             assignee?: components["schemas"]["handler.Assignee"];
             createdAt: string;
@@ -205,6 +251,11 @@ export interface components {
             error?: string;
             meta?: components["schemas"]["httpx.Meta"];
         };
+        "httpx.Response-handler_MeResponse": {
+            data?: components["schemas"]["handler.MeResponse"];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
         "httpx.Response-handler_Task": {
             data?: components["schemas"]["handler.Task"];
             error?: string;
@@ -219,6 +270,53 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    authLogout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    authMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-handler_MeResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
     healthCheck: {
         parameters: {
             query?: never;

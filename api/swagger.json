@@ -122,6 +122,19 @@
                 ],
                 "type": "object"
             },
+            "handler.MeResponse": {
+                "properties": {
+                    "email": {
+                        "description": "Email is the authenticated user's email address.",
+                        "type": "string"
+                    },
+                    "id": {
+                        "description": "ID is the authenticated user's UUID.",
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "handler.Task": {
                 "properties": {
                     "assignee": {
@@ -389,6 +402,20 @@
                 },
                 "type": "object"
             },
+            "httpx.Response-handler_MeResponse": {
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/handler.MeResponse"
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
             "httpx.Response-handler_Task": {
                 "properties": {
                     "data": {
@@ -415,6 +442,53 @@
         "url": ""
     },
     "paths": {
+        "/auth/logout": {
+            "post": {
+                "description": "Deletes the current session and clears the session cookie",
+                "operationId": "authLogout",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                },
+                "summary": "Logout",
+                "tags": [
+                    "auth"
+                ]
+            }
+        },
+        "/auth/me": {
+            "get": {
+                "description": "Returns the authenticated user's profile",
+                "operationId": "authMe",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-handler_MeResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    }
+                },
+                "summary": "Get current user",
+                "tags": [
+                    "auth"
+                ]
+            }
+        },
         "/health": {
             "get": {
                 "description": "Returns system operational status",
