@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/kilip/opus/ent"
 	"github.com/kilip/opus/internal/auth/repo"
 	"github.com/kilip/opus/internal/platform/httpx"
 	"github.com/kilip/opus/internal/platform/mailer"
@@ -18,6 +19,7 @@ type Handler struct {
 	secret    string
 	cookieCfg CookieConfig
 	now       func() time.Time // injectable for tests
+	db        *ent.Client
 }
 
 // CookieConfig holds cookie parameters derived from app config.
@@ -44,6 +46,19 @@ func NewWithOTP(r repo.Repo, otp repo.OTPRepo, m mailer.Mailer, secret string, c
 	}
 }
 
+// NewWithOTPAndDB returns a Handler with mailer, OTP repo, and ent.Client wired.
+func NewWithOTPAndDB(r repo.Repo, otp repo.OTPRepo, m mailer.Mailer, db *ent.Client, secret string, cc CookieConfig) *Handler {
+	return &Handler{
+		repo:      r,
+		otpRepo:   otp,
+		mailer:    m,
+		secret:    secret,
+		cookieCfg: cc,
+		now:       time.Now,
+		db:        db,
+	}
+}
+
 // Register mounts protected auth routes on r.
 func (h *Handler) Register(r fiber.Router) {
 	r.Get("/me", h.me)
@@ -54,6 +69,13 @@ func (h *Handler) Register(r fiber.Router) {
 func (h *Handler) RegisterPublic(r fiber.Router) {
 	r.Post("/otp/request", h.requestOTP)
 	r.Post("/otp/verify", h.verifyOTP)
+}
+
+// RegisterSetup mounts public setup routes (before auth middleware).
+func (h *Handler) RegisterSetup(r fiber.Router) {
+	r.Get("/status", h.setupStatus)
+	r.Post("/otp", h.setupRequestOTP)
+	r.Post("", h.setupComplete)
 }
 
 // SetNow overrides the clock function; intended for tests only.
