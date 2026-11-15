@@ -142,6 +142,46 @@ if [[ -z "$MESSAGE" && -z "$FILE_PATH" ]]; then
 fi
 
 API_BASE="https://api.telegram.org/bot${TOKEN}"
+MAX_RETRIES="${TELEGRAM_MAX_RETRIES:-3}"
+
+post_telegram() {
+  local endpoint="$1"
+  shift
+  local attempt=1
+  local delay=2
+  local raw_resp http_code body
+
+  while true; do
+    if raw_resp="$(curl -s --connect-timeout 10 --max-time 30 -w $'\n%{http_code}' -X POST "$@" "${API_BASE}/${endpoint}")"; then
+      http_code="${raw_resp##*$'\n'}"
+      body="${raw_resp%$'\n'*}"
+
+      if [[ "$http_code" -ge 200 && "$http_code" -lt 300 ]] && [[ "$body" == *'"ok":true'* ]]; then
+        echo "$body"
+        return 0
+      fi
+
+      # Do not retry permanent 4xx client errors (except 429 rate limit)
+      if [[ "$http_code" -ge 400 && "$http_code" -lt 500 && "$http_code" -ne 429 ]]; then
+        echo "Error: Telegram API returned HTTP ${http_code}: ${body}" >&2
+        return 1
+      fi
+
+      echo "Warning: Telegram ${endpoint} returned HTTP ${http_code} (attempt ${attempt}/${MAX_RETRIES})." >&2
+    else
+      echo "Warning: curl request to Telegram ${endpoint} failed (attempt ${attempt}/${MAX_RETRIES})." >&2
+    fi
+
+    if [[ "$attempt" -ge "$MAX_RETRIES" ]]; then
+      echo "Error: Telegram ${endpoint} failed after ${MAX_RETRIES} attempts." >&2
+      return 1
+    fi
+
+    sleep "$delay"
+    attempt=$((attempt + 1))
+    delay=$((delay * 2))
+  done
+}
 
 if [[ -n "$FILE_PATH" ]]; then
   if [[ ! -f "$FILE_PATH" ]]; then
@@ -157,9 +197,6 @@ if [[ -n "$FILE_PATH" ]]; then
   fi
 
   CURL_ARGS=(
-    -s
-    -w $'\n%{http_code}'
-    -X POST
     -F "chat_id=${CHAT_ID}"
     -F "document=@${FILE_PATH}"
   )
@@ -168,10 +205,7 @@ if [[ -n "$FILE_PATH" ]]; then
   [[ "$SILENT" == "true" ]] && CURL_ARGS+=(-F "disable_notification=true")
   [[ -n "$REPLY_TO" ]] && CURL_ARGS+=(-F "reply_to_message_id=${REPLY_TO}")
 
-  RAW_RESP="$(curl "${CURL_ARGS[@]}" "${API_BASE}/sendDocument")" || {
-    echo "Error: curl request to Telegram sendDocument failed." >&2
-    exit 1
-  }
+  post_telegram "sendDocument" "${CURL_ARGS[@]}"
 else
   if [[ ${#MESSAGE} -gt 4096 ]]; then
     echo "Error: message exceeds Telegram 4096-character limit (${#MESSAGE} chars). Split it or send as --file." >&2
@@ -179,9 +213,6 @@ else
   fi
 
   CURL_ARGS=(
-    -s
-    -w $'\n%{http_code}'
-    -X POST
     --data-urlencode "chat_id=${CHAT_ID}"
     --data-urlencode "text=${MESSAGE}"
   )
@@ -189,18 +220,5 @@ else
   [[ "$SILENT" == "true" ]] && CURL_ARGS+=(-d "disable_notification=true")
   [[ -n "$REPLY_TO" ]] && CURL_ARGS+=(-d "reply_to_message_id=${REPLY_TO}")
 
-  RAW_RESP="$(curl "${CURL_ARGS[@]}" "${API_BASE}/sendMessage")" || {
-    echo "Error: curl request to Telegram sendMessage failed." >&2
-    exit 1
-  }
+  post_telegram "sendMessage" "${CURL_ARGS[@]}"
 fi
-
-HTTP_CODE="${RAW_RESP##*$'\n'}"
-BODY="${RAW_RESP%$'\n'*}"
-
-if [[ "$HTTP_CODE" -lt 200 || "$HTTP_CODE" -ge 300 ]] || [[ "$BODY" != *'"ok":true'* ]]; then
-  echo "Error: Telegram API returned HTTP ${HTTP_CODE}: ${BODY}" >&2
-  exit 1
-fi
-
-echo "$BODY"
