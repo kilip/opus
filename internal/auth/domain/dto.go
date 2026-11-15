@@ -1,6 +1,10 @@
 package domain
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // UserResponse is the response body for GET /auth/me, POST /auth/otp/verify
 // and POST /setup.
@@ -32,4 +36,12 @@ type SetupStatusResponse struct {
 type ProviderItem struct {
 	Name  string `json:"name"`
 	Label string `json:"label"`
+}
+
+// AccountResponse is the response body item for linked OAuth accounts.
+type AccountResponse struct {
+	ID        uuid.UUID `json:"id"`
+	Provider  string    `json:"provider"`
+	Email     string    `json:"email"`
+	CreatedAt time.Time `json:"created_at"`
 }

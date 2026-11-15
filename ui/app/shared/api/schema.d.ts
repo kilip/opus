@@ -4,6 +4,46 @@
  */
 
 export interface paths {
+    "/auth/accounts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List linked accounts
+         * @description Returns all OAuth accounts linked to the authenticated user
+         */
+        get: operations["authListAccounts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/accounts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Unlink account
+         * @description Unlinks an OAuth account from the authenticated user
+         */
+        delete: operations["authUnlinkAccount"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/logout": {
         parameters: {
             query?: never;
@@ -303,6 +343,12 @@ export interface components {
         "app.HealthStatus": {
             status?: string;
         };
+        "domain.AccountResponse": {
+            created_at?: string;
+            email?: string;
+            id?: string;
+            provider?: string;
+        };
         "domain.Activity": {
             author: string;
             body: string;
@@ -410,6 +456,11 @@ export interface components {
             error?: string;
             meta?: components["schemas"]["httpx.Meta"];
         };
+        "httpx.Response-array_domain_AccountResponse": {
+            data?: components["schemas"]["domain.AccountResponse"][];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
         "httpx.Response-array_domain_Activity": {
             data?: components["schemas"]["domain.Activity"][];
             error?: string;
@@ -454,6 +505,74 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    authListAccounts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-array_domain_AccountResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    authUnlinkAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Account ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
     authLogout: {
         parameters: {
             query?: never;
@@ -503,7 +622,10 @@ export interface operations {
     };
     authOAuthAuthorize: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Set to 1 to link provider to current authenticated user */
+                link?: string;
+            };
             header?: never;
             path: {
                 /** @description Provider name (e.g. github, google, facebook) */
@@ -519,6 +641,15 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
             };
             /** @description Not Found */
             404: {
@@ -557,6 +688,15 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

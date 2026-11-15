@@ -9,6 +9,23 @@
                 },
                 "type": "object"
             },
+            "domain.AccountResponse": {
+                "properties": {
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "email": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "provider": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "domain.Activity": {
                 "properties": {
                     "author": {
@@ -390,6 +407,24 @@
                 },
                 "type": "object"
             },
+            "httpx.Response-array_domain_AccountResponse": {
+                "properties": {
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/domain.AccountResponse"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
             "httpx.Response-array_domain_Activity": {
                 "properties": {
                     "data": {
@@ -512,6 +547,84 @@
         "url": ""
     },
     "paths": {
+        "/auth/accounts": {
+            "get": {
+                "description": "Returns all OAuth accounts linked to the authenticated user",
+                "operationId": "authListAccounts",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-array_domain_AccountResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    }
+                },
+                "summary": "List linked accounts",
+                "tags": [
+                    "auth"
+                ]
+            }
+        },
+        "/auth/accounts/{id}": {
+            "delete": {
+                "description": "Unlinks an OAuth account from the authenticated user",
+                "operationId": "authUnlinkAccount",
+                "parameters": [
+                    {
+                        "description": "Account ID",
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    }
+                },
+                "summary": "Unlink account",
+                "tags": [
+                    "auth"
+                ]
+            }
+        },
         "/auth/logout": {
             "post": {
                 "description": "Deletes the current session and clears the session cookie",
@@ -572,11 +685,29 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "description": "Set to 1 to link provider to current authenticated user",
+                        "in": "query",
+                        "name": "link",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
                     "302": {
                         "description": "Redirect to provider auth URL"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
                     },
                     "404": {
                         "content": {
@@ -639,6 +770,16 @@
                             }
                         },
                         "description": "Not Found"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Conflict"
                     }
                 },
                 "summary": "OAuth callback",
