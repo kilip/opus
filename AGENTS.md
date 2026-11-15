@@ -32,9 +32,12 @@ Domain units across both backend and frontend are called **features** (never "mo
 ├── ent/                          # Entgo unified schema (ent/schema/) & generated graph client
 ├── internal/
 │   ├── app/                      # HTTP server lifecycle, config, Fiber router wiring
+│   ├── auth/                     # Auth feature (OTP, OAuth providers, cookie sessions)
 │   ├── platform/
-│   │   └── httpx/                # { data, meta, error } envelope, sentinel errors, ErrorHandler
-│   └── <feature>/                # Go feature (e.g. internal/task, internal/user)
+│   │   ├── httpx/                # { data, meta, error } envelope, sentinel errors, ErrorHandler
+│   │   └── mailer/               # Email delivery abstraction (SMTP, console mailer)
+│   ├── user/                     # User domain & profile management
+│   └── <feature>/                # Other Go features (e.g. internal/task)
 │       ├── <feature>.go          # Public feature facade: New(...), Register(r fiber.Router); wiring only
 │       ├── domain/               # Entities, enums, sentinel errors (errors.go), ALL request/response DTOs (dto.go)
 │       ├── repo/                 # Storage implementation (in-memory or Ent client)
@@ -49,6 +52,7 @@ Domain units across both backend and frontend are called **features** (never "mo
         ├── apps.ts               # App switcher registry
         ├── shared/               # Cross-feature UI primitives, theme, api/client.ts, util/
         │   ├── api/              # client.ts (api, unwrap, unwrapMeta, ApiError), errors.ts
+        │   ├── auth/             # RequireAuth route guard & session state
         │   └── util/             # dates.ts, cross-feature pure utility functions
         └── features/<feature>/   # UI feature
             ├── app.ts            # App switcher entry (AppDef)
@@ -83,7 +87,7 @@ Domain units across both backend and frontend are called **features** (never "mo
 
 - **Fiber v3**: Register feature routes under the `/api` group in `internal/app/fiber.go` via `<feature>.Register(api)`. Use `fiber.Ctx` (v3 signature: `func(c fiber.Ctx) error`).
 - **Feature Environment Variables**: Prefix feature-specific env vars with the uppercase feature name (e.g. `AUTH_*`, `TASK_*`).
-- **Entgo (`ent/`)**: All database schemas live in `ent/schema/`. Share the generated `*ent.Client` across features via dependency injection in `Register` / `New`.
+- **Entgo (`ent/`)**: All database schemas live in `ent/schema/`. Share the generated `*ent.Client` across features via dependency injection in `Register` / `New`. Generated Ent code is committed and `go generate ./ent` must be re-run after schema changes.
 - **Strict DTO Boundary**:
   - NEVER expose generated `ent` models directly in HTTP responses or Swag annotations.
   - ALL request/response DTOs are defined in `internal/<feature>/domain/dto.go`. Handlers, services, and Swag annotations reference `domain.<Dto>`; NEVER define DTOs in `handler/`.
@@ -95,6 +99,35 @@ Domain units across both backend and frontend are called **features** (never "mo
     mise run api
     ```
   - NEVER hand-edit `api/swagger.json` or `ui/app/shared/api/schema.d.ts`.
+
+### Auth
+
+Opus uses passwordless (email OTP + OAuth) authentication with cookie sessions.
+- The provider interface lives in `internal/auth/provider/` (implements OAuth providers such as GitHub, Google, and Facebook).
+- The `RequireAuth` guard lives in `ui/app/shared/auth/` to protect authenticated UI routes.
+
+### Environment Variables
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `DATABASE_URL` | `file:opus.db?...` | SQLite / LibSQL database connection string |
+| `SESSION_SECRET` | `""` | Secret key used to sign session cookies (required in prod) |
+| `SESSION_TTL` | `720h` | Session duration / time-to-live |
+| `BASE_URL` | `http://localhost:7880` | Canonical public base URL for OAuth callbacks |
+| `TRUSTED_ORIGINS` | `""` | Comma-separated list of allowed CORS / redirect origins |
+| `SMTP_*` | — | SMTP mailer settings; falls back to console mailer if `SMTP_HOST` is unset |
+| `SMTP_HOST` | `""` | SMTP server host |
+| `SMTP_PORT` | `587` | SMTP server port |
+| `SMTP_USERNAME` | `""` | SMTP authentication username |
+| `SMTP_PASSWORD` | `""` | SMTP authentication password |
+| `SMTP_FROM` | `""` | Outgoing sender email address |
+| `*_CLIENT_ID`, `*_CLIENT_SECRET` | — | OAuth client credentials for third-party providers |
+| `GITHUB_CLIENT_ID` | `""` | GitHub OAuth client ID |
+| `GITHUB_CLIENT_SECRET` | `""` | GitHub OAuth client secret |
+| `GOOGLE_CLIENT_ID` | `""` | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | `""` | Google OAuth client secret |
+| `FACEBOOK_CLIENT_ID` | `""` | Facebook OAuth client ID |
+| `FACEBOOK_CLIENT_SECRET` | `""` | Facebook OAuth client secret |
 
 ## 4. Frontend: React Router Framework Mode (`ssr: false`)
 
