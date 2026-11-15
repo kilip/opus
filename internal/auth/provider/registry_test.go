@@ -196,14 +196,14 @@ func TestProvider_AuthCodeURL_PKCE(t *testing.T) {
 
 func TestProvider_Exchange(t *testing.T) {
 	reg := provider.NewRegistry(provider.Config{
-		BaseURL:            "http://localhost:7880",
-		GoogleClientID:     "google-id",
-		GoogleClientSecret: "google-secret",
+		BaseURL:              "http://localhost:7880",
+		FacebookClientID:     "facebook-id",
+		FacebookClientSecret: "facebook-secret",
 	})
 
-	p, ok := reg.Get("google")
+	p, ok := reg.Get("facebook")
 	if !ok {
-		t.Fatal("expected google provider")
+		t.Fatal("expected facebook provider")
 	}
 
 	// Default implementation returns ErrNotImplemented
@@ -217,10 +217,10 @@ func TestProvider_Exchange(t *testing.T) {
 	bp.SetExchangeFunc(func(ctx context.Context, code, verifier string) (provider.Profile, error) {
 		return provider.Profile{
 			ProviderUserID: "12345",
-			Email:          "user@google.com",
+			Email:          "user@facebook.com",
 			EmailVerified:  true,
-			Name:           "Google User",
-			AvatarURL:      "https://google.com/avatar.png",
+			Name:           "Facebook User",
+			AvatarURL:      "https://facebook.com/avatar.png",
 		}, nil
 	})
 
@@ -228,7 +228,7 @@ func TestProvider_Exchange(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected exchange error: %v", err)
 	}
-	if profile.ProviderUserID != "12345" || profile.Email != "user@google.com" || !profile.EmailVerified {
+	if profile.ProviderUserID != "12345" || profile.Email != "user@facebook.com" || !profile.EmailVerified {
 		t.Errorf("unexpected profile: %+v", profile)
 	}
 }

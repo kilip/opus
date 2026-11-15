@@ -7,6 +7,7 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/endpoints"
 	"golang.org/x/oauth2/github"
+	"golang.org/x/oauth2/google"
 )
 
 // Config holds OAuth provider credentials and base URL.
@@ -45,12 +46,12 @@ func NewRegistry(cfg Config) *Registry {
 	}
 
 	if cfg.GoogleClientID != "" && cfg.GoogleClientSecret != "" {
-		r.providers["google"] = NewBaseProvider("google", oauth2.Config{
+		r.providers["google"] = NewGoogleProvider(oauth2.Config{
 			ClientID:     cfg.GoogleClientID,
 			ClientSecret: cfg.GoogleClientSecret,
-			Endpoint:     endpoints.Google,
+			Endpoint:     google.Endpoint,
 			RedirectURL:  base + "/api/auth/oauth/google/callback",
-			Scopes:       []string{"openid", "profile", "email"},
+			Scopes:       []string{"openid", "email", "profile"},
 		})
 	}
 
