@@ -6,10 +6,12 @@ Opus is a single-binary **Modular Monolith** web dashboard for AI coding agents 
 
 - **NEVER commit or push to `main`.**
 - Before creating or editing any file, check the active branch:
+
   ```bash
   git branch --show-current
   ```
 - If on `main`, switch to an existing branch or create one before writing code:
+
   ```bash
   git switch -c <type>/<slug>   # e.g. feat/task-crud, fix/api-health, docs/agents-md
   ```
@@ -87,6 +89,7 @@ Domain units across both backend and frontend are called **features** (never "mo
 - **OpenAPI 3.1 Contract Pipeline**:
   - Every handler MUST carry Swag v2 godoc annotations (`@Summary`, `@Description`, `@ID`, `@Tags`, `@Produce`, `@Param`, `@Success`, `@Failure`, `@Router`).
   - After changing any handler annotation or DTO, regenerate the OpenAPI 3.1 spec and TypeScript schema:
+
     ```bash
     mise run api
     ```
@@ -120,6 +123,7 @@ Lazy means efficient, not careless. The best code is the code never written.
   6. **Minimum working code**: Fewest files, shortest working diff, deletion over addition, boring over clever.
 - **No Speculative Abstraction**: No interface with one implementation, no factory for one product, no config knob for a constant, no `repository/` wrapper without real domain complexity. `service/` is mandatory per feature (it is the home of business logic), but keep it plain structs and functions: no service interface unless there are 2+ implementations.
 - **`ponytail:` Comments**: Mark deliberate simplifications inline with a `ponytail:` comment naming the ceiling and upgrade path:
+
   ```go
   // ponytail: in-memory slice filter; move to Ent predicate when tasks > 1k
   ```
@@ -130,13 +134,13 @@ Lazy means efficient, not careless. The best code is the code never written.
 
 Run the narrowest verification covering your change before finishing:
 
-| Scope | Command |
-| :--- | :--- |
-| Regenerate OpenAPI 3.1 + UI types | `mise run api` |
-| Go tests (race detector) | `go test -race ./...` |
-| Go vulnerability check | `govulncheck ./...` |
-| Full lint & typecheck (Go + UI) | `mise run lint` |
-| UI format / lint check | `bunx biome check .` |
-| UI tests | `bun test --cwd ui --pass-with-no-tests` |
-| Build embedded UI assets | `mise run build-ui` |
-| Helm chart lint & render | `helm lint charts --strict && helm template opus charts > /dev/null` |
+| Scope                             | Command                                                              |
+| :-------------------------------- | :------------------------------------------------------------------- |
+| Regenerate OpenAPI 3.1 + UI types | `mise run api`                                                       |
+| Go tests (race detector)          | `go test -race ./...`                                                |
+| Go vulnerability check            | `govulncheck ./...`                                                  |
+| Full lint & typecheck (Go + UI)   | `mise run lint`                                                      |
+| UI format / lint check            | `bunx biome check .`                                                 |
+| UI tests                          | `bun test --cwd ui --pass-with-no-tests`                             |
+| Build embedded UI assets          | `mise run build-ui`                                                  |
+| Helm chart lint & render          | `helm lint charts --strict && helm template opus charts > /dev/null` |
