@@ -117,13 +117,13 @@ func (h *Handler) oauthCallback(c fiber.Ctx) error {
 		if err != nil {
 			return httpx.NewError(fiber.StatusBadRequest, domain.ErrUnauthorized)
 		}
-		if err := h.svc.OAuthLinkCallback(c.Context(), parsedUID, providerName, code, cookieState, queryState, verifier); err != nil {
+		if err := h.svc.OAuthLinkCallback(c.Context(), parsedUID, providerName, code, cookieState, queryState, verifier, clientAuditMeta(c)); err != nil {
 			return mapErr(err)
 		}
 		return c.Redirect().Status(fiber.StatusFound).To("/")
 	}
 
-	token, err := h.svc.OAuthCallback(c.Context(), providerName, code, cookieState, queryState, verifier)
+	token, err := h.svc.OAuthCallback(c.Context(), providerName, code, cookieState, queryState, verifier, clientAuditMeta(c))
 	if err != nil {
 		if errors.Is(err, domain.ErrProviderNotFound) {
 			return httpx.NotFound(err)

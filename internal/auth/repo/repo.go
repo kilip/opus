@@ -36,6 +36,8 @@ type Repo interface {
 	DeleteAccount(ctx context.Context, userID, accountID uuid.UUID) error
 	// GetOwner returns the owner user, or nil if no users exist.
 	GetOwner(ctx context.Context) (*domain.User, error)
+	// RecordAuditLog writes an audit log entry.
+	RecordAuditLog(ctx context.Context, userID *uuid.UUID, event string, meta domain.AuditMeta) error
 }
 
 // EntRepo implements Repo using an Ent client.
@@ -171,6 +173,18 @@ func (r *EntRepo) GetOwner(ctx context.Context) (*domain.User, error) {
 		return nil, err
 	}
 	return &domain.User{ID: u.ID, Email: u.Email}, nil
+}
+
+func (r *EntRepo) RecordAuditLog(ctx context.Context, userID *uuid.UUID, event string, meta domain.AuditMeta) error {
+	create := r.db.AuditLog.Create().
+		SetEvent(event).
+		SetIP(meta.IP).
+		SetUserAgent(meta.UserAgent)
+	if userID != nil && *userID != uuid.Nil {
+		create.SetUserID(*userID)
+	}
+	_, err := create.Save(ctx)
+	return err
 }
 
 func toDomainAccount(a *ent.Account) *domain.Account {

@@ -24,10 +24,12 @@ import (
 // --- fakeSetupRepo ---
 
 type fakeSetupRepo struct {
-	mu       sync.Mutex
-	users    map[string]*domain.User // keyed by email
-	sessions map[string]*domain.Session
-	otpStore map[string]*domain.OTP
+	mu        sync.Mutex
+	users     map[string]*domain.User // keyed by email
+	sessions  map[string]*domain.Session
+	otpStore  map[string]*domain.OTP
+	auditLogs []auditEntry
+	auditErr  error
 }
 
 func newFakeSetupRepo() *fakeSetupRepo {
@@ -118,6 +120,20 @@ func (f *fakeSetupRepo) GetOwner(_ context.Context) (*domain.User, error) {
 		return u, nil
 	}
 	return nil, nil
+}
+
+func (f *fakeSetupRepo) RecordAuditLog(_ context.Context, userID *uuid.UUID, event string, meta domain.AuditMeta) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.auditErr != nil {
+		return f.auditErr
+	}
+	f.auditLogs = append(f.auditLogs, auditEntry{
+		userID: userID,
+		event:  event,
+		meta:   meta,
+	})
+	return nil
 }
 
 var _ repo.Repo = (*fakeSetupRepo)(nil)
@@ -304,6 +320,18 @@ func TestSetupComplete_HappyPath(t *testing.T) {
 	}
 	if !found {
 		t.Fatal("expected opus_session cookie to be set")
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if len(r.auditLogs) != 1 {
+		t.Fatalf("expected 1 audit log entry, got %d", len(r.auditLogs))
+	}
+	if r.auditLogs[0].event != domain.AuditEventSetupCompleted {
+		t.Errorf("expected audit event %q, got %q", domain.AuditEventSetupCompleted, r.auditLogs[0].event)
+	}
+	if r.auditLogs[0].userID == nil || *r.auditLogs[0].userID != env.Data.ID {
+		t.Errorf("expected audit log userID %v, got %v", env.Data.ID, r.auditLogs[0].userID)
 	}
 }
 

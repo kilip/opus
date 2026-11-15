@@ -91,7 +91,7 @@ func (h *Handler) me(c fiber.Ctx) error {
 // @Success 204 "No Content"
 // @Router /auth/logout [post]
 func (h *Handler) logout(c fiber.Ctx) error {
-	h.svc.Logout(c.Context(), c.Cookies(SessionCookie))
+	h.svc.Logout(c.Context(), c.Cookies(SessionCookie), clientAuditMeta(c))
 	h.setSessionCookie(c, "", -1)
 	return c.SendStatus(fiber.StatusNoContent)
 }

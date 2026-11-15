@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kilip/opus/ent/account"
+	"github.com/kilip/opus/ent/auditlog"
 	"github.com/kilip/opus/ent/otp"
 	"github.com/kilip/opus/ent/schema"
 	"github.com/kilip/opus/ent/session"
@@ -43,6 +44,28 @@ func init() {
 	accountDescID := accountFields[0].Descriptor()
 	// account.DefaultID holds the default value on creation for the id field.
 	account.DefaultID = accountDescID.Default.(func() uuid.UUID)
+	auditlogFields := schema.AuditLog{}.Fields()
+	_ = auditlogFields
+	// auditlogDescEvent is the schema descriptor for event field.
+	auditlogDescEvent := auditlogFields[2].Descriptor()
+	// auditlog.EventValidator is a validator for the "event" field. It is called by the builders before save.
+	auditlog.EventValidator = auditlogDescEvent.Validators[0].(func(string) error)
+	// auditlogDescIP is the schema descriptor for ip field.
+	auditlogDescIP := auditlogFields[3].Descriptor()
+	// auditlog.DefaultIP holds the default value on creation for the ip field.
+	auditlog.DefaultIP = auditlogDescIP.Default.(string)
+	// auditlogDescUserAgent is the schema descriptor for user_agent field.
+	auditlogDescUserAgent := auditlogFields[4].Descriptor()
+	// auditlog.DefaultUserAgent holds the default value on creation for the user_agent field.
+	auditlog.DefaultUserAgent = auditlogDescUserAgent.Default.(string)
+	// auditlogDescCreatedAt is the schema descriptor for created_at field.
+	auditlogDescCreatedAt := auditlogFields[5].Descriptor()
+	// auditlog.DefaultCreatedAt holds the default value on creation for the created_at field.
+	auditlog.DefaultCreatedAt = auditlogDescCreatedAt.Default.(func() time.Time)
+	// auditlogDescID is the schema descriptor for id field.
+	auditlogDescID := auditlogFields[0].Descriptor()
+	// auditlog.DefaultID holds the default value on creation for the id field.
+	auditlog.DefaultID = auditlogDescID.Default.(func() uuid.UUID)
 	otpFields := schema.OTP{}.Fields()
 	_ = otpFields
 	// otpDescEmail is the schema descriptor for email field.

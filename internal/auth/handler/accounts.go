@@ -56,7 +56,7 @@ func (h *Handler) unlinkAccount(c fiber.Ctx) error {
 	if err != nil {
 		return httpx.NotFound(domain.ErrAccountNotFound)
 	}
-	if err := h.svc.UnlinkAccount(c.Context(), sess.UserID, accountID); err != nil {
+	if err := h.svc.UnlinkAccount(c.Context(), sess.UserID, accountID, clientAuditMeta(c)); err != nil {
 		return mapErr(err)
 	}
 	return c.SendStatus(fiber.StatusNoContent)

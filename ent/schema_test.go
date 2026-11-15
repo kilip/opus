@@ -193,3 +193,74 @@ func TestSchema_Account(t *testing.T) {
 		t.Fatalf("expected account to be deleted via cascade, but found: %+v", stillAcc)
 	}
 }
+
+func TestSchema_AuditLog(t *testing.T) {
+	ctx := context.Background()
+	db, err := sql.Open("sqlite", "file:ent_audit_log?mode=memory&cache=shared&_pragma=foreign_keys(ON)")
+	if err != nil {
+		t.Fatalf("open sqlite failed: %v", err)
+	}
+	drv := entsql.OpenDB(dialect.SQLite, db)
+	client := enttest.NewClient(t, enttest.WithOptions(ent.Driver(drv)))
+	defer func() {
+		_ = client.Close()
+	}()
+
+	// 1. Create a user
+	u, err := client.User.Create().
+		SetEmail("audit_user@example.com").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create user failed: %v", err)
+	}
+
+	// 2. Create audit log with user
+	al1, err := client.AuditLog.Create().
+		SetUserID(u.ID).
+		SetEvent("login_otp").
+		SetIP("127.0.0.1").
+		SetUserAgent("Mozilla/5.0").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create audit log with user failed: %v", err)
+	}
+
+	// 3. Create audit log without user (user_id is nil)
+	al2, err := client.AuditLog.Create().
+		SetEvent("otp_failed").
+		SetIP("192.168.1.1").
+		SetUserAgent("curl/7.68.0").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create audit log without user failed: %v", err)
+	}
+
+	// 4. Read back and verify
+	got1, err := client.AuditLog.Get(ctx, al1.ID)
+	if err != nil {
+		t.Fatalf("get audit log 1 failed: %v", err)
+	}
+	if got1.Event != "login_otp" || got1.UserID == nil || *got1.UserID != u.ID || got1.IP != "127.0.0.1" || got1.UserAgent != "Mozilla/5.0" {
+		t.Errorf("unexpected got1: %+v", got1)
+	}
+
+	got2, err := client.AuditLog.Get(ctx, al2.ID)
+	if err != nil {
+		t.Fatalf("get audit log 2 failed: %v", err)
+	}
+	if got2.Event != "otp_failed" || got2.UserID != nil || got2.IP != "192.168.1.1" || got2.UserAgent != "curl/7.68.0" {
+		t.Errorf("unexpected got2: %+v", got2)
+	}
+
+	// 5. Delete user: audit log 1 should have user_id set to null (SetNull) and still exist
+	if err := client.User.DeleteOneID(u.ID).Exec(ctx); err != nil {
+		t.Fatalf("delete user failed: %v", err)
+	}
+	got1AfterDelete, err := client.AuditLog.Get(ctx, al1.ID)
+	if err != nil {
+		t.Fatalf("expected audit log 1 to still exist after user deletion: %v", err)
+	}
+	if got1AfterDelete.UserID != nil {
+		t.Errorf("expected user_id to be nil after user deletion, got: %v", got1AfterDelete.UserID)
+	}
+}

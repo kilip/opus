@@ -56,3 +56,34 @@ type Session struct {
 	CreatedAt time.Time
 	User      *User
 }
+
+// Audit event constants.
+const (
+	AuditEventSetupCompleted  = "setup_completed"
+	AuditEventLoginOTP        = "login_otp"
+	AuditEventOTPFailed       = "otp_failed"
+	AuditEventLogout          = "logout"
+	AuditEventAccountLinked   = "account_linked"
+	AuditEventAccountUnlinked = "account_unlinked"
+)
+
+// AuditEventLoginOAuth returns the event name for an OAuth login with the given provider.
+func AuditEventLoginOAuth(provider string) string {
+	return "login_oauth:" + provider
+}
+
+// AuditMeta holds client metadata captured for auditing.
+type AuditMeta struct {
+	IP        string
+	UserAgent string
+}
+
+// AuditLog represents an audit log entry.
+type AuditLog struct {
+	ID        uuid.UUID
+	UserID    *uuid.UUID
+	Event     string
+	IP        string
+	UserAgent string
+	CreatedAt time.Time
+}

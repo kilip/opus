@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -25,10 +26,18 @@ import (
 
 // --- fake repo ---
 
+type auditEntry struct {
+	userID *uuid.UUID
+	event  string
+	meta   domain.AuditMeta
+}
+
 type fakeRepo struct {
-	sessions map[string]*domain.Session
-	accounts map[string]*domain.Account
-	owner    *domain.User
+	sessions  map[string]*domain.Session
+	accounts  map[string]*domain.Account
+	auditLogs []auditEntry
+	auditErr  error
+	owner     *domain.User
 }
 
 func newFakeRepo() *fakeRepo {
@@ -141,6 +150,18 @@ func (f *fakeRepo) GetOwner(_ context.Context) (*domain.User, error) {
 	return f.owner, nil
 }
 
+func (f *fakeRepo) RecordAuditLog(_ context.Context, userID *uuid.UUID, event string, meta domain.AuditMeta) error {
+	if f.auditErr != nil {
+		return f.auditErr
+	}
+	f.auditLogs = append(f.auditLogs, auditEntry{
+		userID: userID,
+		event:  event,
+		meta:   meta,
+	})
+	return nil
+}
+
 var _ repo.Repo = (*fakeRepo)(nil)
 
 // --- helpers ---
@@ -228,7 +249,8 @@ func TestMe_ExpiredSession(t *testing.T) {
 func TestLogout_WithSession(t *testing.T) {
 	r := newFakeRepo()
 	hash := computeHash("my-token", testSecret)
-	_, _ = r.CreateSession(context.Background(), uuid.New(), hash, time.Now().Add(time.Hour))
+	uid := uuid.New()
+	_, _ = r.CreateSession(context.Background(), uid, hash, time.Now().Add(time.Hour))
 
 	resp := doReq(t, setupApp(r), http.MethodPost, "/auth/logout", "my-token")
 	if resp.StatusCode != http.StatusNoContent {
@@ -246,12 +268,44 @@ func TestLogout_WithSession(t *testing.T) {
 	if !cleared {
 		t.Fatal("expected session cookie to be cleared (MaxAge < 0)")
 	}
+	if len(r.auditLogs) != 1 {
+		t.Fatalf("expected 1 audit log entry, got %d", len(r.auditLogs))
+	}
+	if r.auditLogs[0].event != domain.AuditEventLogout {
+		t.Errorf("expected audit event %q, got %q", domain.AuditEventLogout, r.auditLogs[0].event)
+	}
+	if r.auditLogs[0].userID == nil || *r.auditLogs[0].userID != uid {
+		t.Errorf("expected audit log userID %v, got %v", uid, r.auditLogs[0].userID)
+	}
 }
 
 func TestLogout_NoSession(t *testing.T) {
-	resp := doReq(t, setupApp(newFakeRepo()), http.MethodPost, "/auth/logout", "")
+	r := newFakeRepo()
+	resp := doReq(t, setupApp(r), http.MethodPost, "/auth/logout", "")
 	if resp.StatusCode != http.StatusNoContent {
 		t.Fatalf("expected 204, got %d", resp.StatusCode)
+	}
+	if len(r.auditLogs) != 1 {
+		t.Fatalf("expected 1 audit log entry, got %d", len(r.auditLogs))
+	}
+	if r.auditLogs[0].event != domain.AuditEventLogout {
+		t.Errorf("expected audit event %q, got %q", domain.AuditEventLogout, r.auditLogs[0].event)
+	}
+	if r.auditLogs[0].userID != nil {
+		t.Errorf("expected nil userID in audit log, got %v", r.auditLogs[0].userID)
+	}
+}
+
+func TestLogout_AuditFailureDoesNotFailRequest(t *testing.T) {
+	r := newFakeRepo()
+	r.auditErr = errors.New("audit disk full")
+	hash := computeHash("my-token", testSecret)
+	uid := uuid.New()
+	_, _ = r.CreateSession(context.Background(), uid, hash, time.Now().Add(time.Hour))
+
+	resp := doReq(t, setupApp(r), http.MethodPost, "/auth/logout", "my-token")
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("expected 204 despite audit failure, got %d", resp.StatusCode)
 	}
 }
 
@@ -418,6 +472,15 @@ func TestAccounts_Unlink_Success(t *testing.T) {
 	accounts, _ := r.ListAccountsByUserID(context.Background(), userID)
 	if len(accounts) != 0 {
 		t.Fatalf("expected 0 accounts, got %d", len(accounts))
+	}
+	if len(r.auditLogs) != 1 {
+		t.Fatalf("expected 1 audit log, got %d", len(r.auditLogs))
+	}
+	if r.auditLogs[0].event != domain.AuditEventAccountUnlinked {
+		t.Errorf("expected audit event %q, got %q", domain.AuditEventAccountUnlinked, r.auditLogs[0].event)
+	}
+	if r.auditLogs[0].userID == nil || *r.auditLogs[0].userID != userID {
+		t.Errorf("expected audit log userID %v, got %v", userID, r.auditLogs[0].userID)
 	}
 }
 

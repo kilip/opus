@@ -48,7 +48,7 @@ func (h *Handler) verifyOTP(c fiber.Ctx) error {
 	if err := c.Bind().JSON(&body); err != nil || body.Email == "" || body.Code == "" {
 		return httpx.BadRequest(httpx.ErrBadRequest)
 	}
-	user, token, err := h.svc.VerifyOTP(c.Context(), body.Email, body.Code)
+	user, token, err := h.svc.VerifyOTP(c.Context(), body.Email, body.Code, clientAuditMeta(c))
 	if err != nil {
 		return mapErr(err)
 	}

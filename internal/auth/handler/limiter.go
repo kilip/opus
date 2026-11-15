@@ -44,6 +44,13 @@ func clientIP(c fiber.Ctx) string {
 	return c.IP()
 }
 
+func clientAuditMeta(c fiber.Ctx) domain.AuditMeta {
+	return domain.AuditMeta{
+		IP:        clientIP(c),
+		UserAgent: c.Get(fiber.HeaderUserAgent),
+	}
+}
+
 func newIPLimiter(cfg RateLimitConfig) fiber.Handler {
 	if cfg.Disabled {
 		return func(c fiber.Ctx) error { return c.Next() }

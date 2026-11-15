@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -236,6 +237,15 @@ func TestVerifyOTP_Success(t *testing.T) {
 	if env.Data.Email != email {
 		t.Fatalf("want email %q, got %q", email, env.Data.Email)
 	}
+	if len(sessRepo.auditLogs) != 1 {
+		t.Fatalf("expected 1 audit log entry, got %d", len(sessRepo.auditLogs))
+	}
+	if sessRepo.auditLogs[0].event != domain.AuditEventLoginOTP {
+		t.Errorf("expected audit event %q, got %q", domain.AuditEventLoginOTP, sessRepo.auditLogs[0].event)
+	}
+	if sessRepo.auditLogs[0].userID == nil || *sessRepo.auditLogs[0].userID != userID {
+		t.Errorf("expected audit log userID %v, got %v", userID, sessRepo.auditLogs[0].userID)
+	}
 }
 
 func TestVerifyOTP_WrongCode_Returns401AndIncrementsAttempts(t *testing.T) {
@@ -250,13 +260,43 @@ func TestVerifyOTP_WrongCode_Returns401AndIncrementsAttempts(t *testing.T) {
 		ExpiresAt: fixedNow.Add(10 * time.Minute),
 	}
 
-	app := setupOTPApp(t, newFakeRepo(), otpRepo, &fakeMailer{}, func() time.Time { return fixedNow })
+	sessRepo := newFakeRepo()
+	app := setupOTPApp(t, sessRepo, otpRepo, &fakeMailer{}, func() time.Time { return fixedNow })
 	resp := postJSON(t, app, "/auth/otp/verify", map[string]string{"email": email, "code": "000000"})
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("want 401, got %d", resp.StatusCode)
 	}
 	if otpRepo.otps[email].Attempts != 1 {
 		t.Fatalf("want 1 attempt, got %d", otpRepo.otps[email].Attempts)
+	}
+	if len(sessRepo.auditLogs) != 1 {
+		t.Fatalf("expected 1 audit log entry, got %d", len(sessRepo.auditLogs))
+	}
+	if sessRepo.auditLogs[0].event != domain.AuditEventOTPFailed {
+		t.Errorf("expected audit event %q, got %q", domain.AuditEventOTPFailed, sessRepo.auditLogs[0].event)
+	}
+}
+
+func TestVerifyOTP_AuditFailureDoesNotFailRequest(t *testing.T) {
+	email := "owner@example.com"
+	userID := uuid.New()
+	otpRepo := newFakeOTPRepo()
+	otpRepo.users[email] = &domain.User{ID: userID, Email: email}
+	sessRepo := newFakeRepo()
+	sessRepo.auditErr = errors.New("audit log write error")
+
+	fixedNow := time.Now()
+	otpRepo.otps[email] = &domain.OTP{
+		ID:        uuid.New(),
+		Email:     email,
+		CodeHash:  codeHashFor("123456"),
+		ExpiresAt: fixedNow.Add(10 * time.Minute),
+	}
+
+	app := setupOTPApp(t, sessRepo, otpRepo, &fakeMailer{}, func() time.Time { return fixedNow })
+	resp := postJSON(t, app, "/auth/otp/verify", map[string]string{"email": email, "code": "123456"})
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("want 200 despite audit failure, got %d", resp.StatusCode)
 	}
 }
 

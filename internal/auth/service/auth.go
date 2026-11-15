@@ -12,6 +12,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -85,11 +86,18 @@ func (s *Auth) Session(ctx context.Context, raw string) (*domain.Session, error)
 }
 
 // Logout deletes the session for raw token; noop when raw is empty or unknown.
-func (s *Auth) Logout(ctx context.Context, raw string) {
+func (s *Auth) Logout(ctx context.Context, raw string, meta domain.AuditMeta) {
 	if raw == "" {
+		s.recordAudit(ctx, nil, domain.AuditEventLogout, meta)
 		return
 	}
+	var uid *uuid.UUID
+	sess, err := s.sessions.FindByTokenHash(ctx, s.hash(raw))
+	if err == nil && sess != nil {
+		uid = &sess.UserID
+	}
 	_ = s.sessions.DeleteByTokenHash(ctx, s.hash(raw))
+	s.recordAudit(ctx, uid, domain.AuditEventLogout, meta)
 }
 
 // NeedsSetup reports whether no owner exists yet.
@@ -113,24 +121,30 @@ func (s *Auth) RequestOTP(ctx context.Context, email string) error {
 
 // VerifyOTP checks code for email, consumes the OTP and opens a session.
 // Returns the user and the raw session token for the caller to deliver.
-func (s *Auth) VerifyOTP(ctx context.Context, email, code string) (*domain.User, string, error) {
+func (s *Auth) VerifyOTP(ctx context.Context, email, code string, meta domain.AuditMeta) (*domain.User, string, error) {
 	otp, err := s.otps.FindByEmail(ctx, email)
 	if err != nil || otp == nil {
+		s.recordAudit(ctx, nil, domain.AuditEventOTPFailed, meta)
 		return nil, "", domain.ErrInvalidOTP
 	}
 
 	// lockout before checking code
 	if otp.Attempts >= domain.MaxOTPAttempts {
 		_ = s.otps.DeleteByEmail(ctx, email)
+		s.recordAudit(ctx, nil, domain.AuditEventOTPFailed, meta)
 		return nil, "", domain.ErrTooManyAttempts
 	}
 	if s.now().After(otp.ExpiresAt) {
+		s.recordAudit(ctx, nil, domain.AuditEventOTPFailed, meta)
 		return nil, "", domain.ErrOTPExpired
 	}
 	if !s.codeMatches(otp.CodeHash, code) {
 		attempts, _ := s.otps.IncrementAttempts(ctx, otp.ID)
 		if attempts >= domain.MaxOTPAttempts {
 			_ = s.otps.DeleteByEmail(ctx, email)
+		}
+		s.recordAudit(ctx, nil, domain.AuditEventOTPFailed, meta)
+		if attempts >= domain.MaxOTPAttempts {
 			return nil, "", domain.ErrTooManyAttempts
 		}
 		return nil, "", domain.ErrInvalidOTP
@@ -141,6 +155,7 @@ func (s *Auth) VerifyOTP(ctx context.Context, email, code string) (*domain.User,
 
 	user, err := s.otps.FindUserByEmail(ctx, email)
 	if err != nil || user == nil {
+		s.recordAudit(ctx, nil, domain.AuditEventOTPFailed, meta)
 		return nil, "", domain.ErrInvalidOTP
 	}
 
@@ -151,6 +166,7 @@ func (s *Auth) VerifyOTP(ctx context.Context, email, code string) (*domain.User,
 	if _, err = s.sessions.CreateSession(ctx, user.ID, hash, s.now().Add(s.ttl)); err != nil {
 		return nil, "", err
 	}
+	s.recordAudit(ctx, &user.ID, domain.AuditEventLoginOTP, meta)
 	return user, raw, nil
 }
 
@@ -167,19 +183,22 @@ func (s *Auth) RequestSetupOTP(ctx context.Context, email string) error {
 //
 // ponytail: unlike VerifyOTP there is no attempt counter here; add lockout
 // before exposing setup to the internet.
-func (s *Auth) CompleteSetup(ctx context.Context, email, code string) (*domain.User, string, error) {
+func (s *Auth) CompleteSetup(ctx context.Context, email, code string, meta domain.AuditMeta) (*domain.User, string, error) {
 	if err := s.requireOpenSetup(ctx); err != nil {
 		return nil, "", err
 	}
 
 	otp, err := s.otps.FindByEmail(ctx, email)
 	if err != nil || otp == nil {
+		s.recordAudit(ctx, nil, domain.AuditEventOTPFailed, meta)
 		return nil, "", domain.ErrInvalidOTP
 	}
 	if s.now().After(otp.ExpiresAt) {
+		s.recordAudit(ctx, nil, domain.AuditEventOTPFailed, meta)
 		return nil, "", domain.ErrOTPExpired
 	}
 	if !s.codeMatches(otp.CodeHash, code) {
+		s.recordAudit(ctx, nil, domain.AuditEventOTPFailed, meta)
 		return nil, "", domain.ErrInvalidOTP
 	}
 	_ = s.otps.DeleteByEmail(ctx, email)
@@ -196,6 +215,7 @@ func (s *Auth) CompleteSetup(ctx context.Context, email, code string) (*domain.U
 		}
 		return nil, "", err
 	}
+	s.recordAudit(ctx, &sess.User.ID, domain.AuditEventSetupCompleted, meta)
 	return sess.User, raw, nil
 }
 
@@ -355,7 +375,7 @@ func (s *Auth) VerifyOAuthCookie(val string) (state, verifier, linkUserID string
 
 // OAuthCallback validates the OAuth callback parameters, exchanges the code with the provider,
 // and enforces linking policy. Returns a new raw session token on success.
-func (s *Auth) OAuthCallback(ctx context.Context, providerName, code, cookieState, queryState, verifier string) (string, error) {
+func (s *Auth) OAuthCallback(ctx context.Context, providerName, code, cookieState, queryState, verifier string, meta domain.AuditMeta) (string, error) {
 	if s.registry == nil {
 		return "", domain.ErrProviderNotFound
 	}
@@ -390,6 +410,7 @@ func (s *Auth) OAuthCallback(ctx context.Context, providerName, code, cookieStat
 		if _, err = s.sessions.CreateSession(ctx, acc.UserID, hash, s.now().Add(s.ttl)); err != nil {
 			return "", err
 		}
+		s.recordAudit(ctx, &acc.UserID, domain.AuditEventLoginOAuth(p.Name()), meta)
 		return raw, nil
 	}
 
@@ -406,6 +427,7 @@ func (s *Auth) OAuthCallback(ctx context.Context, providerName, code, cookieStat
 		if _, err := s.sessions.CreateAccount(ctx, owner.ID, p.Name(), profile.ProviderUserID, profile.Email); err != nil {
 			return "", err
 		}
+		s.recordAudit(ctx, &owner.ID, domain.AuditEventAccountLinked, meta)
 		raw, hash, err := s.newToken()
 		if err != nil {
 			return "", err
@@ -413,6 +435,7 @@ func (s *Auth) OAuthCallback(ctx context.Context, providerName, code, cookieStat
 		if _, err = s.sessions.CreateSession(ctx, owner.ID, hash, s.now().Add(s.ttl)); err != nil {
 			return "", err
 		}
+		s.recordAudit(ctx, &owner.ID, domain.AuditEventLoginOAuth(p.Name()), meta)
 		return raw, nil
 	}
 
@@ -421,7 +444,7 @@ func (s *Auth) OAuthCallback(ctx context.Context, providerName, code, cookieStat
 
 // OAuthLinkCallback handles the OAuth provider callback specifically for linking an external account
 // to an existing authenticated user.
-func (s *Auth) OAuthLinkCallback(ctx context.Context, userID uuid.UUID, providerName, code, cookieState, queryState, verifier string) error {
+func (s *Auth) OAuthLinkCallback(ctx context.Context, userID uuid.UUID, providerName, code, cookieState, queryState, verifier string, meta domain.AuditMeta) error {
 	if s.registry == nil {
 		return domain.ErrProviderNotFound
 	}
@@ -456,7 +479,11 @@ func (s *Auth) OAuthLinkCallback(ctx context.Context, userID uuid.UUID, provider
 	}
 
 	_, err = s.sessions.CreateAccount(ctx, userID, p.Name(), profile.ProviderUserID, profile.Email)
-	return err
+	if err != nil {
+		return err
+	}
+	s.recordAudit(ctx, &userID, domain.AuditEventAccountLinked, meta)
+	return nil
 }
 
 // ListAccounts returns all external OAuth accounts linked to userID.
@@ -466,8 +493,18 @@ func (s *Auth) ListAccounts(ctx context.Context, userID uuid.UUID) ([]*domain.Ac
 
 // UnlinkAccount removes the linked account with accountID belonging to userID.
 // Returns domain.ErrAccountNotFound if the account does not exist or belongs to another user.
-func (s *Auth) UnlinkAccount(ctx context.Context, userID, accountID uuid.UUID) error {
-	return s.sessions.DeleteAccount(ctx, userID, accountID)
+func (s *Auth) UnlinkAccount(ctx context.Context, userID, accountID uuid.UUID, meta domain.AuditMeta) error {
+	if err := s.sessions.DeleteAccount(ctx, userID, accountID); err != nil {
+		return err
+	}
+	s.recordAudit(ctx, &userID, domain.AuditEventAccountUnlinked, meta)
+	return nil
+}
+
+func (s *Auth) recordAudit(ctx context.Context, userID *uuid.UUID, event string, meta domain.AuditMeta) {
+	if err := s.sessions.RecordAuditLog(ctx, userID, event, meta); err != nil {
+		slog.Warn("failed to write audit log", "event", event, "error", err)
+	}
 }
 
 func randomString(n int) (string, error) {

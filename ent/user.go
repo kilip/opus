@@ -34,9 +34,11 @@ type UserEdges struct {
 	Sessions []*Session `json:"sessions,omitempty"`
 	// Accounts holds the value of the accounts edge.
 	Accounts []*Account `json:"accounts,omitempty"`
+	// AuditLogs holds the value of the audit_logs edge.
+	AuditLogs []*AuditLog `json:"audit_logs,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [3]bool
 }
 
 // SessionsOrErr returns the Sessions value or an error if the edge
@@ -55,6 +57,15 @@ func (e UserEdges) AccountsOrErr() ([]*Account, error) {
 		return e.Accounts, nil
 	}
 	return nil, &NotLoadedError{edge: "accounts"}
+}
+
+// AuditLogsOrErr returns the AuditLogs value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) AuditLogsOrErr() ([]*AuditLog, error) {
+	if e.loadedTypes[2] {
+		return e.AuditLogs, nil
+	}
+	return nil, &NotLoadedError{edge: "audit_logs"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -122,6 +133,11 @@ func (_m *User) QuerySessions() *SessionQuery {
 // QueryAccounts queries the "accounts" edge of the User entity.
 func (_m *User) QueryAccounts() *AccountQuery {
 	return NewUserClient(_m.config).QueryAccounts(_m)
+}
+
+// QueryAuditLogs queries the "audit_logs" edge of the User entity.
+func (_m *User) QueryAuditLogs() *AuditLogQuery {
+	return NewUserClient(_m.config).QueryAuditLogs(_m)
 }
 
 // Update returns a builder for updating this User.

@@ -390,6 +390,16 @@ func TestOAuth_Callback_ValidLoginExistingAccount(t *testing.T) {
 	if sess.UserID != owner.ID {
 		t.Errorf("session UserID: want %s, got %s", owner.ID, sess.UserID)
 	}
+
+	if len(r.auditLogs) != 1 {
+		t.Fatalf("expected 1 audit log, got %d", len(r.auditLogs))
+	}
+	if r.auditLogs[0].event != "login_oauth:github" {
+		t.Errorf("expected audit event login_oauth:github, got %q", r.auditLogs[0].event)
+	}
+	if r.auditLogs[0].userID == nil || *r.auditLogs[0].userID != owner.ID {
+		t.Errorf("expected audit log userID %v, got %v", owner.ID, r.auditLogs[0].userID)
+	}
 }
 
 // AC4b, AC6 & AC7: Auto-link by verified email when email equals owner email.
@@ -767,6 +777,16 @@ func TestOAuth_Link_Success(t *testing.T) {
 	}
 	if acc.Email != "linked@github.com" {
 		t.Fatalf("account email: want linked@github.com, got %s", acc.Email)
+	}
+
+	if len(r.auditLogs) != 1 {
+		t.Fatalf("expected 1 audit log, got %d", len(r.auditLogs))
+	}
+	if r.auditLogs[0].event != domain.AuditEventAccountLinked {
+		t.Errorf("expected audit event %q, got %q", domain.AuditEventAccountLinked, r.auditLogs[0].event)
+	}
+	if r.auditLogs[0].userID == nil || *r.auditLogs[0].userID != userID {
+		t.Errorf("expected audit log userID %v, got %v", userID, r.auditLogs[0].userID)
 	}
 }
 
