@@ -10,6 +10,8 @@ export const AUTH_ERRORS: Record<string, string> = {
 	ACCOUNT_NOT_ALLOWED: "Your account is not authorized to sign in.",
 	SETUP_REQUIRED: "Initial setup is required before signing in.",
 	PROVIDER_NOT_FOUND: "The requested authentication provider was not found.",
+	ACCOUNT_ALREADY_LINKED: "This account is already linked to another user.",
+	ACCOUNT_NOT_FOUND: "The requested account was not found.",
 };
 
 export function resolveAuthError(code?: string | null): string | null {

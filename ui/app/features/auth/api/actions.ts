@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 
-import { api, unwrap } from "~/shared/api/client";
+import { ApiError, api, unwrap } from "~/shared/api/client";
+import { resolveErrorMessage } from "~/shared/api/errors";
 import { parseRetryAfter } from "../model";
 import { AUTH_ERRORS, RateLimitError } from "./errors";
 import { authKeys } from "./keys";
@@ -94,6 +95,37 @@ export function useLogout() {
 		onSettled: () => {
 			queryClient.removeQueries({ queryKey: authKeys.all });
 			navigate("/login");
+		},
+	});
+}
+
+export function useDisconnectAccount() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (id: string) => {
+			const { error, response } = await api.DELETE("/auth/accounts/{id}", {
+				params: { path: { id } },
+			});
+			if (!response.ok) {
+				const code =
+					error &&
+					typeof error === "object" &&
+					"error" in error &&
+					typeof error.error === "string"
+						? error.error
+						: response.status === 404
+							? "RESOURCE_NOT_FOUND"
+							: "REQUEST_FAILED";
+				throw new ApiError(
+					response.status,
+					code,
+					resolveErrorMessage(code, AUTH_ERRORS),
+				);
+			}
+		},
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: authKeys.accounts() });
 		},
 	});
 }

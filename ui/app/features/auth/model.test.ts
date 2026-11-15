@@ -85,6 +85,12 @@ describe("OAuth error resolution (AC4)", () => {
 		assert.match(msg ?? "", /provider was not found/i);
 	});
 
+	it("resolves readable message for ACCOUNT_ALREADY_LINKED (AC4)", () => {
+		const msg = resolveAuthError("ACCOUNT_ALREADY_LINKED");
+		assert.strictEqual(msg, AUTH_ERRORS.ACCOUNT_ALREADY_LINKED);
+		assert.match(msg ?? "", /already linked/i);
+	});
+
 	it("returns null or fallback for empty or unknown error codes", () => {
 		assert.strictEqual(resolveAuthError(null), null);
 		assert.strictEqual(resolveAuthError(""), null);
