@@ -57,6 +57,14 @@ func (f *fakeRepo) DeleteByTokenHash(_ context.Context, hash string) error {
 	return nil
 }
 
+func (f *fakeRepo) CountUsers(_ context.Context) (int, error) {
+	return 0, nil // fakeRepo used in session tests; no users needed
+}
+
+func (f *fakeRepo) CreateUserAndSession(_ context.Context, _ string, _ string, _ time.Time) (*domain.Session, error) {
+	return nil, nil // unused in session tests
+}
+
 var _ repo.Repo = (*fakeRepo)(nil)
 
 // --- helpers ---
