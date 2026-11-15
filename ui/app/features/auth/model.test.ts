@@ -1,6 +1,6 @@
 import assert from "node:assert";
 import { describe, it } from "node:test";
-
+import { AUTH_ERRORS, resolveAuthError } from "./api/errors";
 import {
 	formatCooldownLabel,
 	formatRateLimitMessage,
@@ -63,5 +63,32 @@ describe("auth model (AC1, AC5)", () => {
 		assert.strictEqual(parseRetryAfter(""), undefined);
 		assert.strictEqual(parseRetryAfter(null), undefined);
 		assert.strictEqual(parseRetryAfter(undefined), undefined);
+	});
+});
+
+describe("OAuth error resolution (AC4)", () => {
+	it("resolves readable message for ACCOUNT_NOT_ALLOWED", () => {
+		const msg = resolveAuthError("ACCOUNT_NOT_ALLOWED");
+		assert.strictEqual(msg, AUTH_ERRORS.ACCOUNT_NOT_ALLOWED);
+		assert.match(msg ?? "", /not authorized/i);
+	});
+
+	it("resolves readable message for SETUP_REQUIRED", () => {
+		const msg = resolveAuthError("SETUP_REQUIRED");
+		assert.strictEqual(msg, AUTH_ERRORS.SETUP_REQUIRED);
+		assert.match(msg ?? "", /setup is required/i);
+	});
+
+	it("resolves readable message for PROVIDER_NOT_FOUND", () => {
+		const msg = resolveAuthError("PROVIDER_NOT_FOUND");
+		assert.strictEqual(msg, AUTH_ERRORS.PROVIDER_NOT_FOUND);
+		assert.match(msg ?? "", /provider was not found/i);
+	});
+
+	it("returns null or fallback for empty or unknown error codes", () => {
+		assert.strictEqual(resolveAuthError(null), null);
+		assert.strictEqual(resolveAuthError(""), null);
+		assert.strictEqual(resolveAuthError(undefined), null);
+		assert.strictEqual(resolveAuthError("UNKNOWN_ERROR"), "UNKNOWN_ERROR");
 	});
 });

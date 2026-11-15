@@ -30,6 +30,24 @@ describe("auth errors mapping (AC4)", () => {
 		assert.match(msg, /completed/i);
 	});
 
+	it("maps ACCOUNT_NOT_ALLOWED to readable message", () => {
+		const msg = resolveErrorMessage("ACCOUNT_NOT_ALLOWED", AUTH_ERRORS);
+		assert.strictEqual(msg, AUTH_ERRORS.ACCOUNT_NOT_ALLOWED);
+		assert.match(msg, /not authorized/i);
+	});
+
+	it("maps SETUP_REQUIRED to readable message", () => {
+		const msg = resolveErrorMessage("SETUP_REQUIRED", AUTH_ERRORS);
+		assert.strictEqual(msg, AUTH_ERRORS.SETUP_REQUIRED);
+		assert.match(msg, /setup is required/i);
+	});
+
+	it("maps PROVIDER_NOT_FOUND to readable message", () => {
+		const msg = resolveErrorMessage("PROVIDER_NOT_FOUND", AUTH_ERRORS);
+		assert.strictEqual(msg, AUTH_ERRORS.PROVIDER_NOT_FOUND);
+		assert.match(msg, /provider was not found/i);
+	});
+
 	it("RateLimitError creates 429 RATE_LIMITED error with retry-after message (AC3)", () => {
 		const errWithRetry = new RateLimitError(45);
 		assert.ok(errWithRetry instanceof ApiError);
