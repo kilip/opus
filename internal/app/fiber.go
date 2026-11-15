@@ -96,6 +96,8 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client) *fiber.App {
 			SessionTTL:    cfg.SessionTTL,
 		}, mailer.NewConsole(logger))
 		authRoutes := api.Group("/auth")
+		setupRoutes := api.Group("/setup")
+		authFeature.RegisterSetup(setupRoutes) // GET /status, POST /otp, POST "" (public)
 		authFeature.RegisterPublic(authRoutes) // POST /otp/request, POST /otp/verify (public)
 		api.Use(authFeature.Middleware())
 		authFeature.Register(authRoutes) // GET /me, POST /logout (protected)
