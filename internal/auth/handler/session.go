@@ -2,16 +2,22 @@
 package handler
 
 import (
+	"time"
+
 	"github.com/gofiber/fiber/v3"
 	"github.com/kilip/opus/internal/auth/repo"
 	"github.com/kilip/opus/internal/platform/httpx"
+	"github.com/kilip/opus/internal/platform/mailer"
 )
 
 // Handler holds auth HTTP handlers.
 type Handler struct {
 	repo      repo.Repo
+	otpRepo   repo.OTPRepo
+	mailer    mailer.Mailer
 	secret    string
 	cookieCfg CookieConfig
+	now       func() time.Time // injectable for tests
 }
 
 // CookieConfig holds cookie parameters derived from app config.
@@ -23,13 +29,31 @@ type CookieConfig struct {
 
 // New returns a Handler.
 func New(r repo.Repo, secret string, cc CookieConfig) *Handler {
-	return &Handler{repo: r, secret: secret, cookieCfg: cc}
+	return &Handler{repo: r, secret: secret, cookieCfg: cc, now: time.Now}
 }
 
-// Register mounts auth routes on r.
+// NewWithOTP returns a Handler with mailer and OTP repo wired.
+func NewWithOTP(r repo.Repo, otp repo.OTPRepo, m mailer.Mailer, secret string, cc CookieConfig) *Handler {
+	return &Handler{
+		repo:      r,
+		otpRepo:   otp,
+		mailer:    m,
+		secret:    secret,
+		cookieCfg: cc,
+		now:       time.Now,
+	}
+}
+
+// Register mounts protected auth routes on r.
 func (h *Handler) Register(r fiber.Router) {
 	r.Get("/me", h.me)
 	r.Post("/logout", h.logout)
+}
+
+// RegisterPublic mounts public OTP routes (before auth middleware).
+func (h *Handler) RegisterPublic(r fiber.Router) {
+	r.Post("/otp/request", h.requestOTP)
+	r.Post("/otp/verify", h.verifyOTP)
 }
 
 // me godoc
