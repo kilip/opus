@@ -12,158 +12,132 @@ linters:
           files:
             - "**/internal/platform/**"
           deny:
-            - pkg: "github.com/kilip/opus/internal/omp"
-              desc: "internal/platform must not import any module"
-            - pkg: "github.com/kilip/opus/internal/tasks"
-              desc: "internal/platform must not import any module"
-            - pkg: "github.com/kilip/opus/internal/doctor"
-              desc: "internal/platform must not import any module"
-            - pkg: "github.com/kilip/opus/internal/systemd"
-              desc: "internal/platform must not import any module"
-            - pkg: "github.com/kilip/opus/internal/installer"
-              desc: "internal/platform must not import any module"
-            - pkg: "github.com/kilip/opus/internal/config"
-              desc: "internal/platform must not import config"
+            - pkg: "github.com/kilip/opus/internal/auth"
+              desc: "internal/platform must not import any feature"
+            - pkg: "github.com/kilip/opus/internal/task"
+              desc: "internal/platform must not import any feature"
+            - pkg: "github.com/kilip/opus/internal/user"
+              desc: "internal/platform must not import any feature"
             - pkg: "github.com/kilip/opus/internal/app"
-              desc: "internal/platform must not import app"
+              desc: "internal/platform must not import internal/app"
             - pkg: "github.com/kilip/opus/cmd"
               desc: "internal/platform must not import cmd"
+            - pkg: "github.com/kilip/opus/ent"
+              desc: "internal/platform must not import ent"
 
-        module-omp:
+        feature-auth:
           list-mode: lax
           files:
-            - "**/internal/omp/**"
+            - "**/internal/auth/**"
+            - "!$test"
           deny:
-            - pkg: "github.com/kilip/opus/internal/tasks"
-              desc: "internal/omp must not import other modules"
-            - pkg: "github.com/kilip/opus/internal/doctor"
-              desc: "internal/omp must not import other modules"
-            - pkg: "github.com/kilip/opus/internal/systemd"
-              desc: "internal/omp must not import other modules"
-            - pkg: "github.com/kilip/opus/internal/installer"
-              desc: "internal/omp must not import other modules"
-            - pkg: "github.com/kilip/opus/internal/config"
-              desc: "internal/omp must not import config"
+            - pkg: "github.com/kilip/opus/internal/task/"
+              desc: "internal/auth must only import sibling feature root package, never subpackages"
+            - pkg: "github.com/kilip/opus/internal/user/"
+              desc: "internal/auth must only import sibling feature root package, never subpackages"
             - pkg: "github.com/kilip/opus/internal/app"
-              desc: "internal/omp must not import app"
+              desc: "features must not import internal/app"
             - pkg: "github.com/kilip/opus/cmd"
-              desc: "internal/omp must not import cmd"
+              desc: "features must not import cmd"
 
-        module-tasks:
+        feature-task:
           list-mode: lax
           files:
-            - "**/internal/tasks/**"
+            - "**/internal/task/**"
+            - "!$test"
           deny:
-            - pkg: "github.com/kilip/opus/internal/omp"
-              desc: "internal/tasks must not import other modules"
-            - pkg: "github.com/kilip/opus/internal/doctor"
-              desc: "internal/tasks must not import other modules"
-            - pkg: "github.com/kilip/opus/internal/systemd"
-              desc: "internal/tasks must not import other modules"
-            - pkg: "github.com/kilip/opus/internal/installer"
-              desc: "internal/tasks must not import other modules"
-            - pkg: "github.com/kilip/opus/internal/config"
-              desc: "internal/tasks must not import config"
+            - pkg: "github.com/kilip/opus/internal/auth/"
+              desc: "internal/task must only import sibling feature root package, never subpackages"
+            - pkg: "github.com/kilip/opus/internal/user/"
+              desc: "internal/task must only import sibling feature root package, never subpackages"
             - pkg: "github.com/kilip/opus/internal/app"
-              desc: "internal/tasks must not import app"
+              desc: "features must not import internal/app"
             - pkg: "github.com/kilip/opus/cmd"
-              desc: "internal/tasks must not import cmd"
+              desc: "features must not import cmd"
 
-        module-systemd:
+        feature-user:
           list-mode: lax
           files:
-            - "**/internal/systemd/**"
+            - "**/internal/user/**"
+            - "!$test"
           deny:
-            - pkg: "github.com/kilip/opus/internal/omp"
-              desc: "internal/systemd must not import other modules"
-            - pkg: "github.com/kilip/opus/internal/tasks"
-              desc: "internal/systemd must not import other modules"
-            - pkg: "github.com/kilip/opus/internal/doctor"
-              desc: "internal/systemd must not import other modules"
-            - pkg: "github.com/kilip/opus/internal/installer"
-              desc: "internal/systemd must not import other modules"
-            - pkg: "github.com/kilip/opus/internal/config"
-              desc: "internal/systemd must not import config"
+            - pkg: "github.com/kilip/opus/internal/auth/"
+              desc: "internal/user must only import sibling feature root package, never subpackages"
+            - pkg: "github.com/kilip/opus/internal/task/"
+              desc: "internal/user must only import sibling feature root package, never subpackages"
             - pkg: "github.com/kilip/opus/internal/app"
-              desc: "internal/systemd must not import app"
+              desc: "features must not import internal/app"
             - pkg: "github.com/kilip/opus/cmd"
-              desc: "internal/systemd must not import cmd"
+              desc: "features must not import cmd"
 
-        module-installer:
+        feature-domain:
           list-mode: lax
           files:
-            - "**/internal/installer/**"
+            - "**/internal/*/domain/**"
           deny:
-            - pkg: "github.com/kilip/opus/internal/omp"
-              desc: "internal/installer must not import other modules"
-            - pkg: "github.com/kilip/opus/internal/tasks"
-              desc: "internal/installer must not import other modules"
-            - pkg: "github.com/kilip/opus/internal/doctor"
-              desc: "internal/installer must not import other modules"
-            - pkg: "github.com/kilip/opus/internal/systemd"
-              desc: "internal/installer must not import other modules"
-            - pkg: "github.com/kilip/opus/internal/config"
-              desc: "internal/installer must not import config"
-            - pkg: "github.com/kilip/opus/internal/app"
-              desc: "internal/installer must not import app"
-            - pkg: "github.com/kilip/opus/cmd"
-              desc: "internal/installer must not import cmd"
+            - pkg: "github.com/gofiber/fiber"
+              desc: "domain must not import fiber"
+            - pkg: "github.com/kilip/opus/ent"
+              desc: "domain must not import ent"
+            - pkg: "github.com/kilip/opus/internal/platform/httpx"
+              desc: "domain must not import httpx"
+            - pkg: "github.com/kilip/opus/internal/*/repo"
+              desc: "domain must not import repo"
+            - pkg: "github.com/kilip/opus/internal/*/service"
+              desc: "domain must not import service"
+            - pkg: "github.com/kilip/opus/internal/*/handler"
+              desc: "domain must not import handler"
 
-        module-doctor:
+        feature-repo:
           list-mode: lax
           files:
-            - "**/internal/doctor/**"
+            - "**/internal/*/repo/**"
           deny:
-            - pkg: "github.com/kilip/opus/internal/omp"
-              desc: "internal/doctor must not import other modules"
-            - pkg: "github.com/kilip/opus/internal/tasks"
-              desc: "internal/doctor must not import other modules"
-            - pkg: "github.com/kilip/opus/internal/systemd"
-              desc: "internal/doctor must not import other modules"
-            - pkg: "github.com/kilip/opus/internal/installer"
-              desc: "internal/doctor must not import other modules"
-            - pkg: "github.com/kilip/opus/internal/config"
-              desc: "internal/doctor must not import config"
-            - pkg: "github.com/kilip/opus/internal/app"
-              desc: "internal/doctor must not import app"
-            - pkg: "github.com/kilip/opus/cmd"
-              desc: "internal/doctor must not import cmd"
+            - pkg: "github.com/gofiber/fiber"
+              desc: "repo must not import fiber"
+            - pkg: "github.com/kilip/opus/internal/platform/httpx"
+              desc: "repo must not import httpx"
+            - pkg: "github.com/kilip/opus/internal/*/service"
+              desc: "repo must not import service"
+            - pkg: "github.com/kilip/opus/internal/*/handler"
+              desc: "repo must not import handler"
 
-        config:
+        feature-service:
           list-mode: lax
           files:
-            - "**/internal/config/**"
+            - "**/internal/*/service/**"
           deny:
-            - pkg: "github.com/kilip/opus/internal/omp"
-              desc: "internal/config must not import any module"
-            - pkg: "github.com/kilip/opus/internal/tasks"
-              desc: "internal/config must not import any module"
-            - pkg: "github.com/kilip/opus/internal/doctor"
-              desc: "internal/config must not import any module"
-            - pkg: "github.com/kilip/opus/internal/systemd"
-              desc: "internal/config must not import any module"
-            - pkg: "github.com/kilip/opus/internal/installer"
-              desc: "internal/config must not import any module"
-            - pkg: "github.com/kilip/opus/internal/app"
-              desc: "internal/config must not import app"
-            - pkg: "github.com/kilip/opus/cmd"
-              desc: "internal/config must not import cmd"
+            - pkg: "github.com/gofiber/fiber"
+              desc: "service must not import fiber"
+            - pkg: "github.com/kilip/opus/ent"
+              desc: "service must not import ent"
+            - pkg: "github.com/kilip/opus/internal/platform/httpx"
+              desc: "service must not import httpx"
+            - pkg: "github.com/kilip/opus/internal/*/handler"
+              desc: "service must not import handler"
+
+        feature-handler:
+          list-mode: lax
+          files:
+            - "**/internal/*/handler/**"
+            - "!$test"
+          deny:
+            - pkg: "github.com/kilip/opus/ent"
+              desc: "handler must not import ent directly"
+            - pkg: "github.com/kilip/opus/internal/*/repo"
+              desc: "handler must not import repo directly"
 
         app:
           list-mode: lax
           files:
             - "**/internal/app/**"
           deny:
-            - pkg: "github.com/kilip/opus/internal/omp/"
-              desc: "internal/app must not import omp subpackages"
-            - pkg: "github.com/kilip/opus/internal/tasks/"
-              desc: "internal/app must not import tasks subpackages"
-            - pkg: "github.com/kilip/opus/internal/doctor/"
-              desc: "internal/app must not import doctor subpackages"
-            - pkg: "github.com/kilip/opus/internal/systemd/"
-              desc: "internal/app must not import systemd subpackages"
-            - pkg: "github.com/kilip/opus/internal/installer/"
-              desc: "internal/app must not import installer subpackages"
+            - pkg: "github.com/kilip/opus/internal/auth/"
+              desc: "internal/app must not import auth subpackages"
+            - pkg: "github.com/kilip/opus/internal/task/"
+              desc: "internal/app must not import task subpackages"
+            - pkg: "github.com/kilip/opus/internal/user/"
+              desc: "internal/app must not import user subpackages"
             - pkg: "github.com/kilip/opus/cmd"
               desc: "internal/app must not import cmd"
 
@@ -172,13 +146,10 @@ linters:
           files:
             - "**/cmd/**"
           deny:
-            - pkg: "github.com/kilip/opus/internal/omp/"
-              desc: "cmd/opus must not import omp subpackages"
-            - pkg: "github.com/kilip/opus/internal/tasks/"
-              desc: "cmd/opus must not import tasks subpackages"
-            - pkg: "github.com/kilip/opus/internal/doctor/"
-              desc: "cmd/opus must not import doctor subpackages"
-            - pkg: "github.com/kilip/opus/internal/systemd/"
-              desc: "cmd/opus must not import systemd subpackages"
-            - pkg: "github.com/kilip/opus/internal/installer/"
-              desc: "cmd/opus must not import installer subpackages"
+            - pkg: "github.com/kilip/opus/internal/auth/"
+              desc: "cmd/opus must not import auth subpackages"
+            - pkg: "github.com/kilip/opus/internal/task/"
+              desc: "cmd/opus must not import task subpackages"
+            - pkg: "github.com/kilip/opus/internal/user/"
+              desc: "cmd/opus must not import user subpackages"
+
