@@ -10,6 +10,9 @@ import (
 // ErrUnauthorized indicates missing, invalid, or expired authentication.
 var ErrUnauthorized = errors.New("UNAUTHORIZED")
 
+// ErrSetupClosed indicates initial owner setup is already complete.
+var ErrSetupClosed = errors.New("SETUP_CLOSED")
+
 // User represents the leaf user entity within auth domain.
 type User struct {
 	ID    uuid.UUID
