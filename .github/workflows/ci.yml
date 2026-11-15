@@ -67,6 +67,11 @@ jobs:
             exit 1
           fi
 
+      - name: Verify generated Ent code
+        run: |
+          go generate ./ent
+          git diff --exit-code
+
       - name: Run go vet
         run: go vet ./...
 
