@@ -1,9 +1,10 @@
 ---
+
 name: telegram
 description: >-
-  Send messages or files to a user via the Telegram Bot API.
-  Use this skill when the user asks to send a Telegram notification,
-  alert, status update, summary, or file/report to their Telegram chat.
+Send messages or files to a user via the Telegram Bot API.
+Use this skill when the user asks to send a Telegram notification,
+alert, status update, summary, or file/report to their Telegram chat.
 ---
 
 # Telegram Sender
@@ -13,6 +14,7 @@ Send messages or files via [send.sh](./scripts/send.sh).
 ## Configuration
 
 Checked in order:
+
 1. Env vars: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
 2. Git-ignored `<skill-dir>/settings.json` (`{"bot_token": "...", "chat_id": "..."}`, see [settings.example.json](./settings.example.json))
 
