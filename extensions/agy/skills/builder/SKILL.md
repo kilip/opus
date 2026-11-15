@@ -6,7 +6,7 @@ description: Autonomous Issue-to-PR workflow orchestrator. Use when asked to res
 
 # Builder Orchestrator
 
-Execute GitHub issues (`#ID`) end-to-end as a thin **Orchestrator** delegating heavy work to four isolated subagents: `planner` (`flash_lite`), `coder` (`flash`), `verifier` (`flash_lite`), and `pr-manager` (`flash_lite`). Pass `Model` (`pro`, `flash`, `flash_lite`, `inherit`) to `invoke_subagent` only when the user explicitly requests a tier override.
+Execute GitHub issues (`#ID`) end-to-end as a thin **Orchestrator** delegating heavy work to four isolated subagents: `planner` (`flash`), `coder` (`flash`), `verifier` (`flash`), and `pr-manager` (`flash`). Pass `Model` (`pro`, `flash`, `flash_lite`, `inherit`) to `invoke_subagent` only when the user explicitly requests a tier override.
 
 ---
 

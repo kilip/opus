@@ -2,7 +2,7 @@
 
 name: planner
 description: Read-only architectural planner that maps GitHub issue Acceptance Criteria to file line pointers (<=40 lines, no code snippets).
-model: flash_lite
+model: flash
 subagent: true
 tools:
 
