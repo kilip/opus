@@ -27,3 +27,25 @@ type OTPVerifyResponse struct {
 	ID    uuid.UUID `json:"id"`
 	Email string    `json:"email"`
 }
+
+// SetupStatusResponse is the response body for GET /setup/status.
+type SetupStatusResponse struct {
+	NeedsSetup bool `json:"needs_setup"`
+}
+
+// SetupOTPBody is the request body for POST /setup/otp.
+type SetupOTPBody struct {
+	Email string `json:"email"`
+}
+
+// SetupCompleteBody is the request body for POST /setup.
+type SetupCompleteBody struct {
+	Email string `json:"email"`
+	Code  string `json:"code"`
+}
+
+// SetupUserResponse is the response body for POST /setup.
+type SetupUserResponse struct {
+	ID    uuid.UUID `json:"id"`
+	Email string    `json:"email"`
+}
