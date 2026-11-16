@@ -11,6 +11,21 @@ import (
 
 var Version = "0.1.0"
 
+func newRootCmd() *cobra.Command {
+	serveCmd := newServeCmd()
+	rootCmd := &cobra.Command{
+		Use:          "opus",
+		Short:        "Opus mission control dashboard for AI coding agents",
+		SilenceUsage: true,
+		Version:      Version,
+		RunE:         serveCmd.RunE,
+	}
+	rootCmd.AddCommand(serveCmd)
+	rootCmd.AddCommand(newJoinCmd())
+	rootCmd.AddCommand(newWorkerCmd())
+	return rootCmd
+}
+
 // @title Opus API
 // @version 0.1.0
 // @description Opus API specification.
@@ -19,15 +34,7 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	rootCmd := &cobra.Command{
-		Use:          "opus",
-		Short:        "Opus mission control dashboard for AI coding agents",
-		SilenceUsage: true,
-		Version:      Version,
-	}
-	rootCmd.AddCommand(newServeCmd())
-
-	if err := rootCmd.ExecuteContext(ctx); err != nil {
+	if err := newRootCmd().ExecuteContext(ctx); err != nil {
 		os.Exit(1)
 	}
 }
