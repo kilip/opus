@@ -6,6 +6,7 @@ import { ControlPanel } from "~/shared/components/ControlPanel";
 import { Icon } from "~/shared/components/Icon";
 import { SearchBar } from "~/shared/components/SearchBar";
 import { useTasks } from "../api/queries";
+import { EmptyTasks } from "../components/EmptyTasks";
 import { KanbanBoard } from "../components/KanbanBoard";
 import { TaskList } from "../components/TaskList";
 import { filterTasks, TASK_FILTERS } from "../model";
@@ -55,6 +56,8 @@ export default function TasksPage() {
 				</Button>
 			</div>
 		);
+	} else if (total === 0) {
+		content = <EmptyTasks />;
 	} else if (view === "kanban") {
 		content = <KanbanBoard tasks={visible} />;
 	} else {
