@@ -113,8 +113,8 @@ Opus uses passwordless (email OTP + OAuth) authentication with cookie sessions.
 | Variable | Default | Description |
 | :--- | :--- | :--- |
 | `DATABASE_URL` | `file:opus.db?...` | SQLite / LibSQL database connection string |
-| `SESSION_SECRET` | `""` | Secret key used to sign session cookies (required in prod) |
-| `SESSION_TTL` | `720h` | Session duration / time-to-live |
+| `AUTH_SECRET` | `""` | Secret key used to sign session cookies (required in prod) |
+| `AUTH_SESSION_TTL` | `720h` | Session duration / time-to-live |
 | `BASE_URL` | `http://localhost:7880` | Canonical public base URL for OAuth callbacks |
 | `TRUSTED_ORIGINS` | `""` | Comma-separated list of allowed CORS / redirect origins |
 | `SMTP_*` | — | SMTP mailer settings; falls back to console mailer if `SMTP_HOST` is unset |
@@ -123,13 +123,12 @@ Opus uses passwordless (email OTP + OAuth) authentication with cookie sessions.
 | `SMTP_USERNAME` | `""` | SMTP authentication username |
 | `SMTP_PASSWORD` | `""` | SMTP authentication password |
 | `SMTP_FROM` | `""` | Outgoing sender email address |
-| `*_CLIENT_ID`, `*_CLIENT_SECRET` | — | OAuth client credentials for third-party providers |
-| `GITHUB_CLIENT_ID` | `""` | GitHub OAuth client ID |
-| `GITHUB_CLIENT_SECRET` | `""` | GitHub OAuth client secret |
-| `GOOGLE_CLIENT_ID` | `""` | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | `""` | Google OAuth client secret |
-| `FACEBOOK_CLIENT_ID` | `""` | Facebook OAuth client ID |
-| `FACEBOOK_CLIENT_SECRET` | `""` | Facebook OAuth client secret |
+| `AUTH_GITHUB_ID` | `""` | GitHub OAuth client ID |
+| `AUTH_GITHUB_SECRET` | `""` | GitHub OAuth client secret |
+| `AUTH_GOOGLE_ID` | `""` | Google OAuth client ID |
+| `AUTH_GOOGLE_SECRET` | `""` | Google OAuth client secret |
+| `AUTH_FACEBOOK_ID` | `""` | Facebook OAuth client ID |
+| `AUTH_FACEBOOK_SECRET` | `""` | Facebook OAuth client secret |
 
 ## 4. Frontend: React Router Framework Mode (`ssr: false`)
 
