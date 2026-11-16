@@ -18,7 +18,7 @@ import (
 func NewMailer(cfg Config, logger *slog.Logger) mailer.Mailer {
 	if cfg.SMTPHost == "" {
 		if logger != nil {
-			logger.Warn("SMTP_HOST not set, falling back to console mailer")
+			logger.Warn("APP_SMTP_HOST not set, falling back to console mailer")
 		}
 		return mailer.NewConsole(logger)
 	}

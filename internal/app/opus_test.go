@@ -44,7 +44,7 @@ func TestNewMailer_FallbackToConsole(t *testing.T) {
 	}
 
 	logOutput := buf.String()
-	if !strings.Contains(logOutput, "SMTP_HOST not set, falling back to console mailer") {
+	if !strings.Contains(logOutput, "APP_SMTP_HOST not set, falling back to console mailer") {
 		t.Errorf("expected startup warning in log, got: %q", logOutput)
 	}
 }
@@ -178,7 +178,7 @@ func TestConfig_OAuthEnv(t *testing.T) {
 }
 
 func TestConfig_TrustedOrigins(t *testing.T) {
-	t.Setenv("TRUSTED_ORIGINS", "http://localhost:5173,http://localhost:3000")
+	t.Setenv("APP_TRUSTED_ORIGINS", "http://localhost:5173,http://localhost:3000")
 	cfg, err := app.GetConfig(context.Background())
 	if err != nil {
 		t.Fatalf("GetConfig returned unexpected error: %v", err)

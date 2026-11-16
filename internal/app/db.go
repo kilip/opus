@@ -12,7 +12,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// OpenDB opens an Ent client matching DATABASE_URL scheme.
+// OpenDB opens an Ent client matching APP_DATABASE_URL scheme.
 // ponytail: sqlite-only driver dispatch; add postgres dialect when switching to remote db
 func OpenDB(ctx context.Context, databaseURL string) (*ent.Client, error) {
 	switch {

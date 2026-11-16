@@ -11,7 +11,7 @@ import (
 )
 
 func TestGetConfigAndLogger(t *testing.T) {
-	t.Setenv("LOG_LEVEL", "debug")
+	t.Setenv("APP_LOG_LEVEL", "debug")
 	cfg, err := GetConfig(context.Background())
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
