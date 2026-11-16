@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -15,6 +16,7 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/static"
 	"github.com/kilip/opus/ent"
 	"github.com/kilip/opus/internal/auth"
+	"github.com/kilip/opus/internal/node"
 	"github.com/kilip/opus/internal/platform/csrf"
 	"github.com/kilip/opus/internal/platform/eventbus"
 	"github.com/kilip/opus/internal/platform/httpx"
@@ -118,6 +120,11 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 		api.Use(authFeature.Middleware())
 		authFeature.Register(authRoutes) // GET /me, POST /logout (protected)
 		task.New(db, bus).Register(api)
+		nodeFeature := node.New(db)
+		if err := nodeFeature.Bootstrap(context.Background()); err != nil {
+			logger.Error("node registry bootstrap failed", "error", err)
+		}
+		nodeFeature.Register(api)
 	}
 
 	// ponytail: serves embedded SPA without custom Cache-Control headers; add immutable asset caching when CDN/traffic requires.

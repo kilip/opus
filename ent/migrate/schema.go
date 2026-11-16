@@ -97,6 +97,21 @@ var (
 		Columns:    CountersColumns,
 		PrimaryKey: []*schema.Column{CountersColumns[0]},
 	}
+	// NodesColumns holds the columns for the "nodes" table.
+	NodesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "name", Type: field.TypeString, Unique: true},
+		{Name: "role", Type: field.TypeEnum, Enums: []string{"master", "worker"}},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"online", "offline"}},
+		{Name: "last_seen_at", Type: field.TypeTime, Nullable: true},
+		{Name: "credential_hash", Type: field.TypeString, Nullable: true},
+	}
+	// NodesTable holds the schema information for the "nodes" table.
+	NodesTable = &schema.Table{
+		Name:       "nodes",
+		Columns:    NodesColumns,
+		PrimaryKey: []*schema.Column{NodesColumns[0]},
+	}
 	// OtPsColumns holds the columns for the "ot_ps" table.
 	OtPsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -192,6 +207,7 @@ var (
 		ActivitiesTable,
 		AuditLogsTable,
 		CountersTable,
+		NodesTable,
 		OtPsTable,
 		SessionsTable,
 		TasksTable,

@@ -18,6 +18,9 @@ type AuditLog func(*sql.Selector)
 // Counter is the predicate function for counter builders.
 type Counter func(*sql.Selector)
 
+// Node is the predicate function for node builders.
+type Node func(*sql.Selector)
+
 // OTP is the predicate function for otp builders.
 type OTP func(*sql.Selector)
 

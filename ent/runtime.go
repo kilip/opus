@@ -10,6 +10,7 @@ import (
 	"github.com/kilip/opus/ent/activity"
 	"github.com/kilip/opus/ent/auditlog"
 	"github.com/kilip/opus/ent/counter"
+	"github.com/kilip/opus/ent/node"
 	"github.com/kilip/opus/ent/otp"
 	"github.com/kilip/opus/ent/schema"
 	"github.com/kilip/opus/ent/session"
@@ -101,6 +102,16 @@ func init() {
 	counterDescID := counterFields[0].Descriptor()
 	// counter.DefaultID holds the default value on creation for the id field.
 	counter.DefaultID = counterDescID.Default.(func() uuid.UUID)
+	nodeFields := schema.Node{}.Fields()
+	_ = nodeFields
+	// nodeDescName is the schema descriptor for name field.
+	nodeDescName := nodeFields[1].Descriptor()
+	// node.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	node.NameValidator = nodeDescName.Validators[0].(func(string) error)
+	// nodeDescID is the schema descriptor for id field.
+	nodeDescID := nodeFields[0].Descriptor()
+	// node.DefaultID holds the default value on creation for the id field.
+	node.DefaultID = nodeDescID.Default.(func() uuid.UUID)
 	otpFields := schema.OTP{}.Fields()
 	_ = otpFields
 	// otpDescEmail is the schema descriptor for email field.

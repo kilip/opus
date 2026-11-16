@@ -135,6 +135,26 @@
                 ],
                 "type": "object"
             },
+            "domain.NodeResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "lastSeenAt": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "role": {
+                        "$ref": "#/components/schemas/domain.Role"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/domain.Status"
+                    }
+                },
+                "type": "object"
+            },
             "domain.OTPRequestBody": {
                 "properties": {
                     "email": {
@@ -165,6 +185,17 @@
                 },
                 "type": "object"
             },
+            "domain.Role": {
+                "enum": [
+                    "master",
+                    "worker"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "RoleMaster",
+                    "RoleWorker"
+                ]
+            },
             "domain.SetupStatusResponse": {
                 "properties": {
                     "needs_setup": {
@@ -172,6 +203,17 @@
                     }
                 },
                 "type": "object"
+            },
+            "domain.Status": {
+                "enum": [
+                    "online",
+                    "offline"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "StatusOnline",
+                    "StatusOffline"
+                ]
             },
             "domain.Task": {
                 "properties": {
@@ -426,6 +468,24 @@
                     "data": {
                         "items": {
                             "$ref": "#/components/schemas/domain.Activity"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
+            "httpx.Response-array_domain_NodeResponse": {
+                "properties": {
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/domain.NodeResponse"
                         },
                         "type": "array",
                         "uniqueItems": false
@@ -945,6 +1005,48 @@
                 "summary": "System health check",
                 "tags": [
                     "system"
+                ]
+            }
+        },
+        "/nodes": {
+            "get": {
+                "description": "Returns every registered node in the registry.",
+                "operationId": "list-nodes",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-array_domain_NodeResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "List nodes",
+                "tags": [
+                    "nodes"
                 ]
             }
         },

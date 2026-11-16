@@ -204,6 +204,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/nodes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List nodes
+         * @description Returns every registered node in the registry.
+         */
+        get: operations["list-nodes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/setup": {
         parameters: {
             query?: never;
@@ -377,6 +397,13 @@ export interface components {
             title: string;
             type?: components["schemas"]["domain.TaskType"];
         };
+        "domain.NodeResponse": {
+            id?: string;
+            lastSeenAt?: string;
+            name?: string;
+            role?: components["schemas"]["domain.Role"];
+            status?: components["schemas"]["domain.Status"];
+        };
         "domain.OTPRequestBody": {
             email?: string;
         };
@@ -388,9 +415,13 @@ export interface components {
             label?: string;
             name?: string;
         };
+        /** @enum {string} */
+        "domain.Role": "master" | "worker";
         "domain.SetupStatusResponse": {
             needs_setup?: boolean;
         };
+        /** @enum {string} */
+        "domain.Status": "online" | "offline";
         "domain.Task": {
             assignee?: components["schemas"]["domain.Assignee"];
             createdAt: string;
@@ -462,6 +493,11 @@ export interface components {
         };
         "httpx.Response-array_domain_Activity": {
             data?: components["schemas"]["domain.Activity"][];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Response-array_domain_NodeResponse": {
+            data?: components["schemas"]["domain.NodeResponse"][];
             error?: string;
             meta?: components["schemas"]["httpx.Meta"];
         };
@@ -836,6 +872,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["httpx.Response-app_HealthStatus"];
+                };
+            };
+        };
+    };
+    "list-nodes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-array_domain_NodeResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
                 };
             };
         };

@@ -2,6 +2,7 @@ package app_test
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"io"
@@ -15,6 +16,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/kilip/opus/ent"
 	"github.com/kilip/opus/ent/enttest"
+	entnode "github.com/kilip/opus/ent/node"
 	"github.com/kilip/opus/internal/app"
 	"github.com/kilip/opus/internal/platform/eventbus"
 	_ "modernc.org/sqlite"
@@ -192,5 +194,69 @@ func TestGetFiber_TasksRequiresAuth(t *testing.T) {
 	body := parseResponseBody(t, respTasks)
 	if body.Error != "UNAUTHORIZED" {
 		t.Errorf("expected error %q, got %q", "UNAUTHORIZED", body.Error)
+	}
+}
+
+// AC2, AC4: Node registry startup master persistence across restarts and auth check (401 without session).
+func TestGetFiber_NodesRequiresAuthAndPersistsMaster(t *testing.T) {
+	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared&_pragma=foreign_keys(ON)&_pragma=busy_timeout(10000)")
+	if err != nil {
+		t.Fatalf("open sqlite failed: %v", err)
+	}
+	db.SetMaxOpenConns(1)
+	drv := entsql.OpenDB(dialect.SQLite, db)
+	client := enttest.NewClient(t, enttest.WithOptions(ent.Driver(drv)))
+	t.Cleanup(func() {
+		_ = client.Close()
+	})
+
+	cfg := app.Config{
+		AppName:       "test-opus",
+		BaseURL:       "http://localhost:7880",
+		SessionSecret: "secret-needs-to-be-32-bytes-long-ok",
+	}
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	// 1. First app startup
+	fiberApp1 := app.GetFiber(cfg, logger, client, eventbus.New())
+
+	// Unauthenticated GET /api/nodes returns 401
+	reqNodes := httptest.NewRequest("GET", "/api/nodes", nil)
+	respNodes, err := fiberApp1.Test(reqNodes)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if respNodes.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for /api/nodes, got %d", respNodes.StatusCode)
+	}
+	body := parseResponseBody(t, respNodes)
+	if body.Error != "UNAUTHORIZED" {
+		t.Errorf("expected error %q, got %q", "UNAUTHORIZED", body.Error)
+	}
+
+	// Verify master node created in DB
+	ctx := context.Background()
+	masters1, err := client.Node.Query().Where(entnode.RoleEQ(entnode.RoleMaster)).All(ctx)
+	if err != nil {
+		t.Fatalf("query masters: %v", err)
+	}
+	if len(masters1) != 1 {
+		t.Fatalf("expected 1 master node, got %d", len(masters1))
+	}
+	m1 := masters1[0]
+
+	// 2. Second app startup (simulating restart)
+	_ = app.GetFiber(cfg, logger, client, eventbus.New())
+
+	masters2, err := client.Node.Query().Where(entnode.RoleEQ(entnode.RoleMaster)).All(ctx)
+	if err != nil {
+		t.Fatalf("query masters after restart: %v", err)
+	}
+	if len(masters2) != 1 {
+		t.Fatalf("expected 1 master node after restart, got %d", len(masters2))
+	}
+	m2 := masters2[0]
+	if m2.ID != m1.ID {
+		t.Errorf("expected master ID to persist across restarts: got %v, want %v", m2.ID, m1.ID)
 	}
 }

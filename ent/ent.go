@@ -16,6 +16,7 @@ import (
 	"github.com/kilip/opus/ent/activity"
 	"github.com/kilip/opus/ent/auditlog"
 	"github.com/kilip/opus/ent/counter"
+	"github.com/kilip/opus/ent/node"
 	"github.com/kilip/opus/ent/otp"
 	"github.com/kilip/opus/ent/session"
 	"github.com/kilip/opus/ent/task"
@@ -84,6 +85,7 @@ func checkColumn(t, c string) error {
 			activity.Table: activity.ValidColumn,
 			auditlog.Table: auditlog.ValidColumn,
 			counter.Table:  counter.ValidColumn,
+			node.Table:     node.ValidColumn,
 			otp.Table:      otp.ValidColumn,
 			session.Table:  session.ValidColumn,
 			task.Table:     task.ValidColumn,
