@@ -231,7 +231,7 @@ func TestUpdateTask(t *testing.T) {
 	if lastAct.Kind != domain.ActivityKindStatus {
 		t.Fatalf("expected activity kind status, got %s", lastAct.Kind)
 	}
-	expectedBody := "moved stage todo → in_progress"
+	expectedBody := "moved stage todo → in-progress"
 	if lastAct.Body != expectedBody {
 		t.Fatalf("expected body %q, got %q", expectedBody, lastAct.Body)
 	}

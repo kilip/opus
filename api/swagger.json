@@ -358,7 +358,7 @@
                 "enum": [
                     "backlog",
                     "todo",
-                    "in_progress",
+                    "in-progress",
                     "review",
                     "done"
                 ],
