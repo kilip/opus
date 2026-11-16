@@ -9,14 +9,23 @@ import (
 // Account is the predicate function for account builders.
 type Account func(*sql.Selector)
 
+// Activity is the predicate function for activity builders.
+type Activity func(*sql.Selector)
+
 // AuditLog is the predicate function for auditlog builders.
 type AuditLog func(*sql.Selector)
+
+// Counter is the predicate function for counter builders.
+type Counter func(*sql.Selector)
 
 // OTP is the predicate function for otp builders.
 type OTP func(*sql.Selector)
 
 // Session is the predicate function for session builders.
 type Session func(*sql.Selector)
+
+// Task is the predicate function for task builders.
+type Task func(*sql.Selector)
 
 // User is the predicate function for user builders.
 type User func(*sql.Selector)

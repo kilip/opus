@@ -7,10 +7,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kilip/opus/ent/account"
+	"github.com/kilip/opus/ent/activity"
 	"github.com/kilip/opus/ent/auditlog"
+	"github.com/kilip/opus/ent/counter"
 	"github.com/kilip/opus/ent/otp"
 	"github.com/kilip/opus/ent/schema"
 	"github.com/kilip/opus/ent/session"
+	"github.com/kilip/opus/ent/task"
 	"github.com/kilip/opus/ent/user"
 )
 
@@ -44,6 +47,24 @@ func init() {
 	accountDescID := accountFields[0].Descriptor()
 	// account.DefaultID holds the default value on creation for the id field.
 	account.DefaultID = accountDescID.Default.(func() uuid.UUID)
+	activityFields := schema.Activity{}.Fields()
+	_ = activityFields
+	// activityDescKind is the schema descriptor for kind field.
+	activityDescKind := activityFields[2].Descriptor()
+	// activity.KindValidator is a validator for the "kind" field. It is called by the builders before save.
+	activity.KindValidator = activityDescKind.Validators[0].(func(string) error)
+	// activityDescBody is the schema descriptor for body field.
+	activityDescBody := activityFields[4].Descriptor()
+	// activity.BodyValidator is a validator for the "body" field. It is called by the builders before save.
+	activity.BodyValidator = activityDescBody.Validators[0].(func(string) error)
+	// activityDescCreatedAt is the schema descriptor for created_at field.
+	activityDescCreatedAt := activityFields[5].Descriptor()
+	// activity.DefaultCreatedAt holds the default value on creation for the created_at field.
+	activity.DefaultCreatedAt = activityDescCreatedAt.Default.(func() time.Time)
+	// activityDescID is the schema descriptor for id field.
+	activityDescID := activityFields[0].Descriptor()
+	// activity.DefaultID holds the default value on creation for the id field.
+	activity.DefaultID = activityDescID.Default.(func() uuid.UUID)
 	auditlogFields := schema.AuditLog{}.Fields()
 	_ = auditlogFields
 	// auditlogDescEvent is the schema descriptor for event field.
@@ -66,6 +87,20 @@ func init() {
 	auditlogDescID := auditlogFields[0].Descriptor()
 	// auditlog.DefaultID holds the default value on creation for the id field.
 	auditlog.DefaultID = auditlogDescID.Default.(func() uuid.UUID)
+	counterFields := schema.Counter{}.Fields()
+	_ = counterFields
+	// counterDescName is the schema descriptor for name field.
+	counterDescName := counterFields[1].Descriptor()
+	// counter.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	counter.NameValidator = counterDescName.Validators[0].(func(string) error)
+	// counterDescValue is the schema descriptor for value field.
+	counterDescValue := counterFields[2].Descriptor()
+	// counter.DefaultValue holds the default value on creation for the value field.
+	counter.DefaultValue = counterDescValue.Default.(int64)
+	// counterDescID is the schema descriptor for id field.
+	counterDescID := counterFields[0].Descriptor()
+	// counter.DefaultID holds the default value on creation for the id field.
+	counter.DefaultID = counterDescID.Default.(func() uuid.UUID)
 	otpFields := schema.OTP{}.Fields()
 	_ = otpFields
 	// otpDescEmail is the schema descriptor for email field.
@@ -102,6 +137,74 @@ func init() {
 	sessionDescID := sessionFields[0].Descriptor()
 	// session.DefaultID holds the default value on creation for the id field.
 	session.DefaultID = sessionDescID.Default.(func() uuid.UUID)
+	taskFields := schema.Task{}.Fields()
+	_ = taskFields
+	// taskDescKey is the schema descriptor for key field.
+	taskDescKey := taskFields[1].Descriptor()
+	// task.KeyValidator is a validator for the "key" field. It is called by the builders before save.
+	task.KeyValidator = taskDescKey.Validators[0].(func(string) error)
+	// taskDescSource is the schema descriptor for source field.
+	taskDescSource := taskFields[2].Descriptor()
+	// task.DefaultSource holds the default value on creation for the source field.
+	task.DefaultSource = taskDescSource.Default.(string)
+	// task.SourceValidator is a validator for the "source" field. It is called by the builders before save.
+	task.SourceValidator = taskDescSource.Validators[0].(func(string) error)
+	// taskDescExternalURL is the schema descriptor for external_url field.
+	taskDescExternalURL := taskFields[4].Descriptor()
+	// task.DefaultExternalURL holds the default value on creation for the external_url field.
+	task.DefaultExternalURL = taskDescExternalURL.Default.(string)
+	// taskDescTitle is the schema descriptor for title field.
+	taskDescTitle := taskFields[5].Descriptor()
+	// task.TitleValidator is a validator for the "title" field. It is called by the builders before save.
+	task.TitleValidator = taskDescTitle.Validators[0].(func(string) error)
+	// taskDescDescription is the schema descriptor for description field.
+	taskDescDescription := taskFields[6].Descriptor()
+	// task.DefaultDescription holds the default value on creation for the description field.
+	task.DefaultDescription = taskDescDescription.Default.(string)
+	// taskDescStatus is the schema descriptor for status field.
+	taskDescStatus := taskFields[7].Descriptor()
+	// task.DefaultStatus holds the default value on creation for the status field.
+	task.DefaultStatus = taskDescStatus.Default.(string)
+	// task.StatusValidator is a validator for the "status" field. It is called by the builders before save.
+	task.StatusValidator = taskDescStatus.Validators[0].(func(string) error)
+	// taskDescSourceStatus is the schema descriptor for source_status field.
+	taskDescSourceStatus := taskFields[8].Descriptor()
+	// task.DefaultSourceStatus holds the default value on creation for the source_status field.
+	task.DefaultSourceStatus = taskDescSourceStatus.Default.(string)
+	// taskDescPriority is the schema descriptor for priority field.
+	taskDescPriority := taskFields[9].Descriptor()
+	// task.DefaultPriority holds the default value on creation for the priority field.
+	task.DefaultPriority = taskDescPriority.Default.(string)
+	// task.PriorityValidator is a validator for the "priority" field. It is called by the builders before save.
+	task.PriorityValidator = taskDescPriority.Validators[0].(func(string) error)
+	// taskDescType is the schema descriptor for type field.
+	taskDescType := taskFields[10].Descriptor()
+	// task.DefaultType holds the default value on creation for the type field.
+	task.DefaultType = taskDescType.Default.(string)
+	// task.TypeValidator is a validator for the "type" field. It is called by the builders before save.
+	task.TypeValidator = taskDescType.Validators[0].(func(string) error)
+	// taskDescDueDate is the schema descriptor for due_date field.
+	taskDescDueDate := taskFields[13].Descriptor()
+	// task.DefaultDueDate holds the default value on creation for the due_date field.
+	task.DefaultDueDate = taskDescDueDate.Default.(string)
+	// taskDescLabels is the schema descriptor for labels field.
+	taskDescLabels := taskFields[14].Descriptor()
+	// task.DefaultLabels holds the default value on creation for the labels field.
+	task.DefaultLabels = taskDescLabels.Default.([]string)
+	// taskDescCreatedAt is the schema descriptor for created_at field.
+	taskDescCreatedAt := taskFields[15].Descriptor()
+	// task.DefaultCreatedAt holds the default value on creation for the created_at field.
+	task.DefaultCreatedAt = taskDescCreatedAt.Default.(func() time.Time)
+	// taskDescUpdatedAt is the schema descriptor for updated_at field.
+	taskDescUpdatedAt := taskFields[16].Descriptor()
+	// task.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	task.DefaultUpdatedAt = taskDescUpdatedAt.Default.(func() time.Time)
+	// task.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	task.UpdateDefaultUpdatedAt = taskDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// taskDescID is the schema descriptor for id field.
+	taskDescID := taskFields[0].Descriptor()
+	// task.DefaultID holds the default value on creation for the id field.
+	task.DefaultID = taskDescID.Default.(func() uuid.UUID)
 	userFields := schema.User{}.Fields()
 	_ = userFields
 	// userDescEmail is the schema descriptor for email field.

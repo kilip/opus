@@ -14,12 +14,18 @@ type Tx struct {
 	config
 	// Account is the client for interacting with the Account builders.
 	Account *AccountClient
+	// Activity is the client for interacting with the Activity builders.
+	Activity *ActivityClient
 	// AuditLog is the client for interacting with the AuditLog builders.
 	AuditLog *AuditLogClient
+	// Counter is the client for interacting with the Counter builders.
+	Counter *CounterClient
 	// OTP is the client for interacting with the OTP builders.
 	OTP *OTPClient
 	// Session is the client for interacting with the Session builders.
 	Session *SessionClient
+	// Task is the client for interacting with the Task builders.
+	Task *TaskClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 
@@ -154,9 +160,12 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.Account = NewAccountClient(tx.config)
+	tx.Activity = NewActivityClient(tx.config)
 	tx.AuditLog = NewAuditLogClient(tx.config)
+	tx.Counter = NewCounterClient(tx.config)
 	tx.OTP = NewOTPClient(tx.config)
 	tx.Session = NewSessionClient(tx.config)
+	tx.Task = NewTaskClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 }
 

@@ -13,9 +13,12 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/kilip/opus/ent/account"
+	"github.com/kilip/opus/ent/activity"
 	"github.com/kilip/opus/ent/auditlog"
+	"github.com/kilip/opus/ent/counter"
 	"github.com/kilip/opus/ent/otp"
 	"github.com/kilip/opus/ent/session"
+	"github.com/kilip/opus/ent/task"
 	"github.com/kilip/opus/ent/user"
 )
 
@@ -78,9 +81,12 @@ func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			account.Table:  account.ValidColumn,
+			activity.Table: activity.ValidColumn,
 			auditlog.Table: auditlog.ValidColumn,
+			counter.Table:  counter.ValidColumn,
 			otp.Table:      otp.ValidColumn,
 			session.Table:  session.ValidColumn,
+			task.Table:     task.ValidColumn,
 			user.Table:     user.ValidColumn,
 		})
 	})

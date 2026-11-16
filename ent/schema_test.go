@@ -339,4 +339,41 @@ func TestSchema_UUIDv7(t *testing.T) {
 	if v := al.ID.Version(); v != 7 {
 		t.Errorf("AuditLog ID version = %d, want 7", v)
 	}
+
+	// 6. Task
+	tsk, err := client.Task.Create().
+		SetKey("OP-1").
+		SetTitle("Test Task").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create task failed: %v", err)
+	}
+	if v := tsk.ID.Version(); v != 7 {
+		t.Errorf("Task ID version = %d, want 7", v)
+	}
+
+	// 7. Activity
+	act, err := client.Activity.Create().
+		SetTaskID(tsk.ID).
+		SetKind("status").
+		SetBody("created task").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create activity failed: %v", err)
+	}
+	if v := act.ID.Version(); v != 7 {
+		t.Errorf("Activity ID version = %d, want 7", v)
+	}
+
+	// 8. Counter
+	cnt, err := client.Counter.Create().
+		SetName("task_key").
+		SetValue(1).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create counter failed: %v", err)
+	}
+	if v := cnt.ID.Version(); v != 7 {
+		t.Errorf("Counter ID version = %d, want 7", v)
+	}
 }

@@ -39,6 +39,29 @@ var (
 			},
 		},
 	}
+	// ActivitiesColumns holds the columns for the "activities" table.
+	ActivitiesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "kind", Type: field.TypeString},
+		{Name: "author", Type: field.TypeString, Nullable: true},
+		{Name: "body", Type: field.TypeString},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "task_id", Type: field.TypeUUID},
+	}
+	// ActivitiesTable holds the schema information for the "activities" table.
+	ActivitiesTable = &schema.Table{
+		Name:       "activities",
+		Columns:    ActivitiesColumns,
+		PrimaryKey: []*schema.Column{ActivitiesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "activities_tasks_activities",
+				Columns:    []*schema.Column{ActivitiesColumns[5]},
+				RefColumns: []*schema.Column{TasksColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// AuditLogsColumns holds the columns for the "audit_logs" table.
 	AuditLogsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -61,6 +84,18 @@ var (
 				OnDelete:   schema.SetNull,
 			},
 		},
+	}
+	// CountersColumns holds the columns for the "counters" table.
+	CountersColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "name", Type: field.TypeString, Unique: true},
+		{Name: "value", Type: field.TypeInt64, Default: 0},
+	}
+	// CountersTable holds the schema information for the "counters" table.
+	CountersTable = &schema.Table{
+		Name:       "counters",
+		Columns:    CountersColumns,
+		PrimaryKey: []*schema.Column{CountersColumns[0]},
 	}
 	// OtPsColumns holds the columns for the "ot_ps" table.
 	OtPsColumns = []*schema.Column{
@@ -106,6 +141,39 @@ var (
 			},
 		},
 	}
+	// TasksColumns holds the columns for the "tasks" table.
+	TasksColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "key", Type: field.TypeString, Unique: true},
+		{Name: "source", Type: field.TypeString, Default: "manual"},
+		{Name: "external_id", Type: field.TypeString, Nullable: true},
+		{Name: "external_url", Type: field.TypeString, Default: ""},
+		{Name: "title", Type: field.TypeString},
+		{Name: "description", Type: field.TypeString, Default: ""},
+		{Name: "status", Type: field.TypeString, Default: "todo"},
+		{Name: "source_status", Type: field.TypeString, Default: ""},
+		{Name: "priority", Type: field.TypeString, Default: "1"},
+		{Name: "type", Type: field.TypeString, Default: "feat"},
+		{Name: "assignee_id", Type: field.TypeString, Nullable: true},
+		{Name: "assignee_name", Type: field.TypeString, Nullable: true},
+		{Name: "due_date", Type: field.TypeString, Default: ""},
+		{Name: "labels", Type: field.TypeJSON},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// TasksTable holds the schema information for the "tasks" table.
+	TasksTable = &schema.Table{
+		Name:       "tasks",
+		Columns:    TasksColumns,
+		PrimaryKey: []*schema.Column{TasksColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "task_source_external_id",
+				Unique:  true,
+				Columns: []*schema.Column{TasksColumns[2], TasksColumns[3]},
+			},
+		},
+	}
 	// UsersColumns holds the columns for the "users" table.
 	UsersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -121,15 +189,19 @@ var (
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		AccountsTable,
+		ActivitiesTable,
 		AuditLogsTable,
+		CountersTable,
 		OtPsTable,
 		SessionsTable,
+		TasksTable,
 		UsersTable,
 	}
 )
 
 func init() {
 	AccountsTable.ForeignKeys[0].RefTable = UsersTable
+	ActivitiesTable.ForeignKeys[0].RefTable = TasksTable
 	AuditLogsTable.ForeignKeys[0].RefTable = UsersTable
 	SessionsTable.ForeignKeys[0].RefTable = UsersTable
 }
