@@ -18,7 +18,7 @@ type Session struct {
 func (Session) Fields() []ent.Field {
 	return []ent.Field{
 		field.UUID("id", uuid.UUID{}).
-			Default(uuid.New),
+			Default(newID),
 		field.UUID("user_id", uuid.UUID{}),
 		field.String("token_hash").
 			NotEmpty().

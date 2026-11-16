@@ -18,7 +18,7 @@ type OTP struct {
 func (OTP) Fields() []ent.Field {
 	return []ent.Field{
 		field.UUID("id", uuid.UUID{}).
-			Default(uuid.New),
+			Default(newID),
 		field.String("email").
 			NotEmpty(),
 		field.String("code_hash").

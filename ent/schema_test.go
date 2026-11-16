@@ -264,3 +264,79 @@ func TestSchema_AuditLog(t *testing.T) {
 		t.Errorf("expected user_id to be nil after user deletion, got: %v", got1AfterDelete.UserID)
 	}
 }
+
+func TestSchema_UUIDv7(t *testing.T) {
+	ctx := context.Background()
+	db, err := sql.Open("sqlite", "file:ent_uuidv7?mode=memory&cache=shared&_pragma=foreign_keys(ON)")
+	if err != nil {
+		t.Fatalf("open sqlite failed: %v", err)
+	}
+	drv := entsql.OpenDB(dialect.SQLite, db)
+	client := enttest.NewClient(t, enttest.WithOptions(ent.Driver(drv)))
+	defer func() {
+		_ = client.Close()
+	}()
+
+	// 1. User
+	u, err := client.User.Create().
+		SetEmail("uuidv7_user@example.com").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create user failed: %v", err)
+	}
+	if v := u.ID.Version(); v != 7 {
+		t.Errorf("User ID version = %d, want 7", v)
+	}
+
+	// 2. Session
+	sess, err := client.Session.Create().
+		SetUserID(u.ID).
+		SetTokenHash("token_hash_uuidv7").
+		SetExpiresAt(time.Now().Add(time.Hour)).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create session failed: %v", err)
+	}
+	if v := sess.ID.Version(); v != 7 {
+		t.Errorf("Session ID version = %d, want 7", v)
+	}
+
+	// 3. Account
+	acc, err := client.Account.Create().
+		SetUserID(u.ID).
+		SetProvider("github").
+		SetProviderUserID("uuidv7_gh").
+		SetEmail("uuidv7_user@example.com").
+		SetEmailVerified(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create account failed: %v", err)
+	}
+	if v := acc.ID.Version(); v != 7 {
+		t.Errorf("Account ID version = %d, want 7", v)
+	}
+
+	// 4. OTP
+	otp, err := client.OTP.Create().
+		SetEmail("uuidv7_user@example.com").
+		SetCodeHash("code_hash_uuidv7").
+		SetExpiresAt(time.Now().Add(10 * time.Minute)).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create otp failed: %v", err)
+	}
+	if v := otp.ID.Version(); v != 7 {
+		t.Errorf("OTP ID version = %d, want 7", v)
+	}
+
+	// 5. AuditLog
+	al, err := client.AuditLog.Create().
+		SetEvent("uuidv7_test").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create audit log failed: %v", err)
+	}
+	if v := al.ID.Version(); v != 7 {
+		t.Errorf("AuditLog ID version = %d, want 7", v)
+	}
+}

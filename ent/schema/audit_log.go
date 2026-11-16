@@ -18,7 +18,7 @@ type AuditLog struct {
 func (AuditLog) Fields() []ent.Field {
 	return []ent.Field{
 		field.UUID("id", uuid.UUID{}).
-			Default(uuid.New),
+			Default(newID),
 		field.UUID("user_id", uuid.UUID{}).
 			Optional().
 			Nillable(),

@@ -19,7 +19,7 @@ type Account struct {
 func (Account) Fields() []ent.Field {
 	return []ent.Field{
 		field.UUID("id", uuid.UUID{}).
-			Default(uuid.New),
+			Default(newID),
 		field.UUID("user_id", uuid.UUID{}),
 		field.String("provider").
 			NotEmpty(),
