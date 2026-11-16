@@ -46,6 +46,7 @@ var (
 	ErrNodeNotConnected       = domain.ErrNodeNotConnected
 	ErrNodeNotFound           = domain.ErrNodeNotFound
 	ErrMasterConnectForbidden = domain.ErrMasterConnectForbidden
+	ErrMasterDeleteForbidden  = domain.ErrMasterDeleteForbidden
 	ErrUnauthorized           = domain.ErrUnauthorized
 	ErrUnknownEnvelopeType    = domain.ErrUnknownEnvelopeType
 )
@@ -89,12 +90,13 @@ type Node struct {
 // New returns a new Node feature facade backed by Ent.
 func New(client *ent.Client, cfg Config) *Node {
 	r := repo.New(client)
+	hub := service.NewHub()
 	svc := service.New(r, service.Config{
 		BaseURL: cfg.BaseURL,
 		Now:     cfg.Now,
 		Bus:     cfg.Bus,
+		Hub:     hub,
 	})
-	hub := service.NewHub()
 	hub.OnHeartbeat(func(nodeID string, _ domain.Envelope) {
 		_ = svc.RecordHeartbeat(context.Background(), nodeID)
 	})
@@ -178,6 +180,11 @@ func (n *Node) ConsumeJoinToken(ctx context.Context, token string) error {
 // Join exchanges a join token and node name for credentials.
 func (n *Node) Join(ctx context.Context, req domain.JoinNodeRequest) (domain.JoinNodeResponse, error) {
 	return n.svc.Join(ctx, req)
+}
+
+// Delete removes a worker node by id.
+func (n *Node) Delete(ctx context.Context, id string) error {
+	return n.svc.Delete(ctx, id)
 }
 
 // Register mounts the protected node HTTP routes on r.

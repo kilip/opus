@@ -257,6 +257,20 @@ func TestGetFiber_NodesRequiresAuthAndPersistsMaster(t *testing.T) {
 		t.Errorf("expected error %q, got %q", "UNAUTHORIZED", bodyJoinTokens.Error)
 	}
 
+	// Unauthenticated DELETE /api/nodes/:id returns 401
+	reqDeleteNode := httptest.NewRequest("DELETE", "/api/nodes/01933a3c-1b77-7000-8000-000000000000", nil)
+	respDeleteNode, err := fiberApp1.Test(reqDeleteNode)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if respDeleteNode.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for /api/nodes/:id, got %d", respDeleteNode.StatusCode)
+	}
+	bodyDeleteNode := parseResponseBody(t, respDeleteNode)
+	if bodyDeleteNode.Error != "UNAUTHORIZED" {
+		t.Errorf("expected error %q, got %q", "UNAUTHORIZED", bodyDeleteNode.Error)
+	}
+
 	// Verify master node created in DB
 	ctx := context.Background()
 	masters1, err := client.Node.Query().Where(entnode.RoleEQ(entnode.RoleMaster)).All(ctx)

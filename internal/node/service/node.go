@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -25,6 +26,7 @@ type Config struct {
 	BaseURL string
 	Now     func() time.Time
 	Bus     *eventbus.Bus
+	Hub     *Hub
 }
 
 // Node owns node registry business rules.
@@ -33,6 +35,7 @@ type Node struct {
 	baseURL string
 	now     func() time.Time
 	bus     *eventbus.Bus
+	hub     *Hub
 }
 
 // New returns Node service backed by Ent repo and configuration.
@@ -50,6 +53,7 @@ func New(r *repo.Ent, cfg Config) *Node {
 		baseURL: strings.TrimRight(baseURL, "/"),
 		now:     now,
 		bus:     cfg.Bus,
+		hub:     cfg.Hub,
 	}
 }
 
@@ -164,6 +168,19 @@ func (s *Node) AuthenticateWorker(ctx context.Context, cred string) (*domain.Nod
 		return nil, domain.ErrMasterConnectForbidden
 	}
 	return n, nil
+}
+
+// Delete deletes a worker node and terminates any active control channel connection.
+func (s *Node) Delete(ctx context.Context, id string) error {
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return err
+	}
+	if s.hub != nil {
+		if err := s.hub.Disconnect(id); err != nil && !errors.Is(err, domain.ErrNodeNotConnected) {
+			return err
+		}
+	}
+	return nil
 }
 
 // GetMaster returns the registered master node.

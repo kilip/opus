@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -29,7 +30,29 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-func setupApp(t *testing.T) (*fiber.App, *ent.Client) {
+type mockConn struct {
+	mu     sync.Mutex
+	closed bool
+}
+
+func (m *mockConn) WriteJSON(v any) error {
+	return nil
+}
+
+func (m *mockConn) Close() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.closed = true
+	return nil
+}
+
+func (m *mockConn) isClosed() bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.closed
+}
+
+func setupAppWithHub(t *testing.T) (*fiber.App, *ent.Client, *service.Hub) {
 	t.Helper()
 	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared&_pragma=foreign_keys(ON)&_pragma=busy_timeout(10000)")
 	if err != nil {
@@ -48,12 +71,20 @@ func setupApp(t *testing.T) (*fiber.App, *ent.Client) {
 	})
 
 	r := repo.New(client)
+	hub := service.NewHub()
 	svc := service.New(r, service.Config{
 		BaseURL: "http://localhost:7880",
+		Hub:     hub,
 	})
-	h := handler.New(svc, nil)
+	h := handler.New(svc, hub)
 	h.Register(app.Group("/api"))
 	h.RegisterPublic(app.Group("/api"))
+	return app, client, hub
+}
+
+func setupApp(t *testing.T) (*fiber.App, *ent.Client) {
+	t.Helper()
+	app, client, _ := setupAppWithHub(t)
 	return app, client
 }
 
@@ -469,5 +500,184 @@ func TestJoin_RateLimit(t *testing.T) {
 	}, otherIP)
 	if respOther.StatusCode == http.StatusTooManyRequests {
 		t.Fatalf("request from different IP was unexpectedly rate limited")
+	}
+}
+
+// AC1: DELETE /api/nodes/{id} returns 204 for existing worker; row is gone afterwards.
+func TestDeleteNode_AC1_ExistingWorker(t *testing.T) {
+	app, client := setupApp(t)
+	ctx := context.Background()
+
+	worker, err := client.Node.Create().
+		SetName("worker-to-delete").
+		SetRole(entnode.RoleWorker).
+		SetStatus(entnode.StatusOffline).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create worker: %v", err)
+	}
+
+	req := httptest.NewRequest("DELETE", "/api/nodes/"+worker.ID.String(), nil)
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d", resp.StatusCode)
+	}
+
+	// Verify row is gone from DB
+	_, err = client.Node.Get(ctx, worker.ID)
+	if !ent.IsNotFound(err) {
+		t.Fatalf("expected node to be deleted from DB, got err: %v", err)
+	}
+
+	// Second delete on deleted node returns 404
+	req2 := httptest.NewRequest("DELETE", "/api/nodes/"+worker.ID.String(), nil)
+	resp2, err := app.Test(req2)
+	if err != nil {
+		t.Fatalf("request 2 failed: %v", err)
+	}
+	if resp2.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", resp2.StatusCode)
+	}
+}
+
+// AC2: Deleting master returns 409 with httpx error; unknown or malformed ID returns 404.
+func TestDeleteNode_AC2_MasterForbiddenAndNotFound(t *testing.T) {
+	app, client := setupApp(t)
+	ctx := context.Background()
+
+	master, err := client.Node.Create().
+		SetName("master-primary").
+		SetRole(entnode.RoleMaster).
+		SetStatus(entnode.StatusOnline).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create master: %v", err)
+	}
+
+	// Deleting master returns 409 Conflict
+	reqMaster := httptest.NewRequest("DELETE", "/api/nodes/"+master.ID.String(), nil)
+	respMaster, err := app.Test(reqMaster)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if respMaster.StatusCode != http.StatusConflict {
+		t.Fatalf("expected 409 Conflict, got %d", respMaster.StatusCode)
+	}
+	var errResp httpx.ErrorResponse
+	if err := json.NewDecoder(respMaster.Body).Decode(&errResp); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if errResp.Error != "MASTER_DELETE_FORBIDDEN" {
+		t.Errorf("expected error MASTER_DELETE_FORBIDDEN, got %s", errResp.Error)
+	}
+
+	// Verify master node still exists in DB
+	masterAfter, err := client.Node.Get(ctx, master.ID)
+	if err != nil || masterAfter == nil {
+		t.Fatalf("expected master to remain in DB, got err: %v", err)
+	}
+
+	// Unknown valid UUID returns 404
+	reqUnknown := httptest.NewRequest("DELETE", "/api/nodes/01933a3c-1b77-7000-8000-000000000000", nil)
+	respUnknown, err := app.Test(reqUnknown)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if respUnknown.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", respUnknown.StatusCode)
+	}
+	var errRespUnknown httpx.ErrorResponse
+	if err := json.NewDecoder(respUnknown.Body).Decode(&errRespUnknown); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if errRespUnknown.Error != "NODE_NOT_FOUND" {
+		t.Errorf("expected error NODE_NOT_FOUND, got %s", errRespUnknown.Error)
+	}
+
+	// Malformed ID returns 404
+	reqMalformed := httptest.NewRequest("DELETE", "/api/nodes/not-a-valid-uuid", nil)
+	respMalformed, err := app.Test(reqMalformed)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	if respMalformed.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", respMalformed.StatusCode)
+	}
+	var errRespMalformed httpx.ErrorResponse
+	if err := json.NewDecoder(respMalformed.Body).Decode(&errRespMalformed); err != nil {
+		t.Fatalf("decode response: %v", err)
+	}
+	if errRespMalformed.Error != "NODE_NOT_FOUND" {
+		t.Errorf("expected error NODE_NOT_FOUND, got %s", errRespMalformed.Error)
+	}
+}
+
+// AC3: Live control channel connection is closed before call returns,
+// and the same credential can no longer connect (401).
+func TestDeleteNode_AC3_LiveControlChannelClosedAndCredentialRevoked(t *testing.T) {
+	app, client, hub := setupAppWithHub(t)
+	ctx := context.Background()
+
+	rawSecret := "secret-node-credential-value"
+	h := sha256.Sum256([]byte(rawSecret))
+	credHash := hex.EncodeToString(h[:])
+
+	worker, err := client.Node.Create().
+		SetName("worker-live-chan").
+		SetRole(entnode.RoleWorker).
+		SetStatus(entnode.StatusOnline).
+		SetCredentialHash(credHash).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create worker: %v", err)
+	}
+
+	conn := &mockConn{}
+	_, err = hub.Register(worker.ID.String(), conn)
+	if err != nil {
+		t.Fatalf("register conn in hub: %v", err)
+	}
+
+	if !hub.Connected(worker.ID.String()) {
+		t.Fatal("expected hub.Connected to be true")
+	}
+	if conn.isClosed() {
+		t.Fatal("expected conn to not be closed yet")
+	}
+
+	// DELETE node
+	req := httptest.NewRequest("DELETE", "/api/nodes/"+worker.ID.String(), nil)
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("delete request failed: %v", err)
+	}
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d", resp.StatusCode)
+	}
+
+	// Verify connection was closed before the call returned
+	if !conn.isClosed() {
+		t.Error("expected live connection to be closed by delete")
+	}
+
+	// Verify credential can no longer connect (401 Unauthorized)
+	reqConnect := httptest.NewRequest("GET", "/api/nodes/connect", nil)
+	reqConnect.Header.Set("Authorization", "Bearer "+rawSecret)
+	respConnect, err := app.Test(reqConnect)
+	if err != nil {
+		t.Fatalf("connect request failed: %v", err)
+	}
+	if respConnect.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("expected 401 Unauthorized, got %d", respConnect.StatusCode)
+	}
+	var errResp httpx.ErrorResponse
+	if err := json.NewDecoder(respConnect.Body).Decode(&errResp); err != nil {
+		t.Fatalf("decode connect error: %v", err)
+	}
+	if errResp.Error != "UNAUTHORIZED" {
+		t.Errorf("expected error UNAUTHORIZED, got %s", errResp.Error)
 	}
 }

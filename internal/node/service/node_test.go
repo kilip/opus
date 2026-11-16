@@ -870,3 +870,59 @@ func TestNodeService_MasterNodeExcluded(t *testing.T) {
 		t.Fatalf("expected master to remain online, got status=%v err=%v", m.Status, err)
 	}
 }
+
+func TestNodeService_Delete(t *testing.T) {
+	client := setupTestClient(t)
+	r := repo.New(client)
+	hub := service.NewHub()
+	svc := service.New(r, service.Config{
+		Hub: hub,
+	})
+	ctx := context.Background()
+
+	// 1. Delete master returns ErrMasterDeleteForbidden
+	master, err := client.Node.Create().
+		SetName("master-test").
+		SetRole(entnode.RoleMaster).
+		SetStatus(entnode.StatusOnline).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create master: %v", err)
+	}
+	if err := svc.Delete(ctx, master.ID.String()); !errors.Is(err, domain.ErrMasterDeleteForbidden) {
+		t.Fatalf("expected ErrMasterDeleteForbidden, got %v", err)
+	}
+
+	// 2. Delete unknown returns ErrNodeNotFound
+	if err := svc.Delete(ctx, "01933a3c-1b77-7000-8000-000000000000"); !errors.Is(err, domain.ErrNodeNotFound) {
+		t.Fatalf("expected ErrNodeNotFound, got %v", err)
+	}
+
+	// 3. Delete worker deletes row and disconnects hub
+	worker, err := client.Node.Create().
+		SetName("worker-svc-del").
+		SetRole(entnode.RoleWorker).
+		SetStatus(entnode.StatusOnline).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create worker: %v", err)
+	}
+
+	conn := &mockConn{}
+	if _, err := hub.Register(worker.ID.String(), conn); err != nil {
+		t.Fatalf("register conn: %v", err)
+	}
+
+	if err := svc.Delete(ctx, worker.ID.String()); err != nil {
+		t.Fatalf("delete worker: %v", err)
+	}
+
+	if !conn.isClosed() {
+		t.Error("expected conn to be closed on delete")
+	}
+
+	_, err = client.Node.Get(ctx, worker.ID)
+	if !ent.IsNotFound(err) {
+		t.Fatalf("expected worker to be deleted from DB, got %v", err)
+	}
+}

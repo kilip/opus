@@ -21,6 +21,8 @@ var (
 	ErrNodeNotFound = errors.New("NODE_NOT_FOUND")
 	// ErrMasterConnectForbidden indicates the master node cannot connect via worker control channel.
 	ErrMasterConnectForbidden = errors.New("MASTER_CONNECT_FORBIDDEN")
+	// ErrMasterDeleteForbidden indicates the master node cannot be deleted.
+	ErrMasterDeleteForbidden = errors.New("MASTER_DELETE_FORBIDDEN")
 	// ErrUnauthorized indicates missing or invalid credentials.
 	ErrUnauthorized = errors.New("UNAUTHORIZED")
 	// ErrUnknownEnvelopeType indicates an unrecognised envelope type.

@@ -99,6 +99,36 @@ func (r *Ent) List(ctx context.Context) ([]domain.Node, error) {
 	return out, nil
 }
 
+// Delete deletes a worker node by id.
+// Returns ErrNodeNotFound if the node does not exist or id is malformed,
+// and ErrMasterDeleteForbidden if the node has role master.
+func (r *Ent) Delete(ctx context.Context, id string) error {
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		return domain.ErrNodeNotFound
+	}
+
+	n, err := r.client.Node.Get(ctx, uid)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return domain.ErrNodeNotFound
+		}
+		return err
+	}
+
+	if n.Role == entnode.RoleMaster {
+		return domain.ErrMasterDeleteForbidden
+	}
+
+	if err := r.client.Node.DeleteOneID(uid).Exec(ctx); err != nil {
+		if ent.IsNotFound(err) {
+			return domain.ErrNodeNotFound
+		}
+		return err
+	}
+	return nil
+}
+
 // RecordHeartbeat updates the last_seen_at timestamp and sets status to online.
 // Returns the updated node and whether the status changed from non-online to online.
 // Returns ErrNodeNotFound if the node does not exist, and ErrMasterConnectForbidden if role is master.

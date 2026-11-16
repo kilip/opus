@@ -108,6 +108,7 @@ func (h *Handler) Register(r fiber.Router) {
 	g := r.Group("/nodes")
 	g.Get("/", h.List)
 	g.Post("/join-tokens", h.CreateJoinToken)
+	g.Delete("/:id", h.Delete)
 }
 
 // RegisterPublic mounts unauthenticated node routes on r.
@@ -154,6 +155,28 @@ func (h *Handler) CreateJoinToken(c fiber.Ctx) error {
 		return mapErr(err)
 	}
 	return httpx.Created(c, res)
+}
+
+// Delete godoc
+//
+//	@Summary		Delete node
+//	@Description	Deletes a worker node and terminates any active control channel connection.
+//	@ID				delete-node
+//	@Tags			nodes
+//	@Produce		json
+//	@Param			id	path		string	true	"Node ID"
+//	@Success		204	"No Content"
+//	@Failure		401	{object}	httpx.ErrorResponse
+//	@Failure		404	{object}	httpx.ErrorResponse
+//	@Failure		409	{object}	httpx.ErrorResponse
+//	@Failure		500	{object}	httpx.ErrorResponse
+//	@Router			/nodes/{id} [delete]
+func (h *Handler) Delete(c fiber.Ctx) error {
+	id := c.Params("id")
+	if err := h.svc.Delete(c.Context(), id); err != nil {
+		return mapErr(err)
+	}
+	return c.SendStatus(fiber.StatusNoContent)
 }
 
 // Join godoc
@@ -250,7 +273,8 @@ func mapErr(err error) error {
 		return httpx.NewError(fiber.StatusForbidden, err)
 	case errors.Is(err, domain.ErrInvalidNodeName):
 		return httpx.BadRequest(err)
-	case errors.Is(err, domain.ErrNodeNameConflict):
+	case errors.Is(err, domain.ErrNodeNameConflict),
+		errors.Is(err, domain.ErrMasterDeleteForbidden):
 		return httpx.Conflict(err)
 	case errors.Is(err, domain.ErrRateLimited):
 		return httpx.NewError(fiber.StatusTooManyRequests, err)
