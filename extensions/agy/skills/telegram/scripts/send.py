@@ -25,14 +25,38 @@ SETTINGS_FILE = SKILL_DIR / "settings.json"
 VALID_PARSE_MODES = ("HTML", "Markdown", "MarkdownV2")
 
 
-def load_settings() -> dict[str, str]:
-    if not SETTINGS_FILE.is_file():
-        return {}
-    try:
-        data = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
-        return data if isinstance(data, dict) else {}
-    except (OSError, json.JSONDecodeError):
-        return {}
+def resolve_config(chat_id_override: str = "") -> tuple[str, str]:
+    settings: dict[str, object] = {}
+    has_settings_file = SETTINGS_FILE.is_file()
+    if has_settings_file:
+        try:
+            data = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise RuntimeError(f"Invalid Telegram settings in {SETTINGS_FILE}: {exc}") from exc
+        if isinstance(data, dict):
+            settings = data
+
+    token = (os.environ.get("TELEGRAM_BOT_TOKEN") or str(settings.get("bot_token") or "")).strip()
+    chat_id = (
+        chat_id_override
+        or os.environ.get("TELEGRAM_CHAT_ID")
+        or str(settings.get("chat_id") or "")
+    ).strip()
+
+    if not token or not chat_id:
+        missing = []
+        if not token:
+            missing.append("bot_token")
+        if not chat_id:
+            missing.append("chat_id")
+        file_status = "found but incomplete" if has_settings_file else "not found"
+        raise RuntimeError(
+            f"Telegram settings not configured ({SETTINGS_FILE} {file_status}; missing: {', '.join(missing)}). "
+            f"Configure {SETTINGS_FILE} (see {SKILL_DIR / 'settings.example.json'}) "
+            "or set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID."
+        )
+
+    return token, chat_id
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
@@ -120,19 +144,10 @@ async def send_with_retry(args: argparse.Namespace, token: str, chat_id: str, me
 
 def main() -> int:
     args = parse_args(sys.argv[1:])
-    settings = load_settings()
-
-    token = os.environ.get("TELEGRAM_BOT_TOKEN") or str(settings.get("bot_token") or "")
-    if not token:
-        print(f"Error: bot_token is not set. Set TELEGRAM_BOT_TOKEN or configure {SETTINGS_FILE}.", file=sys.stderr)
-        return 1
-
-    chat_id = args.chat_id or os.environ.get("TELEGRAM_CHAT_ID") or str(settings.get("chat_id") or "")
-    if not chat_id:
-        print(
-            f"Error: chat_id is not set. Set TELEGRAM_CHAT_ID, pass --chat-id, or configure {SETTINGS_FILE}.",
-            file=sys.stderr,
-        )
+    try:
+        token, chat_id = resolve_config(args.chat_id)
+    except RuntimeError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
         return 1
 
     message = args.message or " ".join(args.positional)

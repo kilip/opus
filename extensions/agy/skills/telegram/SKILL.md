@@ -14,7 +14,7 @@ Checked in order:
 1. Env vars: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
 2. Git-ignored `<skill-dir>/settings.json` (`{"bot_token": "...", "chat_id": "..."}`, see [settings.example.json](./settings.example.json))
 
-**If unconfigured**: Ask the user for `bot_token` (`@BotFather`) and `chat_id` (from `https://api.telegram.org/bot<TOKEN>/getUpdates`), save to `<skill-dir>/settings.json` with `chmod 600`, and verify `git check-ignore -q <skill-dir>/settings.json`. Never echo `bot_token`.
+**If unconfigured**: `send.py` raises an error and exits `1` explaining what is missing. Ask the user for `bot_token` (`@BotFather`) and `chat_id` (from `https://api.telegram.org/bot<TOKEN>/getUpdates`), save to `<skill-dir>/settings.json` with `chmod 600`, and verify `git check-ignore -q <skill-dir>/settings.json`. Never echo `bot_token`.
 
 ## Usage & Options
 
