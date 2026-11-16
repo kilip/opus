@@ -1,9 +1,9 @@
 ---
-name: vibe
-description: Autonomous Issue-to-PR workflow orchestrator that resolves GitHub issues end-to-end without human intervention. Triggered explicitly with /vibe.
+name: express
+description: Autonomous Issue-to-PR workflow orchestrator that resolves GitHub issues end-to-end without human intervention. Triggered explicitly with /express.
 ---
 
-# Vibe Orchestrator
+# Express Orchestrator
 
 Resolve GitHub issue `#<ID>` end-to-end as a thin **Orchestrator** delegating to five subagents via `invoke_subagent` (default `Workspace: "inherit"`; pass `Model` only on explicit user override):
 
@@ -15,7 +15,7 @@ Resolve GitHub issue `#<ID>` end-to-end as a thin **Orchestrator** delegating to
 ```bash
 gh issue view <ID> --json number,title,body,labels,state # require state == "OPEN"
 # If body has "Blocked by: #N", verify each blocker state != "OPEN" before proceeding.
-python3 ~/.gemini/config/plugins/opus/skills/vibe/scripts/set_status.py <ID> in-progress
+python3 ~/.gemini/config/plugins/opus/skills/express/scripts/set_status.py <ID> in-progress
 # Map label: type:feat|feature -> feat, type:bug|fix -> fix, type:chore -> chore
 git checkout main && git pull --ff-only && git switch -c <prefix>/issue-<ID>-<slug>
 ```
@@ -32,7 +32,7 @@ Invoke `coder` (`Role: "Issue #<ID> Coder"`): Pass the Planner's plan inline + `
 
 - If blocked after 1 warm retry via `send_message`, reset project status to `status:todo` and stop:
   ```bash
-  python3 ~/.gemini/config/plugins/opus/skills/vibe/scripts/set_status.py <ID> todo
+  python3 ~/.gemini/config/plugins/opus/skills/express/scripts/set_status.py <ID> todo
   ```
 
 ## Phase 4: Audit (`verifier`)
@@ -43,7 +43,7 @@ Invoke `verifier` (`Role: "Issue #<ID> Verifier"`): Pass `#<ID>`, `AC1..ACn`, De
 
 ## Phase 5: Publish, CI & Merge (`pr-manager`)
 
-Invoke `pr-manager` (`Role: "Issue #<ID> PR Manager"`): Run `vibe-publish-and-merge` for `#<ID>`, branch `<branch>`, commit `<hash>`, title `<type>(<scope>): <summary>`, and verified `AC1..ACn`.
+Invoke `pr-manager` (`Role: "Issue #<ID> PR Manager"`): Run `express-publish-and-merge` for `#<ID>`, branch `<branch>`, commit `<hash>`, title `<type>(<scope>): <summary>`, and verified `AC1..ACn`.
 
 - **If `CI_FAIL`**: Resume `coder` via `send_message` with failed CI logs (max 1 fix), re-run `verifier`, then resume `pr-manager` via `send_message`.
 - **If `MERGED`**:

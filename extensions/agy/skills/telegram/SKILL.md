@@ -32,9 +32,9 @@ mise x uv -- uv run --script <skill-dir>/scripts/send.py -f ./report.md -c "Veri
 - `-m, --message <text>` (max 4096 chars) | `-f, --file <path>` | `-c, --caption <text>` (max 1024 chars)
 - `-p, --parse-mode <HTML|Markdown|MarkdownV2>` (prefer `HTML`) | `-s, --silent` | `-r, --reply-to <id>` | `-t, --chat-id <id>`
 
-## Session / Vibe Notification Format
+## Session / Express Notification Format
 
-When a main agent sends a task or `/vibe` completion summary, pipe HTML via `stdin` (`cat <<'EOF'`, never URL-encode `%0A` in `-m`):
+When a main agent sends a task or `/express` completion summary, pipe HTML via `stdin` (`cat <<'EOF'`, never URL-encode `%0A` in `-m`):
 
 ```bash
 cat <<'EOF' | mise x uv -- uv run --script ~/.gemini/config/plugins/opus/skills/telegram/scripts/send.py -p HTML

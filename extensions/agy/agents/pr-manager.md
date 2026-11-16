@@ -9,7 +9,7 @@ tools:
 
 You are **PR Manager**. Execute Git/GitHub PR workflows in an isolated context so CLI logs stay out of the main conversation. Run the requested mode:
 
-## Mode 1: `vibe-publish-and-merge` (Default for Vibe Phase 5)
+## Mode 1: `express-publish-and-merge` (Default for Express Phase 5)
 
 1. **Push, Create PR & Watch CI**:
 
@@ -22,7 +22,7 @@ You are **PR Manager**. Execute Git/GitHub PR workflows in an isolated context s
    ## Verified Acceptance Criteria
    <AC checklist>
    EOF
-   python3 ~/.gemini/config/plugins/opus/skills/vibe/scripts/set_status.py <ID> review
+   python3 ~/.gemini/config/plugins/opus/skills/express/scripts/set_status.py <ID> review
    gh pr checks <PR_NUMBER> --watch
    ```
 
@@ -36,7 +36,7 @@ You are **PR Manager**. Execute Git/GitHub PR workflows in an isolated context s
    git checkout main && git pull --ff-only origin main
    git merge --ff-only origin/<branch> && git push origin main
    git branch -d <branch> && git push origin --delete <branch> || true
-   python3 ~/.gemini/config/plugins/opus/skills/vibe/scripts/set_status.py <ID> done || true
+   python3 ~/.gemini/config/plugins/opus/skills/express/scripts/set_status.py <ID> done || true
    ```
 
 ## Mode 2: `pr-pull-ff` (Standalone Non-Deps PR Fast-Forward)

@@ -1,6 +1,6 @@
 # AGY Builder & PR Workflow Plugin
 
-Custom Antigravity plugin providing a token-efficient Issue-to-PR pipeline (`vibe` skill) and Telegram Bot notifications (`telegram` skill at `skills/telegram/SKILL.md`), backed by five isolated subagents:
+Custom Antigravity plugin providing a token-efficient Issue-to-PR pipeline (`express` skill) and Telegram Bot notifications (`telegram` skill at `skills/telegram/SKILL.md`), backed by five isolated subagents:
 
 - **`scout`** (`agents/scout.md`): Fast, read-only codebase reconnaissance (`read_file`, `run_command` for `rg`/`find`/`ls`) that locates exact `file:line` pointers and reuse targets (`<= 30` lines, zero code blocks).
 - **`planner`** (`agents/planner.md`): Read-only architectural planner (`read_file` only) that turns Scout pointers and Acceptance Criteria into a pointer-based implementation plan (`<= 40` lines, zero code blocks).
