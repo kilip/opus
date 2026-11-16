@@ -88,7 +88,7 @@ Domain units across both backend and frontend are called **features** (never "mo
 ## 3. Backend: Fiber v3, Entgo, Swag & OpenAPI 3.1
 
 - **Fiber v3**: Register feature routes under the `/api` group in `internal/app/fiber.go` via `<feature>.Register(api)`. Use `fiber.Ctx` (v3 signature: `func(c fiber.Ctx) error`).
-- **Feature Environment Variables**: Prefix feature-specific env vars with the uppercase feature name (e.g. `AUTH_*`, `TASK_*`).
+- **Environment Variables**: Platform and global settings use `APP_*`, auth uses `AUTH_*`, and other features use their own uppercase feature name (e.g. `TASK_*`).
 - **Entgo (`ent/`)**: All database schemas live in `ent/schema/`. All entity IDs are UUID v7 generated via the shared `newID` helper in `ent/schema/id.go`. Share the generated `*ent.Client` across features via dependency injection in `Register` / `New`. Generated Ent code is committed and `go generate ./ent` must be re-run after schema changes.
 - **Strict DTO Boundary**:
   - NEVER expose generated `ent` models directly in HTTP responses or Swag annotations.
@@ -112,17 +112,17 @@ Opus uses passwordless (email OTP + OAuth) authentication with cookie sessions.
 
 | Variable | Default | Description |
 | :--- | :--- | :--- |
-| `DATABASE_URL` | `file:opus.db?...` | SQLite / LibSQL database connection string |
+| `APP_DATABASE_URL` | `file:opus.db?...` | SQLite / LibSQL database connection string |
 | `AUTH_SECRET` | `""` | Secret key used to sign session cookies (required in prod) |
 | `AUTH_SESSION_TTL` | `720h` | Session duration / time-to-live |
-| `BASE_URL` | `http://localhost:7880` | Canonical public base URL for OAuth callbacks |
-| `TRUSTED_ORIGINS` | `""` | Comma-separated list of allowed CORS / redirect origins |
-| `SMTP_*` | — | SMTP mailer settings; falls back to console mailer if `SMTP_HOST` is unset |
-| `SMTP_HOST` | `""` | SMTP server host |
-| `SMTP_PORT` | `587` | SMTP server port |
-| `SMTP_USERNAME` | `""` | SMTP authentication username |
-| `SMTP_PASSWORD` | `""` | SMTP authentication password |
-| `SMTP_FROM` | `""` | Outgoing sender email address |
+| `APP_BASE_URL` | `http://localhost:7880` | Canonical public base URL for OAuth callbacks |
+| `APP_TRUSTED_ORIGINS` | `""` | Comma-separated list of allowed CORS / redirect origins |
+| `APP_SMTP_*` | — | SMTP mailer settings; falls back to console mailer if `APP_SMTP_HOST` is unset |
+| `APP_SMTP_HOST` | `""` | SMTP server host |
+| `APP_SMTP_PORT` | `587` | SMTP server port |
+| `APP_SMTP_USERNAME` | `""` | SMTP authentication username |
+| `APP_SMTP_PASSWORD` | `""` | SMTP authentication password |
+| `APP_SMTP_FROM` | `""` | Outgoing sender email address |
 | `AUTH_GITHUB_ID` | `""` | GitHub OAuth client ID |
 | `AUTH_GITHUB_SECRET` | `""` | GitHub OAuth client secret |
 | `AUTH_GOOGLE_ID` | `""` | Google OAuth client ID |
