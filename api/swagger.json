@@ -1111,6 +1111,51 @@
                 ]
             }
         },
+        "/nodes/connect": {
+            "get": {
+                "description": "Upgrades HTTP connection to WebSocket control channel for worker nodes.",
+                "operationId": "connect-node",
+                "responses": {
+                    "101": {
+                        "description": "Switching Protocols"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Missing or invalid credentials"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Master node connection forbidden"
+                    },
+                    "426": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Upgrade required"
+                    }
+                },
+                "summary": "Connect worker node control channel",
+                "tags": [
+                    "nodes"
+                ]
+            }
+        },
         "/nodes/join": {
             "post": {
                 "description": "Exchanges a valid join token and node name for node credentials.",
