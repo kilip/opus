@@ -39,7 +39,7 @@ auth:
   # -- Name of an existing Kubernetes Secret containing sensitive credentials.
   # Expected keys:
   #   - AUTH_SECRET: Secret key used to sign session cookies
-  #   - SMTP_PASSWORD: Password for SMTP authentication
+  #   - APP_SMTP_PASSWORD: Password for SMTP authentication
   #   - AUTH_GITHUB_SECRET: OAuth client secret for GitHub
   #   - AUTH_GOOGLE_SECRET: OAuth client secret for Google
   #   - AUTH_FACEBOOK_SECRET: OAuth client secret for Facebook

@@ -71,47 +71,47 @@ Environment variables from values.config.
 {{- $c := .Values.config -}}
 - name: APP_NAME
   value: {{ $c.appName | quote }}
-- name: DATABASE_URL
+- name: APP_DATABASE_URL
   value: {{ printf "file:%s/opus.db?_pragma=foreign_keys(ON)&_pragma=busy_timeout(5000)" (default "/data" .Values.persistence.mountPath) | quote }}
-- name: HOST
+- name: APP_HOST
   value: {{ $c.host | quote }}
-- name: PORT
+- name: APP_PORT
   value: {{ .Values.port | quote }}
-- name: LOG_LEVEL
+- name: APP_LOG_LEVEL
   value: {{ $c.logLevel | quote }}
-- name: READ_TIMEOUT
+- name: APP_READ_TIMEOUT
   value: {{ $c.readTimeout | quote }}
-- name: WRITE_TIMEOUT
+- name: APP_WRITE_TIMEOUT
   value: {{ $c.writeTimeout | quote }}
-- name: IDLE_TIMEOUT
+- name: APP_IDLE_TIMEOUT
   value: {{ $c.idleTimeout | quote }}
-- name: SHUTDOWN_TIMEOUT
+- name: APP_SHUTDOWN_TIMEOUT
   value: {{ $c.shutdownTimeout | quote }}
-- name: BODY_LIMIT
+- name: APP_BODY_LIMIT
   value: {{ $c.bodyLimit | quote }}
 {{- $baseUrl := or .Values.baseUrl (.Values.config | default dict).baseUrl -}}
 {{- if and (not $baseUrl) .Values.auth -}}
   {{- $baseUrl = .Values.auth.baseUrl -}}
 {{- end -}}
 {{- if $baseUrl }}
-- name: BASE_URL
+- name: APP_BASE_URL
   value: {{ $baseUrl | quote }}
 {{- end }}
 {{- $smtp := or .Values.smtp (.Values.auth | default dict).smtp | default dict -}}
 {{- if $smtp.host }}
-- name: SMTP_HOST
+- name: APP_SMTP_HOST
   value: {{ $smtp.host | quote }}
 {{- end }}
 {{- if $smtp.port }}
-- name: SMTP_PORT
+- name: APP_SMTP_PORT
   value: {{ $smtp.port | quote }}
 {{- end }}
 {{- if $smtp.username }}
-- name: SMTP_USERNAME
+- name: APP_SMTP_USERNAME
   value: {{ $smtp.username | quote }}
 {{- end }}
 {{- if $smtp.from }}
-- name: SMTP_FROM
+- name: APP_SMTP_FROM
   value: {{ $smtp.from | quote }}
 {{- end }}
 {{- $githubClientId := "" -}}
@@ -210,11 +210,11 @@ Environment variables from values.config.
       name: {{ .Values.auth.existingSecret }}
       key: AUTH_SECRET
       optional: true
-- name: SMTP_PASSWORD
+- name: APP_SMTP_PASSWORD
   valueFrom:
     secretKeyRef:
       name: {{ .Values.auth.existingSecret }}
-      key: SMTP_PASSWORD
+      key: APP_SMTP_PASSWORD
       optional: true
 - name: AUTH_GITHUB_SECRET
   valueFrom:
