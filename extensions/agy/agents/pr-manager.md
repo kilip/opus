@@ -22,7 +22,7 @@ You are **PR Manager**. Execute Git/GitHub PR workflows in an isolated context s
    ## Verified Acceptance Criteria
    <AC checklist>
    EOF
-   gh issue edit <ID> --remove-label "status:in-progress" --add-label "status:review"
+   python3 ~/.gemini/config/plugins/opus/skills/vibe/scripts/set_status.py <ID> review
    gh pr checks <PR_NUMBER> --watch
    ```
 
@@ -36,7 +36,7 @@ You are **PR Manager**. Execute Git/GitHub PR workflows in an isolated context s
    git checkout main && git pull --ff-only origin main
    git merge --ff-only origin/<branch> && git push origin main
    git branch -d <branch> && git push origin --delete <branch> || true
-   gh issue edit <ID> --remove-label "status:review,status:in-progress" || true
+   python3 ~/.gemini/config/plugins/opus/skills/vibe/scripts/set_status.py <ID> done || true
    ```
 
 ## Mode 2: `pr-pull-ff` (Standalone Non-Deps PR Fast-Forward)

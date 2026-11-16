@@ -15,7 +15,7 @@ Resolve GitHub issue `#<ID>` end-to-end as a thin **Orchestrator** delegating to
 ```bash
 gh issue view <ID> --json number,title,body,labels,state # require state == "OPEN"
 # If body has "Blocked by: #N", verify each blocker state != "OPEN" before proceeding.
-gh issue edit <ID> --remove-label "status:todo,status:blocked" --add-label "status:in-progress"
+python3 ~/.gemini/config/plugins/opus/skills/vibe/scripts/set_status.py <ID> in-progress
 # Map label: type:feat|feature -> feat, type:bug|fix -> fix, type:chore -> chore
 git checkout main && git pull --ff-only && git switch -c <prefix>/issue-<ID>-<slug>
 ```
@@ -30,7 +30,10 @@ git checkout main && git pull --ff-only && git switch -c <prefix>/issue-<ID>-<sl
 
 Invoke `coder` (`Role: "Issue #<ID> Coder"`): Pass the Planner's plan inline + `AC1..ACn` (no need to re-read the plan artifact). Save `conversationId`.
 
-- If blocked after 1 warm retry via `send_message`, set label `status:blocked` (remove `status:in-progress`) and stop.
+- If blocked after 1 warm retry via `send_message`, reset project status to `status:todo` and stop:
+  ```bash
+  python3 ~/.gemini/config/plugins/opus/skills/vibe/scripts/set_status.py <ID> todo
+  ```
 
 ## Phase 4: Audit (`verifier`)
 
