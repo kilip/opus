@@ -62,7 +62,7 @@ type Auth struct {
 
 // New creates an Auth feature from an Ent client and config.
 // If cfg.SessionSecret is empty, a random ephemeral secret is generated.
-// ponytail: ephemeral secret; sessions do not survive restarts without SESSION_SECRET
+// ponytail: ephemeral secret; sessions do not survive restarts without AUTH_SECRET
 func New(db *ent.Client, cfg AuthConfig) *Auth {
 	return NewWithMailer(db, cfg, nil)
 }
@@ -74,7 +74,7 @@ func NewWithMailer(db *ent.Client, cfg AuthConfig, m mailer.Mailer) *Auth {
 		b := make([]byte, 32)
 		_, _ = rand.Read(b)
 		secret = base64.RawURLEncoding.EncodeToString(b)
-		slog.Warn("SESSION_SECRET not set, using random secret",
+		slog.Warn("AUTH_SECRET not set, using random secret",
 			"warning", "sessions will not survive restarts")
 	}
 

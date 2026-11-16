@@ -23,8 +23,8 @@ type Config struct {
 	DatabaseURL            string        `env:"DATABASE_URL, default=file:opus.db?_pragma=foreign_keys(ON)&_pragma=busy_timeout(5000)"`
 	BaseURL                string        `env:"BASE_URL, default=http://localhost:7880"`
 	TrustedOrigins         []string      `env:"TRUSTED_ORIGINS"`
-	SessionSecret          string        `env:"SESSION_SECRET, default="`
-	SessionTTL             time.Duration `env:"SESSION_TTL, default=720h"`
+	SessionSecret          string        `env:"AUTH_SECRET, default="`
+	SessionTTL             time.Duration `env:"AUTH_SESSION_TTL, default=720h"`
 	AppVersion             string        `env:"APP_VERSION"`
 	SentryDSN              string        `env:"SENTRY_DSN, default="`
 	SentryEnvironment      string        `env:"SENTRY_ENVIRONMENT, default=development"`
@@ -34,12 +34,12 @@ type Config struct {
 	SMTPUsername           string        `env:"SMTP_USERNAME, default="`
 	SMTPPassword           string        `env:"SMTP_PASSWORD, default="`
 	SMTPFrom               string        `env:"SMTP_FROM, default="`
-	GitHubClientID         string        `env:"GITHUB_CLIENT_ID, default="`
-	GitHubClientSecret     string        `env:"GITHUB_CLIENT_SECRET, default="`
-	GoogleClientID         string        `env:"GOOGLE_CLIENT_ID, default="`
-	GoogleClientSecret     string        `env:"GOOGLE_CLIENT_SECRET, default="`
-	FacebookClientID       string        `env:"FACEBOOK_CLIENT_ID, default="`
-	FacebookClientSecret   string        `env:"FACEBOOK_CLIENT_SECRET, default="`
+	GitHubClientID         string        `env:"AUTH_GITHUB_ID, default="`
+	GitHubClientSecret     string        `env:"AUTH_GITHUB_SECRET, default="`
+	GoogleClientID         string        `env:"AUTH_GOOGLE_ID, default="`
+	GoogleClientSecret     string        `env:"AUTH_GOOGLE_SECRET, default="`
+	FacebookClientID       string        `env:"AUTH_FACEBOOK_ID, default="`
+	FacebookClientSecret   string        `env:"AUTH_FACEBOOK_SECRET, default="`
 }
 
 func loadEnvFile(path string) {

@@ -107,27 +107,74 @@ func TestConfig_SMTPDefaults(t *testing.T) {
 }
 
 func TestConfig_OAuthEnv(t *testing.T) {
-	t.Setenv("GITHUB_CLIENT_ID", "test-gh-id")
-	t.Setenv("GITHUB_CLIENT_SECRET", "test-gh-secret")
-	t.Setenv("GOOGLE_CLIENT_ID", "test-g-id")
-	t.Setenv("GOOGLE_CLIENT_SECRET", "test-g-secret")
-	t.Setenv("FACEBOOK_CLIENT_ID", "test-fb-id")
-	t.Setenv("FACEBOOK_CLIENT_SECRET", "test-fb-secret")
+	t.Run("legacy env vars ignored", func(t *testing.T) {
+		legacyVars := []string{
+			"SESSION" + "_SECRET",
+			"SESSION" + "_TTL",
+			"GITHUB" + "_CLIENT_ID",
+			"GITHUB" + "_CLIENT_SECRET",
+			"GOOGLE" + "_CLIENT_ID",
+			"GOOGLE" + "_CLIENT_SECRET",
+			"FACEBOOK" + "_CLIENT_ID",
+			"FACEBOOK" + "_CLIENT_SECRET",
+		}
+		for _, env := range legacyVars {
+			t.Setenv(env, "legacy-value")
+		}
 
-	cfg, err := app.GetConfig(context.Background())
-	if err != nil {
-		t.Fatalf("GetConfig returned unexpected error: %v", err)
-	}
+		cfg, err := app.GetConfig(context.Background())
+		if err != nil {
+			t.Fatalf("GetConfig returned unexpected error: %v", err)
+		}
 
-	if cfg.GitHubClientID != "test-gh-id" || cfg.GitHubClientSecret != "test-gh-secret" {
-		t.Errorf("unexpected github oauth config: id=%q secret=%q", cfg.GitHubClientID, cfg.GitHubClientSecret)
-	}
-	if cfg.GoogleClientID != "test-g-id" || cfg.GoogleClientSecret != "test-g-secret" {
-		t.Errorf("unexpected google oauth config: id=%q secret=%q", cfg.GoogleClientID, cfg.GoogleClientSecret)
-	}
-	if cfg.FacebookClientID != "test-fb-id" || cfg.FacebookClientSecret != "test-fb-secret" {
-		t.Errorf("unexpected facebook oauth config: id=%q secret=%q", cfg.FacebookClientID, cfg.FacebookClientSecret)
-	}
+		if cfg.SessionSecret != "" {
+			t.Errorf("expected empty SessionSecret, got %q", cfg.SessionSecret)
+		}
+		if cfg.SessionTTL != 720*time.Hour {
+			t.Errorf("expected default SessionTTL 720h, got %v", cfg.SessionTTL)
+		}
+		if cfg.GitHubClientID != "" || cfg.GitHubClientSecret != "" {
+			t.Errorf("expected empty github oauth config, got id=%q secret=%q", cfg.GitHubClientID, cfg.GitHubClientSecret)
+		}
+		if cfg.GoogleClientID != "" || cfg.GoogleClientSecret != "" {
+			t.Errorf("expected empty google oauth config, got id=%q secret=%q", cfg.GoogleClientID, cfg.GoogleClientSecret)
+		}
+		if cfg.FacebookClientID != "" || cfg.FacebookClientSecret != "" {
+			t.Errorf("expected empty facebook oauth config, got id=%q secret=%q", cfg.FacebookClientID, cfg.FacebookClientSecret)
+		}
+	})
+
+	t.Run("auth env vars populated", func(t *testing.T) {
+		t.Setenv("AUTH_SECRET", "test-auth-secret")
+		t.Setenv("AUTH_SESSION_TTL", "12h")
+		t.Setenv("AUTH_GITHUB_ID", "test-gh-id")
+		t.Setenv("AUTH_GITHUB_SECRET", "test-gh-secret")
+		t.Setenv("AUTH_GOOGLE_ID", "test-g-id")
+		t.Setenv("AUTH_GOOGLE_SECRET", "test-g-secret")
+		t.Setenv("AUTH_FACEBOOK_ID", "test-fb-id")
+		t.Setenv("AUTH_FACEBOOK_SECRET", "test-fb-secret")
+
+		cfg, err := app.GetConfig(context.Background())
+		if err != nil {
+			t.Fatalf("GetConfig returned unexpected error: %v", err)
+		}
+
+		if cfg.SessionSecret != "test-auth-secret" {
+			t.Errorf("expected SessionSecret %q, got %q", "test-auth-secret", cfg.SessionSecret)
+		}
+		if cfg.SessionTTL != 12*time.Hour {
+			t.Errorf("expected SessionTTL %v, got %v", 12*time.Hour, cfg.SessionTTL)
+		}
+		if cfg.GitHubClientID != "test-gh-id" || cfg.GitHubClientSecret != "test-gh-secret" {
+			t.Errorf("unexpected github oauth config: id=%q secret=%q", cfg.GitHubClientID, cfg.GitHubClientSecret)
+		}
+		if cfg.GoogleClientID != "test-g-id" || cfg.GoogleClientSecret != "test-g-secret" {
+			t.Errorf("unexpected google oauth config: id=%q secret=%q", cfg.GoogleClientID, cfg.GoogleClientSecret)
+		}
+		if cfg.FacebookClientID != "test-fb-id" || cfg.FacebookClientSecret != "test-fb-secret" {
+			t.Errorf("unexpected facebook oauth config: id=%q secret=%q", cfg.FacebookClientID, cfg.FacebookClientSecret)
+		}
+	})
 }
 
 func TestConfig_TrustedOrigins(t *testing.T) {
