@@ -27,7 +27,6 @@ type UpdateTaskRequest struct {
 
 // CreateActivityRequest is payload for adding activity to task.
 type CreateActivityRequest struct {
-	Kind   *ActivityKind `json:"kind,omitempty"`
-	Author string        `json:"author,omitempty"`
-	Body   string        `json:"body" validate:"required"`
+	Kind *ActivityKind `json:"kind,omitempty"`
+	Body string        `json:"body" validate:"required"`
 }

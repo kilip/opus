@@ -41,7 +41,10 @@ func (h *Handler) Register(r fiber.Router) {
 //	@Failure		500	{object}	httpx.ErrorResponse
 //	@Router			/tasks [get]
 func (h *Handler) List(c fiber.Ctx) error {
-	tasks := h.svc.List()
+	tasks, err := h.svc.List(c.Context())
+	if err != nil {
+		return mapErr(err)
+	}
 	total := len(tasks)
 	return httpx.List(c, tasks, &httpx.Meta{Total: &total})
 }
@@ -64,7 +67,7 @@ func (h *Handler) Create(c fiber.Ctx) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return httpx.BadRequest(err)
 	}
-	t, err := h.svc.Create(req)
+	t, err := h.svc.Create(c.Context(), req)
 	if err != nil {
 		return mapErr(err)
 	}
@@ -84,7 +87,7 @@ func (h *Handler) Create(c fiber.Ctx) error {
 //	@Failure		500	{object}	httpx.ErrorResponse
 //	@Router			/tasks/{id} [get]
 func (h *Handler) Get(c fiber.Ctx) error {
-	t, err := h.svc.Get(c.Params("id"))
+	t, err := h.svc.Get(c.Context(), c.Params("id"))
 	if err != nil {
 		return mapErr(err)
 	}
@@ -111,7 +114,7 @@ func (h *Handler) Update(c fiber.Ctx) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return httpx.BadRequest(err)
 	}
-	t, err := h.svc.Update(c.Params("id"), req)
+	t, err := h.svc.Update(c.Context(), c.Params("id"), req)
 	if err != nil {
 		return mapErr(err)
 	}
@@ -131,7 +134,7 @@ func (h *Handler) Update(c fiber.Ctx) error {
 //	@Failure		500	{object}	httpx.ErrorResponse
 //	@Router			/tasks/{id}/activity [get]
 func (h *Handler) ListActivity(c fiber.Ctx) error {
-	acts, err := h.svc.ListActivity(c.Params("id"))
+	acts, err := h.svc.ListActivity(c.Context(), c.Params("id"))
 	if err != nil {
 		return mapErr(err)
 	}
@@ -159,7 +162,7 @@ func (h *Handler) CreateActivity(c fiber.Ctx) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return httpx.BadRequest(err)
 	}
-	a, err := h.svc.CreateActivity(c.Params("id"), req)
+	a, err := h.svc.CreateActivity(c.Context(), c.Params("id"), req)
 	if err != nil {
 		return mapErr(err)
 	}

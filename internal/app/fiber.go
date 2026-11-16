@@ -117,8 +117,8 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 		authFeature.RegisterPublic(authRoutes) // POST /otp/request, POST /otp/verify (public)
 		api.Use(authFeature.Middleware())
 		authFeature.Register(authRoutes) // GET /me, POST /logout (protected)
+		task.New(db, bus).Register(api)
 	}
-	task.New(bus).Register(api)
 
 	// ponytail: serves embedded SPA without custom Cache-Control headers; add immutable asset caching when CDN/traffic requires.
 	if distFS, err := ui.Dist(); err == nil {

@@ -15,13 +15,13 @@ import (
 
 // Task owns task and activity business rules.
 type Task struct {
-	repo *repo.Memory
+	repo *repo.Ent
 	bus  *eventbus.Bus
 	mu   sync.Mutex
 }
 
-// New returns Task service backed by Memory repo and event bus.
-func New(r *repo.Memory, bus *eventbus.Bus) *Task {
+// New returns Task service backed by Ent repo and event bus.
+func New(r *repo.Ent, bus *eventbus.Bus) *Task {
 	return &Task{
 		repo: r,
 		bus:  bus,
@@ -29,21 +29,21 @@ func New(r *repo.Memory, bus *eventbus.Bus) *Task {
 }
 
 // List returns every task.
-func (s *Task) List() []domain.Task {
-	return s.repo.List()
+func (s *Task) List(ctx context.Context) ([]domain.Task, error) {
+	return s.repo.List(ctx)
 }
 
 // Get returns task by Opus identifier, or domain.ErrTaskNotFound.
-func (s *Task) Get(id string) (domain.Task, error) {
-	return s.repo.Get(id)
+func (s *Task) Get(ctx context.Context, id string) (domain.Task, error) {
+	return s.repo.Get(ctx, id)
 }
 
 // Create validates req and stores new task.
-func (s *Task) Create(req domain.CreateTaskRequest) (domain.Task, error) {
+func (s *Task) Create(ctx context.Context, req domain.CreateTaskRequest) (domain.Task, error) {
 	if strings.TrimSpace(req.Title) == "" {
 		return domain.Task{}, domain.ErrTaskTitleEmpty
 	}
-	t := s.repo.Create(repo.CreateInput{
+	t, err := s.repo.Create(ctx, repo.CreateInput{
 		Title:       req.Title,
 		Description: req.Description,
 		Status:      req.Status,
@@ -53,6 +53,9 @@ func (s *Task) Create(req domain.CreateTaskRequest) (domain.Task, error) {
 		DueDate:     req.DueDate,
 		Labels:      req.Labels,
 	})
+	if err != nil {
+		return domain.Task{}, err
+	}
 
 	if s.bus != nil {
 		evt, err := eventbus.NewEvent(domain.EventReceived, t.ID, domain.TaskReceivedPayload{
@@ -66,7 +69,7 @@ func (s *Task) Create(req domain.CreateTaskRequest) (domain.Task, error) {
 			slog.Error("failed to create task.received event", "task_id", t.ID, "error", err)
 		} else {
 			// ponytail: publish errors are logged, not returned; becomes transactional when the outbox lands
-			if err := s.bus.Publish(context.Background(), evt); err != nil {
+			if err := s.bus.Publish(ctx, evt); err != nil {
 				slog.Error("failed to publish task.received event", "task_id", t.ID, "error", err)
 			}
 		}
@@ -76,7 +79,7 @@ func (s *Task) Create(req domain.CreateTaskRequest) (domain.Task, error) {
 }
 
 // Update validates req and applies it to task id.
-func (s *Task) Update(id string, req domain.UpdateTaskRequest) (domain.Task, error) {
+func (s *Task) Update(ctx context.Context, id string, req domain.UpdateTaskRequest) (domain.Task, error) {
 	if req.Title != nil && strings.TrimSpace(*req.Title) == "" {
 		return domain.Task{}, domain.ErrTaskTitleEmpty
 	}
@@ -85,7 +88,7 @@ func (s *Task) Update(id string, req domain.UpdateTaskRequest) (domain.Task, err
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	res, err := s.repo.Update(id, repo.UpdateInput{
+	res, err := s.repo.Update(ctx, id, repo.UpdateInput{
 		Title:         req.Title,
 		Description:   req.Description,
 		Status:        req.Status,
@@ -110,7 +113,7 @@ func (s *Task) Update(id string, req domain.UpdateTaskRequest) (domain.Task, err
 			slog.Error("failed to create task.status_changed event", "task_id", res.Task.ID, "error", err)
 		} else {
 			// ponytail: publish errors are logged, not returned; becomes transactional when the outbox lands
-			if err := s.bus.Publish(context.Background(), evt); err != nil {
+			if err := s.bus.Publish(ctx, evt); err != nil {
 				slog.Error("failed to publish task.status_changed event", "task_id", res.Task.ID, "error", err)
 			}
 		}
@@ -120,12 +123,12 @@ func (s *Task) Update(id string, req domain.UpdateTaskRequest) (domain.Task, err
 }
 
 // ListActivity returns chatter timeline of task id, oldest first.
-func (s *Task) ListActivity(id string) ([]domain.Activity, error) {
-	return s.repo.ListActivity(id)
+func (s *Task) ListActivity(ctx context.Context, id string) ([]domain.Activity, error) {
+	return s.repo.ListActivity(ctx, id)
 }
 
 // CreateActivity validates req and appends activity to task id.
-func (s *Task) CreateActivity(id string, req domain.CreateActivityRequest) (domain.Activity, error) {
+func (s *Task) CreateActivity(ctx context.Context, id string, req domain.CreateActivityRequest) (domain.Activity, error) {
 	if strings.TrimSpace(req.Body) == "" {
 		return domain.Activity{}, domain.ErrActivityBodyEmpty
 	}
@@ -133,5 +136,5 @@ func (s *Task) CreateActivity(id string, req domain.CreateActivityRequest) (doma
 	if req.Kind != nil {
 		kind = *req.Kind
 	}
-	return s.repo.AddActivity(id, kind, req.Author, req.Body)
+	return s.repo.AddActivity(ctx, id, kind, "", req.Body)
 }

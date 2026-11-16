@@ -3,9 +3,8 @@
 package task
 
 import (
-	"time"
-
 	"github.com/gofiber/fiber/v3"
+	"github.com/kilip/opus/ent"
 	"github.com/kilip/opus/internal/platform/eventbus"
 	"github.com/kilip/opus/internal/task/domain"
 	"github.com/kilip/opus/internal/task/handler"
@@ -38,9 +37,9 @@ type Task struct {
 	handler *handler.Handler
 }
 
-// ponytail: in-memory mutex store seeded with initial tasks; replace with Ent client when schema lands.
-func New(bus *eventbus.Bus) *Task {
-	r := repo.NewMemory(time.Now)
+// New returns a new Task feature facade backed by Ent.
+func New(client *ent.Client, bus *eventbus.Bus) *Task {
+	r := repo.New(client)
 	return &Task{handler: handler.New(service.New(r, bus))}
 }
 

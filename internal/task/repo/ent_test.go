@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -176,14 +177,14 @@ func TestEntRepo_ContractParity(t *testing.T) {
 	}
 
 	// 3. Assign and unassign
-	assignee := &domain.Assignee{ID: "toni", Name: "Toni"}
+	assignee := &domain.Assignee{ID: "test-user-1", Name: "Test User"}
 	upRes, err = r.Update(ctx, tsk.ID, repo.UpdateInput{
 		Assignee: assignee,
 	})
 	if err != nil {
 		t.Fatalf("update assignee failed: %v", err)
 	}
-	if upRes.Task.Assignee == nil || upRes.Task.Assignee.Name != "Toni" {
+	if upRes.Task.Assignee == nil || upRes.Task.Assignee.Name != "Test User" {
 		t.Errorf("assignee not updated properly: %v", upRes.Task.Assignee)
 	}
 
@@ -330,5 +331,80 @@ func TestEntRepo_ListOrderingAndNotFound(t *testing.T) {
 	}
 	if _, err := r.AddActivity(ctx, nonUUID, domain.ActivityKindComment, "author", "body"); err != domain.ErrTaskNotFound {
 		t.Errorf("AddActivity non-UUID: got %v, want ErrTaskNotFound", err)
+	}
+}
+
+// AC4: Restart persistence test: create task, close Ent client, reopen on same SQLite DB file, list back.
+func TestEntRepo_RestartPersistence(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "persist.db")
+	dsn := fmt.Sprintf("file:%s?_pragma=foreign_keys(ON)&_pragma=busy_timeout(10000)", dbPath)
+
+	ctx := context.Background()
+
+	// Initial session: open SQLite, run migrations, create task
+	db1, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		t.Fatalf("open sqlite failed: %v", err)
+	}
+	db1.SetMaxOpenConns(1)
+	drv1 := entsql.OpenDB(dialect.SQLite, db1)
+	client1 := enttest.NewClient(t, enttest.WithOptions(ent.Driver(drv1)))
+
+	r1 := repo.New(client1)
+	created, err := r1.Create(ctx, repo.CreateInput{
+		Title:       "Persistent Task Across Restarts",
+		Description: "Should persist after client close and reopen",
+	})
+	if err != nil {
+		t.Fatalf("create task failed: %v", err)
+	}
+	if created.Key != "OP-1" {
+		t.Fatalf("expected key OP-1, got %s", created.Key)
+	}
+
+	// Close client1
+	if err := client1.Close(); err != nil {
+		t.Fatalf("close client1 failed: %v", err)
+	}
+
+	// Reopen on same SQLite DB file
+	db2, err := sql.Open("sqlite", dsn)
+	if err != nil {
+		t.Fatalf("reopen sqlite failed: %v", err)
+	}
+	db2.SetMaxOpenConns(1)
+	drv2 := entsql.OpenDB(dialect.SQLite, db2)
+	client2 := ent.NewClient(ent.Driver(drv2))
+	t.Cleanup(func() {
+		_ = client2.Close()
+	})
+
+	r2 := repo.New(client2)
+	tasks, err := r2.List(ctx)
+	if err != nil {
+		t.Fatalf("list tasks after restart failed: %v", err)
+	}
+	if len(tasks) != 1 {
+		t.Fatalf("expected 1 task after restart, got %d", len(tasks))
+	}
+	if tasks[0].ID != created.ID {
+		t.Errorf("task ID = %s, want %s", tasks[0].ID, created.ID)
+	}
+	if tasks[0].Key != "OP-1" {
+		t.Errorf("task Key = %s, want OP-1", tasks[0].Key)
+	}
+	if tasks[0].Title != "Persistent Task Across Restarts" {
+		t.Errorf("task Title = %q, want %q", tasks[0].Title, "Persistent Task Across Restarts")
+	}
+
+	// Create second task on reopened client to ensure counter persists
+	created2, err := r2.Create(ctx, repo.CreateInput{
+		Title: "Second Persistent Task",
+	})
+	if err != nil {
+		t.Fatalf("create second task failed: %v", err)
+	}
+	if created2.Key != "OP-2" {
+		t.Fatalf("expected key OP-2, got %s", created2.Key)
 	}
 }

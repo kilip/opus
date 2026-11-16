@@ -92,7 +92,7 @@ type Task struct {
 type Activity struct {
 	ID        string       `json:"id" validate:"required"`
 	Kind      ActivityKind `json:"kind" validate:"required"`
-	Author    string       `json:"author" validate:"required"`
+	Author    string       `json:"author,omitempty"`
 	Body      string       `json:"body" validate:"required"`
 	CreatedAt time.Time    `json:"createdAt" validate:"required"`
 }

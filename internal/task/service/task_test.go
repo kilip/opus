@@ -2,54 +2,76 @@ package service_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"sync"
 	"testing"
-	"time"
 
+	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
+	"github.com/kilip/opus/ent"
+	"github.com/kilip/opus/ent/enttest"
 	"github.com/kilip/opus/internal/platform/eventbus"
 	"github.com/kilip/opus/internal/task/domain"
 	"github.com/kilip/opus/internal/task/repo"
 	"github.com/kilip/opus/internal/task/service"
+	_ "modernc.org/sqlite"
 )
 
-func newService(bus ...*eventbus.Bus) *service.Task {
+func setupTestClient(t *testing.T) *ent.Client {
+	t.Helper()
+	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared&_pragma=foreign_keys(ON)&_pragma=busy_timeout(10000)")
+	if err != nil {
+		t.Fatalf("open sqlite failed: %v", err)
+	}
+	db.SetMaxOpenConns(1)
+	drv := entsql.OpenDB(dialect.SQLite, db)
+	client := enttest.NewClient(t, enttest.WithOptions(ent.Driver(drv)))
+	t.Cleanup(func() {
+		_ = client.Close()
+	})
+	return client
+}
+
+func newService(t *testing.T, bus ...*eventbus.Bus) (*service.Task, context.Context) {
+	t.Helper()
 	var b *eventbus.Bus
 	if len(bus) > 0 {
 		b = bus[0]
 	} else {
 		b = eventbus.New()
 	}
-	return service.New(repo.NewMemory(func() time.Time {
-		return time.Date(2026, 11, 15, 12, 0, 0, 0, time.UTC)
-	}), b)
+	client := setupTestClient(t)
+	return service.New(repo.New(client), b), context.Background()
 }
 
 func TestCreateRejectsBlankTitle(t *testing.T) {
-	_, err := newService().Create(domain.CreateTaskRequest{Title: "  "})
+	svc, ctx := newService(t)
+	_, err := svc.Create(ctx, domain.CreateTaskRequest{Title: "  "})
 	if !errors.Is(err, domain.ErrTaskTitleEmpty) {
 		t.Fatalf("expected ErrTaskTitleEmpty, got %v", err)
 	}
 }
 
 func TestUpdateRejectsBlankTitle(t *testing.T) {
+	svc, ctx := newService(t)
 	blank := ""
-	_, err := newService().Update("t1", domain.UpdateTaskRequest{Title: &blank})
+	_, err := svc.Update(ctx, "t1", domain.UpdateTaskRequest{Title: &blank})
 	if !errors.Is(err, domain.ErrTaskTitleEmpty) {
 		t.Fatalf("expected ErrTaskTitleEmpty, got %v", err)
 	}
 }
 
 func TestCreateActivityValidatesBeforeLookup(t *testing.T) {
-	s := newService()
+	svc, ctx := newService(t)
 
-	_, err := s.CreateActivity("t1", domain.CreateActivityRequest{Body: " "})
+	_, err := svc.CreateActivity(ctx, "t1", domain.CreateActivityRequest{Body: " "})
 	if !errors.Is(err, domain.ErrActivityBodyEmpty) {
 		t.Fatalf("expected ErrActivityBodyEmpty, got %v", err)
 	}
 
-	_, err = s.CreateActivity("missing", domain.CreateActivityRequest{Body: "hi"})
+	_, err = svc.CreateActivity(ctx, "missing", domain.CreateActivityRequest{Body: "hi"})
 	if !errors.Is(err, domain.ErrTaskNotFound) {
 		t.Fatalf("expected ErrTaskNotFound, got %v", err)
 	}
@@ -72,9 +94,9 @@ func TestTaskEvents_EmittedAndOrder(t *testing.T) {
 		t.Fatalf("subscribe: %v", err)
 	}
 
-	svc := newService(bus)
+	svc, ctx := newService(t, bus)
 
-	created, err := svc.Create(domain.CreateTaskRequest{
+	created, err := svc.Create(ctx, domain.CreateTaskRequest{
 		Title: "Emitted and Order Task",
 	})
 	if err != nil {
@@ -82,7 +104,7 @@ func TestTaskEvents_EmittedAndOrder(t *testing.T) {
 	}
 
 	nextStatus := domain.TaskStatusInProgress
-	updated, err := svc.Update(created.ID, domain.UpdateTaskRequest{
+	updated, err := svc.Update(ctx, created.ID, domain.UpdateTaskRequest{
 		Status: &nextStatus,
 	})
 	if err != nil {
@@ -153,9 +175,9 @@ func TestTaskEvents_NoEventOnSameStatusUpdate(t *testing.T) {
 		t.Fatalf("subscribe: %v", err)
 	}
 
-	svc := newService(bus)
+	svc, ctx := newService(t, bus)
 
-	created, err := svc.Create(domain.CreateTaskRequest{
+	created, err := svc.Create(ctx, domain.CreateTaskRequest{
 		Title: "Same Status Task",
 	})
 	if err != nil {
@@ -164,7 +186,7 @@ func TestTaskEvents_NoEventOnSameStatusUpdate(t *testing.T) {
 
 	// Update with same status
 	sameStatus := domain.TaskStatusTodo
-	_, err = svc.Update(created.ID, domain.UpdateTaskRequest{
+	_, err = svc.Update(ctx, created.ID, domain.UpdateTaskRequest{
 		Status: &sameStatus,
 	})
 	if err != nil {
@@ -173,7 +195,7 @@ func TestTaskEvents_NoEventOnSameStatusUpdate(t *testing.T) {
 
 	// Update title only (status nil)
 	newTitle := "Updated Title Only"
-	_, err = svc.Update(created.ID, domain.UpdateTaskRequest{
+	_, err = svc.Update(ctx, created.ID, domain.UpdateTaskRequest{
 		Title: &newTitle,
 	})
 	if err != nil {
@@ -213,24 +235,24 @@ func TestTaskEvents_NoEventOnFailedWrite(t *testing.T) {
 		t.Fatalf("subscribe: %v", err)
 	}
 
-	svc := newService(bus)
+	svc, ctx := newService(t, bus)
 
 	// Create with empty title fails
-	_, err = svc.Create(domain.CreateTaskRequest{Title: "   "})
+	_, err = svc.Create(ctx, domain.CreateTaskRequest{Title: "   "})
 	if err == nil {
 		t.Fatal("expected error on empty title create")
 	}
 
 	// Update non-existent task fails
 	nextStatus := domain.TaskStatusDone
-	_, err = svc.Update("nonexistent-task", domain.UpdateTaskRequest{Status: &nextStatus})
+	_, err = svc.Update(ctx, "nonexistent-task", domain.UpdateTaskRequest{Status: &nextStatus})
 	if err == nil {
 		t.Fatal("expected error on nonexistent update")
 	}
 
 	// Update with invalid title fails
 	blank := " "
-	_, err = svc.Update("t1", domain.UpdateTaskRequest{Title: &blank})
+	_, err = svc.Update(ctx, "t1", domain.UpdateTaskRequest{Title: &blank})
 	if err == nil {
 		t.Fatal("expected error on blank title update")
 	}
@@ -264,10 +286,10 @@ func TestTaskEvents_CreatedAsDone(t *testing.T) {
 		t.Fatalf("subscribe: %v", err)
 	}
 
-	svc := newService(bus)
+	svc, ctx := newService(t, bus)
 
 	doneStatus := domain.TaskStatusDone
-	created, err := svc.Create(domain.CreateTaskRequest{
+	created, err := svc.Create(ctx, domain.CreateTaskRequest{
 		Title:  "Task Created As Done",
 		Status: &doneStatus,
 	})
@@ -305,9 +327,9 @@ func TestTaskEvents_PublishFailureLoggedAndDoesNotFail(t *testing.T) {
 		t.Fatalf("close bus: %v", err)
 	}
 
-	svc := newService(bus)
+	svc, ctx := newService(t, bus)
 
-	created, err := svc.Create(domain.CreateTaskRequest{
+	created, err := svc.Create(ctx, domain.CreateTaskRequest{
 		Title: "Task Despite Closed Bus",
 	})
 	if err != nil {
@@ -318,7 +340,7 @@ func TestTaskEvents_PublishFailureLoggedAndDoesNotFail(t *testing.T) {
 	}
 
 	nextStatus := domain.TaskStatusReview
-	updated, err := svc.Update(created.ID, domain.UpdateTaskRequest{
+	updated, err := svc.Update(ctx, created.ID, domain.UpdateTaskRequest{
 		Status: &nextStatus,
 	})
 	if err != nil {
@@ -353,10 +375,10 @@ func TestTaskEvents_ConcurrentUpdates_Race(t *testing.T) {
 		t.Fatalf("subscribe: %v", err)
 	}
 
-	svc := newService(bus)
+	svc, ctx := newService(t, bus)
 
 	initialStatus := domain.TaskStatusBacklog
-	created, err := svc.Create(domain.CreateTaskRequest{
+	created, err := svc.Create(ctx, domain.CreateTaskRequest{
 		Title:  "Concurrent Task",
 		Status: &initialStatus,
 	})
@@ -380,7 +402,7 @@ func TestTaskEvents_ConcurrentUpdates_Race(t *testing.T) {
 		go func(idx int) {
 			defer wg.Done()
 			targetStatus := stages[idx%len(stages)]
-			_, _ = svc.Update(created.ID, domain.UpdateTaskRequest{
+			_, _ = svc.Update(ctx, created.ID, domain.UpdateTaskRequest{
 				Status: &targetStatus,
 				Title:  domainPtr(fmt.Sprintf("Update from worker %d", idx)),
 			})

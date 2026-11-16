@@ -45,7 +45,6 @@
                     }
                 },
                 "required": [
-                    "author",
                     "body",
                     "createdAt",
                     "id",
@@ -87,9 +86,6 @@
             },
             "domain.CreateActivityRequest": {
                 "properties": {
-                    "author": {
-                        "type": "string"
-                    },
                     "body": {
                         "type": "string"
                     },

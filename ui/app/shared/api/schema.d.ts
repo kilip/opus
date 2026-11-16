@@ -350,7 +350,7 @@ export interface components {
             provider?: string;
         };
         "domain.Activity": {
-            author: string;
+            author?: string;
             body: string;
             createdAt: string;
             id: string;
@@ -363,7 +363,6 @@ export interface components {
             name: string;
         };
         "domain.CreateActivityRequest": {
-            author?: string;
             body: string;
             kind?: components["schemas"]["domain.ActivityKind"];
         };
