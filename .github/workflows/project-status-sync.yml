@@ -1,0 +1,115 @@
+name: Project Status Sync
+
+on:
+  issues:
+    types:
+      - opened
+      - labeled
+      - unlabeled
+      - closed
+      - reopened
+  workflow_dispatch:
+
+permissions:
+  issues: read
+
+concurrency:
+  group: project-status-sync-${{ github.event.issue.number || 'all' }}
+  cancel-in-progress: true
+
+env:
+  PROJECT_OWNER: kilip
+  PROJECT_NUMBER: "12"
+  PROJECT_ID: PVT_kwHOAASYCc4BrysO
+  STATUS_FIELD_ID: PVTSSF_lAHOAASYCc4BrysOzhqDsz4
+  GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+
+jobs:
+  sync:
+    name: Sync Issue Status to Project
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify PROJECT_TOKEN secret
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::Missing PROJECT_TOKEN secret (Classic PAT with 'project' and 'repo' scopes required for User Projects v2)."
+            exit 1
+          fi
+
+      - name: Sync status
+        run: |
+          set -euo pipefail
+
+          resolve_option() {
+            local state="$1"
+            local labels_json="$2"
+            if [ "$state" = "CLOSED" ] || [ "$state" = "closed" ]; then
+              echo "98236657:Done"
+              return
+            fi
+            for pair in \
+              "status:review|df73e18b|status:review" \
+              "status:in-progress|47fc9ee4|status:in-progress" \
+              "status:todo|61e4505c|status:todo" \
+              "status:backlog|f75ad846|status:backlog"; do
+              IFS='|' read -r label opt_id opt_name <<< "$pair"
+              if jq -e --arg l "$label" 'index($l) != null' <<< "$labels_json" >/dev/null; then
+                echo "${opt_id}:${opt_name}"
+                return
+              fi
+            done
+          }
+
+          if [ "${{ github.event_name }}" = "issues" ]; then
+            ISSUE_NUMBER="${{ github.event.issue.number }}"
+            ISSUE_URL="${{ github.event.issue.html_url }}"
+            ISSUE_JSON=$(gh issue view "$ISSUE_NUMBER" --repo "${{ github.repository }}" --json state,labels)
+            STATE=$(jq -r '.state' <<< "$ISSUE_JSON")
+            LABELS=$(jq -c '[.labels[].name]' <<< "$ISSUE_JSON")
+
+            RESOLVED=$(resolve_option "$STATE" "$LABELS")
+            if [ -z "$RESOLVED" ]; then
+              echo "Issue #${ISSUE_NUMBER} has no status:* label and is open; skipping."
+              exit 0
+            fi
+
+            OPTION_ID="${RESOLVED%%:*}"
+            OPTION_NAME="${RESOLVED#*:}"
+
+            ITEM_ID=$(gh project item-add "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" --url "$ISSUE_URL" --format json | jq -r '.id')
+            gh project item-edit \
+              --project-id "$PROJECT_ID" \
+              --id "$ITEM_ID" \
+              --field-id "$STATUS_FIELD_ID" \
+              --single-select-option-id "$OPTION_ID"
+            echo "Synced #${ISSUE_NUMBER} -> ${OPTION_NAME}"
+            exit 0
+          fi
+
+          # workflow_dispatch: sync all existing issue items in project
+          STATES_MAP=$(gh issue list --repo "${{ github.repository }}" --state all --limit 500 --json number,state | jq -c 'map({key: (.number|tostring), value: .state}) | from_entries')
+          ITEMS=$(gh project item-list "$PROJECT_NUMBER" --owner "$PROJECT_OWNER" --limit 500 --format json)
+
+          jq -c '.items[] | select(.content.type == "Issue")' <<< "$ITEMS" | while read -r item; do
+            ITEM_ID=$(jq -r '.id' <<< "$item")
+            NUM=$(jq -r '.content.number' <<< "$item")
+            CUR_STATUS=$(jq -r '.status // ""' <<< "$item")
+            LABELS=$(jq -c '.labels // []' <<< "$item")
+            STATE=$(jq -r --arg n "$NUM" '.[$n] // "OPEN"' <<< "$STATES_MAP")
+
+            RESOLVED=$(resolve_option "$STATE" "$LABELS")
+            [ -z "$RESOLVED" ] && continue
+
+            OPTION_ID="${RESOLVED%%:*}"
+            OPTION_NAME="${RESOLVED#*:}"
+            if [ "$CUR_STATUS" = "$OPTION_NAME" ]; then
+              continue
+            fi
+
+            gh project item-edit \
+              --project-id "$PROJECT_ID" \
+              --id "$ITEM_ID" \
+              --field-id "$STATUS_FIELD_ID" \
+              --single-select-option-id "$OPTION_ID"
+            echo "Synced #${NUM}: ${CUR_STATUS:-none} -> ${OPTION_NAME}"
+          done
