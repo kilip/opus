@@ -21,36 +21,6 @@ type Memory struct {
 	nextID   int
 }
 
-type CreateInput struct {
-	Title       string
-	Description string
-	Status      *domain.TaskStatus
-	Priority    *domain.TaskPriority
-	Type        *domain.TaskType
-	Assignee    *domain.Assignee
-	DueDate     string
-	Labels      []string
-}
-
-type UpdateInput struct {
-	Title         *string
-	Description   *string
-	Status        *domain.TaskStatus
-	Priority      *domain.TaskPriority
-	Type          *domain.TaskType
-	Assignee      *domain.Assignee
-	ClearAssignee bool
-	DueDate       *string
-	Labels        *[]string
-}
-
-// UpdateResult holds the updated task, the previous status, and whether the status changed.
-type UpdateResult struct {
-	Task          domain.Task
-	PrevStatus    domain.TaskStatus
-	StatusChanged bool
-}
-
 func person(name string) *domain.Assignee {
 	return &domain.Assignee{ID: strings.ReplaceAll(strings.ToLower(name), " ", "-"), Name: name}
 }
@@ -205,11 +175,18 @@ func (m *Memory) Create(in CreateInput) domain.Task {
 		labels = cloneLabels(in.Labels)
 	}
 
+	src := domain.TaskSourceManual
+	if in.Source != "" {
+		src = in.Source
+	}
+
 	now := m.now()
 	t := domain.Task{
 		ID:          id,
 		Key:         id,
-		Source:      domain.TaskSourceManual,
+		Source:      src,
+		ExternalID:  in.ExternalID,
+		ExternalURL: in.ExternalURL,
 		Title:       in.Title,
 		Description: in.Description,
 		Status:      status,
