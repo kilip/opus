@@ -135,6 +135,28 @@
                 ],
                 "type": "object"
             },
+            "domain.JoinNodeRequest": {
+                "properties": {
+                    "name": {
+                        "type": "string"
+                    },
+                    "token": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "domain.JoinNodeResponse": {
+                "properties": {
+                    "credential": {
+                        "type": "string"
+                    },
+                    "nodeId": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "domain.JoinTokenResponse": {
                 "properties": {
                     "expiresAt": {
@@ -550,6 +572,20 @@
                 "properties": {
                     "data": {
                         "$ref": "#/components/schemas/domain.Activity"
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
+            "httpx.Response-domain_JoinNodeResponse": {
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/domain.JoinNodeResponse"
                     },
                     "error": {
                         "type": "string"
@@ -1070,6 +1106,91 @@
                     }
                 },
                 "summary": "List nodes",
+                "tags": [
+                    "nodes"
+                ]
+            }
+        },
+        "/nodes/join": {
+            "post": {
+                "description": "Exchanges a valid join token and node name for node credentials.",
+                "operationId": "join-node",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.JoinNodeRequest",
+                                "summary": "request",
+                                "description": "Join node request"
+                            }
+                        }
+                    },
+                    "description": "Join node request",
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-domain_JoinNodeResponse"
+                                }
+                            }
+                        },
+                        "description": "Created"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Invalid or empty node name"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Expired, used, or unknown join token"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Node name already in use"
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Rate limit exceeded"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Join node",
                 "tags": [
                     "nodes"
                 ]

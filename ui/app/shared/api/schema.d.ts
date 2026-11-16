@@ -224,6 +224,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/nodes/join": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Join node
+         * @description Exchanges a valid join token and node name for node credentials.
+         */
+        post: operations["join-node"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/nodes/join-tokens": {
         parameters: {
             query?: never;
@@ -417,6 +437,14 @@ export interface components {
             title: string;
             type?: components["schemas"]["domain.TaskType"];
         };
+        "domain.JoinNodeRequest": {
+            name?: string;
+            token?: string;
+        };
+        "domain.JoinNodeResponse": {
+            credential?: string;
+            nodeId?: string;
+        };
         "domain.JoinTokenResponse": {
             expiresAt?: string;
             url?: string;
@@ -537,6 +565,11 @@ export interface components {
         };
         "httpx.Response-domain_Activity": {
             data?: components["schemas"]["domain.Activity"];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Response-domain_JoinNodeResponse": {
+            data?: components["schemas"]["domain.JoinNodeResponse"];
             error?: string;
             meta?: components["schemas"]["httpx.Meta"];
         };
@@ -925,6 +958,76 @@ export interface operations {
             };
             /** @description Unauthorized */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "join-node": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Join node request */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["domain.JoinNodeRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-domain_JoinNodeResponse"];
+                };
+            };
+            /** @description Invalid or empty node name */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Expired, used, or unknown join token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Node name already in use */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Rate limit exceeded */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
