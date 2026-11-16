@@ -224,6 +224,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/nodes/join-tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create node join token
+         * @description Generates a single-use join token URL valid for 15 minutes.
+         */
+        post: operations["create-node-join-token"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/setup": {
         parameters: {
             query?: never;
@@ -397,6 +417,10 @@ export interface components {
             title: string;
             type?: components["schemas"]["domain.TaskType"];
         };
+        "domain.JoinTokenResponse": {
+            expiresAt?: string;
+            url?: string;
+        };
         "domain.NodeResponse": {
             id?: string;
             lastSeenAt?: string;
@@ -513,6 +537,11 @@ export interface components {
         };
         "httpx.Response-domain_Activity": {
             data?: components["schemas"]["domain.Activity"];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Response-domain_JoinTokenResponse": {
+            data?: components["schemas"]["domain.JoinTokenResponse"];
             error?: string;
             meta?: components["schemas"]["httpx.Meta"];
         };
@@ -892,6 +921,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["httpx.Response-array_domain_NodeResponse"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "create-node-join-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-domain_JoinTokenResponse"];
                 };
             };
             /** @description Unauthorized */
