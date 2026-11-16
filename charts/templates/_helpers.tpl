@@ -192,23 +192,23 @@ Environment variables from values.config.
   {{- end -}}
 {{- end -}}
 {{- if $githubClientId }}
-- name: GITHUB_CLIENT_ID
+- name: AUTH_GITHUB_ID
   value: {{ $githubClientId | quote }}
 {{- end }}
 {{- if $googleClientId }}
-- name: GOOGLE_CLIENT_ID
+- name: AUTH_GOOGLE_ID
   value: {{ $googleClientId | quote }}
 {{- end }}
 {{- if $facebookClientId }}
-- name: FACEBOOK_CLIENT_ID
+- name: AUTH_FACEBOOK_ID
   value: {{ $facebookClientId | quote }}
 {{- end }}
 {{- if and .Values.auth .Values.auth.existingSecret }}
-- name: SESSION_SECRET
+- name: AUTH_SECRET
   valueFrom:
     secretKeyRef:
       name: {{ .Values.auth.existingSecret }}
-      key: SESSION_SECRET
+      key: AUTH_SECRET
       optional: true
 - name: SMTP_PASSWORD
   valueFrom:
@@ -216,23 +216,23 @@ Environment variables from values.config.
       name: {{ .Values.auth.existingSecret }}
       key: SMTP_PASSWORD
       optional: true
-- name: GITHUB_CLIENT_SECRET
+- name: AUTH_GITHUB_SECRET
   valueFrom:
     secretKeyRef:
       name: {{ .Values.auth.existingSecret }}
-      key: GITHUB_CLIENT_SECRET
+      key: AUTH_GITHUB_SECRET
       optional: true
-- name: GOOGLE_CLIENT_SECRET
+- name: AUTH_GOOGLE_SECRET
   valueFrom:
     secretKeyRef:
       name: {{ .Values.auth.existingSecret }}
-      key: GOOGLE_CLIENT_SECRET
+      key: AUTH_GOOGLE_SECRET
       optional: true
-- name: FACEBOOK_CLIENT_SECRET
+- name: AUTH_FACEBOOK_SECRET
   valueFrom:
     secretKeyRef:
       name: {{ .Values.auth.existingSecret }}
-      key: FACEBOOK_CLIENT_SECRET
+      key: AUTH_FACEBOOK_SECRET
       optional: true
 {{- end }}
 {{- with .Values.extraEnv }}
