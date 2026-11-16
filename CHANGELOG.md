@@ -2,6 +2,43 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.3.0-rc1](https://github.com/kilip/opus/compare/v0.2.0...v0.3.0-rc1) (2026-11-16)
+
+### ✨ Features
+
+- **ui:** add empty state to tasks page ([1bf39ba](https://github.com/kilip/opus/commit/1bf39ba1fca76c35b7e9a688358c3dbd5cf85d97))
+- **ui:** make activity author optional in Chatter and task actions ([cad893a](https://github.com/kilip/opus/commit/cad893a3b071dd128399ae57d3438763e23d2260))
+- **api:** switch task feature to Ent repo and remove seed data ([fc83fe0](https://github.com/kilip/opus/commit/fc83fe0cdaf0cc794b0c3020841d3dfe158f8cd5))
+
+### 🚀 Deployment
+
+- **deploy:** prefix platform and global env vars with APP_ in Helm chart ([3de2054](https://github.com/kilip/opus/commit/3de2054526128edbf8884613c5c2507bd82bd6c6))
+- **deploy:** update auth env vars and secret keys in helm chart ([7401652](https://github.com/kilip/opus/commit/74016521e291b8f47e5f66d356d5c29ede7c0d54))
+
+### ♻️ Code Refactoring
+
+- **api:** move shared task repo types to types.go ([a9c247a](https://github.com/kilip/opus/commit/a9c247ac86870068c59c77492a867e7a92861121))
+- **api:** prefix platform and global env vars with APP_ ([6cd4d58](https://github.com/kilip/opus/commit/6cd4d58fd6645957d7a9fc99dfbd29a86c36c2f7))
+- **api:** use UUID v7 via shared newID helper for Ent entity IDs ([21fb922](https://github.com/kilip/opus/commit/21fb922712fd81a07ddf795d0faf79522c4baf03))
+- **api:** rename auth and oauth env vars to AUTH_* ([1a75e4d](https://github.com/kilip/opus/commit/1a75e4d904d2a9bba8b6d2af82bfdb025446b2a8))
+
+### 📝 Documentation
+
+- **docs:** document APP_ env var prefix convention and reference table ([8bfc536](https://github.com/kilip/opus/commit/8bfc536c4774d4af340b334bd6b46dd8df1ee4ef))
+- **docs:** document UUID v7 newID convention in AGENTS.md ([a34cbe1](https://github.com/kilip/opus/commit/a34cbe159ff8c73a9a9a1f600935829b3c91fc4e))
+- **docs:** update auth env vars table in agents guide ([f275979](https://github.com/kilip/opus/commit/f2759798fc55c74d1386c62cc44a7cf31bb4080d))
+
+### 🔧 Tooling & Chores
+
+- **release:** v0.3.0-rc1 ([907db3e](https://github.com/kilip/opus/commit/907db3eed3ae0c3e2d815e7753a8c897045ab2a4))
+- **release:** prepare 0.3.0-rc1 ([0ded97f](https://github.com/kilip/opus/commit/0ded97fd7b83c36aff56ce7d7ab35344b31cee72))
+- **tools:** allow test files in service package to import test deps ([e00501c](https://github.com/kilip/opus/commit/e00501c764590dcfbed0fbb0fe18157ead471277))
+- **api:** add ent task repo with key counter and tests ([4b2a8a6](https://github.com/kilip/opus/commit/4b2a8a641b66db85f0e39f40dc07df2df0c3f13c))
+- **api:** add task, activity, and counter ent schemas ([716e300](https://github.com/kilip/opus/commit/716e300bc4965f342bf379e28c869a1d8a07061b))
+- **tools:** rename SENTRY_DSN to APP_SENTRY_DSN in .env.example ([12172c7](https://github.com/kilip/opus/commit/12172c79c7db5e5350da76bd3e18a42a42e4276c))
+- **deploy:** prefix platform and global env vars with APP_ in Helm chart ([3de2054](https://github.com/kilip/opus/commit/3de2054526128edbf8884613c5c2507bd82bd6c6))
+- **deploy:** update auth env vars and secret keys in helm chart ([7401652](https://github.com/kilip/opus/commit/74016521e291b8f47e5f66d356d5c29ede7c0d54))
+
 ## [v0.2.0](https://github.com/kilip/opus/releases/tag/v0.2.0) (2026-11-16)
 
 ### ✨ Features
