@@ -106,6 +106,7 @@ linters:
           list-mode: lax
           files:
             - "**/internal/*/service/**"
+            - "!$test"
           deny:
             - pkg: "github.com/gofiber/fiber"
               desc: "service must not import fiber"
