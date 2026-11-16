@@ -89,7 +89,7 @@ Domain units across both backend and frontend are called **features** (never "mo
 
 - **Fiber v3**: Register feature routes under the `/api` group in `internal/app/fiber.go` via `<feature>.Register(api)`. Use `fiber.Ctx` (v3 signature: `func(c fiber.Ctx) error`).
 - **Feature Environment Variables**: Prefix feature-specific env vars with the uppercase feature name (e.g. `AUTH_*`, `TASK_*`).
-- **Entgo (`ent/`)**: All database schemas live in `ent/schema/`. Share the generated `*ent.Client` across features via dependency injection in `Register` / `New`. Generated Ent code is committed and `go generate ./ent` must be re-run after schema changes.
+- **Entgo (`ent/`)**: All database schemas live in `ent/schema/`. All entity IDs are UUID v7 generated via the shared `newID` helper in `ent/schema/id.go`. Share the generated `*ent.Client` across features via dependency injection in `Register` / `New`. Generated Ent code is committed and `go generate ./ent` must be re-run after schema changes.
 - **Strict DTO Boundary**:
   - NEVER expose generated `ent` models directly in HTTP responses or Swag annotations.
   - ALL request/response DTOs are defined in `internal/<feature>/domain/dto.go`. Handlers, services, and Swag annotations reference `domain.<Dto>`; NEVER define DTOs in `handler/`.
