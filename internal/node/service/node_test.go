@@ -570,3 +570,61 @@ func TestJoin_Validation(t *testing.T) {
 		})
 	}
 }
+
+func TestAuthenticateWorker(t *testing.T) {
+	client := setupTestClient(t)
+	r := repo.New(client)
+	svc := service.New(r, service.Config{})
+	ctx := context.Background()
+
+	// 1. Missing / empty cred
+	_, err := svc.AuthenticateWorker(ctx, "")
+	if !errors.Is(err, domain.ErrUnauthorized) {
+		t.Fatalf("expected ErrUnauthorized for empty cred, got %v", err)
+	}
+
+	// 2. Unknown cred
+	_, err = svc.AuthenticateWorker(ctx, "nonexistent-cred")
+	if !errors.Is(err, domain.ErrUnauthorized) {
+		t.Fatalf("expected ErrUnauthorized for unknown cred, got %v", err)
+	}
+
+	// 3. Worker node with credential
+	workerCred := "valid-worker-cred"
+	h := sha256.Sum256([]byte(workerCred))
+	workerNode, err := client.Node.Create().
+		SetName("worker-test-auth").
+		SetRole(entnode.RoleWorker).
+		SetStatus(entnode.StatusOffline).
+		SetCredentialHash(hex.EncodeToString(h[:])).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create worker: %v", err)
+	}
+
+	node, err := svc.AuthenticateWorker(ctx, workerCred)
+	if err != nil {
+		t.Fatalf("unexpected authenticate error: %v", err)
+	}
+	if node.ID != workerNode.ID.String() {
+		t.Errorf("expected node ID %s, got %s", workerNode.ID.String(), node.ID)
+	}
+
+	// 4. Master node with credential attempt -> ErrMasterConnectForbidden
+	masterCred := "master-cred-secret"
+	mh := sha256.Sum256([]byte(masterCred))
+	_, err = client.Node.Create().
+		SetName("master-test-auth").
+		SetRole(entnode.RoleMaster).
+		SetStatus(entnode.StatusOnline).
+		SetCredentialHash(hex.EncodeToString(mh[:])).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create master: %v", err)
+	}
+
+	_, err = svc.AuthenticateWorker(ctx, masterCred)
+	if !errors.Is(err, domain.ErrMasterConnectForbidden) {
+		t.Fatalf("expected ErrMasterConnectForbidden for master node, got %v", err)
+	}
+}

@@ -7,8 +7,10 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -17,11 +19,14 @@ import (
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
+	"github.com/fasthttp/websocket"
 	"github.com/gofiber/fiber/v3"
 	"github.com/kilip/opus/ent"
 	"github.com/kilip/opus/ent/enttest"
 	entnode "github.com/kilip/opus/ent/node"
 	"github.com/kilip/opus/internal/app"
+	"github.com/kilip/opus/internal/node"
+	"github.com/kilip/opus/internal/node/domain"
 	"github.com/kilip/opus/internal/platform/eventbus"
 	_ "modernc.org/sqlite"
 )
@@ -345,5 +350,136 @@ func TestGetFiber_NodeJoinWithoutAuth(t *testing.T) {
 	}
 	if worker.Role != entnode.RoleWorker {
 		t.Errorf("expected worker role, got %s", worker.Role)
+	}
+}
+
+// AC5: A test using an in-process Fiber app and a WebSocket client sends hello,
+// receives a command sent through Send, and sends an event that reaches a registered handler callback.
+func TestGetFiber_NodeControlChannel(t *testing.T) {
+	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared&_pragma=foreign_keys(ON)&_pragma=busy_timeout(10000)")
+	if err != nil {
+		t.Fatalf("open sqlite failed: %v", err)
+	}
+	db.SetMaxOpenConns(1)
+	drv := entsql.OpenDB(dialect.SQLite, db)
+	client := enttest.NewClient(t, enttest.WithOptions(ent.Driver(drv)))
+	t.Cleanup(func() {
+		_ = client.Close()
+	})
+
+	cfg := app.Config{
+		AppName:       "test-opus",
+		BaseURL:       "http://localhost:7880",
+		SessionSecret: "secret-needs-to-be-32-bytes-long-ok",
+	}
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	nodeFeature := node.New(client, node.Config{BaseURL: cfg.BaseURL})
+
+	// Register event callback on hub
+	eventCh := make(chan domain.Envelope, 1)
+	nodeFeature.Hub().OnEvent(func(nodeID string, env domain.Envelope) {
+		eventCh <- env
+	})
+
+	fiberApp := app.GetFiber(cfg, logger, client, eventbus.New(), nodeFeature)
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen failed: %v", err)
+	}
+	defer func() { _ = ln.Close() }()
+
+	go func() {
+		_ = fiberApp.Listener(ln)
+	}()
+
+	// Create a worker node in DB
+	ctx := context.Background()
+	workerCred := "worker-secret-control-token"
+	h := sha256.Sum256([]byte(workerCred))
+	workerNode, err := client.Node.Create().
+		SetName("worker-ws-test").
+		SetRole(entnode.RoleWorker).
+		SetStatus(entnode.StatusOffline).
+		SetCredentialHash(hex.EncodeToString(h[:])).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create worker: %v", err)
+	}
+
+	wsURL := fmt.Sprintf("ws://%s/api/nodes/connect", ln.Addr().String())
+	header := http.Header{
+		"Authorization": []string{"Bearer " + workerCred},
+	}
+
+	wsConn, resp, err := websocket.DefaultDialer.Dial(wsURL, header)
+	if err != nil {
+		t.Fatalf("websocket dial failed: %v", err)
+	}
+	defer func() { _ = wsConn.Close() }()
+
+	if resp.StatusCode != http.StatusSwitchingProtocols {
+		t.Fatalf("expected 101 Switching Protocols, got %d", resp.StatusCode)
+	}
+
+	// 1. Client sends hello
+	helloEnv := domain.Envelope{
+		Type: domain.EnvelopeTypeHello,
+		ID:   "hello-1",
+	}
+	if err := wsConn.WriteJSON(helloEnv); err != nil {
+		t.Fatalf("send hello failed: %v", err)
+	}
+
+	// Wait briefly for connection registration in Hub
+	deadline := time.Now().Add(2 * time.Second)
+	for !nodeFeature.Hub().Connected(workerNode.ID.String()) {
+		if time.Now().After(deadline) {
+			t.Fatal("timed out waiting for worker to be connected in hub")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	// 2. Server sends command through Send; client receives it
+	cmdEnv := domain.Envelope{
+		Type:    domain.EnvelopeTypeCommand,
+		ID:      "cmd-42",
+		Payload: []byte(`{"action":"sync"}`),
+	}
+	if err := nodeFeature.Hub().Send(workerNode.ID.String(), cmdEnv); err != nil {
+		t.Fatalf("send command failed: %v", err)
+	}
+
+	var receivedCmd domain.Envelope
+	if err := wsConn.ReadJSON(&receivedCmd); err != nil {
+		t.Fatalf("client read command failed: %v", err)
+	}
+	if receivedCmd.Type != domain.EnvelopeTypeCommand {
+		t.Errorf("expected command type, got %s", receivedCmd.Type)
+	}
+	if receivedCmd.ID != "cmd-42" {
+		t.Errorf("expected cmd-42 id, got %s", receivedCmd.ID)
+	}
+
+	// 3. Client sends event that reaches the registered handler callback
+	eventEnv := domain.Envelope{
+		Type:    domain.EnvelopeTypeEvent,
+		ID:      "evt-99",
+		Payload: []byte(`{"status":"progress"}`),
+	}
+	if err := wsConn.WriteJSON(eventEnv); err != nil {
+		t.Fatalf("client send event failed: %v", err)
+	}
+
+	select {
+	case receivedEvent := <-eventCh:
+		if receivedEvent.Type != domain.EnvelopeTypeEvent {
+			t.Errorf("expected event type, got %s", receivedEvent.Type)
+		}
+		if receivedEvent.ID != "evt-99" {
+			t.Errorf("expected evt-99 id, got %s", receivedEvent.ID)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for event callback")
 	}
 }

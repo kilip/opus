@@ -41,7 +41,7 @@ func healthCheck(c fiber.Ctx) error {
 }
 
 // GetFiber initializes HTTP server.
-func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus) *fiber.App {
+func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus, nodeFeatures ...*node.Node) *fiber.App {
 	app := fiber.New(fiber.Config{
 		AppName:      cfg.AppName,
 		ReadTimeout:  cfg.ReadTimeout,
@@ -117,7 +117,12 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 		setupRoutes := api.Group("/setup")
 		authFeature.RegisterSetup(setupRoutes) // GET /status, POST /otp, POST "" (public)
 		authFeature.RegisterPublic(authRoutes) // POST /otp/request, POST /otp/verify (public)
-		nodeFeature := node.New(db, node.Config{BaseURL: cfg.BaseURL})
+		var nodeFeature *node.Node
+		if len(nodeFeatures) > 0 && nodeFeatures[0] != nil {
+			nodeFeature = nodeFeatures[0]
+		} else {
+			nodeFeature = node.New(db, node.Config{BaseURL: cfg.BaseURL})
+		}
 		if err := nodeFeature.Bootstrap(context.Background()); err != nil {
 			logger.Error("node registry bootstrap failed", "error", err)
 		}

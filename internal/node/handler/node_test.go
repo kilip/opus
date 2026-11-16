@@ -51,7 +51,7 @@ func setupApp(t *testing.T) (*fiber.App, *ent.Client) {
 	svc := service.New(r, service.Config{
 		BaseURL: "http://localhost:7880",
 	})
-	h := handler.New(svc)
+	h := handler.New(svc, nil)
 	h.Register(app.Group("/api"))
 	h.RegisterPublic(app.Group("/api"))
 	return app, client

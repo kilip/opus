@@ -24,16 +24,25 @@ const (
 
 	StatusOnline  = domain.StatusOnline
 	StatusOffline = domain.StatusOffline
+
+	EnvelopeTypeHello     = domain.EnvelopeTypeHello
+	EnvelopeTypeHeartbeat = domain.EnvelopeTypeHeartbeat
+	EnvelopeTypeCommand   = domain.EnvelopeTypeCommand
+	EnvelopeTypeEvent     = domain.EnvelopeTypeEvent
 )
 
 // Sentinel errors re-exported from domain.
 var (
-	ErrTokenNotFound    = domain.ErrTokenNotFound
-	ErrTokenExpired     = domain.ErrTokenExpired
-	ErrTokenAlreadyUsed = domain.ErrTokenAlreadyUsed
-	ErrNodeNameConflict = domain.ErrNodeNameConflict
-	ErrInvalidNodeName  = domain.ErrInvalidNodeName
-	ErrRateLimited      = domain.ErrRateLimited
+	ErrTokenNotFound          = domain.ErrTokenNotFound
+	ErrTokenExpired           = domain.ErrTokenExpired
+	ErrTokenAlreadyUsed       = domain.ErrTokenAlreadyUsed
+	ErrNodeNameConflict       = domain.ErrNodeNameConflict
+	ErrInvalidNodeName        = domain.ErrInvalidNodeName
+	ErrRateLimited            = domain.ErrRateLimited
+	ErrNodeNotConnected       = domain.ErrNodeNotConnected
+	ErrMasterConnectForbidden = domain.ErrMasterConnectForbidden
+	ErrUnauthorized           = domain.ErrUnauthorized
+	ErrUnknownEnvelopeType    = domain.ErrUnknownEnvelopeType
 )
 
 // Re-exported domain types.
@@ -45,7 +54,10 @@ type (
 	JoinTokenResponse = domain.JoinTokenResponse
 	JoinNodeRequest   = domain.JoinNodeRequest
 	JoinNodeResponse  = domain.JoinNodeResponse
+	Envelope          = domain.Envelope
 	RateLimitConfig   = handler.RateLimitConfig
+	Hub               = service.Hub
+	Conn              = service.Conn
 )
 
 // Config holds configuration parameters for the node feature.
@@ -58,6 +70,7 @@ type Config struct {
 // Node is the node feature facade.
 type Node struct {
 	svc     *service.Node
+	hub     *service.Hub
 	handler *handler.Handler
 }
 
@@ -68,15 +81,28 @@ func New(client *ent.Client, cfg Config) *Node {
 		BaseURL: cfg.BaseURL,
 		Now:     cfg.Now,
 	})
+	hub := service.NewHub()
 	return &Node{
 		svc:     svc,
-		handler: handler.New(svc, cfg.RateLimitConfig),
+		hub:     hub,
+		handler: handler.New(svc, hub, cfg.RateLimitConfig),
 	}
+}
+
+// Hub returns the node feature live connection hub.
+func (n *Node) Hub() *service.Hub {
+	return n.hub
 }
 
 // Bootstrap registers the master node and resets workers to offline.
 func (n *Node) Bootstrap(ctx context.Context) error {
-	return n.svc.Bootstrap(ctx)
+	if err := n.svc.Bootstrap(ctx); err != nil {
+		return err
+	}
+	if master, err := n.svc.GetMaster(ctx); err == nil && master != nil {
+		n.hub.SetMasterID(master.ID)
+	}
+	return nil
 }
 
 // GenerateJoinToken creates a new join token.

@@ -91,6 +91,49 @@ func (r *Ent) List(ctx context.Context) ([]domain.Node, error) {
 	return out, nil
 }
 
+// FindByCredentialHash finds a node by its credential hash.
+// Returns nil, nil if no node with the given hash is found.
+func (r *Ent) FindByCredentialHash(ctx context.Context, hash string) (*domain.Node, error) {
+	n, err := r.client.Node.Query().
+		Where(entnode.CredentialHashEQ(hash)).
+		Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &domain.Node{
+		ID:             n.ID.String(),
+		Name:           n.Name,
+		Role:           domain.Role(n.Role),
+		Status:         domain.Status(n.Status),
+		LastSeenAt:     n.LastSeenAt,
+		CredentialHash: n.CredentialHash,
+	}, nil
+}
+
+// GetMaster returns the registered master node, or nil, nil if not found.
+func (r *Ent) GetMaster(ctx context.Context) (*domain.Node, error) {
+	n, err := r.client.Node.Query().
+		Where(entnode.RoleEQ(entnode.RoleMaster)).
+		First(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &domain.Node{
+		ID:             n.ID.String(),
+		Name:           n.Name,
+		Role:           domain.Role(n.Role),
+		Status:         domain.Status(n.Status),
+		LastSeenAt:     n.LastSeenAt,
+		CredentialHash: n.CredentialHash,
+	}, nil
+}
+
 // CreateJoinToken stores a join token hash and expiration.
 func (r *Ent) CreateJoinToken(ctx context.Context, tokenHash string, expiresAt time.Time) error {
 	return r.client.JoinToken.Create().

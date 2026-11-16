@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gofiber/contrib/v3/websocket"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/limiter"
 	"github.com/kilip/opus/internal/node/domain"
@@ -67,8 +68,10 @@ func newJoinLimiter(cfg RateLimitConfig) fiber.Handler {
 
 // Handler serves node endpoints.
 type Handler struct {
-	svc     *service.Node
-	limiter fiber.Handler
+	svc       *service.Node
+	hub       *service.Hub
+	limiter   fiber.Handler
+	wsHandler fiber.Handler
 }
 
 // ponytail: keep domain imported for swag OpenAPI doc generation
@@ -79,16 +82,25 @@ var (
 	_ = (*domain.JoinNodeResponse)(nil)
 )
 
-// New returns Handler backed by node service.
-func New(svc *service.Node, rl ...RateLimitConfig) *Handler {
+// New returns Handler backed by node service and hub.
+func New(svc *service.Node, hub *service.Hub, rl ...RateLimitConfig) *Handler {
 	var cfg RateLimitConfig
 	if len(rl) > 0 {
 		cfg = rl[0]
 	}
-	return &Handler{
+	if hub == nil {
+		hub = service.NewHub()
+	}
+	h := &Handler{
 		svc:     svc,
+		hub:     hub,
 		limiter: newJoinLimiter(cfg),
 	}
+	h.wsHandler = websocket.New(h.handleWS, websocket.Config{
+		Origins:          []string{"*"},
+		AllowEmptyOrigin: true,
+	})
+	return h
 }
 
 // Register mounts node routes on r.
@@ -102,6 +114,7 @@ func (h *Handler) Register(r fiber.Router) {
 func (h *Handler) RegisterPublic(r fiber.Router) {
 	g := r.Group("/nodes")
 	g.Post("/join", h.limiter, h.Join)
+	g.Get("/connect", h.Connect)
 }
 
 // List godoc
@@ -171,19 +184,78 @@ func (h *Handler) Join(c fiber.Ctx) error {
 	return httpx.Created(c, res)
 }
 
+// Connect godoc
+//
+//	@Summary		Connect worker node control channel
+//	@Description	Upgrades HTTP connection to WebSocket control channel for worker nodes.
+//	@ID				connect-node
+//	@Tags			nodes
+//	@Success		101	"Switching Protocols"
+//	@Failure		401	{object}	httpx.ErrorResponse	"Missing or invalid credentials"
+//	@Failure		403	{object}	httpx.ErrorResponse	"Master node connection forbidden"
+//	@Failure		426	{object}	httpx.ErrorResponse	"Upgrade required"
+//	@Router			/nodes/connect [get]
+func (h *Handler) Connect(c fiber.Ctx) error {
+	authHeader := c.Get(fiber.HeaderAuthorization)
+	parts := strings.SplitN(authHeader, " ", 2)
+	if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") || strings.TrimSpace(parts[1]) == "" {
+		return httpx.NewError(fiber.StatusUnauthorized, domain.ErrUnauthorized)
+	}
+	cred := strings.TrimSpace(parts[1])
+
+	node, err := h.svc.AuthenticateWorker(c.Context(), cred)
+	if err != nil {
+		return mapErr(err)
+	}
+
+	c.Locals("nodeID", node.ID)
+	return h.wsHandler(c)
+}
+
+func (h *Handler) handleWS(c *websocket.Conn) {
+	nodeID, ok := c.Locals("nodeID").(string)
+	if !ok || nodeID == "" {
+		_ = c.Close()
+		return
+	}
+
+	cleanup, err := h.hub.Register(nodeID, c)
+	if err != nil {
+		_ = c.Close()
+		return
+	}
+	defer cleanup()
+
+	for {
+		_, msg, err := c.ReadMessage()
+		if err != nil {
+			break
+		}
+		if err := h.hub.HandleMessage(nodeID, msg); err != nil {
+			// Unknown envelope types or unmarshal errors rejected without closing
+			continue
+		}
+	}
+}
+
 // mapErr maps domain sentinel errors to httpx status errors.
 func mapErr(err error) error {
 	switch {
 	case errors.Is(err, domain.ErrTokenNotFound),
 		errors.Is(err, domain.ErrTokenExpired),
-		errors.Is(err, domain.ErrTokenAlreadyUsed):
+		errors.Is(err, domain.ErrTokenAlreadyUsed),
+		errors.Is(err, domain.ErrUnauthorized):
 		return httpx.NewError(fiber.StatusUnauthorized, err)
+	case errors.Is(err, domain.ErrMasterConnectForbidden):
+		return httpx.NewError(fiber.StatusForbidden, err)
 	case errors.Is(err, domain.ErrInvalidNodeName):
 		return httpx.BadRequest(err)
 	case errors.Is(err, domain.ErrNodeNameConflict):
 		return httpx.Conflict(err)
 	case errors.Is(err, domain.ErrRateLimited):
 		return httpx.NewError(fiber.StatusTooManyRequests, err)
+	case errors.Is(err, domain.ErrNodeNotConnected):
+		return httpx.NewError(fiber.StatusNotFound, err)
 	default:
 		return err
 	}

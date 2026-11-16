@@ -140,6 +140,32 @@ func (s *Node) Join(ctx context.Context, req domain.JoinNodeRequest) (domain.Joi
 	}, nil
 }
 
+// AuthenticateWorker authenticates a worker node by its raw credential.
+// Returns ErrUnauthorized for missing, empty, or unrecognised credentials.
+// Returns ErrMasterConnectForbidden if the node has role master.
+func (s *Node) AuthenticateWorker(ctx context.Context, cred string) (*domain.Node, error) {
+	if cred == "" {
+		return nil, domain.ErrUnauthorized
+	}
+	hash := hashToken(cred)
+	n, err := s.repo.FindByCredentialHash(ctx, hash)
+	if err != nil {
+		return nil, err
+	}
+	if n == nil {
+		return nil, domain.ErrUnauthorized
+	}
+	if n.Role == domain.RoleMaster {
+		return nil, domain.ErrMasterConnectForbidden
+	}
+	return n, nil
+}
+
+// GetMaster returns the registered master node.
+func (s *Node) GetMaster(ctx context.Context) (*domain.Node, error) {
+	return s.repo.GetMaster(ctx)
+}
+
 // hashToken returns the hex-encoded SHA-256 hash of a raw token.
 func hashToken(raw string) string {
 	h := sha256.Sum256([]byte(raw))
