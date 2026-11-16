@@ -204,6 +204,20 @@ func TestGetFiber_TasksRequiresAuth(t *testing.T) {
 	if body.Error != "UNAUTHORIZED" {
 		t.Errorf("expected error %q, got %q", "UNAUTHORIZED", body.Error)
 	}
+
+	// 3. Unauthenticated GET /api/projects returns 401
+	reqProjects := httptest.NewRequest("GET", "/api/projects", nil)
+	respProjects, err := fiberApp.Test(reqProjects)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if respProjects.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for /api/projects, got %d", respProjects.StatusCode)
+	}
+	bodyProjects := parseResponseBody(t, respProjects)
+	if bodyProjects.Error != "UNAUTHORIZED" {
+		t.Errorf("expected error %q, got %q", "UNAUTHORIZED", bodyProjects.Error)
+	}
 }
 
 // AC2, AC4: Node registry startup master persistence across restarts and auth check (401 without session).

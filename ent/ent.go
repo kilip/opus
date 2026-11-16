@@ -19,6 +19,7 @@ import (
 	"github.com/kilip/opus/ent/jointoken"
 	"github.com/kilip/opus/ent/node"
 	"github.com/kilip/opus/ent/otp"
+	"github.com/kilip/opus/ent/project"
 	"github.com/kilip/opus/ent/session"
 	"github.com/kilip/opus/ent/task"
 	"github.com/kilip/opus/ent/user"
@@ -89,6 +90,7 @@ func checkColumn(t, c string) error {
 			jointoken.Table: jointoken.ValidColumn,
 			node.Table:      node.ValidColumn,
 			otp.Table:       otp.ValidColumn,
+			project.Table:   project.ValidColumn,
 			session.Table:   session.ValidColumn,
 			task.Table:      task.ValidColumn,
 			user.Table:      user.ValidColumn,

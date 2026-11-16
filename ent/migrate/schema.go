@@ -147,6 +147,25 @@ var (
 			},
 		},
 	}
+	// ProjectsColumns holds the columns for the "projects" table.
+	ProjectsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "slug", Type: field.TypeString, Unique: true},
+		{Name: "name", Type: field.TypeString},
+		{Name: "repo_provider", Type: field.TypeString},
+		{Name: "repo_ref", Type: field.TypeString},
+		{Name: "tracker_provider", Type: field.TypeString},
+		{Name: "tracker_ref", Type: field.TypeString},
+		{Name: "default_branch", Type: field.TypeString, Default: "main"},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// ProjectsTable holds the schema information for the "projects" table.
+	ProjectsTable = &schema.Table{
+		Name:       "projects",
+		Columns:    ProjectsColumns,
+		PrimaryKey: []*schema.Column{ProjectsColumns[0]},
+	}
 	// SessionsColumns holds the columns for the "sessions" table.
 	SessionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -223,6 +242,7 @@ var (
 		JoinTokensTable,
 		NodesTable,
 		OtPsTable,
+		ProjectsTable,
 		SessionsTable,
 		TasksTable,
 		UsersTable,

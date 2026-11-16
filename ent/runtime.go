@@ -13,6 +13,7 @@ import (
 	"github.com/kilip/opus/ent/jointoken"
 	"github.com/kilip/opus/ent/node"
 	"github.com/kilip/opus/ent/otp"
+	"github.com/kilip/opus/ent/project"
 	"github.com/kilip/opus/ent/schema"
 	"github.com/kilip/opus/ent/session"
 	"github.com/kilip/opus/ent/task"
@@ -145,6 +146,52 @@ func init() {
 	otpDescID := otpFields[0].Descriptor()
 	// otp.DefaultID holds the default value on creation for the id field.
 	otp.DefaultID = otpDescID.Default.(func() uuid.UUID)
+	projectFields := schema.Project{}.Fields()
+	_ = projectFields
+	// projectDescSlug is the schema descriptor for slug field.
+	projectDescSlug := projectFields[1].Descriptor()
+	// project.SlugValidator is a validator for the "slug" field. It is called by the builders before save.
+	project.SlugValidator = projectDescSlug.Validators[0].(func(string) error)
+	// projectDescName is the schema descriptor for name field.
+	projectDescName := projectFields[2].Descriptor()
+	// project.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	project.NameValidator = projectDescName.Validators[0].(func(string) error)
+	// projectDescRepoProvider is the schema descriptor for repo_provider field.
+	projectDescRepoProvider := projectFields[3].Descriptor()
+	// project.RepoProviderValidator is a validator for the "repo_provider" field. It is called by the builders before save.
+	project.RepoProviderValidator = projectDescRepoProvider.Validators[0].(func(string) error)
+	// projectDescRepoRef is the schema descriptor for repo_ref field.
+	projectDescRepoRef := projectFields[4].Descriptor()
+	// project.RepoRefValidator is a validator for the "repo_ref" field. It is called by the builders before save.
+	project.RepoRefValidator = projectDescRepoRef.Validators[0].(func(string) error)
+	// projectDescTrackerProvider is the schema descriptor for tracker_provider field.
+	projectDescTrackerProvider := projectFields[5].Descriptor()
+	// project.TrackerProviderValidator is a validator for the "tracker_provider" field. It is called by the builders before save.
+	project.TrackerProviderValidator = projectDescTrackerProvider.Validators[0].(func(string) error)
+	// projectDescTrackerRef is the schema descriptor for tracker_ref field.
+	projectDescTrackerRef := projectFields[6].Descriptor()
+	// project.TrackerRefValidator is a validator for the "tracker_ref" field. It is called by the builders before save.
+	project.TrackerRefValidator = projectDescTrackerRef.Validators[0].(func(string) error)
+	// projectDescDefaultBranch is the schema descriptor for default_branch field.
+	projectDescDefaultBranch := projectFields[7].Descriptor()
+	// project.DefaultDefaultBranch holds the default value on creation for the default_branch field.
+	project.DefaultDefaultBranch = projectDescDefaultBranch.Default.(string)
+	// project.DefaultBranchValidator is a validator for the "default_branch" field. It is called by the builders before save.
+	project.DefaultBranchValidator = projectDescDefaultBranch.Validators[0].(func(string) error)
+	// projectDescCreatedAt is the schema descriptor for created_at field.
+	projectDescCreatedAt := projectFields[8].Descriptor()
+	// project.DefaultCreatedAt holds the default value on creation for the created_at field.
+	project.DefaultCreatedAt = projectDescCreatedAt.Default.(func() time.Time)
+	// projectDescUpdatedAt is the schema descriptor for updated_at field.
+	projectDescUpdatedAt := projectFields[9].Descriptor()
+	// project.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	project.DefaultUpdatedAt = projectDescUpdatedAt.Default.(func() time.Time)
+	// project.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	project.UpdateDefaultUpdatedAt = projectDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// projectDescID is the schema descriptor for id field.
+	projectDescID := projectFields[0].Descriptor()
+	// project.DefaultID holds the default value on creation for the id field.
+	project.DefaultID = projectDescID.Default.(func() uuid.UUID)
 	sessionFields := schema.Session{}.Fields()
 	_ = sessionFields
 	// sessionDescTokenHash is the schema descriptor for token_hash field.

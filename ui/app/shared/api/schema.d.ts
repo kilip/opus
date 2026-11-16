@@ -304,6 +304,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List projects
+         * @description Returns every project ordered by ID.
+         */
+        get: operations["list-projects"];
+        put?: never;
+        /**
+         * Create project
+         * @description Creates a new project.
+         */
+        post: operations["create-project"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get project
+         * @description Returns a single project by ID.
+         */
+        get: operations["get-project"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete project
+         * @description Deletes a project by ID.
+         */
+        delete: operations["delete-project"];
+        options?: never;
+        head?: never;
+        /**
+         * Update project
+         * @description Updates fields of an existing project.
+         */
+        patch: operations["update-project"];
+        trace?: never;
+    };
     "/setup": {
         parameters: {
             query?: never;
@@ -466,6 +518,15 @@ export interface components {
             body: string;
             kind?: components["schemas"]["domain.ActivityKind"];
         };
+        "domain.CreateProjectRequest": {
+            default_branch?: string;
+            name?: string;
+            repo_provider?: string;
+            repo_ref?: string;
+            slug?: string;
+            tracker_provider?: string;
+            tracker_ref?: string;
+        };
         "domain.CreateTaskRequest": {
             assignee?: components["schemas"]["domain.Assignee"];
             description?: string;
@@ -502,6 +563,18 @@ export interface components {
         "domain.OTPVerifyBody": {
             code?: string;
             email?: string;
+        };
+        "domain.Project": {
+            created_at?: string;
+            default_branch?: string;
+            id?: string;
+            name?: string;
+            repo_provider?: string;
+            repo_ref?: string;
+            slug?: string;
+            tracker_provider?: string;
+            tracker_ref?: string;
+            updated_at?: string;
         };
         "domain.ProviderItem": {
             label?: string;
@@ -546,6 +619,12 @@ export interface components {
         "domain.TaskStatus": "backlog" | "todo" | "in-progress" | "review" | "done";
         /** @enum {string} */
         "domain.TaskType": "feat" | "bug" | "chore" | "refactor" | "docs";
+        "domain.UpdateProjectRequest": {
+            default_branch?: string;
+            name?: string;
+            tracker_provider?: string;
+            tracker_ref?: string;
+        };
         "domain.UpdateTaskRequest": {
             assignee?: components["schemas"]["domain.Assignee"];
             clearAssignee?: boolean;
@@ -593,6 +672,11 @@ export interface components {
             error?: string;
             meta?: components["schemas"]["httpx.Meta"];
         };
+        "httpx.Response-array_domain_Project": {
+            data?: components["schemas"]["domain.Project"][];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
         "httpx.Response-array_domain_ProviderItem": {
             data?: components["schemas"]["domain.ProviderItem"][];
             error?: string;
@@ -615,6 +699,11 @@ export interface components {
         };
         "httpx.Response-domain_JoinTokenResponse": {
             data?: components["schemas"]["domain.JoinTokenResponse"];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Response-domain_Project": {
+            data?: components["schemas"]["domain.Project"];
             error?: string;
             meta?: components["schemas"]["httpx.Meta"];
         };
@@ -1208,6 +1297,231 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "list-projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-array_domain_Project"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "create-project": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Create Project Request */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["domain.CreateProjectRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-domain_Project"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "get-project": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-domain_Project"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "delete-project": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "update-project": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** @description Update Project Request */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["domain.UpdateProjectRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-domain_Project"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -26,6 +26,8 @@ type Tx struct {
 	Node *NodeClient
 	// OTP is the client for interacting with the OTP builders.
 	OTP *OTPClient
+	// Project is the client for interacting with the Project builders.
+	Project *ProjectClient
 	// Session is the client for interacting with the Session builders.
 	Session *SessionClient
 	// Task is the client for interacting with the Task builders.
@@ -170,6 +172,7 @@ func (tx *Tx) init() {
 	tx.JoinToken = NewJoinTokenClient(tx.config)
 	tx.Node = NewNodeClient(tx.config)
 	tx.OTP = NewOTPClient(tx.config)
+	tx.Project = NewProjectClient(tx.config)
 	tx.Session = NewSessionClient(tx.config)
 	tx.Task = NewTaskClient(tx.config)
 	tx.User = NewUserClient(tx.config)

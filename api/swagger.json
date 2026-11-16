@@ -98,6 +98,32 @@
                 ],
                 "type": "object"
             },
+            "domain.CreateProjectRequest": {
+                "properties": {
+                    "default_branch": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "repo_provider": {
+                        "type": "string"
+                    },
+                    "repo_ref": {
+                        "type": "string"
+                    },
+                    "slug": {
+                        "type": "string"
+                    },
+                    "tracker_provider": {
+                        "type": "string"
+                    },
+                    "tracker_ref": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "domain.CreateTaskRequest": {
                 "properties": {
                     "assignee": {
@@ -202,6 +228,41 @@
                         "type": "string"
                     },
                     "email": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "domain.Project": {
+                "properties": {
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "default_branch": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "repo_provider": {
+                        "type": "string"
+                    },
+                    "repo_ref": {
+                        "type": "string"
+                    },
+                    "slug": {
+                        "type": "string"
+                    },
+                    "tracker_provider": {
+                        "type": "string"
+                    },
+                    "tracker_ref": {
+                        "type": "string"
+                    },
+                    "updated_at": {
                         "type": "string"
                     }
                 },
@@ -388,6 +449,23 @@
                     "TaskTypeDocs"
                 ]
             },
+            "domain.UpdateProjectRequest": {
+                "properties": {
+                    "default_branch": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "tracker_provider": {
+                        "type": "string"
+                    },
+                    "tracker_ref": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "domain.UpdateTaskRequest": {
                 "properties": {
                     "assignee": {
@@ -532,6 +610,24 @@
                 },
                 "type": "object"
             },
+            "httpx.Response-array_domain_Project": {
+                "properties": {
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/domain.Project"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
             "httpx.Response-array_domain_ProviderItem": {
                 "properties": {
                     "data": {
@@ -600,6 +696,20 @@
                 "properties": {
                     "data": {
                         "$ref": "#/components/schemas/domain.JoinTokenResponse"
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
+            "httpx.Response-domain_Project": {
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/domain.Project"
                     },
                     "error": {
                         "type": "string"
@@ -1346,6 +1456,282 @@
                 "summary": "Delete node",
                 "tags": [
                     "nodes"
+                ]
+            }
+        },
+        "/projects": {
+            "get": {
+                "description": "Returns every project ordered by ID.",
+                "operationId": "list-projects",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-array_domain_Project"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "List projects",
+                "tags": [
+                    "projects"
+                ]
+            },
+            "post": {
+                "description": "Creates a new project.",
+                "operationId": "create-project",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.CreateProjectRequest",
+                                "summary": "request",
+                                "description": "Create Project Request"
+                            }
+                        }
+                    },
+                    "description": "Create Project Request",
+                    "required": true
+                },
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-domain_Project"
+                                }
+                            }
+                        },
+                        "description": "Created"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Create project",
+                "tags": [
+                    "projects"
+                ]
+            }
+        },
+        "/projects/{id}": {
+            "delete": {
+                "description": "Deletes a project by ID.",
+                "operationId": "delete-project",
+                "parameters": [
+                    {
+                        "description": "Project ID",
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Delete project",
+                "tags": [
+                    "projects"
+                ]
+            },
+            "get": {
+                "description": "Returns a single project by ID.",
+                "operationId": "get-project",
+                "parameters": [
+                    {
+                        "description": "Project ID",
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-domain_Project"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Get project",
+                "tags": [
+                    "projects"
+                ]
+            },
+            "patch": {
+                "description": "Updates fields of an existing project.",
+                "operationId": "update-project",
+                "parameters": [
+                    {
+                        "description": "Project ID",
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.UpdateProjectRequest",
+                                "summary": "request",
+                                "description": "Update Project Request"
+                            }
+                        }
+                    },
+                    "description": "Update Project Request",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-domain_Project"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Update project",
+                "tags": [
+                    "projects"
                 ]
             }
         },
