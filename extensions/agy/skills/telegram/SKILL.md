@@ -5,7 +5,7 @@ description: Send messages or files to a user via the Telegram Bot API. Use this
 
 # Telegram Sender
 
-Send messages or files via [send.sh](./scripts/send.sh).
+Send messages or files via [send.py](./scripts/send.py) (`python-telegram-bot` via `uv`).
 
 ## Configuration
 
@@ -20,13 +20,13 @@ Checked in order:
 
 ```bash
 # Plain text or stdin
-bash <skill-dir>/scripts/send.sh -m "Build finished: all tests passed."
-cat <<'EOF' | bash <skill-dir>/scripts/send.sh -p HTML
+mise x uv -- uv run --script <skill-dir>/scripts/send.py -m "Build finished: all tests passed."
+cat <<'EOF' | mise x uv -- uv run --script <skill-dir>/scripts/send.py -p HTML
 <b>Deploy complete</b>: <code>v1.2.3</code>
 EOF
 
 # File attachment (>4096 chars, logs, or reports)
-bash <skill-dir>/scripts/send.sh -f ./report.md -c "Verification report"
+mise x uv -- uv run --script <skill-dir>/scripts/send.py -f ./report.md -c "Verification report"
 ```
 
 - `-m, --message <text>` (max 4096 chars) | `-f, --file <path>` | `-c, --caption <text>` (max 1024 chars)

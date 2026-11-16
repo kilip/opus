@@ -43,5 +43,5 @@ Invoke `pr-manager` (`Role: "Issue #<ID> PR Manager"`): Run `vibe-publish-and-me
 
 - **If `CI_FAIL`**: Resume `coder` via `send_message` with failed CI logs (max 1 fix), re-run `verifier`, then resume `pr-manager` via `send_message`.
 - **If `MERGED`**:
-  1. **Telegram (Optional)**: If `TELEGRAM_BOT_TOKEN` & `TELEGRAM_CHAT_ID` or `../telegram/settings.json` are configured, run `bash <telegram-skill-dir>/scripts/send.sh -p HTML -m "<summary>"` (Issue `#<ID>`, PR URL, `main` SHA, verified `AC1..ACn`). Skip silently if unconfigured.
+  1. **Telegram (Optional)**: If `TELEGRAM_BOT_TOKEN` & `TELEGRAM_CHAT_ID` or `../telegram/settings.json` are configured, run `mise x uv -- uv run --script <telegram-skill-dir>/scripts/send.py -p HTML -m "<summary>"` (Issue `#<ID>`, PR URL, `main` SHA, verified `AC1..ACn`). Skip silently if unconfigured.
   2. Report PR URL, `main` commit SHA, and closed `#<ID>`.
