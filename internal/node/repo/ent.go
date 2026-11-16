@@ -135,3 +135,64 @@ func (r *Ent) ConsumeJoinToken(ctx context.Context, tokenHash string, now time.T
 
 	return tx.Commit()
 }
+
+// JoinNode atomically validates and consumes a join token, and inserts a worker node.
+// Returns ErrTokenNotFound if not found, ErrTokenAlreadyUsed if already consumed,
+// ErrTokenExpired if past its expiration time, and ErrNodeNameConflict if node name is taken.
+func (r *Ent) JoinNode(ctx context.Context, tokenHash, name, credHash string, now time.Time) (*domain.Node, error) {
+	tx, err := r.client.Tx(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	tok, err := tx.JoinToken.Query().
+		Where(jointoken.TokenHashEQ(tokenHash)).
+		Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, domain.ErrTokenNotFound
+		}
+		return nil, err
+	}
+
+	if tok.UsedAt != nil {
+		return nil, domain.ErrTokenAlreadyUsed
+	}
+
+	if now.After(tok.ExpiresAt) {
+		return nil, domain.ErrTokenExpired
+	}
+
+	if err := tx.JoinToken.UpdateOne(tok).
+		SetUsedAt(now).
+		Exec(ctx); err != nil {
+		return nil, err
+	}
+
+	n, err := tx.Node.Create().
+		SetName(name).
+		SetRole(entnode.RoleWorker).
+		SetStatus(entnode.StatusOffline).
+		SetCredentialHash(credHash).
+		Save(ctx)
+	if err != nil {
+		if ent.IsConstraintError(err) {
+			return nil, domain.ErrNodeNameConflict
+		}
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return &domain.Node{
+		ID:             n.ID.String(),
+		Name:           n.Name,
+		Role:           domain.Role(n.Role),
+		Status:         domain.Status(n.Status),
+		LastSeenAt:     n.LastSeenAt,
+		CredentialHash: n.CredentialHash,
+	}, nil
+}

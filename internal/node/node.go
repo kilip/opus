@@ -4,6 +4,7 @@ package node
 
 import (
 	"context"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/kilip/opus/ent"
@@ -30,6 +31,9 @@ var (
 	ErrTokenNotFound    = domain.ErrTokenNotFound
 	ErrTokenExpired     = domain.ErrTokenExpired
 	ErrTokenAlreadyUsed = domain.ErrTokenAlreadyUsed
+	ErrNodeNameConflict = domain.ErrNodeNameConflict
+	ErrInvalidNodeName  = domain.ErrInvalidNodeName
+	ErrRateLimited      = domain.ErrRateLimited
 )
 
 // Re-exported domain types.
@@ -39,8 +43,17 @@ type (
 	NodeEventPayload  = domain.NodeEventPayload
 	NodeResponse      = domain.NodeResponse
 	JoinTokenResponse = domain.JoinTokenResponse
-	Config            = service.Config
+	JoinNodeRequest   = domain.JoinNodeRequest
+	JoinNodeResponse  = domain.JoinNodeResponse
+	RateLimitConfig   = handler.RateLimitConfig
 )
+
+// Config holds configuration parameters for the node feature.
+type Config struct {
+	BaseURL         string
+	Now             func() time.Time
+	RateLimitConfig handler.RateLimitConfig
+}
 
 // Node is the node feature facade.
 type Node struct {
@@ -51,10 +64,13 @@ type Node struct {
 // New returns a new Node feature facade backed by Ent.
 func New(client *ent.Client, cfg Config) *Node {
 	r := repo.New(client)
-	svc := service.New(r, cfg)
+	svc := service.New(r, service.Config{
+		BaseURL: cfg.BaseURL,
+		Now:     cfg.Now,
+	})
 	return &Node{
 		svc:     svc,
-		handler: handler.New(svc),
+		handler: handler.New(svc, cfg.RateLimitConfig),
 	}
 }
 
@@ -73,7 +89,17 @@ func (n *Node) ConsumeJoinToken(ctx context.Context, token string) error {
 	return n.svc.ConsumeJoinToken(ctx, token)
 }
 
-// Register mounts the node HTTP routes on r.
+// Join exchanges a join token and node name for credentials.
+func (n *Node) Join(ctx context.Context, req domain.JoinNodeRequest) (domain.JoinNodeResponse, error) {
+	return n.svc.Join(ctx, req)
+}
+
+// Register mounts the protected node HTTP routes on r.
 func (n *Node) Register(r fiber.Router) {
 	n.handler.Register(r)
+}
+
+// RegisterPublic mounts unauthenticated node HTTP routes on r.
+func (n *Node) RegisterPublic(r fiber.Router) {
+	n.handler.RegisterPublic(r)
 }

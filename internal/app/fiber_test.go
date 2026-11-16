@@ -3,13 +3,17 @@ package app_test
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
@@ -272,5 +276,74 @@ func TestGetFiber_NodesRequiresAuthAndPersistsMaster(t *testing.T) {
 	m2 := masters2[0]
 	if m2.ID != m1.ID {
 		t.Errorf("expected master ID to persist across restarts: got %v, want %v", m2.ID, m1.ID)
+	}
+}
+
+// POST /api/nodes/join succeeds without session cookie.
+func TestGetFiber_NodeJoinWithoutAuth(t *testing.T) {
+	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared&_pragma=foreign_keys(ON)&_pragma=busy_timeout(10000)")
+	if err != nil {
+		t.Fatalf("open sqlite failed: %v", err)
+	}
+	db.SetMaxOpenConns(1)
+	drv := entsql.OpenDB(dialect.SQLite, db)
+	client := enttest.NewClient(t, enttest.WithOptions(ent.Driver(drv)))
+	t.Cleanup(func() {
+		_ = client.Close()
+	})
+
+	cfg := app.Config{
+		AppName:       "test-opus",
+		BaseURL:       "http://localhost:7880",
+		SessionSecret: "secret-needs-to-be-32-bytes-long-ok",
+	}
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	fiberApp := app.GetFiber(cfg, logger, client, eventbus.New())
+
+	// Create a join token directly in DB
+	ctx := context.Background()
+	rawToken := "valid-join-token-for-fiber-test"
+	h := sha256.Sum256([]byte(rawToken))
+	_, err = client.JoinToken.Create().
+		SetTokenHash(hex.EncodeToString(h[:])).
+		SetExpiresAt(time.Now().Add(15 * time.Minute)).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create join token: %v", err)
+	}
+
+	// POST /api/nodes/join without session cookie must succeed (public endpoint)
+	reqBody := `{"token":"valid-join-token-for-fiber-test","name":"worker-public"}`
+	req := httptest.NewRequest("POST", "/api/nodes/join", strings.NewReader(reqBody))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := fiberApp.Test(req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("expected 201 for /api/nodes/join without session, got %d", resp.StatusCode)
+	}
+
+	var res struct {
+		Data struct {
+			NodeID     string `json:"nodeId"`
+			Credential string `json:"credential"`
+		} `json:"data"`
+	}
+	bodyBytes, _ := io.ReadAll(resp.Body)
+	if err := json.Unmarshal(bodyBytes, &res); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+	if res.Data.NodeID == "" || res.Data.Credential == "" {
+		t.Errorf("expected non-empty NodeID and Credential, got %+v", res.Data)
+	}
+
+	// Verify worker node created in DB
+	worker, err := client.Node.Query().Where(entnode.NameEQ("worker-public")).Only(ctx)
+	if err != nil {
+		t.Fatalf("query worker: %v", err)
+	}
+	if worker.Role != entnode.RoleWorker {
+		t.Errorf("expected worker role, got %s", worker.Role)
 	}
 }

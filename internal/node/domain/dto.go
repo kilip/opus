@@ -16,3 +16,15 @@ type JoinTokenResponse struct {
 	URL       string    `json:"url"`
 	ExpiresAt time.Time `json:"expiresAt"`
 }
+
+// JoinNodeRequest holds parameters for a node joining the cluster.
+type JoinNodeRequest struct {
+	Token string `json:"token"`
+	Name  string `json:"name"`
+}
+
+// JoinNodeResponse is returned when a node successfully joins the cluster.
+type JoinNodeResponse struct {
+	NodeID     string `json:"nodeId"`
+	Credential string `json:"credential"`
+}

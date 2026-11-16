@@ -1,8 +1,11 @@
 package handler_test
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -50,6 +53,7 @@ func setupApp(t *testing.T) (*fiber.App, *ent.Client) {
 	})
 	h := handler.New(svc)
 	h.Register(app.Group("/api"))
+	h.RegisterPublic(app.Group("/api"))
 	return app, client
 }
 
@@ -183,5 +187,287 @@ func TestCreateJoinToken_Success(t *testing.T) {
 	diff := time.Until(envelope.Data.ExpiresAt)
 	if diff < 14*time.Minute || diff > 16*time.Minute {
 		t.Errorf("expected expiration ~15m ahead, got diff %v", diff)
+	}
+}
+
+func postJSON(t *testing.T, app *fiber.App, path string, body any, ip ...string) *http.Response {
+	t.Helper()
+	var b io.Reader
+	if body != nil {
+		switch v := body.(type) {
+		case string:
+			b = strings.NewReader(v)
+		default:
+			data, err := json.Marshal(v)
+			if err != nil {
+				t.Fatalf("marshal body: %v", err)
+			}
+			b = bytes.NewReader(data)
+		}
+	}
+	req := httptest.NewRequest("POST", path, b)
+	req.Header.Set("Content-Type", "application/json")
+	if len(ip) > 0 && ip[0] != "" {
+		req.Header.Set("X-Forwarded-For", ip[0])
+	}
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("app.Test failed: %v", err)
+	}
+	return resp
+}
+
+// AC1: POST /api/nodes/join with body { token, name } returns 201 with { data: { nodeId, credential } }
+// for a valid token; a node with role worker, status offline and credential_hash = sha256(credential) is created.
+func TestJoin_Success(t *testing.T) {
+	app, client := setupApp(t)
+	ctx := context.Background()
+
+	// 1. Create a join token
+	reqTok := httptest.NewRequest("POST", "/api/nodes/join-tokens", nil)
+	respTok, err := app.Test(reqTok)
+	if err != nil {
+		t.Fatalf("request join-tokens failed: %v", err)
+	}
+	bodyTokBytes, _ := io.ReadAll(respTok.Body)
+	var tokEnv struct {
+		Data struct {
+			URL string `json:"url"`
+		} `json:"data"`
+	}
+	_ = json.Unmarshal(bodyTokBytes, &tokEnv)
+	rawToken := strings.TrimPrefix(tokEnv.Data.URL, "http://localhost:7880/join/")
+
+	// 2. Join node
+	joinBody := domain.JoinNodeRequest{
+		Token: rawToken,
+		Name:  "worker-prod-1",
+	}
+	resp := postJSON(t, app, "/api/nodes/join", joinBody)
+	if resp.StatusCode != http.StatusCreated {
+		b, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected 201, got %d (body: %s)", resp.StatusCode, string(b))
+	}
+
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read body: %v", err)
+	}
+
+	var envelope httpx.Response[domain.JoinNodeResponse]
+	if err := json.Unmarshal(bodyBytes, &envelope); err != nil {
+		t.Fatalf("unmarshal response: %v", err)
+	}
+
+	if envelope.Data.NodeID == "" {
+		t.Errorf("expected non-empty NodeID")
+	}
+	if envelope.Data.Credential == "" {
+		t.Errorf("expected non-empty Credential")
+	}
+
+	// 3. Verify node in DB
+	n, err := client.Node.Query().Where(entnode.NameEQ("worker-prod-1")).Only(ctx)
+	if err != nil {
+		t.Fatalf("query node: %v", err)
+	}
+	if n.Role != entnode.RoleWorker {
+		t.Errorf("expected role worker, got %s", n.Role)
+	}
+	if n.Status != entnode.StatusOffline {
+		t.Errorf("expected status offline, got %s", n.Status)
+	}
+	if n.CredentialHash == nil {
+		t.Fatalf("expected credential hash in DB")
+	}
+	expectedHash := sha256.Sum256([]byte(envelope.Data.Credential))
+	if *n.CredentialHash != hex.EncodeToString(expectedHash[:]) {
+		t.Errorf("credential hash mismatch: got %s, want %s", *n.CredentialHash, hex.EncodeToString(expectedHash[:]))
+	}
+}
+
+// AC3: An expired, used or unknown token returns 401 or 403 with an httpx error envelope;
+// a name already in use returns 409; an empty or invalid name returns 400.
+func TestJoin_Errors(t *testing.T) {
+	app, client := setupApp(t)
+	ctx := context.Background()
+
+	genToken := func() string {
+		req := httptest.NewRequest("POST", "/api/nodes/join-tokens", nil)
+		resp, _ := app.Test(req)
+		b, _ := io.ReadAll(resp.Body)
+		var env struct {
+			Data struct {
+				URL string `json:"url"`
+			} `json:"data"`
+		}
+		_ = json.Unmarshal(b, &env)
+		return strings.TrimPrefix(env.Data.URL, "http://localhost:7880/join/")
+	}
+
+	validToken := genToken()
+
+	t.Run("400 on empty name", func(t *testing.T) {
+		resp := postJSON(t, app, "/api/nodes/join", map[string]string{
+			"token": validToken,
+			"name":  "",
+		})
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d", resp.StatusCode)
+		}
+		var errResp httpx.ErrorResponse
+		_ = json.NewDecoder(resp.Body).Decode(&errResp)
+		if errResp.Error != "INVALID_NODE_NAME" {
+			t.Errorf("expected INVALID_NODE_NAME, got %s", errResp.Error)
+		}
+	})
+
+	t.Run("400 on invalid name characters", func(t *testing.T) {
+		resp := postJSON(t, app, "/api/nodes/join", map[string]string{
+			"token": validToken,
+			"name":  "invalid name with spaces",
+		})
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d", resp.StatusCode)
+		}
+		var errResp httpx.ErrorResponse
+		_ = json.NewDecoder(resp.Body).Decode(&errResp)
+		if errResp.Error != "INVALID_NODE_NAME" {
+			t.Errorf("expected INVALID_NODE_NAME, got %s", errResp.Error)
+		}
+	})
+
+	t.Run("400 on malformed json", func(t *testing.T) {
+		resp := postJSON(t, app, "/api/nodes/join", "{invalid json")
+		if resp.StatusCode != http.StatusBadRequest {
+			t.Errorf("expected 400, got %d", resp.StatusCode)
+		}
+	})
+
+	t.Run("401 on unknown token", func(t *testing.T) {
+		resp := postJSON(t, app, "/api/nodes/join", map[string]string{
+			"token": "unknown-nonexistent-token",
+			"name":  "worker-unknown",
+		})
+		if resp.StatusCode != http.StatusUnauthorized {
+			t.Errorf("expected 401, got %d", resp.StatusCode)
+		}
+		var errResp httpx.ErrorResponse
+		_ = json.NewDecoder(resp.Body).Decode(&errResp)
+		if errResp.Error != "JOIN_TOKEN_NOT_FOUND" {
+			t.Errorf("expected JOIN_TOKEN_NOT_FOUND, got %s", errResp.Error)
+		}
+	})
+
+	t.Run("401 on expired token", func(t *testing.T) {
+		rawExpired := "expired-token-val"
+		h := sha256.Sum256([]byte(rawExpired))
+		_ = client.JoinToken.Create().
+			SetTokenHash(hex.EncodeToString(h[:])).
+			SetExpiresAt(time.Now().Add(-1 * time.Hour)).
+			Exec(ctx)
+
+		resp := postJSON(t, app, "/api/nodes/join", map[string]string{
+			"token": rawExpired,
+			"name":  "worker-expired",
+		})
+		if resp.StatusCode != http.StatusUnauthorized {
+			t.Errorf("expected 401, got %d", resp.StatusCode)
+		}
+		var errResp httpx.ErrorResponse
+		_ = json.NewDecoder(resp.Body).Decode(&errResp)
+		if errResp.Error != "JOIN_TOKEN_EXPIRED" {
+			t.Errorf("expected JOIN_TOKEN_EXPIRED, got %s", errResp.Error)
+		}
+	})
+
+	t.Run("401 on already used token", func(t *testing.T) {
+		tok := genToken()
+		resp1 := postJSON(t, app, "/api/nodes/join", map[string]string{
+			"token": tok,
+			"name":  "worker-first-use",
+		})
+		if resp1.StatusCode != http.StatusCreated {
+			t.Fatalf("first join failed: %d", resp1.StatusCode)
+		}
+
+		resp2 := postJSON(t, app, "/api/nodes/join", map[string]string{
+			"token": tok,
+			"name":  "worker-second-use",
+		})
+		if resp2.StatusCode != http.StatusUnauthorized {
+			t.Errorf("expected 401, got %d", resp2.StatusCode)
+		}
+		var errResp httpx.ErrorResponse
+		_ = json.NewDecoder(resp2.Body).Decode(&errResp)
+		if errResp.Error != "JOIN_TOKEN_ALREADY_USED" {
+			t.Errorf("expected JOIN_TOKEN_ALREADY_USED, got %s", errResp.Error)
+		}
+	})
+
+	t.Run("409 on name already in use", func(t *testing.T) {
+		_, _ = client.Node.Create().
+			SetName("duplicate-name").
+			SetRole(entnode.RoleWorker).
+			SetStatus(entnode.StatusOffline).
+			Save(ctx)
+
+		tok := genToken()
+		resp := postJSON(t, app, "/api/nodes/join", map[string]string{
+			"token": tok,
+			"name":  "duplicate-name",
+		})
+		if resp.StatusCode != http.StatusConflict {
+			t.Errorf("expected 409, got %d", resp.StatusCode)
+		}
+		var errResp httpx.ErrorResponse
+		_ = json.NewDecoder(resp.Body).Decode(&errResp)
+		if errResp.Error != "NODE_NAME_CONFLICT" {
+			t.Errorf("expected NODE_NAME_CONFLICT, got %s", errResp.Error)
+		}
+	})
+}
+
+// AC4: The 11th request within a minute from one IP returns 429; covered by a test.
+func TestJoin_RateLimit(t *testing.T) {
+	app, _ := setupApp(t)
+	ip := "192.168.1.100"
+
+	// 10 requests should not be rate limited
+	for i := 1; i <= 10; i++ {
+		resp := postJSON(t, app, "/api/nodes/join", map[string]string{
+			"token": "tok",
+			"name":  "w",
+		}, ip)
+		if resp.StatusCode == http.StatusTooManyRequests {
+			t.Fatalf("request %d was unexpectedly rate limited (429)", i)
+		}
+	}
+
+	// 11th request from same IP must return 429
+	resp11 := postJSON(t, app, "/api/nodes/join", map[string]string{
+		"token": "tok",
+		"name":  "w",
+	}, ip)
+	if resp11.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("expected 11th request to return 429, got %d", resp11.StatusCode)
+	}
+
+	var errResp httpx.ErrorResponse
+	if err := json.NewDecoder(resp11.Body).Decode(&errResp); err != nil {
+		t.Fatalf("decode error response: %v", err)
+	}
+	if errResp.Error != "RATE_LIMITED" {
+		t.Errorf("expected error RATE_LIMITED, got %s", errResp.Error)
+	}
+
+	// Different IP should not be rate limited
+	otherIP := "192.168.1.101"
+	respOther := postJSON(t, app, "/api/nodes/join", map[string]string{
+		"token": "tok",
+		"name":  "w",
+	}, otherIP)
+	if respOther.StatusCode == http.StatusTooManyRequests {
+		t.Fatalf("request from different IP was unexpectedly rate limited")
 	}
 }

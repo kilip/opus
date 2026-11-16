@@ -1,6 +1,19 @@
 package domain
 
-import "time"
+import (
+	"regexp"
+	"time"
+)
+
+var nodeNameRegex = regexp.MustCompile(`^[A-Za-z0-9._-]{1,63}$`)
+
+// ValidateNodeName checks that name is 1 to 63 characters of [A-Za-z0-9._-].
+func ValidateNodeName(name string) error {
+	if !nodeNameRegex.MatchString(name) {
+		return ErrInvalidNodeName
+	}
+	return nil
+}
 
 // Role defines the role of a node in the cluster.
 type Role string

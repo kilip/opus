@@ -15,7 +15,9 @@ import (
 	entsql "entgo.io/ent/dialect/sql"
 	"github.com/kilip/opus/ent"
 	"github.com/kilip/opus/ent/enttest"
+	"github.com/kilip/opus/ent/jointoken"
 	entnode "github.com/kilip/opus/ent/node"
+
 	"github.com/kilip/opus/internal/node/domain"
 	"github.com/kilip/opus/internal/node/repo"
 	"github.com/kilip/opus/internal/node/service"
@@ -366,6 +368,204 @@ func TestConsumeJoinToken_Validation(t *testing.T) {
 
 			if tc.verifyConsume != nil {
 				tc.verifyConsume(t, ctx, svc, token)
+			}
+		})
+	}
+}
+
+func TestJoin_Success(t *testing.T) {
+	client := setupTestClient(t)
+	r := repo.New(client)
+	now := time.Date(2026, 11, 16, 12, 0, 0, 0, time.UTC)
+	svc := service.New(r, service.Config{
+		BaseURL: "http://localhost:7880",
+		Now:     func() time.Time { return now },
+	})
+	ctx := context.Background()
+
+	res, err := svc.GenerateJoinToken(ctx)
+	if err != nil {
+		t.Fatalf("GenerateJoinToken failed: %v", err)
+	}
+	rawToken := strings.TrimPrefix(res.URL, "http://localhost:7880/join/")
+
+	joinRes, err := svc.Join(ctx, domain.JoinNodeRequest{
+		Token: rawToken,
+		Name:  "worker-1",
+	})
+	if err != nil {
+		t.Fatalf("Join failed: %v", err)
+	}
+
+	if joinRes.NodeID == "" {
+		t.Errorf("expected non-empty NodeID")
+	}
+	if joinRes.Credential == "" {
+		t.Errorf("expected non-empty Credential")
+	}
+
+	// Verify node in DB
+	n, err := client.Node.Query().Where(entnode.NameEQ("worker-1")).Only(ctx)
+	if err != nil {
+		t.Fatalf("query node failed: %v", err)
+	}
+	if n.ID.String() != joinRes.NodeID {
+		t.Errorf("node ID mismatch: got %s, want %s", n.ID.String(), joinRes.NodeID)
+	}
+	if n.Name != "worker-1" {
+		t.Errorf("node name = %s, want worker-1", n.Name)
+	}
+	if n.Role != entnode.RoleWorker {
+		t.Errorf("node role = %s, want worker", n.Role)
+	}
+	if n.Status != entnode.StatusOffline {
+		t.Errorf("node status = %s, want offline", n.Status)
+	}
+	if n.CredentialHash == nil {
+		t.Fatalf("expected credential hash to be set")
+	}
+
+	expectedCredHash := sha256.Sum256([]byte(joinRes.Credential))
+	if *n.CredentialHash != hex.EncodeToString(expectedCredHash[:]) {
+		t.Errorf("credential hash mismatch: got %s, want %s", *n.CredentialHash, hex.EncodeToString(expectedCredHash[:]))
+	}
+
+	// Replaying the same token must fail
+	_, err = svc.Join(ctx, domain.JoinNodeRequest{
+		Token: rawToken,
+		Name:  "worker-2",
+	})
+	if !errors.Is(err, domain.ErrTokenAlreadyUsed) {
+		t.Errorf("expected ErrTokenAlreadyUsed on replay, got %v", err)
+	}
+}
+
+// AC2: The token is marked used in the same database transaction as the node insert;
+// replaying the same token returns an error. A test forces the node insert to fail and asserts the token stays unused.
+func TestJoin_TransactionRollbackOnConflict(t *testing.T) {
+	client := setupTestClient(t)
+	r := repo.New(client)
+	now := time.Date(2026, 11, 16, 12, 0, 0, 0, time.UTC)
+	svc := service.New(r, service.Config{
+		BaseURL: "http://localhost:7880",
+		Now:     func() time.Time { return now },
+	})
+	ctx := context.Background()
+
+	// Pre-create a node with name "conflict-worker"
+	_, err := client.Node.Create().
+		SetName("conflict-worker").
+		SetRole(entnode.RoleWorker).
+		SetStatus(entnode.StatusOffline).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create initial node: %v", err)
+	}
+
+	// Generate join token
+	res, err := svc.GenerateJoinToken(ctx)
+	if err != nil {
+		t.Fatalf("GenerateJoinToken failed: %v", err)
+	}
+	rawToken := strings.TrimPrefix(res.URL, "http://localhost:7880/join/")
+
+	// Force node insert to fail with name conflict
+	_, err = svc.Join(ctx, domain.JoinNodeRequest{
+		Token: rawToken,
+		Name:  "conflict-worker",
+	})
+	if !errors.Is(err, domain.ErrNodeNameConflict) {
+		t.Fatalf("expected ErrNodeNameConflict, got %v", err)
+	}
+
+	// Assert the token stays unused in the database
+	tokHash := sha256.Sum256([]byte(rawToken))
+	tokHex := hex.EncodeToString(tokHash[:])
+	tok, err := client.JoinToken.Query().
+		Where(jointoken.TokenHashEQ(tokHex)).
+		Only(ctx)
+	if err != nil {
+		t.Fatalf("query join token: %v", err)
+	}
+	if tok.UsedAt != nil {
+		t.Fatalf("expected token to remain unused (used_at == nil), got used_at=%v", tok.UsedAt)
+	}
+
+	// Joining with the same token and a valid name must now succeed
+	joinRes, err := svc.Join(ctx, domain.JoinNodeRequest{
+		Token: rawToken,
+		Name:  "valid-worker",
+	})
+	if err != nil {
+		t.Fatalf("join with same token and valid name failed: %v", err)
+	}
+	if joinRes.NodeID == "" || joinRes.Credential == "" {
+		t.Fatalf("invalid join response: %+v", joinRes)
+	}
+
+	// Token must now be marked used
+	tokAfter, err := client.JoinToken.Query().
+		Where(jointoken.TokenHashEQ(tokHex)).
+		Only(ctx)
+	if err != nil {
+		t.Fatalf("query join token after: %v", err)
+	}
+	if tokAfter.UsedAt == nil {
+		t.Fatalf("expected token to be marked used")
+	}
+
+	// Replaying the token now fails with ErrTokenAlreadyUsed
+	_, err = svc.Join(ctx, domain.JoinNodeRequest{
+		Token: rawToken,
+		Name:  "worker-replay",
+	})
+	if !errors.Is(err, domain.ErrTokenAlreadyUsed) {
+		t.Fatalf("expected ErrTokenAlreadyUsed on replay, got %v", err)
+	}
+}
+
+func TestJoin_Validation(t *testing.T) {
+	client := setupTestClient(t)
+	r := repo.New(client)
+	now := time.Date(2026, 11, 16, 12, 0, 0, 0, time.UTC)
+	svc := service.New(r, service.Config{
+		BaseURL: "http://localhost:7880",
+		Now:     func() time.Time { return now },
+	})
+	ctx := context.Background()
+
+	tests := []struct {
+		name        string
+		req         domain.JoinNodeRequest
+		expectedErr error
+	}{
+		{
+			name:        "empty name",
+			req:         domain.JoinNodeRequest{Token: "some-tok", Name: ""},
+			expectedErr: domain.ErrInvalidNodeName,
+		},
+		{
+			name:        "invalid chars in name",
+			req:         domain.JoinNodeRequest{Token: "some-tok", Name: "bad name!"},
+			expectedErr: domain.ErrInvalidNodeName,
+		},
+		{
+			name:        "name too long",
+			req:         domain.JoinNodeRequest{Token: "some-tok", Name: strings.Repeat("a", 64)},
+			expectedErr: domain.ErrInvalidNodeName,
+		},
+		{
+			name:        "empty token",
+			req:         domain.JoinNodeRequest{Token: "", Name: "valid-name"},
+			expectedErr: domain.ErrTokenNotFound,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := svc.Join(ctx, tc.req)
+			if !errors.Is(err, tc.expectedErr) {
+				t.Fatalf("expected error %v, got %v", tc.expectedErr, err)
 			}
 		})
 	}

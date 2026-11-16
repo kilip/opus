@@ -111,6 +111,35 @@ func (s *Node) ConsumeJoinToken(ctx context.Context, rawToken string) error {
 	return s.repo.ConsumeJoinToken(ctx, tokenHash, s.now())
 }
 
+// Join validates the join request, consumes the join token, and creates a worker node.
+// Returns the node ID and a single-use credential.
+func (s *Node) Join(ctx context.Context, req domain.JoinNodeRequest) (domain.JoinNodeResponse, error) {
+	if err := domain.ValidateNodeName(req.Name); err != nil {
+		return domain.JoinNodeResponse{}, err
+	}
+	if req.Token == "" {
+		return domain.JoinNodeResponse{}, domain.ErrTokenNotFound
+	}
+
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return domain.JoinNodeResponse{}, err
+	}
+	credential := base64.RawURLEncoding.EncodeToString(b)
+	credHash := hashToken(credential)
+	tokenHash := hashToken(req.Token)
+
+	n, err := s.repo.JoinNode(ctx, tokenHash, req.Name, credHash, s.now())
+	if err != nil {
+		return domain.JoinNodeResponse{}, err
+	}
+
+	return domain.JoinNodeResponse{
+		NodeID:     n.ID,
+		Credential: credential,
+	}, nil
+}
+
 // hashToken returns the hex-encoded SHA-256 hash of a raw token.
 func hashToken(raw string) string {
 	h := sha256.Sum256([]byte(raw))

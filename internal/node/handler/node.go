@@ -2,27 +2,93 @@ package handler
 
 import (
 	"errors"
+	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/limiter"
 	"github.com/kilip/opus/internal/node/domain"
 	"github.com/kilip/opus/internal/node/service"
 	"github.com/kilip/opus/internal/platform/httpx"
 )
 
+// ponytail: in-memory IP rate limiter at 10 req/min; upgrade to Redis/distributed store when cluster scales
+const (
+	defaultJoinMaxIPRequests = 10
+	defaultJoinWindow        = 1 * time.Minute
+)
+
+// RateLimitConfig configures join request rate limits.
+type RateLimitConfig struct {
+	MaxIPRequests int
+	Window        time.Duration
+	Disabled      bool
+}
+
+// clientIP extracts the client IP address from proxy headers or connection.
+// ponytail: direct proxy header check; configure Fiber TrustProxy when behind strict edge proxy
+func clientIP(c fiber.Ctx) string {
+	if ip := c.Get(fiber.HeaderXForwardedFor); ip != "" {
+		if comma := strings.Index(ip, ","); comma != -1 {
+			return strings.TrimSpace(ip[:comma])
+		}
+		return strings.TrimSpace(ip)
+	}
+	if ip := c.Get("X-Real-IP"); ip != "" {
+		return strings.TrimSpace(ip)
+	}
+	return c.IP()
+}
+
+func newJoinLimiter(cfg RateLimitConfig) fiber.Handler {
+	if cfg.Disabled {
+		return func(c fiber.Ctx) error { return c.Next() }
+	}
+	maxRequests := cfg.MaxIPRequests
+	if maxRequests <= 0 {
+		maxRequests = defaultJoinMaxIPRequests
+	}
+	window := cfg.Window
+	if window <= 0 {
+		window = defaultJoinWindow
+	}
+
+	return limiter.New(limiter.Config{
+		Max:        maxRequests,
+		Expiration: window,
+		KeyGenerator: func(c fiber.Ctx) string {
+			return clientIP(c)
+		},
+		LimitReached: func(c fiber.Ctx) error {
+			return httpx.NewError(fiber.StatusTooManyRequests, domain.ErrRateLimited)
+		},
+	})
+}
+
 // Handler serves node endpoints.
 type Handler struct {
-	svc *service.Node
+	svc     *service.Node
+	limiter fiber.Handler
 }
 
 // ponytail: keep domain imported for swag OpenAPI doc generation
 var (
 	_ = (*domain.NodeResponse)(nil)
 	_ = (*domain.JoinTokenResponse)(nil)
+	_ = (*domain.JoinNodeRequest)(nil)
+	_ = (*domain.JoinNodeResponse)(nil)
 )
 
 // New returns Handler backed by node service.
-func New(svc *service.Node) *Handler {
-	return &Handler{svc: svc}
+func New(svc *service.Node, rl ...RateLimitConfig) *Handler {
+	var cfg RateLimitConfig
+	if len(rl) > 0 {
+		cfg = rl[0]
+	}
+	return &Handler{
+		svc:     svc,
+		limiter: newJoinLimiter(cfg),
+	}
 }
 
 // Register mounts node routes on r.
@@ -30,6 +96,12 @@ func (h *Handler) Register(r fiber.Router) {
 	g := r.Group("/nodes")
 	g.Get("/", h.List)
 	g.Post("/join-tokens", h.CreateJoinToken)
+}
+
+// RegisterPublic mounts unauthenticated node routes on r.
+func (h *Handler) RegisterPublic(r fiber.Router) {
+	g := r.Group("/nodes")
+	g.Post("/join", h.limiter, h.Join)
 }
 
 // List godoc
@@ -71,13 +143,47 @@ func (h *Handler) CreateJoinToken(c fiber.Ctx) error {
 	return httpx.Created(c, res)
 }
 
+// Join godoc
+//
+//	@Summary		Join node
+//	@Description	Exchanges a valid join token and node name for node credentials.
+//	@ID				join-node
+//	@Tags			nodes
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		domain.JoinNodeRequest	true	"Join node request"
+//	@Success		201		{object}	httpx.Response[domain.JoinNodeResponse]
+//	@Failure		400		{object}	httpx.ErrorResponse	"Invalid or empty node name"
+//	@Failure		401		{object}	httpx.ErrorResponse	"Expired, used, or unknown join token"
+//	@Failure		409		{object}	httpx.ErrorResponse	"Node name already in use"
+//	@Failure		429		{object}	httpx.ErrorResponse	"Rate limit exceeded"
+//	@Failure		500		{object}	httpx.ErrorResponse
+//	@Router			/nodes/join [post]
+func (h *Handler) Join(c fiber.Ctx) error {
+	var req domain.JoinNodeRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return httpx.BadRequest(err)
+	}
+	res, err := h.svc.Join(c.Context(), req)
+	if err != nil {
+		return mapErr(err)
+	}
+	return httpx.Created(c, res)
+}
+
 // mapErr maps domain sentinel errors to httpx status errors.
 func mapErr(err error) error {
 	switch {
-	case errors.Is(err, domain.ErrTokenNotFound):
-		return httpx.NotFound(err)
-	case errors.Is(err, domain.ErrTokenExpired), errors.Is(err, domain.ErrTokenAlreadyUsed):
+	case errors.Is(err, domain.ErrTokenNotFound),
+		errors.Is(err, domain.ErrTokenExpired),
+		errors.Is(err, domain.ErrTokenAlreadyUsed):
+		return httpx.NewError(fiber.StatusUnauthorized, err)
+	case errors.Is(err, domain.ErrInvalidNodeName):
 		return httpx.BadRequest(err)
+	case errors.Is(err, domain.ErrNodeNameConflict):
+		return httpx.Conflict(err)
+	case errors.Is(err, domain.ErrRateLimited):
+		return httpx.NewError(fiber.StatusTooManyRequests, err)
 	default:
 		return err
 	}

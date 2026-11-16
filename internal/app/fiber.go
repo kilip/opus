@@ -117,13 +117,14 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 		setupRoutes := api.Group("/setup")
 		authFeature.RegisterSetup(setupRoutes) // GET /status, POST /otp, POST "" (public)
 		authFeature.RegisterPublic(authRoutes) // POST /otp/request, POST /otp/verify (public)
-		api.Use(authFeature.Middleware())
-		authFeature.Register(authRoutes) // GET /me, POST /logout (protected)
-		task.New(db, bus).Register(api)
 		nodeFeature := node.New(db, node.Config{BaseURL: cfg.BaseURL})
 		if err := nodeFeature.Bootstrap(context.Background()); err != nil {
 			logger.Error("node registry bootstrap failed", "error", err)
 		}
+		nodeFeature.RegisterPublic(api)
+		api.Use(authFeature.Middleware())
+		authFeature.Register(authRoutes) // GET /me, POST /logout (protected)
+		task.New(db, bus).Register(api)
 		nodeFeature.Register(api)
 	}
 
