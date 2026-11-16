@@ -2,6 +2,7 @@
 # /// script
 # requires-python = ">=3.11"
 # dependencies = [
+#   "httpx",
 #   "python-telegram-bot>=21.0",
 # ]
 # ///
@@ -16,6 +17,7 @@ import os
 import sys
 from pathlib import Path
 
+import httpx
 from telegram import Bot
 from telegram.error import NetworkError, RetryAfter, TelegramError, TimedOut
 from telegram.request import HTTPXRequest
@@ -83,17 +85,19 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
 async def send_with_retry(args: argparse.Namespace, token: str, chat_id: str, message: str) -> dict:
     max_retries = int(os.environ.get("TELEGRAM_MAX_RETRIES", "3"))
+    # ponytail: force IPv4 transport; IPv6 to api.telegram.org hangs in httpx without Happy Eyeballs
     request = HTTPXRequest(
         connect_timeout=15.0,
         read_timeout=30.0,
         write_timeout=120.0,
         pool_timeout=15.0,
+        httpx_kwargs={"transport": httpx.AsyncHTTPTransport(local_address="0.0.0.0")},
     )
     delay = 2.0
 
-    async with Bot(token=token, request=request) as bot:
-        for attempt in range(1, max_retries + 1):
-            try:
+    for attempt in range(1, max_retries + 1):
+        try:
+            async with Bot(token=token, request=request) as bot:
                 if args.file_path:
                     caption = args.caption or message or None
                     file_path = Path(args.file_path)
@@ -117,27 +121,27 @@ async def send_with_retry(args: argparse.Namespace, token: str, chat_id: str, me
                     )
                 return {"ok": True, "result": msg.to_dict()}
 
-            except RetryAfter as exc:
-                wait = float(exc.retry_after) + 0.5
-                print(
-                    f"Warning: Telegram rate limited (429), retrying in {wait:.1f}s "
-                    f"(attempt {attempt}/{max_retries}).",
-                    file=sys.stderr,
-                )
-                if attempt >= max_retries:
-                    raise
-                await asyncio.sleep(wait)
+        except RetryAfter as exc:
+            wait = float(exc.retry_after) + 0.5
+            print(
+                f"Warning: Telegram rate limited (429), retrying in {wait:.1f}s "
+                f"(attempt {attempt}/{max_retries}).",
+                file=sys.stderr,
+            )
+            if attempt >= max_retries:
+                raise
+            await asyncio.sleep(wait)
 
-            except (TimedOut, NetworkError) as exc:
-                print(
-                    f"Warning: Telegram request failed ({type(exc).__name__}: {exc}) "
-                    f"(attempt {attempt}/{max_retries}).",
-                    file=sys.stderr,
-                )
-                if attempt >= max_retries:
-                    raise
-                await asyncio.sleep(delay)
-                delay *= 2
+        except (TimedOut, NetworkError) as exc:
+            print(
+                f"Warning: Telegram request failed ({type(exc).__name__}: {exc}) "
+                f"(attempt {attempt}/{max_retries}).",
+                file=sys.stderr,
+            )
+            if attempt >= max_retries:
+                raise
+            await asyncio.sleep(delay)
+            delay *= 2
 
     raise RuntimeError("Unreachable")
 
