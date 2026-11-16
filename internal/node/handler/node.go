@@ -254,7 +254,8 @@ func mapErr(err error) error {
 		return httpx.Conflict(err)
 	case errors.Is(err, domain.ErrRateLimited):
 		return httpx.NewError(fiber.StatusTooManyRequests, err)
-	case errors.Is(err, domain.ErrNodeNotConnected):
+	case errors.Is(err, domain.ErrNodeNotConnected),
+		errors.Is(err, domain.ErrNodeNotFound):
 		return httpx.NewError(fiber.StatusNotFound, err)
 	default:
 		return err

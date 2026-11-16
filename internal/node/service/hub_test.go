@@ -211,3 +211,105 @@ func TestHub_MasterConnectForbidden(t *testing.T) {
 		t.Fatalf("expected ErrMasterConnectForbidden, got %v", err)
 	}
 }
+
+func TestHub_HeartbeatDispatch(t *testing.T) {
+	hub := service.NewHub()
+	nodeID := "worker-1"
+
+	conn := &mockConn{}
+	cleanup, err := hub.Register(nodeID, conn)
+	if err != nil {
+		t.Fatalf("register failed: %v", err)
+	}
+	defer cleanup()
+
+	var (
+		mu                 sync.Mutex
+		heartbeatEnvelopes []domain.Envelope
+	)
+	hub.OnHeartbeat(func(nID string, env domain.Envelope) {
+		if nID == nodeID {
+			mu.Lock()
+			heartbeatEnvelopes = append(heartbeatEnvelopes, env)
+			mu.Unlock()
+		}
+	})
+
+	// Dispatch hello
+	helloMsg := []byte(`{"type":"hello"}`)
+	if err := hub.HandleMessage(nodeID, helloMsg); err != nil {
+		t.Fatalf("handle hello failed: %v", err)
+	}
+
+	// Dispatch heartbeat
+	heartbeatMsg := []byte(`{"type":"heartbeat"}`)
+	if err := hub.HandleMessage(nodeID, heartbeatMsg); err != nil {
+		t.Fatalf("handle heartbeat failed: %v", err)
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	if len(heartbeatEnvelopes) != 2 {
+		t.Fatalf("expected 2 heartbeat envelopes, got %d", len(heartbeatEnvelopes))
+	}
+	if heartbeatEnvelopes[0].Type != domain.EnvelopeTypeHello {
+		t.Errorf("expected first envelope type hello, got %s", heartbeatEnvelopes[0].Type)
+	}
+	if heartbeatEnvelopes[1].Type != domain.EnvelopeTypeHeartbeat {
+		t.Errorf("expected second envelope type heartbeat, got %s", heartbeatEnvelopes[1].Type)
+	}
+}
+
+func TestHub_OnDisconnect_Callback(t *testing.T) {
+	hub := service.NewHub()
+	nodeID := "worker-1"
+
+	var (
+		mu           sync.Mutex
+		disconnected []string
+	)
+	hub.OnDisconnect(func(nID string) {
+		mu.Lock()
+		disconnected = append(disconnected, nID)
+		mu.Unlock()
+	})
+
+	conn1 := &mockConn{}
+	cleanup1, err := hub.Register(nodeID, conn1)
+	if err != nil {
+		t.Fatalf("register conn1 failed: %v", err)
+	}
+
+	// Replace conn1 with conn2
+	conn2 := &mockConn{}
+	cleanup2, err := hub.Register(nodeID, conn2)
+	if err != nil {
+		t.Fatalf("register conn2 failed: %v", err)
+	}
+
+	// Calling cleanup1 from older connection should NOT fire disconnect
+	cleanup1()
+
+	mu.Lock()
+	if len(disconnected) != 0 {
+		t.Fatalf("expected 0 disconnect calls after old cleanup1, got %d", len(disconnected))
+	}
+	mu.Unlock()
+
+	// Calling cleanup2 for the active connection fires disconnect once
+	cleanup2()
+
+	mu.Lock()
+	if len(disconnected) != 1 || disconnected[0] != nodeID {
+		t.Fatalf("expected 1 disconnect call for %s, got %v", nodeID, disconnected)
+	}
+	mu.Unlock()
+
+	// Calling cleanup2 again does not fire disconnect again
+	cleanup2()
+	mu.Lock()
+	if len(disconnected) != 1 {
+		t.Fatalf("expected still 1 disconnect call, got %d", len(disconnected))
+	}
+	mu.Unlock()
+}

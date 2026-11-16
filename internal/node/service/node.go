@@ -7,12 +7,14 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/kilip/opus/internal/node/domain"
 	"github.com/kilip/opus/internal/node/repo"
+	"github.com/kilip/opus/internal/platform/eventbus"
 )
 
 // ponytail: token TTL fixed at 15 minutes; make configurable when nodes need longer join windows
@@ -22,6 +24,7 @@ const joinTokenTTL = 15 * time.Minute
 type Config struct {
 	BaseURL string
 	Now     func() time.Time
+	Bus     *eventbus.Bus
 }
 
 // Node owns node registry business rules.
@@ -29,6 +32,7 @@ type Node struct {
 	repo    *repo.Ent
 	baseURL string
 	now     func() time.Time
+	bus     *eventbus.Bus
 }
 
 // New returns Node service backed by Ent repo and configuration.
@@ -45,6 +49,7 @@ func New(r *repo.Ent, cfg Config) *Node {
 		repo:    r,
 		baseURL: strings.TrimRight(baseURL, "/"),
 		now:     now,
+		bus:     cfg.Bus,
 	}
 }
 
@@ -164,6 +169,68 @@ func (s *Node) AuthenticateWorker(ctx context.Context, cred string) (*domain.Nod
 // GetMaster returns the registered master node.
 func (s *Node) GetMaster(ctx context.Context) (*domain.Node, error) {
 	return s.repo.GetMaster(ctx)
+}
+
+// RecordHeartbeat records a worker heartbeat/hello, sets status to online,
+// and publishes node.online if the node transitioned from non-online to online.
+func (s *Node) RecordHeartbeat(ctx context.Context, id string) error {
+	n, changed, err := s.repo.RecordHeartbeat(ctx, id, s.now())
+	if err != nil {
+		return err
+	}
+	if changed && s.bus != nil {
+		evt, err := eventbus.NewEvent(domain.EventOnline, n.ID, domain.NodeEventPayload{
+			ID:   n.ID,
+			Name: n.Name,
+		})
+		if err != nil {
+			slog.Error("failed to create node.online event", "node_id", n.ID, "error", err)
+		} else {
+			// ponytail: publish errors are logged, not returned; becomes transactional when the outbox lands
+			if err := s.bus.Publish(ctx, evt); err != nil {
+				slog.Error("failed to publish node.online event", "node_id", n.ID, "error", err)
+			}
+		}
+	}
+	return nil
+}
+
+// MarkOffline sets the worker status to offline,
+// and publishes node.offline if the node transitioned from non-offline to offline.
+func (s *Node) MarkOffline(ctx context.Context, id string) error {
+	n, changed, err := s.repo.MarkOffline(ctx, id)
+	if err != nil {
+		return err
+	}
+	if changed && s.bus != nil {
+		evt, err := eventbus.NewEvent(domain.EventOffline, n.ID, domain.NodeEventPayload{
+			ID:   n.ID,
+			Name: n.Name,
+		})
+		if err != nil {
+			slog.Error("failed to create node.offline event", "node_id", n.ID, "error", err)
+		} else {
+			// ponytail: publish errors are logged, not returned; becomes transactional when the outbox lands
+			if err := s.bus.Publish(ctx, evt); err != nil {
+				slog.Error("failed to publish node.offline event", "node_id", n.ID, "error", err)
+			}
+		}
+	}
+	return nil
+}
+
+// DetectStale finds worker nodes with last_seen_at older than cutoff and marks them offline.
+func (s *Node) DetectStale(ctx context.Context, cutoff time.Time) error {
+	stale, err := s.repo.FindStaleWorkers(ctx, cutoff)
+	if err != nil {
+		return err
+	}
+	for _, n := range stale {
+		if err := s.MarkOffline(ctx, n.ID); err != nil {
+			slog.Error("failed to mark stale node offline", "node_id", n.ID, "error", err)
+		}
+	}
+	return nil
 }
 
 // hashToken returns the hex-encoded SHA-256 hash of a raw token.

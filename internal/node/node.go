@@ -12,6 +12,7 @@ import (
 	"github.com/kilip/opus/internal/node/handler"
 	"github.com/kilip/opus/internal/node/repo"
 	"github.com/kilip/opus/internal/node/service"
+	"github.com/kilip/opus/internal/platform/eventbus"
 )
 
 // Event type constants re-exported from domain.
@@ -29,6 +30,9 @@ const (
 	EnvelopeTypeHeartbeat = domain.EnvelopeTypeHeartbeat
 	EnvelopeTypeCommand   = domain.EnvelopeTypeCommand
 	EnvelopeTypeEvent     = domain.EnvelopeTypeEvent
+
+	DefaultDetectorTimeout  = service.DefaultDetectorTimeout
+	DefaultDetectorInterval = service.DefaultDetectorInterval
 )
 
 // Sentinel errors re-exported from domain.
@@ -40,6 +44,7 @@ var (
 	ErrInvalidNodeName        = domain.ErrInvalidNodeName
 	ErrRateLimited            = domain.ErrRateLimited
 	ErrNodeNotConnected       = domain.ErrNodeNotConnected
+	ErrNodeNotFound           = domain.ErrNodeNotFound
 	ErrMasterConnectForbidden = domain.ErrMasterConnectForbidden
 	ErrUnauthorized           = domain.ErrUnauthorized
 	ErrUnknownEnvelopeType    = domain.ErrUnknownEnvelopeType
@@ -58,20 +63,27 @@ type (
 	RateLimitConfig   = handler.RateLimitConfig
 	Hub               = service.Hub
 	Conn              = service.Conn
+	Detector          = service.Detector
+	DetectorConfig    = service.DetectorConfig
 )
 
 // Config holds configuration parameters for the node feature.
 type Config struct {
-	BaseURL         string
-	Now             func() time.Time
-	RateLimitConfig handler.RateLimitConfig
+	BaseURL          string
+	Now              func() time.Time
+	RateLimitConfig  handler.RateLimitConfig
+	Bus              *eventbus.Bus
+	DetectorInterval time.Duration
+	DetectorTimeout  time.Duration
+	DetectorOnStop   func()
 }
 
 // Node is the node feature facade.
 type Node struct {
-	svc     *service.Node
-	hub     *service.Hub
-	handler *handler.Handler
+	svc      *service.Node
+	hub      *service.Hub
+	detector *service.Detector
+	handler  *handler.Handler
 }
 
 // New returns a new Node feature facade backed by Ent.
@@ -80,18 +92,63 @@ func New(client *ent.Client, cfg Config) *Node {
 	svc := service.New(r, service.Config{
 		BaseURL: cfg.BaseURL,
 		Now:     cfg.Now,
+		Bus:     cfg.Bus,
 	})
 	hub := service.NewHub()
+	hub.OnHeartbeat(func(nodeID string, _ domain.Envelope) {
+		_ = svc.RecordHeartbeat(context.Background(), nodeID)
+	})
+	hub.OnDisconnect(func(nodeID string) {
+		_ = svc.MarkOffline(context.Background(), nodeID)
+	})
+	detector := service.NewDetector(svc, service.DetectorConfig{
+		Now:      cfg.Now,
+		Interval: cfg.DetectorInterval,
+		Timeout:  cfg.DetectorTimeout,
+		OnStop:   cfg.DetectorOnStop,
+	})
 	return &Node{
-		svc:     svc,
-		hub:     hub,
-		handler: handler.New(svc, hub, cfg.RateLimitConfig),
+		svc:      svc,
+		hub:      hub,
+		detector: detector,
+		handler:  handler.New(svc, hub, cfg.RateLimitConfig),
 	}
 }
 
 // Hub returns the node feature live connection hub.
 func (n *Node) Hub() *service.Hub {
 	return n.hub
+}
+
+// Running returns true if the background detection loop is running.
+func (n *Node) Running() bool {
+	if n.detector != nil {
+		return n.detector.Running()
+	}
+	return false
+}
+
+// Start starts background services including the stale node detector.
+func (n *Node) Start(ctx context.Context) error {
+	if n.detector != nil {
+		return n.detector.Start(ctx)
+	}
+	return nil
+}
+
+// Stop stops background services including the stale node detector.
+func (n *Node) Stop() {
+	if n.detector != nil {
+		n.detector.Stop()
+	}
+}
+
+// CheckStale runs a single stale detection check.
+func (n *Node) CheckStale(ctx context.Context) error {
+	if n.detector != nil {
+		return n.detector.CheckStale(ctx)
+	}
+	return nil
 }
 
 // Bootstrap registers the master node and resets workers to offline.

@@ -5,9 +5,11 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -21,6 +23,7 @@ import (
 	"github.com/kilip/opus/internal/node/domain"
 	"github.com/kilip/opus/internal/node/repo"
 	"github.com/kilip/opus/internal/node/service"
+	"github.com/kilip/opus/internal/platform/eventbus"
 	_ "modernc.org/sqlite"
 )
 
@@ -626,5 +629,244 @@ func TestAuthenticateWorker(t *testing.T) {
 	_, err = svc.AuthenticateWorker(ctx, masterCred)
 	if !errors.Is(err, domain.ErrMasterConnectForbidden) {
 		t.Fatalf("expected ErrMasterConnectForbidden for master node, got %v", err)
+	}
+}
+
+// AC1 & AC4: A hello or heartbeat sets online, updates last_seen_at, and publishes node.online
+// only when the status actually changed (a second heartbeat publishes nothing).
+// Payload and subject follow eventbus conventions.
+func TestNodeService_RecordHeartbeat_AC1_AC4(t *testing.T) {
+	client := setupTestClient(t)
+	r := repo.New(client)
+	bus := eventbus.New()
+	ctx := context.Background()
+
+	var (
+		timeMu sync.Mutex
+		now    = time.Date(2026, 11, 16, 10, 0, 0, 0, time.UTC)
+	)
+	nowFn := func() time.Time {
+		timeMu.Lock()
+		defer timeMu.Unlock()
+		return now
+	}
+
+	svc := service.New(r, service.Config{
+		Now: nowFn,
+		Bus: bus,
+	})
+
+	var (
+		eventsMu sync.Mutex
+		events   []eventbus.Event
+	)
+	err := bus.Subscribe("test-online-sub", func(_ context.Context, e eventbus.Event) error {
+		eventsMu.Lock()
+		events = append(events, e)
+		eventsMu.Unlock()
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("subscribe failed: %v", err)
+	}
+
+	// Create worker initially offline
+	worker, err := client.Node.Create().
+		SetName("worker-heartbeat-test").
+		SetRole(entnode.RoleWorker).
+		SetStatus(entnode.StatusOffline).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create worker failed: %v", err)
+	}
+
+	// 1st Heartbeat: transitions offline -> online
+	t1 := nowFn()
+	if err := svc.RecordHeartbeat(ctx, worker.ID.String()); err != nil {
+		t.Fatalf("first RecordHeartbeat failed: %v", err)
+	}
+
+	w, err := client.Node.Get(ctx, worker.ID)
+	if err != nil {
+		t.Fatalf("get worker failed: %v", err)
+	}
+	if w.Status != entnode.StatusOnline {
+		t.Errorf("expected status online, got %s", w.Status)
+	}
+	if w.LastSeenAt == nil || !w.LastSeenAt.Equal(t1) {
+		t.Errorf("expected last seen at %v, got %v", t1, w.LastSeenAt)
+	}
+
+	// Wait for event delivery
+	time.Sleep(20 * time.Millisecond)
+
+	eventsMu.Lock()
+	if len(events) != 1 {
+		t.Fatalf("expected exactly 1 event published, got %d", len(events))
+	}
+	e := events[0]
+	eventsMu.Unlock()
+
+	// Verify AC4: event conventions
+	if e.Type != domain.EventOnline {
+		t.Errorf("expected event type %s, got %s", domain.EventOnline, e.Type)
+	}
+	if e.Subject != worker.ID.String() {
+		t.Errorf("expected event subject %s, got %s", worker.ID.String(), e.Subject)
+	}
+	var payload domain.NodeEventPayload
+	if err := json.Unmarshal(e.Payload, &payload); err != nil {
+		t.Fatalf("unmarshal payload failed: %v", err)
+	}
+	if payload.ID != worker.ID.String() || payload.Name != "worker-heartbeat-test" {
+		t.Errorf("expected payload {ID:%s, Name:worker-heartbeat-test}, got %+v", worker.ID.String(), payload)
+	}
+
+	// 2nd Heartbeat: worker is ALREADY online
+	timeMu.Lock()
+	now = now.Add(15 * time.Second)
+	t2 := now
+	timeMu.Unlock()
+
+	if err := svc.RecordHeartbeat(ctx, worker.ID.String()); err != nil {
+		t.Fatalf("second RecordHeartbeat failed: %v", err)
+	}
+
+	w, err = client.Node.Get(ctx, worker.ID)
+	if err != nil {
+		t.Fatalf("get worker failed: %v", err)
+	}
+	if w.Status != entnode.StatusOnline {
+		t.Errorf("expected status to remain online, got %s", w.Status)
+	}
+	if w.LastSeenAt == nil || !w.LastSeenAt.Equal(t2) {
+		t.Errorf("expected last seen at updated to %v, got %v", t2, w.LastSeenAt)
+	}
+
+	time.Sleep(20 * time.Millisecond)
+	eventsMu.Lock()
+	if len(events) != 1 {
+		t.Fatalf("expected still exactly 1 event (second heartbeat must not publish), got %d", len(events))
+	}
+	eventsMu.Unlock()
+}
+
+// AC2 & AC4: Worker whose connection closes or silent is set offline and node.offline is published once.
+func TestNodeService_MarkOffline_AC2_AC4(t *testing.T) {
+	client := setupTestClient(t)
+	r := repo.New(client)
+	bus := eventbus.New()
+	ctx := context.Background()
+
+	svc := service.New(r, service.Config{
+		Bus: bus,
+	})
+
+	var (
+		eventsMu sync.Mutex
+		events   []eventbus.Event
+	)
+	err := bus.Subscribe("test-offline-sub", func(_ context.Context, e eventbus.Event) error {
+		eventsMu.Lock()
+		events = append(events, e)
+		eventsMu.Unlock()
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("subscribe failed: %v", err)
+	}
+
+	// Create worker online
+	worker, err := client.Node.Create().
+		SetName("worker-offline-test").
+		SetRole(entnode.RoleWorker).
+		SetStatus(entnode.StatusOnline).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create worker failed: %v", err)
+	}
+
+	// 1st MarkOffline: transitions online -> offline
+	if err := svc.MarkOffline(ctx, worker.ID.String()); err != nil {
+		t.Fatalf("first MarkOffline failed: %v", err)
+	}
+
+	w, err := client.Node.Get(ctx, worker.ID)
+	if err != nil {
+		t.Fatalf("get worker failed: %v", err)
+	}
+	if w.Status != entnode.StatusOffline {
+		t.Errorf("expected status offline, got %s", w.Status)
+	}
+
+	time.Sleep(20 * time.Millisecond)
+
+	eventsMu.Lock()
+	if len(events) != 1 {
+		t.Fatalf("expected exactly 1 event published, got %d", len(events))
+	}
+	e := events[0]
+	eventsMu.Unlock()
+
+	// Verify AC4: event conventions
+	if e.Type != domain.EventOffline {
+		t.Errorf("expected event type %s, got %s", domain.EventOffline, e.Type)
+	}
+	if e.Subject != worker.ID.String() {
+		t.Errorf("expected event subject %s, got %s", worker.ID.String(), e.Subject)
+	}
+	var payload domain.NodeEventPayload
+	if err := json.Unmarshal(e.Payload, &payload); err != nil {
+		t.Fatalf("unmarshal payload failed: %v", err)
+	}
+	if payload.ID != worker.ID.String() || payload.Name != "worker-offline-test" {
+		t.Errorf("expected payload {ID:%s, Name:worker-offline-test}, got %+v", worker.ID.String(), payload)
+	}
+
+	// 2nd MarkOffline: worker is already offline -> publishes nothing
+	if err := svc.MarkOffline(ctx, worker.ID.String()); err != nil {
+		t.Fatalf("second MarkOffline failed: %v", err)
+	}
+
+	time.Sleep(20 * time.Millisecond)
+	eventsMu.Lock()
+	if len(events) != 1 {
+		t.Fatalf("expected still exactly 1 event (second offline must not publish), got %d", len(events))
+	}
+	eventsMu.Unlock()
+}
+
+// Master node cannot be marked offline or receive heartbeats.
+func TestNodeService_MasterNodeExcluded(t *testing.T) {
+	client := setupTestClient(t)
+	r := repo.New(client)
+	svc := service.New(r, service.Config{})
+	ctx := context.Background()
+
+	master, err := client.Node.Create().
+		SetName("master-exclude-test").
+		SetRole(entnode.RoleMaster).
+		SetStatus(entnode.StatusOnline).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create master failed: %v", err)
+	}
+
+	// RecordHeartbeat on master returns ErrMasterConnectForbidden
+	err = svc.RecordHeartbeat(ctx, master.ID.String())
+	if !errors.Is(err, domain.ErrMasterConnectForbidden) {
+		t.Fatalf("expected ErrMasterConnectForbidden on heartbeat to master, got %v", err)
+	}
+
+	// MarkOffline on master returns ErrMasterConnectForbidden
+	err = svc.MarkOffline(ctx, master.ID.String())
+	if !errors.Is(err, domain.ErrMasterConnectForbidden) {
+		t.Fatalf("expected ErrMasterConnectForbidden on mark offline to master, got %v", err)
+	}
+
+	// Master must remain online
+	m, err := client.Node.Get(ctx, master.ID)
+	if err != nil || m.Status != entnode.StatusOnline {
+		t.Fatalf("expected master to remain online, got status=%v err=%v", m.Status, err)
 	}
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/kilip/opus/ent"
+	"github.com/kilip/opus/internal/node"
 	"github.com/kilip/opus/internal/platform/eventbus"
 	"github.com/kilip/opus/internal/platform/mailer"
 )
@@ -37,19 +38,31 @@ type Opus struct {
 	logger *slog.Logger
 	db     *ent.Client
 	bus    *eventbus.Bus
+	node   *node.Node
 }
 
-func New(cfg Config, fiberApp *fiber.App, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus) *Opus {
+func New(cfg Config, fiberApp *fiber.App, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus, nodeFeatures ...*node.Node) *Opus {
+	var n *node.Node
+	if len(nodeFeatures) > 0 {
+		n = nodeFeatures[0]
+	}
 	return &Opus{
 		cfg:    cfg,
 		fiber:  fiberApp,
 		logger: logger,
 		db:     db,
 		bus:    bus,
+		node:   n,
 	}
 }
 
 func (o *Opus) Serve(ctx context.Context) error {
+	if o.node != nil {
+		if err := o.node.Start(ctx); err != nil {
+			o.logger.ErrorContext(ctx, "failed to start node detector", "error", err)
+		}
+	}
+
 	addr := net.JoinHostPort(o.cfg.Host, o.cfg.Port)
 	o.logger.InfoContext(ctx, "starting server", "addr", addr)
 	err := o.fiber.Listen(addr, fiber.ListenConfig{
@@ -57,6 +70,10 @@ func (o *Opus) Serve(ctx context.Context) error {
 		GracefulContext:       ctx,
 		ShutdownTimeout:       o.cfg.ShutdownTimeout,
 	})
+
+	if o.node != nil {
+		o.node.Stop()
+	}
 
 	if o.bus != nil {
 		timeout := o.cfg.ShutdownTimeout

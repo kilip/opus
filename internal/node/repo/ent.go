@@ -4,11 +4,26 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/kilip/opus/ent"
 	"github.com/kilip/opus/ent/jointoken"
 	entnode "github.com/kilip/opus/ent/node"
 	"github.com/kilip/opus/internal/node/domain"
 )
+
+func toDomain(n *ent.Node) *domain.Node {
+	if n == nil {
+		return nil
+	}
+	return &domain.Node{
+		ID:             n.ID.String(),
+		Name:           n.Name,
+		Role:           domain.Role(n.Role),
+		Status:         domain.Status(n.Status),
+		LastSeenAt:     n.LastSeenAt,
+		CredentialHash: n.CredentialHash,
+	}
+}
 
 // Ent is an Ent-backed node repository.
 type Ent struct {
@@ -79,14 +94,122 @@ func (r *Ent) List(ctx context.Context) ([]domain.Node, error) {
 	}
 	out := make([]domain.Node, len(nodes))
 	for i, n := range nodes {
-		out[i] = domain.Node{
-			ID:             n.ID.String(),
-			Name:           n.Name,
-			Role:           domain.Role(n.Role),
-			Status:         domain.Status(n.Status),
-			LastSeenAt:     n.LastSeenAt,
-			CredentialHash: n.CredentialHash,
+		out[i] = *toDomain(n)
+	}
+	return out, nil
+}
+
+// RecordHeartbeat updates the last_seen_at timestamp and sets status to online.
+// Returns the updated node and whether the status changed from non-online to online.
+// Returns ErrNodeNotFound if the node does not exist, and ErrMasterConnectForbidden if role is master.
+func (r *Ent) RecordHeartbeat(ctx context.Context, id string, seenAt time.Time) (*domain.Node, bool, error) {
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		return nil, false, domain.ErrNodeNotFound
+	}
+
+	tx, err := r.client.Tx(ctx)
+	if err != nil {
+		return nil, false, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	n, err := tx.Node.Get(ctx, uid)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, false, domain.ErrNodeNotFound
 		}
+		return nil, false, err
+	}
+
+	if n.Role == entnode.RoleMaster {
+		return nil, false, domain.ErrMasterConnectForbidden
+	}
+
+	statusChanged := n.Status != entnode.StatusOnline
+
+	updated, err := tx.Node.UpdateOne(n).
+		SetStatus(entnode.StatusOnline).
+		SetLastSeenAt(seenAt).
+		Save(ctx)
+	if err != nil {
+		return nil, false, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, false, err
+	}
+
+	return toDomain(updated), statusChanged, nil
+}
+
+// MarkOffline sets the node status to offline.
+// Returns the updated node and whether the status changed from non-offline to offline.
+// Returns ErrNodeNotFound if the node does not exist, and ErrMasterConnectForbidden if role is master.
+func (r *Ent) MarkOffline(ctx context.Context, id string) (*domain.Node, bool, error) {
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		return nil, false, domain.ErrNodeNotFound
+	}
+
+	tx, err := r.client.Tx(ctx)
+	if err != nil {
+		return nil, false, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	n, err := tx.Node.Get(ctx, uid)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, false, domain.ErrNodeNotFound
+		}
+		return nil, false, err
+	}
+
+	if n.Role == entnode.RoleMaster {
+		return nil, false, domain.ErrMasterConnectForbidden
+	}
+
+	statusChanged := n.Status != entnode.StatusOffline
+	if !statusChanged {
+		return toDomain(n), false, nil
+	}
+
+	updated, err := tx.Node.UpdateOne(n).
+		SetStatus(entnode.StatusOffline).
+		Save(ctx)
+	if err != nil {
+		return nil, false, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, false, err
+	}
+
+	return toDomain(updated), statusChanged, nil
+}
+
+// FindStaleWorkers returns online worker nodes whose last_seen_at is older than cutoff or nil.
+// Master nodes are excluded.
+func (r *Ent) FindStaleWorkers(ctx context.Context, cutoff time.Time) ([]domain.Node, error) {
+	nodes, err := r.client.Node.Query().
+		Where(
+			entnode.RoleEQ(entnode.RoleWorker),
+			entnode.StatusEQ(entnode.StatusOnline),
+			entnode.Or(
+				entnode.LastSeenAtLT(cutoff),
+				entnode.LastSeenAtIsNil(),
+			),
+		).
+		Order(entnode.ByID()).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]domain.Node, len(nodes))
+	for i, n := range nodes {
+		out[i] = *toDomain(n)
 	}
 	return out, nil
 }
@@ -103,14 +226,7 @@ func (r *Ent) FindByCredentialHash(ctx context.Context, hash string) (*domain.No
 		}
 		return nil, err
 	}
-	return &domain.Node{
-		ID:             n.ID.String(),
-		Name:           n.Name,
-		Role:           domain.Role(n.Role),
-		Status:         domain.Status(n.Status),
-		LastSeenAt:     n.LastSeenAt,
-		CredentialHash: n.CredentialHash,
-	}, nil
+	return toDomain(n), nil
 }
 
 // GetMaster returns the registered master node, or nil, nil if not found.
@@ -124,14 +240,7 @@ func (r *Ent) GetMaster(ctx context.Context) (*domain.Node, error) {
 		}
 		return nil, err
 	}
-	return &domain.Node{
-		ID:             n.ID.String(),
-		Name:           n.Name,
-		Role:           domain.Role(n.Role),
-		Status:         domain.Status(n.Status),
-		LastSeenAt:     n.LastSeenAt,
-		CredentialHash: n.CredentialHash,
-	}, nil
+	return toDomain(n), nil
 }
 
 // CreateJoinToken stores a join token hash and expiration.
@@ -230,12 +339,5 @@ func (r *Ent) JoinNode(ctx context.Context, tokenHash, name, credHash string, no
 		return nil, err
 	}
 
-	return &domain.Node{
-		ID:             n.ID.String(),
-		Name:           n.Name,
-		Role:           domain.Role(n.Role),
-		Status:         domain.Status(n.Status),
-		LastSeenAt:     n.LastSeenAt,
-		CredentialHash: n.CredentialHash,
-	}, nil
+	return toDomain(n), nil
 }

@@ -121,7 +121,7 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 		if len(nodeFeatures) > 0 && nodeFeatures[0] != nil {
 			nodeFeature = nodeFeatures[0]
 		} else {
-			nodeFeature = node.New(db, node.Config{BaseURL: cfg.BaseURL})
+			nodeFeature = node.New(db, node.Config{BaseURL: cfg.BaseURL, Bus: bus})
 		}
 		if err := nodeFeature.Bootstrap(context.Background()); err != nil {
 			logger.Error("node registry bootstrap failed", "error", err)

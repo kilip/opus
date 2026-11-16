@@ -21,12 +21,20 @@ type nodeConn struct {
 // EventHandler processes an incoming event envelope from a worker node.
 type EventHandler func(nodeID string, env domain.Envelope)
 
+// DisconnectHandler processes a disconnect notification for a worker node.
+type DisconnectHandler func(nodeID string)
+
+// HeartbeatHandler processes a hello or heartbeat envelope from a worker node.
+type HeartbeatHandler func(nodeID string, env domain.Envelope)
+
 // Hub manages live worker node WebSocket connections.
 type Hub struct {
-	mu            sync.RWMutex
-	conns         map[string]*nodeConn
-	eventHandlers []EventHandler
-	masterID      string
+	mu                 sync.RWMutex
+	conns              map[string]*nodeConn
+	eventHandlers      []EventHandler
+	heartbeatHandlers  []HeartbeatHandler
+	disconnectHandlers []DisconnectHandler
+	masterID           string
 }
 
 // NewHub creates a new Hub. Optional masterID can be passed to prevent
@@ -69,10 +77,20 @@ func (h *Hub) Register(nodeID string, conn Conn) (func(), error) {
 	h.conns[nodeID] = nc
 
 	cleanup := func() {
+		var disconnected bool
 		h.mu.Lock()
-		defer h.mu.Unlock()
 		if cur, ok := h.conns[nodeID]; ok && cur == nc {
 			delete(h.conns, nodeID)
+			disconnected = true
+		}
+		handlers := make([]DisconnectHandler, len(h.disconnectHandlers))
+		copy(handlers, h.disconnectHandlers)
+		h.mu.Unlock()
+
+		if disconnected {
+			for _, fn := range handlers {
+				fn(nodeID)
+			}
 		}
 	}
 
@@ -114,6 +132,20 @@ func (h *Hub) OnEvent(handler EventHandler) {
 	h.eventHandlers = append(h.eventHandlers, handler)
 }
 
+// OnHeartbeat registers a callback function for received worker hello/heartbeat envelopes.
+func (h *Hub) OnHeartbeat(handler HeartbeatHandler) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.heartbeatHandlers = append(h.heartbeatHandlers, handler)
+}
+
+// OnDisconnect registers a callback function for worker node disconnects.
+func (h *Hub) OnDisconnect(handler DisconnectHandler) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.disconnectHandlers = append(h.disconnectHandlers, handler)
+}
+
 // HandleMessage parses a raw JSON payload and dispatches it.
 // Unknown envelope types are rejected without closing the hub.
 func (h *Hub) HandleMessage(nodeID string, msg []byte) error {
@@ -130,10 +162,20 @@ func (h *Hub) Dispatch(nodeID string, env domain.Envelope) error {
 		return fmt.Errorf("%w: %s", domain.ErrUnknownEnvelopeType, env.Type)
 	}
 
-	if env.Type == domain.EnvelopeTypeEvent {
+	switch env.Type {
+	case domain.EnvelopeTypeEvent:
 		h.mu.RLock()
 		handlers := make([]EventHandler, len(h.eventHandlers))
 		copy(handlers, h.eventHandlers)
+		h.mu.RUnlock()
+
+		for _, fn := range handlers {
+			fn(nodeID, env)
+		}
+	case domain.EnvelopeTypeHello, domain.EnvelopeTypeHeartbeat:
+		h.mu.RLock()
+		handlers := make([]HeartbeatHandler, len(h.heartbeatHandlers))
+		copy(handlers, h.heartbeatHandlers)
 		h.mu.RUnlock()
 
 		for _, fn := range handlers {

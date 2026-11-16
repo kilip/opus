@@ -17,6 +17,8 @@ var (
 	ErrRateLimited = errors.New("RATE_LIMITED")
 	// ErrNodeNotConnected indicates the node does not have an active connection.
 	ErrNodeNotConnected = errors.New("NODE_NOT_CONNECTED")
+	// ErrNodeNotFound indicates the node does not exist.
+	ErrNodeNotFound = errors.New("NODE_NOT_FOUND")
 	// ErrMasterConnectForbidden indicates the master node cannot connect via worker control channel.
 	ErrMasterConnectForbidden = errors.New("MASTER_CONNECT_FORBIDDEN")
 	// ErrUnauthorized indicates missing or invalid credentials.
