@@ -8,6 +8,7 @@ description: Autonomous Issue-to-PR workflow orchestrator that resolves GitHub i
 Resolve GitHub issue `#<ID>` end-to-end as a thin **Orchestrator** delegating to five subagents via `invoke_subagent` (default `Workspace: "inherit"`; pass `Model` only on explicit user override):
 
 - `scout` (`flash`), `planner` (`flash`), `coder` (`flash`), `verifier` (`flash_lite`), `pr-manager` (`flash_lite`).
+- Output a 1-line phase status in chat on each phase change (`[x] P1 | [~] P2 | [ ] P3 | [ ] P4 | [ ] P5`) with zero extra tool calls.
 
 ## Phase 1: Context & Branch Gate (Orchestrator)
 
