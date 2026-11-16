@@ -9,7 +9,7 @@ export type ChatterKind = "message" | "note" | "tracking";
 export type ChatterMessage = {
 	id: string;
 	kind: ChatterKind;
-	author: string;
+	author?: string;
 	body: string;
 	/** ISO timestamp */
 	at: string;
@@ -122,7 +122,7 @@ export function Chatter({ messages, onPost, disabledReason }: ChatterProps) {
 						</li>
 					) : (
 						<li key={m.id} className="flex items-start gap-2">
-							<Avatar name={m.author} size={28} />
+							<Avatar name={m.author || "?"} size={28} />
 							<div
 								className={`min-w-0 flex-1 rounded-lg px-3 py-2 ${
 									m.kind === "note"
@@ -131,7 +131,9 @@ export function Chatter({ messages, onPost, disabledReason }: ChatterProps) {
 								}`}
 							>
 								<p className="flex flex-wrap items-baseline gap-x-2">
-									<span className="font-semibold">{m.author}</span>
+									{m.author && (
+										<span className="font-semibold">{m.author}</span>
+									)}
 									<time dateTime={m.at} className="text-xs text-muted">
 										{stamp.format(new Date(m.at))}
 									</time>

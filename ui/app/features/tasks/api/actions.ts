@@ -149,11 +149,7 @@ export function useTaskActions() {
 			updateTask.mutate({ id, ...patch }),
 		moveTask: (id: string, status: TaskStatus) =>
 			moveTask.mutate({ id, status }),
-		addMessage: (
-			id: string,
-			kind: ActivityKind,
-			body: string,
-			author = "You",
-		) => addActivity.mutate({ id, kind, body, author }),
+		addMessage: (id: string, kind: ActivityKind, body: string) =>
+			addActivity.mutate({ id, kind, body }),
 	};
 }

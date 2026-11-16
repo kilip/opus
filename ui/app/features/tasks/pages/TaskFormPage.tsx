@@ -339,7 +339,6 @@ function TaskForm({ task }: { task?: Task }) {
 									id: task.id,
 									kind: kind === "message" ? "comment" : "review",
 									body,
-									author: CURRENT_USER,
 								})
 							}
 						/>
