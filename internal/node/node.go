@@ -136,10 +136,13 @@ func (n *Node) Start(ctx context.Context) error {
 	return nil
 }
 
-// Stop stops background services including the stale node detector.
+// Stop stops background services including the stale node detector and closes hub connections.
 func (n *Node) Stop() {
 	if n.detector != nil {
 		n.detector.Stop()
+	}
+	if n.hub != nil {
+		_ = n.hub.Close()
 	}
 }
 

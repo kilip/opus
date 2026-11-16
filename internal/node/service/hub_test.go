@@ -313,3 +313,46 @@ func TestHub_OnDisconnect_Callback(t *testing.T) {
 	}
 	mu.Unlock()
 }
+
+func TestHub_Disconnect(t *testing.T) {
+	hub := service.NewHub()
+	nodeID := "node-disc-test"
+	conn := &mockConn{}
+
+	_, err := hub.Register(nodeID, conn)
+	if err != nil {
+		t.Fatalf("register failed: %v", err)
+	}
+
+	if err := hub.Disconnect(nodeID); err != nil {
+		t.Fatalf("disconnect failed: %v", err)
+	}
+	if !conn.isClosed() {
+		t.Error("expected conn to be closed")
+	}
+
+	// Disconnecting unmapped node returns ErrNodeNotConnected
+	if err := hub.Disconnect("unknown-node"); !errors.Is(err, domain.ErrNodeNotConnected) {
+		t.Errorf("expected ErrNodeNotConnected, got %v", err)
+	}
+}
+
+func TestHub_Close(t *testing.T) {
+	hub := service.NewHub()
+	conn1 := &mockConn{}
+	conn2 := &mockConn{}
+
+	_, _ = hub.Register("node-c1", conn1)
+	_, _ = hub.Register("node-c2", conn2)
+
+	if err := hub.Close(); err != nil {
+		t.Fatalf("hub close failed: %v", err)
+	}
+
+	if !conn1.isClosed() {
+		t.Error("expected conn1 to be closed")
+	}
+	if !conn2.isClosed() {
+		t.Error("expected conn2 to be closed")
+	}
+}

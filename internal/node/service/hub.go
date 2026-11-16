@@ -184,3 +184,35 @@ func (h *Hub) Dispatch(nodeID string, env domain.Envelope) error {
 	}
 	return nil
 }
+
+// Disconnect closes the connection for the specified nodeID.
+func (h *Hub) Disconnect(nodeID string) error {
+	h.mu.RLock()
+	nc, ok := h.conns[nodeID]
+	h.mu.RUnlock()
+
+	if !ok {
+		return domain.ErrNodeNotConnected
+	}
+
+	nc.mu.Lock()
+	defer nc.mu.Unlock()
+	return nc.conn.Close()
+}
+
+// Close closes all active connections in the hub.
+func (h *Hub) Close() error {
+	h.mu.Lock()
+	conns := make([]*nodeConn, 0, len(h.conns))
+	for _, nc := range h.conns {
+		conns = append(conns, nc)
+	}
+	h.mu.Unlock()
+
+	for _, nc := range conns {
+		nc.mu.Lock()
+		_ = nc.conn.Close()
+		nc.mu.Unlock()
+	}
+	return nil
+}
