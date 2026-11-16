@@ -18,7 +18,7 @@ Opus is a single-binary **Modular Monolith** web dashboard for AI coding agents 
 - Push feature branches only when explicitly instructed by the user.
 - **Commit messages** are enforced by `commitlint.config.ts` and `.husky/commit-msg`:
   - Format: `<type>(<scope>): <subject>` (header and body lines ≤ 80 chars).
-  - Required `<scope>`: `api`, `ui`, `deps`, `release`, `tools`, `deploy`, `docs`.
+  - Required `<scope>`: `api`, `ui`, `deps`, `release`, `tools`, `deploy`, `docs`. Note that `api` covers all backend Go code (`internal/`, `ent/`, `cmd/`), e.g., `feat(api): ...`, instead of inventing a new scope.
   - **Default to non-release types** (`chore`, `ci`, `build`, `docs`, `refactor`, `test`, `style`). NEVER use `feat`, `fix`, `perf`, or `revert` unless the change modifies shipped runtime code (`cmd/`, `internal/`, `ent/`, `ui/app/`) and MUST cut a new release version (per `.github/release-please.json`).
   - Scope-to-type rule of thumb: `deploy` → `build`/`chore`, `release` → `ci`/`chore`, `tools` → `ci`/`chore`, `docs` → `docs`, `deps` → `chore(deps)` (only `api`/`ui` runtime changes use `feat`/`fix`/`perf`).
   - **Multi-stage atomic commits**: NEVER bundle unrelated files or scopes into one commit (`git add -A` is forbidden across topics). Group and commit files in separate stages by `<type>(<scope>)`.
@@ -34,6 +34,7 @@ Domain units across both backend and frontend are called **features** (never "mo
 │   ├── app/                      # HTTP server lifecycle, config, Fiber router wiring
 │   ├── auth/                     # Auth feature (OTP, OAuth providers, cookie sessions)
 │   ├── platform/
+│   │   ├── eventbus/             # In-memory pub/sub broker for decoupled feature events
 │   │   ├── httpx/                # { data, meta, error } envelope, sentinel errors, ErrorHandler
 │   │   └── mailer/               # Email delivery abstraction (SMTP, console mailer)
 │   ├── user/                     # User domain & profile management
@@ -76,6 +77,7 @@ Domain units across both backend and frontend are called **features** (never "mo
    - **Dependency direction**: `handler → service → repo → domain`. `<feature>.go` wires `repo`, `service`, and `handler` together inside `New(...)`.
    - **Thin handlers**: a handler only parses/validates the request, calls `service`, and maps the result or error to the `httpx` envelope. NEVER put business logic in `handler/`, and NEVER call `repo/` from `handler/`.
    - **Service**: owns all business rules and orchestration. It uses `domain` types only; it MUST NOT import `fiber`, `handler`, or `httpx`.
+   - **Event bus & decoupling**: features publish facts through the bus and never import each other to react to them; event types are owned by the publishing feature, defined in its `domain/` and re-exported from its root package (constants and type aliases).
    - Unified HTTP response envelope `{ data, meta, error }` and status mapping are provided by `internal/platform/httpx`.
 2. **UI Feature Isolation**:
    - Files in `ui/app/features/<feature>/` MUST NOT import from sibling `~/features/*`.
@@ -155,7 +157,7 @@ Lazy means efficient, not careless. The best code is the code never written.
   4. **Existing dependency**: Already in `go.mod` or `package.json`? Use it; never add a new package for what a few lines can do.
   5. **One-liner**: Can it be one clear line? Write one line.
   6. **Minimum working code**: Fewest files, shortest working diff, deletion over addition, boring over clever.
-- **No Speculative Abstraction**: No interface with one implementation, no factory for one product, no config knob for a constant, no `repository/` wrapper without real domain complexity. `service/` is mandatory per feature (it is the home of business logic), but keep it plain structs and functions: no service interface unless there are 2+ implementations.
+- **No Speculative Abstraction**: No interface with one implementation (e.g. `eventbus.Bus` is a concrete type with no interface), no factory for one product, no config knob for a constant, no `repository/` wrapper without real domain complexity. `service/` is mandatory per feature (it is the home of business logic), but keep it plain structs and functions: no service interface unless there are 2+ implementations.
 - **`ponytail:` Comments**: Mark deliberate simplifications inline with a `ponytail:` comment naming the ceiling and upgrade path:
 
   ```go
