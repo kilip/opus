@@ -4,9 +4,11 @@ import (
 	"context"
 	"log/slog"
 	"net"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/kilip/opus/ent"
+	"github.com/kilip/opus/internal/platform/eventbus"
 	"github.com/kilip/opus/internal/platform/mailer"
 )
 
@@ -34,14 +36,16 @@ type Opus struct {
 	fiber  *fiber.App
 	logger *slog.Logger
 	db     *ent.Client
+	bus    *eventbus.Bus
 }
 
-func New(cfg Config, fiberApp *fiber.App, logger *slog.Logger, db *ent.Client) *Opus {
+func New(cfg Config, fiberApp *fiber.App, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus) *Opus {
 	return &Opus{
 		cfg:    cfg,
 		fiber:  fiberApp,
 		logger: logger,
 		db:     db,
+		bus:    bus,
 	}
 }
 
@@ -53,6 +57,19 @@ func (o *Opus) Serve(ctx context.Context) error {
 		GracefulContext:       ctx,
 		ShutdownTimeout:       o.cfg.ShutdownTimeout,
 	})
+
+	if o.bus != nil {
+		timeout := o.cfg.ShutdownTimeout
+		if timeout <= 0 {
+			timeout = 10 * time.Second
+		}
+		closeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), timeout)
+		if closeErr := o.bus.Close(closeCtx); closeErr != nil {
+			o.logger.ErrorContext(ctx, "failed to close event bus", "error", closeErr)
+		}
+		cancel()
+	}
+
 	if o.db != nil {
 		if closeErr := o.db.Close(); closeErr != nil {
 			o.logger.ErrorContext(ctx, "failed to close database client", "error", closeErr)

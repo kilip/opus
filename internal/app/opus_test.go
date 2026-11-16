@@ -3,12 +3,26 @@ package app_test
 import (
 	"bytes"
 	"context"
+	"database/sql"
+	"errors"
+	"io"
 	"log/slog"
+	"net"
 	"reflect"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
+	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/sql"
+	"github.com/gofiber/fiber/v3"
+	"github.com/kilip/opus/ent"
+	"github.com/kilip/opus/ent/enttest"
 	"github.com/kilip/opus/internal/app"
+	"github.com/kilip/opus/internal/platform/eventbus"
+	_ "modernc.org/sqlite"
 )
 
 func TestNewMailer_FallbackToConsole(t *testing.T) {
@@ -127,5 +141,151 @@ func TestConfig_TrustedOrigins(t *testing.T) {
 	}
 	if cfg.TrustedOrigins[0] != "http://localhost:5173" || cfg.TrustedOrigins[1] != "http://localhost:3000" {
 		t.Errorf("unexpected trusted origins: %v", cfg.TrustedOrigins)
+	}
+}
+
+type shutdownTrackingDriver struct {
+	dialect.Driver
+	onClose func()
+}
+
+func (d *shutdownTrackingDriver) Close() error {
+	if d.onClose != nil {
+		d.onClose()
+	}
+	return d.Driver.Close()
+}
+
+func TestOpus_Serve_ShutdownSequence(t *testing.T) {
+	var (
+		orderMu sync.Mutex
+		order   []string
+	)
+	record := func(action string) {
+		orderMu.Lock()
+		order = append(order, action)
+		orderMu.Unlock()
+	}
+
+	sqlDB, err := sql.Open("sqlite", "file:opus_shutdown_test?mode=memory&cache=shared&_pragma=foreign_keys(ON)")
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	baseDrv := entsql.OpenDB(dialect.SQLite, sqlDB)
+	trackingDrv := &shutdownTrackingDriver{
+		Driver: baseDrv,
+		onClose: func() {
+			record("db.Close")
+		},
+	}
+	client := enttest.NewClient(t, enttest.WithOptions(ent.Driver(trackingDrv)))
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	bus := eventbus.New(eventbus.WithLogger(logger))
+
+	// Find free port
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	port := strconv.Itoa(ln.Addr().(*net.TCPAddr).Port)
+	_ = ln.Close()
+
+	cfg := app.Config{
+		Host:            "127.0.0.1",
+		Port:            port,
+		ShutdownTimeout: 2 * time.Second,
+	}
+
+	fiberApp := app.GetFiber(cfg, logger, client, bus)
+
+	httpListening := make(chan struct{})
+	fiberApp.Hooks().OnListen(func(fiber.ListenData) error {
+		close(httpListening)
+		return nil
+	})
+	fiberApp.Hooks().OnPostShutdown(func(error) error {
+		record("http.Shutdown")
+		return nil
+	})
+
+	// Setup a subscriber that processes an event and records when bus.Close drains it
+	drainBlocker := make(chan struct{})
+	busDraining := make(chan struct{})
+	err = bus.Subscribe("shutdown-sub", func(ctx context.Context, e eventbus.Event) error {
+		close(busDraining)
+		<-drainBlocker
+		record("bus.Close")
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("subscribe: %v", err)
+	}
+
+	dummyEvt, err := eventbus.NewEvent("test.shutdown", "test", nil)
+	if err != nil {
+		t.Fatalf("new event: %v", err)
+	}
+	if err := bus.Publish(context.Background(), dummyEvt); err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+
+	// Wait until subscriber starts processing the event
+	select {
+	case <-busDraining:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for subscriber to receive event")
+	}
+
+	opusApp := app.New(cfg, fiberApp, logger, client, bus)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	serveDone := make(chan error, 1)
+	go func() {
+		serveDone <- opusApp.Serve(ctx)
+	}()
+
+	// Wait until HTTP is listening
+	select {
+	case <-httpListening:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for HTTP to listen")
+	}
+
+	// Trigger shutdown
+	cancel()
+
+	// Wait for http.Shutdown to be recorded before unblocking the bus drain
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		orderMu.Lock()
+		hasHTTP := len(order) > 0 && order[0] == "http.Shutdown"
+		orderMu.Unlock()
+		if hasHTTP || time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	close(drainBlocker)
+
+	select {
+	case err := <-serveDone:
+		if err != nil {
+			t.Fatalf("unexpected Serve error: %v", err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("timed out waiting for Serve to return")
+	}
+
+	orderMu.Lock()
+	defer orderMu.Unlock()
+	expectedOrder := []string{"http.Shutdown", "bus.Close", "db.Close"}
+	if !reflect.DeepEqual(order, expectedOrder) {
+		t.Fatalf("expected shutdown order %v, got %v", expectedOrder, order)
+	}
+
+	// AC2: after Serve returns, Publish on the bus returns ErrClosed
+	if err := bus.Publish(context.Background(), dummyEvt); !errors.Is(err, eventbus.ErrClosed) {
+		t.Fatalf("expected eventbus.ErrClosed after Serve returns, got %v", err)
 	}
 }

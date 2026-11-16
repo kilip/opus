@@ -3,8 +3,12 @@
 package service
 
 import (
+	"context"
+	"log/slog"
 	"strings"
+	"sync"
 
+	"github.com/kilip/opus/internal/platform/eventbus"
 	"github.com/kilip/opus/internal/task/domain"
 	"github.com/kilip/opus/internal/task/repo"
 )
@@ -12,11 +16,16 @@ import (
 // Task owns task and activity business rules.
 type Task struct {
 	repo *repo.Memory
+	bus  *eventbus.Bus
+	mu   sync.Mutex
 }
 
-// New returns Task service backed by Memory repo.
-func New(r *repo.Memory) *Task {
-	return &Task{repo: r}
+// New returns Task service backed by Memory repo and event bus.
+func New(r *repo.Memory, bus *eventbus.Bus) *Task {
+	return &Task{
+		repo: r,
+		bus:  bus,
+	}
 }
 
 // List returns every task.
@@ -34,7 +43,7 @@ func (s *Task) Create(req domain.CreateTaskRequest) (domain.Task, error) {
 	if strings.TrimSpace(req.Title) == "" {
 		return domain.Task{}, domain.ErrTaskTitleEmpty
 	}
-	return s.repo.Create(repo.CreateInput{
+	t := s.repo.Create(repo.CreateInput{
 		Title:       req.Title,
 		Description: req.Description,
 		Status:      req.Status,
@@ -43,7 +52,27 @@ func (s *Task) Create(req domain.CreateTaskRequest) (domain.Task, error) {
 		Assignee:    req.Assignee,
 		DueDate:     req.DueDate,
 		Labels:      req.Labels,
-	}), nil
+	})
+
+	if s.bus != nil {
+		evt, err := eventbus.NewEvent(domain.EventReceived, t.ID, domain.TaskReceivedPayload{
+			ID:         t.ID,
+			Key:        t.Key,
+			Source:     t.Source,
+			ExternalID: t.ExternalID,
+			Status:     t.Status,
+		})
+		if err != nil {
+			slog.Error("failed to create task.received event", "task_id", t.ID, "error", err)
+		} else {
+			// ponytail: publish errors are logged, not returned; becomes transactional when the outbox lands
+			if err := s.bus.Publish(context.Background(), evt); err != nil {
+				slog.Error("failed to publish task.received event", "task_id", t.ID, "error", err)
+			}
+		}
+	}
+
+	return t, nil
 }
 
 // Update validates req and applies it to task id.
@@ -51,7 +80,12 @@ func (s *Task) Update(id string, req domain.UpdateTaskRequest) (domain.Task, err
 	if req.Title != nil && strings.TrimSpace(*req.Title) == "" {
 		return domain.Task{}, domain.ErrTaskTitleEmpty
 	}
-	return s.repo.Update(id, repo.UpdateInput{
+
+	// ponytail: one service-level mutex around update+publish; per-task lock if contention shows up
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	res, err := s.repo.Update(id, repo.UpdateInput{
 		Title:         req.Title,
 		Description:   req.Description,
 		Status:        req.Status,
@@ -62,6 +96,27 @@ func (s *Task) Update(id string, req domain.UpdateTaskRequest) (domain.Task, err
 		DueDate:       req.DueDate,
 		Labels:        req.Labels,
 	})
+	if err != nil {
+		return domain.Task{}, err
+	}
+
+	if res.StatusChanged && s.bus != nil {
+		evt, err := eventbus.NewEvent(domain.EventStatusChanged, res.Task.ID, domain.TaskStatusChangedPayload{
+			ID:   res.Task.ID,
+			From: res.PrevStatus,
+			To:   res.Task.Status,
+		})
+		if err != nil {
+			slog.Error("failed to create task.status_changed event", "task_id", res.Task.ID, "error", err)
+		} else {
+			// ponytail: publish errors are logged, not returned; becomes transactional when the outbox lands
+			if err := s.bus.Publish(context.Background(), evt); err != nil {
+				slog.Error("failed to publish task.status_changed event", "task_id", res.Task.ID, "error", err)
+			}
+		}
+	}
+
+	return res.Task, nil
 }
 
 // ListActivity returns chatter timeline of task id, oldest first.

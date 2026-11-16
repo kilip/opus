@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/kilip/opus/internal/app"
+	"github.com/kilip/opus/internal/platform/eventbus"
 )
 
 func parseResponseBody(t *testing.T, resp *http.Response) struct {
@@ -39,7 +40,7 @@ func TestGetFiber_CSRFProtection(t *testing.T) {
 		TrustedOrigins: []string{"http://localhost:5173"},
 	}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	fiberApp := app.GetFiber(cfg, logger, nil)
+	fiberApp := app.GetFiber(cfg, logger, nil, eventbus.New())
 
 	// Safe request (GET) with cross-origin Origin must pass through
 	t.Run("GET safe method allowed even with cross-origin", func(t *testing.T) {

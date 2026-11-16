@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/kilip/opus/internal/platform/eventbus"
 )
 
 func TestGetConfigAndLogger(t *testing.T) {
@@ -32,7 +34,7 @@ func TestGetFiber(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	f := GetFiber(cfg, GetLogger(cfg), nil)
+	f := GetFiber(cfg, GetLogger(cfg), nil, eventbus.New())
 
 	req := httptest.NewRequest("GET", "/api/health", nil)
 	resp, err := f.Test(req)

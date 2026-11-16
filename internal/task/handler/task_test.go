@@ -27,7 +27,7 @@ func setupApp() *fiber.App {
 	r := repo.NewMemory(func() time.Time {
 		return time.Date(2026, 11, 14, 12, 0, 0, 0, time.UTC)
 	})
-	h := handler.New(service.New(r))
+	h := handler.New(service.New(r, nil))
 	h.Register(app.Group("/api"))
 	return app
 }

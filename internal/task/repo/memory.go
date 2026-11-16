@@ -44,6 +44,13 @@ type UpdateInput struct {
 	Labels        *[]string
 }
 
+// UpdateResult holds the updated task, the previous status, and whether the status changed.
+type UpdateResult struct {
+	Task          domain.Task
+	PrevStatus    domain.TaskStatus
+	StatusChanged bool
+}
+
 func person(name string) *domain.Assignee {
 	return &domain.Assignee{ID: strings.ReplaceAll(strings.ToLower(name), " ", "-"), Name: name}
 }
@@ -231,7 +238,7 @@ func (m *Memory) Create(in CreateInput) domain.Task {
 	return cloneTask(t)
 }
 
-func (m *Memory) Update(id string, in UpdateInput) (domain.Task, error) {
+func (m *Memory) Update(id string, in UpdateInput) (UpdateResult, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -243,7 +250,7 @@ func (m *Memory) Update(id string, in UpdateInput) (domain.Task, error) {
 		}
 	}
 	if idx == -1 {
-		return domain.Task{}, domain.ErrTaskNotFound
+		return UpdateResult{}, domain.ErrTaskNotFound
 	}
 
 	t := &m.tasks[idx]
@@ -284,15 +291,22 @@ func (m *Memory) Update(id string, in UpdateInput) (domain.Task, error) {
 		}
 	}
 
+	prevStatus := t.Status
+	statusChanged := false
 	if in.Status != nil && *in.Status != "" && *in.Status != t.Status {
 		prev := t.Status
 		next := *in.Status
 		t.Status = next
 		m.appendActivityLocked(id, domain.ActivityKindStatus, "toni", "moved stage "+string(prev)+" → "+string(next), now)
+		statusChanged = true
 	}
 
 	t.UpdatedAt = now
-	return cloneTask(*t), nil
+	return UpdateResult{
+		Task:          cloneTask(*t),
+		PrevStatus:    prevStatus,
+		StatusChanged: statusChanged,
+	}, nil
 }
 
 func (m *Memory) appendActivityLocked(taskID string, kind domain.ActivityKind, author, body string, at time.Time) domain.Activity {

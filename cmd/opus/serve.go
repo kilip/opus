@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/kilip/opus/internal/app"
+	"github.com/kilip/opus/internal/platform/eventbus"
 	"github.com/spf13/cobra"
 )
 
@@ -23,8 +24,9 @@ func newServeCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			fiberApp := app.GetFiber(cfg, logger, db)
-			return app.New(cfg, fiberApp, logger, db).Serve(ctx)
+			bus := eventbus.New(eventbus.WithLogger(logger))
+			fiberApp := app.GetFiber(cfg, logger, db, bus)
+			return app.New(cfg, fiberApp, logger, db, bus).Serve(ctx)
 		},
 	}
 }

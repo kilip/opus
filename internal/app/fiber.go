@@ -16,6 +16,7 @@ import (
 	"github.com/kilip/opus/ent"
 	"github.com/kilip/opus/internal/auth"
 	"github.com/kilip/opus/internal/platform/csrf"
+	"github.com/kilip/opus/internal/platform/eventbus"
 	"github.com/kilip/opus/internal/platform/httpx"
 	"github.com/kilip/opus/internal/task"
 	"github.com/kilip/opus/ui"
@@ -38,7 +39,7 @@ func healthCheck(c fiber.Ctx) error {
 }
 
 // GetFiber initializes HTTP server.
-func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client) *fiber.App {
+func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus) *fiber.App {
 	app := fiber.New(fiber.Config{
 		AppName:      cfg.AppName,
 		ReadTimeout:  cfg.ReadTimeout,
@@ -117,7 +118,7 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client) *fiber.App {
 		api.Use(authFeature.Middleware())
 		authFeature.Register(authRoutes) // GET /me, POST /logout (protected)
 	}
-	task.New().Register(api)
+	task.New(bus).Register(api)
 
 	// ponytail: serves embedded SPA without custom Cache-Control headers; add immutable asset caching when CDN/traffic requires.
 	if distFS, err := ui.Dist(); err == nil {
