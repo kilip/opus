@@ -20,7 +20,7 @@ export type TaskStage = StageDef<TaskStatus> & { tone: Tone };
 export const STAGES: TaskStage[] = [
 	{ id: "backlog", name: "Backlog", tone: "neutral" },
 	{ id: "todo", name: "To Do", tone: "info" },
-	{ id: "in_progress", name: "In Progress", tone: "accent" },
+	{ id: "in-progress", name: "In Progress", tone: "accent" },
 	{ id: "review", name: "Review", tone: "primary" },
 	{ id: "done", name: "Done", tone: "success" },
 ];

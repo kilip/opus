@@ -543,7 +543,7 @@ export interface components {
         /** @enum {string} */
         "domain.TaskSource": "github" | "linear" | "sentry" | "agent" | "manual";
         /** @enum {string} */
-        "domain.TaskStatus": "backlog" | "todo" | "in_progress" | "review" | "done";
+        "domain.TaskStatus": "backlog" | "todo" | "in-progress" | "review" | "done";
         /** @enum {string} */
         "domain.TaskType": "feat" | "bug" | "chore" | "refactor" | "docs";
         "domain.UpdateTaskRequest": {
