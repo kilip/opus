@@ -20,6 +20,7 @@ import (
 	"github.com/kilip/opus/ent/activity"
 	"github.com/kilip/opus/ent/auditlog"
 	"github.com/kilip/opus/ent/counter"
+	"github.com/kilip/opus/ent/jointoken"
 	"github.com/kilip/opus/ent/node"
 	"github.com/kilip/opus/ent/otp"
 	"github.com/kilip/opus/ent/session"
@@ -40,6 +41,8 @@ type Client struct {
 	AuditLog *AuditLogClient
 	// Counter is the client for interacting with the Counter builders.
 	Counter *CounterClient
+	// JoinToken is the client for interacting with the JoinToken builders.
+	JoinToken *JoinTokenClient
 	// Node is the client for interacting with the Node builders.
 	Node *NodeClient
 	// OTP is the client for interacting with the OTP builders.
@@ -65,6 +68,7 @@ func (c *Client) init() {
 	c.Activity = NewActivityClient(c.config)
 	c.AuditLog = NewAuditLogClient(c.config)
 	c.Counter = NewCounterClient(c.config)
+	c.JoinToken = NewJoinTokenClient(c.config)
 	c.Node = NewNodeClient(c.config)
 	c.OTP = NewOTPClient(c.config)
 	c.Session = NewSessionClient(c.config)
@@ -160,17 +164,18 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:      ctx,
-		config:   cfg,
-		Account:  NewAccountClient(cfg),
-		Activity: NewActivityClient(cfg),
-		AuditLog: NewAuditLogClient(cfg),
-		Counter:  NewCounterClient(cfg),
-		Node:     NewNodeClient(cfg),
-		OTP:      NewOTPClient(cfg),
-		Session:  NewSessionClient(cfg),
-		Task:     NewTaskClient(cfg),
-		User:     NewUserClient(cfg),
+		ctx:       ctx,
+		config:    cfg,
+		Account:   NewAccountClient(cfg),
+		Activity:  NewActivityClient(cfg),
+		AuditLog:  NewAuditLogClient(cfg),
+		Counter:   NewCounterClient(cfg),
+		JoinToken: NewJoinTokenClient(cfg),
+		Node:      NewNodeClient(cfg),
+		OTP:       NewOTPClient(cfg),
+		Session:   NewSessionClient(cfg),
+		Task:      NewTaskClient(cfg),
+		User:      NewUserClient(cfg),
 	}, nil
 }
 
@@ -188,17 +193,18 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:      ctx,
-		config:   cfg,
-		Account:  NewAccountClient(cfg),
-		Activity: NewActivityClient(cfg),
-		AuditLog: NewAuditLogClient(cfg),
-		Counter:  NewCounterClient(cfg),
-		Node:     NewNodeClient(cfg),
-		OTP:      NewOTPClient(cfg),
-		Session:  NewSessionClient(cfg),
-		Task:     NewTaskClient(cfg),
-		User:     NewUserClient(cfg),
+		ctx:       ctx,
+		config:    cfg,
+		Account:   NewAccountClient(cfg),
+		Activity:  NewActivityClient(cfg),
+		AuditLog:  NewAuditLogClient(cfg),
+		Counter:   NewCounterClient(cfg),
+		JoinToken: NewJoinTokenClient(cfg),
+		Node:      NewNodeClient(cfg),
+		OTP:       NewOTPClient(cfg),
+		Session:   NewSessionClient(cfg),
+		Task:      NewTaskClient(cfg),
+		User:      NewUserClient(cfg),
 	}, nil
 }
 
@@ -228,8 +234,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Account, c.Activity, c.AuditLog, c.Counter, c.Node, c.OTP, c.Session, c.Task,
-		c.User,
+		c.Account, c.Activity, c.AuditLog, c.Counter, c.JoinToken, c.Node, c.OTP,
+		c.Session, c.Task, c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -239,8 +245,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Account, c.Activity, c.AuditLog, c.Counter, c.Node, c.OTP, c.Session, c.Task,
-		c.User,
+		c.Account, c.Activity, c.AuditLog, c.Counter, c.JoinToken, c.Node, c.OTP,
+		c.Session, c.Task, c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -257,6 +263,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.AuditLog.mutate(ctx, m)
 	case *CounterMutation:
 		return c.Counter.mutate(ctx, m)
+	case *JoinTokenMutation:
+		return c.JoinToken.mutate(ctx, m)
 	case *NodeMutation:
 		return c.Node.mutate(ctx, m)
 	case *OTPMutation:
@@ -849,6 +857,139 @@ func (c *CounterClient) mutate(ctx context.Context, m *CounterMutation) (Value, 
 		return (&CounterDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Counter mutation op: %q", m.Op())
+	}
+}
+
+// JoinTokenClient is a client for the JoinToken schema.
+type JoinTokenClient struct {
+	config
+}
+
+// NewJoinTokenClient returns a client for the JoinToken from the given config.
+func NewJoinTokenClient(c config) *JoinTokenClient {
+	return &JoinTokenClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `jointoken.Hooks(f(g(h())))`.
+func (c *JoinTokenClient) Use(hooks ...Hook) {
+	c.hooks.JoinToken = append(c.hooks.JoinToken, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `jointoken.Intercept(f(g(h())))`.
+func (c *JoinTokenClient) Intercept(interceptors ...Interceptor) {
+	c.inters.JoinToken = append(c.inters.JoinToken, interceptors...)
+}
+
+// Create returns a builder for creating a JoinToken entity.
+func (c *JoinTokenClient) Create() *JoinTokenCreate {
+	mutation := newJoinTokenMutation(c.config, OpCreate)
+	return &JoinTokenCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of JoinToken entities.
+func (c *JoinTokenClient) CreateBulk(builders ...*JoinTokenCreate) *JoinTokenCreateBulk {
+	return &JoinTokenCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *JoinTokenClient) MapCreateBulk(slice any, setFunc func(*JoinTokenCreate, int)) *JoinTokenCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &JoinTokenCreateBulk{err: fmt.Errorf("calling to JoinTokenClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*JoinTokenCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &JoinTokenCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for JoinToken.
+func (c *JoinTokenClient) Update() *JoinTokenUpdate {
+	mutation := newJoinTokenMutation(c.config, OpUpdate)
+	return &JoinTokenUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *JoinTokenClient) UpdateOne(_m *JoinToken) *JoinTokenUpdateOne {
+	mutation := newJoinTokenMutation(c.config, OpUpdateOne, withJoinToken(_m))
+	return &JoinTokenUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *JoinTokenClient) UpdateOneID(id uuid.UUID) *JoinTokenUpdateOne {
+	mutation := newJoinTokenMutation(c.config, OpUpdateOne, withJoinTokenID(id))
+	return &JoinTokenUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for JoinToken.
+func (c *JoinTokenClient) Delete() *JoinTokenDelete {
+	mutation := newJoinTokenMutation(c.config, OpDelete)
+	return &JoinTokenDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *JoinTokenClient) DeleteOne(_m *JoinToken) *JoinTokenDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *JoinTokenClient) DeleteOneID(id uuid.UUID) *JoinTokenDeleteOne {
+	builder := c.Delete().Where(jointoken.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &JoinTokenDeleteOne{builder}
+}
+
+// Query returns a query builder for JoinToken.
+func (c *JoinTokenClient) Query() *JoinTokenQuery {
+	return &JoinTokenQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeJoinToken},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a JoinToken entity by its id.
+func (c *JoinTokenClient) Get(ctx context.Context, id uuid.UUID) (*JoinToken, error) {
+	return c.Query().Where(jointoken.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *JoinTokenClient) GetX(ctx context.Context, id uuid.UUID) *JoinToken {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *JoinTokenClient) Hooks() []Hook {
+	return c.hooks.JoinToken
+}
+
+// Interceptors returns the client interceptors.
+func (c *JoinTokenClient) Interceptors() []Interceptor {
+	return c.inters.JoinToken
+}
+
+func (c *JoinTokenClient) mutate(ctx context.Context, m *JoinTokenMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&JoinTokenCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&JoinTokenUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&JoinTokenUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&JoinTokenDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown JoinToken mutation op: %q", m.Op())
 	}
 }
 
@@ -1600,10 +1741,11 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Account, Activity, AuditLog, Counter, Node, OTP, Session, Task, User []ent.Hook
+		Account, Activity, AuditLog, Counter, JoinToken, Node, OTP, Session, Task,
+		User []ent.Hook
 	}
 	inters struct {
-		Account, Activity, AuditLog, Counter, Node, OTP, Session, Task,
+		Account, Activity, AuditLog, Counter, JoinToken, Node, OTP, Session, Task,
 		User []ent.Interceptor
 	}
 )

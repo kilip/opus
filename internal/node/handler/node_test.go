@@ -45,7 +45,9 @@ func setupApp(t *testing.T) (*fiber.App, *ent.Client) {
 	})
 
 	r := repo.New(client)
-	svc := service.New(r)
+	svc := service.New(r, service.Config{
+		BaseURL: "http://localhost:7880",
+	})
 	h := handler.New(svc)
 	h.Register(app.Group("/api"))
 	return app, client
@@ -136,5 +138,50 @@ func TestListNodes_ResponseShapeAndOrder(t *testing.T) {
 		if item.Status == "" {
 			t.Errorf("expected non-empty status")
 		}
+	}
+}
+
+// AC2: POST /api/nodes/join-tokens returns 201 with { data: { url, expiresAt } }
+// where url is {APP_BASE_URL}/join/<token> and expiresAt is 15 minutes ahead.
+func TestCreateJoinToken_Success(t *testing.T) {
+	app, _ := setupApp(t)
+
+	req := httptest.NewRequest("POST", "/api/nodes/join-tokens", nil)
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("app.Test failed: %v", err)
+	}
+	if resp.StatusCode != http.StatusCreated {
+		t.Fatalf("expected 201, got %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read body: %v", err)
+	}
+
+	var envelope struct {
+		Data struct {
+			URL       string    `json:"url"`
+			ExpiresAt time.Time `json:"expiresAt"`
+		} `json:"data"`
+	}
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		t.Fatalf("unmarshal body: %v (raw: %s)", err, string(body))
+	}
+
+	const expectedPrefix = "http://localhost:7880/join/"
+	if !strings.HasPrefix(envelope.Data.URL, expectedPrefix) {
+		t.Errorf("expected URL to start with %s, got %s", expectedPrefix, envelope.Data.URL)
+	}
+	token := strings.TrimPrefix(envelope.Data.URL, expectedPrefix)
+	if len(token) == 0 {
+		t.Errorf("expected non-empty token in URL")
+	}
+
+	// Verify expiration is ~15m in the future (within 10s tolerance)
+	diff := time.Until(envelope.Data.ExpiresAt)
+	if diff < 14*time.Minute || diff > 16*time.Minute {
+		t.Errorf("expected expiration ~15m ahead, got diff %v", diff)
 	}
 }

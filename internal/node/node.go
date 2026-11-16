@@ -25,12 +25,21 @@ const (
 	StatusOffline = domain.StatusOffline
 )
 
+// Sentinel errors re-exported from domain.
+var (
+	ErrTokenNotFound    = domain.ErrTokenNotFound
+	ErrTokenExpired     = domain.ErrTokenExpired
+	ErrTokenAlreadyUsed = domain.ErrTokenAlreadyUsed
+)
+
 // Re-exported domain types.
 type (
-	Role             = domain.Role
-	Status           = domain.Status
-	NodeEventPayload = domain.NodeEventPayload
-	NodeResponse     = domain.NodeResponse
+	Role              = domain.Role
+	Status            = domain.Status
+	NodeEventPayload  = domain.NodeEventPayload
+	NodeResponse      = domain.NodeResponse
+	JoinTokenResponse = domain.JoinTokenResponse
+	Config            = service.Config
 )
 
 // Node is the node feature facade.
@@ -40,9 +49,9 @@ type Node struct {
 }
 
 // New returns a new Node feature facade backed by Ent.
-func New(client *ent.Client) *Node {
+func New(client *ent.Client, cfg Config) *Node {
 	r := repo.New(client)
-	svc := service.New(r)
+	svc := service.New(r, cfg)
 	return &Node{
 		svc:     svc,
 		handler: handler.New(svc),
@@ -52,6 +61,16 @@ func New(client *ent.Client) *Node {
 // Bootstrap registers the master node and resets workers to offline.
 func (n *Node) Bootstrap(ctx context.Context) error {
 	return n.svc.Bootstrap(ctx)
+}
+
+// GenerateJoinToken creates a new join token.
+func (n *Node) GenerateJoinToken(ctx context.Context) (domain.JoinTokenResponse, error) {
+	return n.svc.GenerateJoinToken(ctx)
+}
+
+// ConsumeJoinToken validates and consumes a join token.
+func (n *Node) ConsumeJoinToken(ctx context.Context, token string) error {
+	return n.svc.ConsumeJoinToken(ctx, token)
 }
 
 // Register mounts the node HTTP routes on r.

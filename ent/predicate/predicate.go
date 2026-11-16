@@ -18,6 +18,9 @@ type AuditLog func(*sql.Selector)
 // Counter is the predicate function for counter builders.
 type Counter func(*sql.Selector)
 
+// JoinToken is the predicate function for jointoken builders.
+type JoinToken func(*sql.Selector)
+
 // Node is the predicate function for node builders.
 type Node func(*sql.Selector)
 

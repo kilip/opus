@@ -120,7 +120,7 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 		api.Use(authFeature.Middleware())
 		authFeature.Register(authRoutes) // GET /me, POST /logout (protected)
 		task.New(db, bus).Register(api)
-		nodeFeature := node.New(db)
+		nodeFeature := node.New(db, node.Config{BaseURL: cfg.BaseURL})
 		if err := nodeFeature.Bootstrap(context.Background()); err != nil {
 			logger.Error("node registry bootstrap failed", "error", err)
 		}

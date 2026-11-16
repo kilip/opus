@@ -20,6 +20,8 @@ type Tx struct {
 	AuditLog *AuditLogClient
 	// Counter is the client for interacting with the Counter builders.
 	Counter *CounterClient
+	// JoinToken is the client for interacting with the JoinToken builders.
+	JoinToken *JoinTokenClient
 	// Node is the client for interacting with the Node builders.
 	Node *NodeClient
 	// OTP is the client for interacting with the OTP builders.
@@ -165,6 +167,7 @@ func (tx *Tx) init() {
 	tx.Activity = NewActivityClient(tx.config)
 	tx.AuditLog = NewAuditLogClient(tx.config)
 	tx.Counter = NewCounterClient(tx.config)
+	tx.JoinToken = NewJoinTokenClient(tx.config)
 	tx.Node = NewNodeClient(tx.config)
 	tx.OTP = NewOTPClient(tx.config)
 	tx.Session = NewSessionClient(tx.config)

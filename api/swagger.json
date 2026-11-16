@@ -135,6 +135,17 @@
                 ],
                 "type": "object"
             },
+            "domain.JoinTokenResponse": {
+                "properties": {
+                    "expiresAt": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "domain.NodeResponse": {
                 "properties": {
                     "id": {
@@ -539,6 +550,20 @@
                 "properties": {
                     "data": {
                         "$ref": "#/components/schemas/domain.Activity"
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
+            "httpx.Response-domain_JoinTokenResponse": {
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/domain.JoinTokenResponse"
                     },
                     "error": {
                         "type": "string"
@@ -1045,6 +1070,48 @@
                     }
                 },
                 "summary": "List nodes",
+                "tags": [
+                    "nodes"
+                ]
+            }
+        },
+        "/nodes/join-tokens": {
+            "post": {
+                "description": "Generates a single-use join token URL valid for 15 minutes.",
+                "operationId": "create-node-join-token",
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-domain_JoinTokenResponse"
+                                }
+                            }
+                        },
+                        "description": "Created"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Create node join token",
                 "tags": [
                     "nodes"
                 ]

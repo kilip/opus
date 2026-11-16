@@ -16,6 +16,7 @@ import (
 	"github.com/kilip/opus/ent/activity"
 	"github.com/kilip/opus/ent/auditlog"
 	"github.com/kilip/opus/ent/counter"
+	"github.com/kilip/opus/ent/jointoken"
 	"github.com/kilip/opus/ent/node"
 	"github.com/kilip/opus/ent/otp"
 	"github.com/kilip/opus/ent/session"
@@ -81,15 +82,16 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			account.Table:  account.ValidColumn,
-			activity.Table: activity.ValidColumn,
-			auditlog.Table: auditlog.ValidColumn,
-			counter.Table:  counter.ValidColumn,
-			node.Table:     node.ValidColumn,
-			otp.Table:      otp.ValidColumn,
-			session.Table:  session.ValidColumn,
-			task.Table:     task.ValidColumn,
-			user.Table:     user.ValidColumn,
+			account.Table:   account.ValidColumn,
+			activity.Table:  activity.ValidColumn,
+			auditlog.Table:  auditlog.ValidColumn,
+			counter.Table:   counter.ValidColumn,
+			jointoken.Table: jointoken.ValidColumn,
+			node.Table:      node.ValidColumn,
+			otp.Table:       otp.ValidColumn,
+			session.Table:   session.ValidColumn,
+			task.Table:      task.ValidColumn,
+			user.Table:      user.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

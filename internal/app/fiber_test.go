@@ -234,6 +234,20 @@ func TestGetFiber_NodesRequiresAuthAndPersistsMaster(t *testing.T) {
 		t.Errorf("expected error %q, got %q", "UNAUTHORIZED", body.Error)
 	}
 
+	// Unauthenticated POST /api/nodes/join-tokens returns 401
+	reqJoinTokens := httptest.NewRequest("POST", "/api/nodes/join-tokens", nil)
+	respJoinTokens, err := fiberApp1.Test(reqJoinTokens)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if respJoinTokens.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for /api/nodes/join-tokens, got %d", respJoinTokens.StatusCode)
+	}
+	bodyJoinTokens := parseResponseBody(t, respJoinTokens)
+	if bodyJoinTokens.Error != "UNAUTHORIZED" {
+		t.Errorf("expected error %q, got %q", "UNAUTHORIZED", bodyJoinTokens.Error)
+	}
+
 	// Verify master node created in DB
 	ctx := context.Background()
 	masters1, err := client.Node.Query().Where(entnode.RoleEQ(entnode.RoleMaster)).All(ctx)

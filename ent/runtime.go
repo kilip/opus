@@ -10,6 +10,7 @@ import (
 	"github.com/kilip/opus/ent/activity"
 	"github.com/kilip/opus/ent/auditlog"
 	"github.com/kilip/opus/ent/counter"
+	"github.com/kilip/opus/ent/jointoken"
 	"github.com/kilip/opus/ent/node"
 	"github.com/kilip/opus/ent/otp"
 	"github.com/kilip/opus/ent/schema"
@@ -102,6 +103,16 @@ func init() {
 	counterDescID := counterFields[0].Descriptor()
 	// counter.DefaultID holds the default value on creation for the id field.
 	counter.DefaultID = counterDescID.Default.(func() uuid.UUID)
+	jointokenFields := schema.JoinToken{}.Fields()
+	_ = jointokenFields
+	// jointokenDescTokenHash is the schema descriptor for token_hash field.
+	jointokenDescTokenHash := jointokenFields[1].Descriptor()
+	// jointoken.TokenHashValidator is a validator for the "token_hash" field. It is called by the builders before save.
+	jointoken.TokenHashValidator = jointokenDescTokenHash.Validators[0].(func(string) error)
+	// jointokenDescID is the schema descriptor for id field.
+	jointokenDescID := jointokenFields[0].Descriptor()
+	// jointoken.DefaultID holds the default value on creation for the id field.
+	jointoken.DefaultID = jointokenDescID.Default.(func() uuid.UUID)
 	nodeFields := schema.Node{}.Fields()
 	_ = nodeFields
 	// nodeDescName is the schema descriptor for name field.

@@ -2,8 +2,10 @@ package repo
 
 import (
 	"context"
+	"time"
 
 	"github.com/kilip/opus/ent"
+	"github.com/kilip/opus/ent/jointoken"
 	entnode "github.com/kilip/opus/ent/node"
 	"github.com/kilip/opus/internal/node/domain"
 )
@@ -87,4 +89,49 @@ func (r *Ent) List(ctx context.Context) ([]domain.Node, error) {
 		}
 	}
 	return out, nil
+}
+
+// CreateJoinToken stores a join token hash and expiration.
+func (r *Ent) CreateJoinToken(ctx context.Context, tokenHash string, expiresAt time.Time) error {
+	return r.client.JoinToken.Create().
+		SetTokenHash(tokenHash).
+		SetExpiresAt(expiresAt).
+		Exec(ctx)
+}
+
+// ConsumeJoinToken atomically validates and consumes a join token by its hash.
+// Returns ErrTokenNotFound if not found, ErrTokenAlreadyUsed if already consumed,
+// ErrTokenExpired if past its expiration time.
+func (r *Ent) ConsumeJoinToken(ctx context.Context, tokenHash string, now time.Time) error {
+	tx, err := r.client.Tx(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	tok, err := tx.JoinToken.Query().
+		Where(jointoken.TokenHashEQ(tokenHash)).
+		Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return domain.ErrTokenNotFound
+		}
+		return err
+	}
+
+	if tok.UsedAt != nil {
+		return domain.ErrTokenAlreadyUsed
+	}
+
+	if now.After(tok.ExpiresAt) {
+		return domain.ErrTokenExpired
+	}
+
+	if err := tx.JoinToken.UpdateOne(tok).
+		SetUsedAt(now).
+		Exec(ctx); err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }

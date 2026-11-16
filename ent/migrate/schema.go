@@ -97,6 +97,19 @@ var (
 		Columns:    CountersColumns,
 		PrimaryKey: []*schema.Column{CountersColumns[0]},
 	}
+	// JoinTokensColumns holds the columns for the "join_tokens" table.
+	JoinTokensColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "token_hash", Type: field.TypeString, Unique: true},
+		{Name: "expires_at", Type: field.TypeTime},
+		{Name: "used_at", Type: field.TypeTime, Nullable: true},
+	}
+	// JoinTokensTable holds the schema information for the "join_tokens" table.
+	JoinTokensTable = &schema.Table{
+		Name:       "join_tokens",
+		Columns:    JoinTokensColumns,
+		PrimaryKey: []*schema.Column{JoinTokensColumns[0]},
+	}
 	// NodesColumns holds the columns for the "nodes" table.
 	NodesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -207,6 +220,7 @@ var (
 		ActivitiesTable,
 		AuditLogsTable,
 		CountersTable,
+		JoinTokensTable,
 		NodesTable,
 		OtPsTable,
 		SessionsTable,
