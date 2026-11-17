@@ -15,6 +15,7 @@ import (
 	"github.com/kilip/opus/ent/account"
 	"github.com/kilip/opus/ent/activity"
 	"github.com/kilip/opus/ent/auditlog"
+	"github.com/kilip/opus/ent/authsession"
 	"github.com/kilip/opus/ent/counter"
 	"github.com/kilip/opus/ent/jointoken"
 	"github.com/kilip/opus/ent/node"
@@ -22,6 +23,7 @@ import (
 	"github.com/kilip/opus/ent/project"
 	"github.com/kilip/opus/ent/projectnode"
 	"github.com/kilip/opus/ent/session"
+	"github.com/kilip/opus/ent/sessionevent"
 	"github.com/kilip/opus/ent/task"
 	"github.com/kilip/opus/ent/trackerpr"
 	"github.com/kilip/opus/ent/trackersettings"
@@ -90,6 +92,7 @@ func checkColumn(t, c string) error {
 			account.Table:         account.ValidColumn,
 			activity.Table:        activity.ValidColumn,
 			auditlog.Table:        auditlog.ValidColumn,
+			authsession.Table:     authsession.ValidColumn,
 			counter.Table:         counter.ValidColumn,
 			jointoken.Table:       jointoken.ValidColumn,
 			node.Table:            node.ValidColumn,
@@ -97,6 +100,7 @@ func checkColumn(t, c string) error {
 			project.Table:         project.ValidColumn,
 			projectnode.Table:     projectnode.ValidColumn,
 			session.Table:         session.ValidColumn,
+			sessionevent.Table:    sessionevent.ValidColumn,
 			task.Table:            task.ValidColumn,
 			trackerpr.Table:       trackerpr.ValidColumn,
 			trackersettings.Table: trackersettings.ValidColumn,

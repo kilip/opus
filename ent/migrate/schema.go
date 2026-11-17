@@ -85,6 +85,28 @@ var (
 			},
 		},
 	}
+	// AuthSessionsColumns holds the columns for the "auth_sessions" table.
+	AuthSessionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "token_hash", Type: field.TypeString, Unique: true},
+		{Name: "expires_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "user_id", Type: field.TypeUUID},
+	}
+	// AuthSessionsTable holds the schema information for the "auth_sessions" table.
+	AuthSessionsTable = &schema.Table{
+		Name:       "auth_sessions",
+		Columns:    AuthSessionsColumns,
+		PrimaryKey: []*schema.Column{AuthSessionsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "auth_sessions_users_sessions",
+				Columns:    []*schema.Column{AuthSessionsColumns[4]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// CountersColumns holds the columns for the "counters" table.
 	CountersColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -204,22 +226,67 @@ var (
 	// SessionsColumns holds the columns for the "sessions" table.
 	SessionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
-		{Name: "token_hash", Type: field.TypeString, Unique: true},
-		{Name: "expires_at", Type: field.TypeTime},
+		{Name: "task_id", Type: field.TypeUUID},
+		{Name: "node_id", Type: field.TypeUUID},
+		{Name: "provider", Type: field.TypeString},
+		{Name: "provider_account", Type: field.TypeString, Default: "default"},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"queued", "running", "completed", "failed", "cancelled"}, Default: "queued"},
+		{Name: "failure_reason", Type: field.TypeString, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
-		{Name: "user_id", Type: field.TypeUUID},
+		{Name: "started_at", Type: field.TypeTime, Nullable: true},
+		{Name: "ended_at", Type: field.TypeTime, Nullable: true},
+		{Name: "updated_at", Type: field.TypeTime},
 	}
 	// SessionsTable holds the schema information for the "sessions" table.
 	SessionsTable = &schema.Table{
 		Name:       "sessions",
 		Columns:    SessionsColumns,
 		PrimaryKey: []*schema.Column{SessionsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "session_task_id",
+				Unique:  false,
+				Columns: []*schema.Column{SessionsColumns[1]},
+			},
+			{
+				Name:    "session_node_id",
+				Unique:  false,
+				Columns: []*schema.Column{SessionsColumns[2]},
+			},
+			{
+				Name:    "session_status",
+				Unique:  false,
+				Columns: []*schema.Column{SessionsColumns[5]},
+			},
+		},
+	}
+	// SessionEventsColumns holds the columns for the "session_events" table.
+	SessionEventsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "seq", Type: field.TypeInt},
+		{Name: "kind", Type: field.TypeString},
+		{Name: "payload", Type: field.TypeJSON, Nullable: true},
+		{Name: "at", Type: field.TypeTime},
+		{Name: "session_id", Type: field.TypeUUID},
+	}
+	// SessionEventsTable holds the schema information for the "session_events" table.
+	SessionEventsTable = &schema.Table{
+		Name:       "session_events",
+		Columns:    SessionEventsColumns,
+		PrimaryKey: []*schema.Column{SessionEventsColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "sessions_users_sessions",
-				Columns:    []*schema.Column{SessionsColumns[4]},
-				RefColumns: []*schema.Column{UsersColumns[0]},
+				Symbol:     "session_events_sessions_events",
+				Columns:    []*schema.Column{SessionEventsColumns[5]},
+				RefColumns: []*schema.Column{SessionsColumns[0]},
 				OnDelete:   schema.Cascade,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "sessionevent_session_id_seq",
+				Unique:  true,
+				Columns: []*schema.Column{SessionEventsColumns[5], SessionEventsColumns[1]},
 			},
 		},
 	}
@@ -363,6 +430,7 @@ var (
 		AccountsTable,
 		ActivitiesTable,
 		AuditLogsTable,
+		AuthSessionsTable,
 		CountersTable,
 		JoinTokensTable,
 		NodesTable,
@@ -370,6 +438,7 @@ var (
 		ProjectsTable,
 		ProjectNodesTable,
 		SessionsTable,
+		SessionEventsTable,
 		TasksTable,
 		TrackerPrsTable,
 		TrackerSettingsTable,
@@ -382,9 +451,10 @@ func init() {
 	AccountsTable.ForeignKeys[0].RefTable = UsersTable
 	ActivitiesTable.ForeignKeys[0].RefTable = TasksTable
 	AuditLogsTable.ForeignKeys[0].RefTable = UsersTable
+	AuthSessionsTable.ForeignKeys[0].RefTable = UsersTable
 	ProjectNodesTable.ForeignKeys[0].RefTable = NodesTable
 	ProjectNodesTable.ForeignKeys[1].RefTable = ProjectsTable
-	SessionsTable.ForeignKeys[0].RefTable = UsersTable
+	SessionEventsTable.ForeignKeys[0].RefTable = SessionsTable
 	TasksTable.ForeignKeys[0].RefTable = ProjectsTable
 	TrackerPrsTable.ForeignKeys[0].RefTable = ProjectsTable
 	TrackerPrsTable.ForeignKeys[1].RefTable = TasksTable

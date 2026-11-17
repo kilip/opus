@@ -4,6 +4,7 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
 	"math"
 
@@ -14,7 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kilip/opus/ent/predicate"
 	"github.com/kilip/opus/ent/session"
-	"github.com/kilip/opus/ent/user"
+	"github.com/kilip/opus/ent/sessionevent"
 )
 
 // SessionQuery is the builder for querying Session entities.
@@ -24,7 +25,7 @@ type SessionQuery struct {
 	order      []session.OrderOption
 	inters     []Interceptor
 	predicates []predicate.Session
-	withUser   *UserQuery
+	withEvents *SessionEventQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -61,9 +62,9 @@ func (_q *SessionQuery) Order(o ...session.OrderOption) *SessionQuery {
 	return _q
 }
 
-// QueryUser chains the current query on the "user" edge.
-func (_q *SessionQuery) QueryUser() *UserQuery {
-	query := (&UserClient{config: _q.config}).Query()
+// QueryEvents chains the current query on the "events" edge.
+func (_q *SessionQuery) QueryEvents() *SessionEventQuery {
+	query := (&SessionEventClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -74,8 +75,8 @@ func (_q *SessionQuery) QueryUser() *UserQuery {
 		}
 		step := sqlgraph.NewStep(
 			sqlgraph.From(session.Table, session.FieldID, selector),
-			sqlgraph.To(user.Table, user.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, session.UserTable, session.UserColumn),
+			sqlgraph.To(sessionevent.Table, sessionevent.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, session.EventsTable, session.EventsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -275,21 +276,21 @@ func (_q *SessionQuery) Clone() *SessionQuery {
 		order:      append([]session.OrderOption{}, _q.order...),
 		inters:     append([]Interceptor{}, _q.inters...),
 		predicates: append([]predicate.Session{}, _q.predicates...),
-		withUser:   _q.withUser.Clone(),
+		withEvents: _q.withEvents.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
 	}
 }
 
-// WithUser tells the query-builder to eager-load the nodes that are connected to
-// the "user" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *SessionQuery) WithUser(opts ...func(*UserQuery)) *SessionQuery {
-	query := (&UserClient{config: _q.config}).Query()
+// WithEvents tells the query-builder to eager-load the nodes that are connected to
+// the "events" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *SessionQuery) WithEvents(opts ...func(*SessionEventQuery)) *SessionQuery {
+	query := (&SessionEventClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	_q.withUser = query
+	_q.withEvents = query
 	return _q
 }
 
@@ -299,12 +300,12 @@ func (_q *SessionQuery) WithUser(opts ...func(*UserQuery)) *SessionQuery {
 // Example:
 //
 //	var v []struct {
-//		UserID uuid.UUID `json:"user_id,omitempty"`
+//		TaskID uuid.UUID `json:"task_id,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Session.Query().
-//		GroupBy(session.FieldUserID).
+//		GroupBy(session.FieldTaskID).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (_q *SessionQuery) GroupBy(field string, fields ...string) *SessionGroupBy {
@@ -322,11 +323,11 @@ func (_q *SessionQuery) GroupBy(field string, fields ...string) *SessionGroupBy 
 // Example:
 //
 //	var v []struct {
-//		UserID uuid.UUID `json:"user_id,omitempty"`
+//		TaskID uuid.UUID `json:"task_id,omitempty"`
 //	}
 //
 //	client.Session.Query().
-//		Select(session.FieldUserID).
+//		Select(session.FieldTaskID).
 //		Scan(ctx, &v)
 func (_q *SessionQuery) Select(fields ...string) *SessionSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)
@@ -372,7 +373,7 @@ func (_q *SessionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Sess
 		nodes       = []*Session{}
 		_spec       = _q.querySpec()
 		loadedTypes = [1]bool{
-			_q.withUser != nil,
+			_q.withEvents != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -393,41 +394,43 @@ func (_q *SessionQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Sess
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
-	if query := _q.withUser; query != nil {
-		if err := _q.loadUser(ctx, query, nodes, nil,
-			func(n *Session, e *User) { n.Edges.User = e }); err != nil {
+	if query := _q.withEvents; query != nil {
+		if err := _q.loadEvents(ctx, query, nodes,
+			func(n *Session) { n.Edges.Events = []*SessionEvent{} },
+			func(n *Session, e *SessionEvent) { n.Edges.Events = append(n.Edges.Events, e) }); err != nil {
 			return nil, err
 		}
 	}
 	return nodes, nil
 }
 
-func (_q *SessionQuery) loadUser(ctx context.Context, query *UserQuery, nodes []*Session, init func(*Session), assign func(*Session, *User)) error {
-	ids := make([]uuid.UUID, 0, len(nodes))
-	nodeids := make(map[uuid.UUID][]*Session)
+func (_q *SessionQuery) loadEvents(ctx context.Context, query *SessionEventQuery, nodes []*Session, init func(*Session), assign func(*Session, *SessionEvent)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Session)
 	for i := range nodes {
-		fk := nodes[i].UserID
-		if _, ok := nodeids[fk]; !ok {
-			ids = append(ids, fk)
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
 		}
-		nodeids[fk] = append(nodeids[fk], nodes[i])
 	}
-	if len(ids) == 0 {
-		return nil
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(sessionevent.FieldSessionID)
 	}
-	query.Where(user.IDIn(ids...))
+	query.Where(predicate.SessionEvent(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(session.EventsColumn), fks...))
+	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
-		nodes, ok := nodeids[n.ID]
+		fk := n.SessionID
+		node, ok := nodeids[fk]
 		if !ok {
-			return fmt.Errorf(`unexpected foreign-key "user_id" returned %v`, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "session_id" returned %v for node %v`, fk, n.ID)
 		}
-		for i := range nodes {
-			assign(nodes[i], n)
-		}
+		assign(node, n)
 	}
 	return nil
 }
@@ -456,9 +459,6 @@ func (_q *SessionQuery) querySpec() *sqlgraph.QuerySpec {
 			if fields[i] != session.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
-		}
-		if _q.withUser != nil {
-			_spec.Node.AddColumnOnce(session.FieldUserID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {

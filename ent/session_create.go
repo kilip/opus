@@ -12,7 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/kilip/opus/ent/session"
-	"github.com/kilip/opus/ent/user"
+	"github.com/kilip/opus/ent/sessionevent"
 )
 
 // SessionCreate is the builder for creating a Session entity.
@@ -22,21 +22,63 @@ type SessionCreate struct {
 	hooks    []Hook
 }
 
-// SetUserID sets the "user_id" field.
-func (_c *SessionCreate) SetUserID(v uuid.UUID) *SessionCreate {
-	_c.mutation.SetUserID(v)
+// SetTaskID sets the "task_id" field.
+func (_c *SessionCreate) SetTaskID(v uuid.UUID) *SessionCreate {
+	_c.mutation.SetTaskID(v)
 	return _c
 }
 
-// SetTokenHash sets the "token_hash" field.
-func (_c *SessionCreate) SetTokenHash(v string) *SessionCreate {
-	_c.mutation.SetTokenHash(v)
+// SetNodeID sets the "node_id" field.
+func (_c *SessionCreate) SetNodeID(v uuid.UUID) *SessionCreate {
+	_c.mutation.SetNodeID(v)
 	return _c
 }
 
-// SetExpiresAt sets the "expires_at" field.
-func (_c *SessionCreate) SetExpiresAt(v time.Time) *SessionCreate {
-	_c.mutation.SetExpiresAt(v)
+// SetProvider sets the "provider" field.
+func (_c *SessionCreate) SetProvider(v string) *SessionCreate {
+	_c.mutation.SetProvider(v)
+	return _c
+}
+
+// SetProviderAccount sets the "provider_account" field.
+func (_c *SessionCreate) SetProviderAccount(v string) *SessionCreate {
+	_c.mutation.SetProviderAccount(v)
+	return _c
+}
+
+// SetNillableProviderAccount sets the "provider_account" field if the given value is not nil.
+func (_c *SessionCreate) SetNillableProviderAccount(v *string) *SessionCreate {
+	if v != nil {
+		_c.SetProviderAccount(*v)
+	}
+	return _c
+}
+
+// SetStatus sets the "status" field.
+func (_c *SessionCreate) SetStatus(v session.Status) *SessionCreate {
+	_c.mutation.SetStatus(v)
+	return _c
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (_c *SessionCreate) SetNillableStatus(v *session.Status) *SessionCreate {
+	if v != nil {
+		_c.SetStatus(*v)
+	}
+	return _c
+}
+
+// SetFailureReason sets the "failure_reason" field.
+func (_c *SessionCreate) SetFailureReason(v string) *SessionCreate {
+	_c.mutation.SetFailureReason(v)
+	return _c
+}
+
+// SetNillableFailureReason sets the "failure_reason" field if the given value is not nil.
+func (_c *SessionCreate) SetNillableFailureReason(v *string) *SessionCreate {
+	if v != nil {
+		_c.SetFailureReason(*v)
+	}
 	return _c
 }
 
@@ -50,6 +92,48 @@ func (_c *SessionCreate) SetCreatedAt(v time.Time) *SessionCreate {
 func (_c *SessionCreate) SetNillableCreatedAt(v *time.Time) *SessionCreate {
 	if v != nil {
 		_c.SetCreatedAt(*v)
+	}
+	return _c
+}
+
+// SetStartedAt sets the "started_at" field.
+func (_c *SessionCreate) SetStartedAt(v time.Time) *SessionCreate {
+	_c.mutation.SetStartedAt(v)
+	return _c
+}
+
+// SetNillableStartedAt sets the "started_at" field if the given value is not nil.
+func (_c *SessionCreate) SetNillableStartedAt(v *time.Time) *SessionCreate {
+	if v != nil {
+		_c.SetStartedAt(*v)
+	}
+	return _c
+}
+
+// SetEndedAt sets the "ended_at" field.
+func (_c *SessionCreate) SetEndedAt(v time.Time) *SessionCreate {
+	_c.mutation.SetEndedAt(v)
+	return _c
+}
+
+// SetNillableEndedAt sets the "ended_at" field if the given value is not nil.
+func (_c *SessionCreate) SetNillableEndedAt(v *time.Time) *SessionCreate {
+	if v != nil {
+		_c.SetEndedAt(*v)
+	}
+	return _c
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (_c *SessionCreate) SetUpdatedAt(v time.Time) *SessionCreate {
+	_c.mutation.SetUpdatedAt(v)
+	return _c
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (_c *SessionCreate) SetNillableUpdatedAt(v *time.Time) *SessionCreate {
+	if v != nil {
+		_c.SetUpdatedAt(*v)
 	}
 	return _c
 }
@@ -68,9 +152,19 @@ func (_c *SessionCreate) SetNillableID(v *uuid.UUID) *SessionCreate {
 	return _c
 }
 
-// SetUser sets the "user" edge to the User entity.
-func (_c *SessionCreate) SetUser(v *User) *SessionCreate {
-	return _c.SetUserID(v.ID)
+// AddEventIDs adds the "events" edge to the SessionEvent entity by IDs.
+func (_c *SessionCreate) AddEventIDs(ids ...uuid.UUID) *SessionCreate {
+	_c.mutation.AddEventIDs(ids...)
+	return _c
+}
+
+// AddEvents adds the "events" edges to the SessionEvent entity.
+func (_c *SessionCreate) AddEvents(v ...*SessionEvent) *SessionCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddEventIDs(ids...)
 }
 
 // Mutation returns the SessionMutation object of the builder.
@@ -108,9 +202,21 @@ func (_c *SessionCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *SessionCreate) defaults() {
+	if _, ok := _c.mutation.ProviderAccount(); !ok {
+		v := session.DefaultProviderAccount
+		_c.mutation.SetProviderAccount(v)
+	}
+	if _, ok := _c.mutation.Status(); !ok {
+		v := session.DefaultStatus
+		_c.mutation.SetStatus(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := session.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
+	}
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
+		v := session.DefaultUpdatedAt()
+		_c.mutation.SetUpdatedAt(v)
 	}
 	if _, ok := _c.mutation.ID(); !ok {
 		v := session.DefaultID()
@@ -120,25 +226,36 @@ func (_c *SessionCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *SessionCreate) check() error {
-	if _, ok := _c.mutation.UserID(); !ok {
-		return &ValidationError{Name: "user_id", err: errors.New(`ent: missing required field "Session.user_id"`)}
+	if _, ok := _c.mutation.TaskID(); !ok {
+		return &ValidationError{Name: "task_id", err: errors.New(`ent: missing required field "Session.task_id"`)}
 	}
-	if _, ok := _c.mutation.TokenHash(); !ok {
-		return &ValidationError{Name: "token_hash", err: errors.New(`ent: missing required field "Session.token_hash"`)}
+	if _, ok := _c.mutation.NodeID(); !ok {
+		return &ValidationError{Name: "node_id", err: errors.New(`ent: missing required field "Session.node_id"`)}
 	}
-	if v, ok := _c.mutation.TokenHash(); ok {
-		if err := session.TokenHashValidator(v); err != nil {
-			return &ValidationError{Name: "token_hash", err: fmt.Errorf(`ent: validator failed for field "Session.token_hash": %w`, err)}
+	if _, ok := _c.mutation.Provider(); !ok {
+		return &ValidationError{Name: "provider", err: errors.New(`ent: missing required field "Session.provider"`)}
+	}
+	if v, ok := _c.mutation.Provider(); ok {
+		if err := session.ProviderValidator(v); err != nil {
+			return &ValidationError{Name: "provider", err: fmt.Errorf(`ent: validator failed for field "Session.provider": %w`, err)}
 		}
 	}
-	if _, ok := _c.mutation.ExpiresAt(); !ok {
-		return &ValidationError{Name: "expires_at", err: errors.New(`ent: missing required field "Session.expires_at"`)}
+	if _, ok := _c.mutation.ProviderAccount(); !ok {
+		return &ValidationError{Name: "provider_account", err: errors.New(`ent: missing required field "Session.provider_account"`)}
+	}
+	if _, ok := _c.mutation.Status(); !ok {
+		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "Session.status"`)}
+	}
+	if v, ok := _c.mutation.Status(); ok {
+		if err := session.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Session.status": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Session.created_at"`)}
 	}
-	if len(_c.mutation.UserIDs()) == 0 {
-		return &ValidationError{Name: "user", err: errors.New(`ent: missing required edge "Session.user"`)}
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Session.updated_at"`)}
 	}
 	return nil
 }
@@ -175,33 +292,60 @@ func (_c *SessionCreate) createSpec() (*Session, *sqlgraph.CreateSpec) {
 		_node.ID = id
 		_spec.ID.Value = &id
 	}
-	if value, ok := _c.mutation.TokenHash(); ok {
-		_spec.SetField(session.FieldTokenHash, field.TypeString, value)
-		_node.TokenHash = value
+	if value, ok := _c.mutation.TaskID(); ok {
+		_spec.SetField(session.FieldTaskID, field.TypeUUID, value)
+		_node.TaskID = value
 	}
-	if value, ok := _c.mutation.ExpiresAt(); ok {
-		_spec.SetField(session.FieldExpiresAt, field.TypeTime, value)
-		_node.ExpiresAt = value
+	if value, ok := _c.mutation.NodeID(); ok {
+		_spec.SetField(session.FieldNodeID, field.TypeUUID, value)
+		_node.NodeID = value
+	}
+	if value, ok := _c.mutation.Provider(); ok {
+		_spec.SetField(session.FieldProvider, field.TypeString, value)
+		_node.Provider = value
+	}
+	if value, ok := _c.mutation.ProviderAccount(); ok {
+		_spec.SetField(session.FieldProviderAccount, field.TypeString, value)
+		_node.ProviderAccount = value
+	}
+	if value, ok := _c.mutation.Status(); ok {
+		_spec.SetField(session.FieldStatus, field.TypeEnum, value)
+		_node.Status = value
+	}
+	if value, ok := _c.mutation.FailureReason(); ok {
+		_spec.SetField(session.FieldFailureReason, field.TypeString, value)
+		_node.FailureReason = &value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(session.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
 	}
-	if nodes := _c.mutation.UserIDs(); len(nodes) > 0 {
+	if value, ok := _c.mutation.StartedAt(); ok {
+		_spec.SetField(session.FieldStartedAt, field.TypeTime, value)
+		_node.StartedAt = &value
+	}
+	if value, ok := _c.mutation.EndedAt(); ok {
+		_spec.SetField(session.FieldEndedAt, field.TypeTime, value)
+		_node.EndedAt = &value
+	}
+	if value, ok := _c.mutation.UpdatedAt(); ok {
+		_spec.SetField(session.FieldUpdatedAt, field.TypeTime, value)
+		_node.UpdatedAt = value
+	}
+	if nodes := _c.mutation.EventsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   session.UserTable,
-			Columns: []string{session.UserColumn},
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   session.EventsTable,
+			Columns: []string{session.EventsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(sessionevent.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
-		_node.UserID = nodes[0]
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec

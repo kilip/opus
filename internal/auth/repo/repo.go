@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kilip/opus/ent"
 	"github.com/kilip/opus/ent/account"
-	"github.com/kilip/opus/ent/session"
+	"github.com/kilip/opus/ent/authsession"
 	"github.com/kilip/opus/ent/user"
 	"github.com/kilip/opus/internal/auth/domain"
 )
@@ -51,7 +51,7 @@ func New(db *ent.Client) *EntRepo {
 }
 
 func (r *EntRepo) CreateSession(ctx context.Context, userID uuid.UUID, tokenHash string, expiresAt time.Time) (*domain.Session, error) {
-	s, err := r.db.Session.Create().
+	s, err := r.db.AuthSession.Create().
 		SetUserID(userID).
 		SetTokenHash(tokenHash).
 		SetExpiresAt(expiresAt).
@@ -67,8 +67,8 @@ func (r *EntRepo) CreateSession(ctx context.Context, userID uuid.UUID, tokenHash
 }
 
 func (r *EntRepo) FindByTokenHash(ctx context.Context, hash string) (*domain.Session, error) {
-	s, err := r.db.Session.Query().
-		Where(session.TokenHashEQ(hash)).
+	s, err := r.db.AuthSession.Query().
+		Where(authsession.TokenHashEQ(hash)).
 		WithUser().
 		Only(ctx)
 	if err != nil {
@@ -78,8 +78,8 @@ func (r *EntRepo) FindByTokenHash(ctx context.Context, hash string) (*domain.Ses
 }
 
 func (r *EntRepo) DeleteByTokenHash(ctx context.Context, hash string) error {
-	_, err := r.db.Session.Delete().
-		Where(session.TokenHashEQ(hash)).
+	_, err := r.db.AuthSession.Delete().
+		Where(authsession.TokenHashEQ(hash)).
 		Exec(ctx)
 	return err
 }
@@ -98,7 +98,7 @@ func (r *EntRepo) CreateUserAndSession(ctx context.Context, email, tokenHash str
 		_ = tx.Rollback()
 		return nil, err
 	}
-	s, err := tx.Session.Create().SetUserID(u.ID).SetTokenHash(tokenHash).SetExpiresAt(expiresAt).Save(ctx)
+	s, err := tx.AuthSession.Create().SetUserID(u.ID).SetTokenHash(tokenHash).SetExpiresAt(expiresAt).Save(ctx)
 	if err != nil {
 		_ = tx.Rollback()
 		return nil, err
@@ -198,7 +198,7 @@ func toDomainAccount(a *ent.Account) *domain.Account {
 	}
 }
 
-func toDomain(s *ent.Session, u *ent.User) *domain.Session {
+func toDomain(s *ent.AuthSession, u *ent.User) *domain.Session {
 	ds := &domain.Session{
 		ID:        s.ID,
 		UserID:    s.UserID,

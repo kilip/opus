@@ -9,6 +9,7 @@ import (
 	"github.com/kilip/opus/ent/account"
 	"github.com/kilip/opus/ent/activity"
 	"github.com/kilip/opus/ent/auditlog"
+	"github.com/kilip/opus/ent/authsession"
 	"github.com/kilip/opus/ent/counter"
 	"github.com/kilip/opus/ent/jointoken"
 	"github.com/kilip/opus/ent/node"
@@ -17,6 +18,7 @@ import (
 	"github.com/kilip/opus/ent/projectnode"
 	"github.com/kilip/opus/ent/schema"
 	"github.com/kilip/opus/ent/session"
+	"github.com/kilip/opus/ent/sessionevent"
 	"github.com/kilip/opus/ent/task"
 	"github.com/kilip/opus/ent/trackerpr"
 	"github.com/kilip/opus/ent/trackersettings"
@@ -94,6 +96,20 @@ func init() {
 	auditlogDescID := auditlogFields[0].Descriptor()
 	// auditlog.DefaultID holds the default value on creation for the id field.
 	auditlog.DefaultID = auditlogDescID.Default.(func() uuid.UUID)
+	authsessionFields := schema.AuthSession{}.Fields()
+	_ = authsessionFields
+	// authsessionDescTokenHash is the schema descriptor for token_hash field.
+	authsessionDescTokenHash := authsessionFields[2].Descriptor()
+	// authsession.TokenHashValidator is a validator for the "token_hash" field. It is called by the builders before save.
+	authsession.TokenHashValidator = authsessionDescTokenHash.Validators[0].(func(string) error)
+	// authsessionDescCreatedAt is the schema descriptor for created_at field.
+	authsessionDescCreatedAt := authsessionFields[4].Descriptor()
+	// authsession.DefaultCreatedAt holds the default value on creation for the created_at field.
+	authsession.DefaultCreatedAt = authsessionDescCreatedAt.Default.(func() time.Time)
+	// authsessionDescID is the schema descriptor for id field.
+	authsessionDescID := authsessionFields[0].Descriptor()
+	// authsession.DefaultID holds the default value on creation for the id field.
+	authsession.DefaultID = authsessionDescID.Default.(func() uuid.UUID)
 	counterFields := schema.Counter{}.Fields()
 	_ = counterFields
 	// counterDescName is the schema descriptor for name field.
@@ -204,18 +220,46 @@ func init() {
 	projectnode.DefaultID = projectnodeDescID.Default.(func() uuid.UUID)
 	sessionFields := schema.Session{}.Fields()
 	_ = sessionFields
-	// sessionDescTokenHash is the schema descriptor for token_hash field.
-	sessionDescTokenHash := sessionFields[2].Descriptor()
-	// session.TokenHashValidator is a validator for the "token_hash" field. It is called by the builders before save.
-	session.TokenHashValidator = sessionDescTokenHash.Validators[0].(func(string) error)
+	// sessionDescProvider is the schema descriptor for provider field.
+	sessionDescProvider := sessionFields[3].Descriptor()
+	// session.ProviderValidator is a validator for the "provider" field. It is called by the builders before save.
+	session.ProviderValidator = sessionDescProvider.Validators[0].(func(string) error)
+	// sessionDescProviderAccount is the schema descriptor for provider_account field.
+	sessionDescProviderAccount := sessionFields[4].Descriptor()
+	// session.DefaultProviderAccount holds the default value on creation for the provider_account field.
+	session.DefaultProviderAccount = sessionDescProviderAccount.Default.(string)
 	// sessionDescCreatedAt is the schema descriptor for created_at field.
-	sessionDescCreatedAt := sessionFields[4].Descriptor()
+	sessionDescCreatedAt := sessionFields[7].Descriptor()
 	// session.DefaultCreatedAt holds the default value on creation for the created_at field.
 	session.DefaultCreatedAt = sessionDescCreatedAt.Default.(func() time.Time)
+	// sessionDescUpdatedAt is the schema descriptor for updated_at field.
+	sessionDescUpdatedAt := sessionFields[10].Descriptor()
+	// session.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	session.DefaultUpdatedAt = sessionDescUpdatedAt.Default.(func() time.Time)
+	// session.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	session.UpdateDefaultUpdatedAt = sessionDescUpdatedAt.UpdateDefault.(func() time.Time)
 	// sessionDescID is the schema descriptor for id field.
 	sessionDescID := sessionFields[0].Descriptor()
 	// session.DefaultID holds the default value on creation for the id field.
 	session.DefaultID = sessionDescID.Default.(func() uuid.UUID)
+	sessioneventFields := schema.SessionEvent{}.Fields()
+	_ = sessioneventFields
+	// sessioneventDescSeq is the schema descriptor for seq field.
+	sessioneventDescSeq := sessioneventFields[2].Descriptor()
+	// sessionevent.SeqValidator is a validator for the "seq" field. It is called by the builders before save.
+	sessionevent.SeqValidator = sessioneventDescSeq.Validators[0].(func(int) error)
+	// sessioneventDescKind is the schema descriptor for kind field.
+	sessioneventDescKind := sessioneventFields[3].Descriptor()
+	// sessionevent.KindValidator is a validator for the "kind" field. It is called by the builders before save.
+	sessionevent.KindValidator = sessioneventDescKind.Validators[0].(func(string) error)
+	// sessioneventDescAt is the schema descriptor for at field.
+	sessioneventDescAt := sessioneventFields[5].Descriptor()
+	// sessionevent.DefaultAt holds the default value on creation for the at field.
+	sessionevent.DefaultAt = sessioneventDescAt.Default.(func() time.Time)
+	// sessioneventDescID is the schema descriptor for id field.
+	sessioneventDescID := sessioneventFields[0].Descriptor()
+	// sessionevent.DefaultID holds the default value on creation for the id field.
+	sessionevent.DefaultID = sessioneventDescID.Default.(func() uuid.UUID)
 	taskFields := schema.Task{}.Fields()
 	_ = taskFields
 	// taskDescKey is the schema descriptor for key field.

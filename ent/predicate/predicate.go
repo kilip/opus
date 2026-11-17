@@ -15,6 +15,9 @@ type Activity func(*sql.Selector)
 // AuditLog is the predicate function for auditlog builders.
 type AuditLog func(*sql.Selector)
 
+// AuthSession is the predicate function for authsession builders.
+type AuthSession func(*sql.Selector)
+
 // Counter is the predicate function for counter builders.
 type Counter func(*sql.Selector)
 
@@ -35,6 +38,9 @@ type ProjectNode func(*sql.Selector)
 
 // Session is the predicate function for session builders.
 type Session func(*sql.Selector)
+
+// SessionEvent is the predicate function for sessionevent builders.
+type SessionEvent func(*sql.Selector)
 
 // Task is the predicate function for task builders.
 type Task func(*sql.Selector)

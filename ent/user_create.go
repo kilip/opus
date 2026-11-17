@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kilip/opus/ent/account"
 	"github.com/kilip/opus/ent/auditlog"
-	"github.com/kilip/opus/ent/session"
+	"github.com/kilip/opus/ent/authsession"
 	"github.com/kilip/opus/ent/user"
 )
 
@@ -58,14 +58,14 @@ func (_c *UserCreate) SetNillableID(v *uuid.UUID) *UserCreate {
 	return _c
 }
 
-// AddSessionIDs adds the "sessions" edge to the Session entity by IDs.
+// AddSessionIDs adds the "sessions" edge to the AuthSession entity by IDs.
 func (_c *UserCreate) AddSessionIDs(ids ...uuid.UUID) *UserCreate {
 	_c.mutation.AddSessionIDs(ids...)
 	return _c
 }
 
-// AddSessions adds the "sessions" edges to the Session entity.
-func (_c *UserCreate) AddSessions(v ...*Session) *UserCreate {
+// AddSessions adds the "sessions" edges to the AuthSession entity.
+func (_c *UserCreate) AddSessions(v ...*AuthSession) *UserCreate {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
@@ -212,7 +212,7 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Columns: []string{user.SessionsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(session.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(authsession.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

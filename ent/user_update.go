@@ -13,8 +13,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/kilip/opus/ent/account"
 	"github.com/kilip/opus/ent/auditlog"
+	"github.com/kilip/opus/ent/authsession"
 	"github.com/kilip/opus/ent/predicate"
-	"github.com/kilip/opus/ent/session"
 	"github.com/kilip/opus/ent/user"
 )
 
@@ -45,14 +45,14 @@ func (_u *UserUpdate) SetNillableEmail(v *string) *UserUpdate {
 	return _u
 }
 
-// AddSessionIDs adds the "sessions" edge to the Session entity by IDs.
+// AddSessionIDs adds the "sessions" edge to the AuthSession entity by IDs.
 func (_u *UserUpdate) AddSessionIDs(ids ...uuid.UUID) *UserUpdate {
 	_u.mutation.AddSessionIDs(ids...)
 	return _u
 }
 
-// AddSessions adds the "sessions" edges to the Session entity.
-func (_u *UserUpdate) AddSessions(v ...*Session) *UserUpdate {
+// AddSessions adds the "sessions" edges to the AuthSession entity.
+func (_u *UserUpdate) AddSessions(v ...*AuthSession) *UserUpdate {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
@@ -95,20 +95,20 @@ func (_u *UserUpdate) Mutation() *UserMutation {
 	return _u.mutation
 }
 
-// ClearSessions clears all "sessions" edges to the Session entity.
+// ClearSessions clears all "sessions" edges to the AuthSession entity.
 func (_u *UserUpdate) ClearSessions() *UserUpdate {
 	_u.mutation.ClearSessions()
 	return _u
 }
 
-// RemoveSessionIDs removes the "sessions" edge to Session entities by IDs.
+// RemoveSessionIDs removes the "sessions" edge to AuthSession entities by IDs.
 func (_u *UserUpdate) RemoveSessionIDs(ids ...uuid.UUID) *UserUpdate {
 	_u.mutation.RemoveSessionIDs(ids...)
 	return _u
 }
 
-// RemoveSessions removes "sessions" edges to Session entities.
-func (_u *UserUpdate) RemoveSessions(v ...*Session) *UserUpdate {
+// RemoveSessions removes "sessions" edges to AuthSession entities.
+func (_u *UserUpdate) RemoveSessions(v ...*AuthSession) *UserUpdate {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
@@ -218,7 +218,7 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Columns: []string{user.SessionsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(session.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(authsession.FieldID, field.TypeUUID),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -231,7 +231,7 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Columns: []string{user.SessionsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(session.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(authsession.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -247,7 +247,7 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Columns: []string{user.SessionsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(session.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(authsession.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -379,14 +379,14 @@ func (_u *UserUpdateOne) SetNillableEmail(v *string) *UserUpdateOne {
 	return _u
 }
 
-// AddSessionIDs adds the "sessions" edge to the Session entity by IDs.
+// AddSessionIDs adds the "sessions" edge to the AuthSession entity by IDs.
 func (_u *UserUpdateOne) AddSessionIDs(ids ...uuid.UUID) *UserUpdateOne {
 	_u.mutation.AddSessionIDs(ids...)
 	return _u
 }
 
-// AddSessions adds the "sessions" edges to the Session entity.
-func (_u *UserUpdateOne) AddSessions(v ...*Session) *UserUpdateOne {
+// AddSessions adds the "sessions" edges to the AuthSession entity.
+func (_u *UserUpdateOne) AddSessions(v ...*AuthSession) *UserUpdateOne {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
@@ -429,20 +429,20 @@ func (_u *UserUpdateOne) Mutation() *UserMutation {
 	return _u.mutation
 }
 
-// ClearSessions clears all "sessions" edges to the Session entity.
+// ClearSessions clears all "sessions" edges to the AuthSession entity.
 func (_u *UserUpdateOne) ClearSessions() *UserUpdateOne {
 	_u.mutation.ClearSessions()
 	return _u
 }
 
-// RemoveSessionIDs removes the "sessions" edge to Session entities by IDs.
+// RemoveSessionIDs removes the "sessions" edge to AuthSession entities by IDs.
 func (_u *UserUpdateOne) RemoveSessionIDs(ids ...uuid.UUID) *UserUpdateOne {
 	_u.mutation.RemoveSessionIDs(ids...)
 	return _u
 }
 
-// RemoveSessions removes "sessions" edges to Session entities.
-func (_u *UserUpdateOne) RemoveSessions(v ...*Session) *UserUpdateOne {
+// RemoveSessions removes "sessions" edges to AuthSession entities.
+func (_u *UserUpdateOne) RemoveSessions(v ...*AuthSession) *UserUpdateOne {
 	ids := make([]uuid.UUID, len(v))
 	for i := range v {
 		ids[i] = v[i].ID
@@ -582,7 +582,7 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			Columns: []string{user.SessionsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(session.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(authsession.FieldID, field.TypeUUID),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
@@ -595,7 +595,7 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			Columns: []string{user.SessionsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(session.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(authsession.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -611,7 +611,7 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			Columns: []string{user.SessionsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(session.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(authsession.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

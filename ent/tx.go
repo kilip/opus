@@ -18,6 +18,8 @@ type Tx struct {
 	Activity *ActivityClient
 	// AuditLog is the client for interacting with the AuditLog builders.
 	AuditLog *AuditLogClient
+	// AuthSession is the client for interacting with the AuthSession builders.
+	AuthSession *AuthSessionClient
 	// Counter is the client for interacting with the Counter builders.
 	Counter *CounterClient
 	// JoinToken is the client for interacting with the JoinToken builders.
@@ -32,6 +34,8 @@ type Tx struct {
 	ProjectNode *ProjectNodeClient
 	// Session is the client for interacting with the Session builders.
 	Session *SessionClient
+	// SessionEvent is the client for interacting with the SessionEvent builders.
+	SessionEvent *SessionEventClient
 	// Task is the client for interacting with the Task builders.
 	Task *TaskClient
 	// TrackerPR is the client for interacting with the TrackerPR builders.
@@ -176,6 +180,7 @@ func (tx *Tx) init() {
 	tx.Account = NewAccountClient(tx.config)
 	tx.Activity = NewActivityClient(tx.config)
 	tx.AuditLog = NewAuditLogClient(tx.config)
+	tx.AuthSession = NewAuthSessionClient(tx.config)
 	tx.Counter = NewCounterClient(tx.config)
 	tx.JoinToken = NewJoinTokenClient(tx.config)
 	tx.Node = NewNodeClient(tx.config)
@@ -183,6 +188,7 @@ func (tx *Tx) init() {
 	tx.Project = NewProjectClient(tx.config)
 	tx.ProjectNode = NewProjectNodeClient(tx.config)
 	tx.Session = NewSessionClient(tx.config)
+	tx.SessionEvent = NewSessionEventClient(tx.config)
 	tx.Task = NewTaskClient(tx.config)
 	tx.TrackerPR = NewTrackerPRClient(tx.config)
 	tx.TrackerSettings = NewTrackerSettingsClient(tx.config)

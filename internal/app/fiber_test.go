@@ -547,7 +547,7 @@ func TestGetFiber_ProjectDeleteGuardWithTasks(t *testing.T) {
 	mac := hmac.New(sha256.New, []byte(cfg.SessionSecret))
 	mac.Write([]byte(token))
 	tokenHash := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
-	_, err = client.Session.Create().
+	_, err = client.AuthSession.Create().
 		SetUserID(u.ID).
 		SetTokenHash(tokenHash).
 		SetExpiresAt(time.Now().Add(time.Hour)).
@@ -697,7 +697,7 @@ func TestGetFiber_TrackerAuthAndProjectLabelValidation(t *testing.T) {
 	mac := hmac.New(sha256.New, []byte(cfg.SessionSecret))
 	mac.Write([]byte(token))
 	tokenHash := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
-	if _, err := client.Session.Create().
+	if _, err := client.AuthSession.Create().
 		SetUserID(u.ID).
 		SetTokenHash(tokenHash).
 		SetExpiresAt(time.Now().Add(time.Hour)).

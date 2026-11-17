@@ -11,7 +11,6 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/kilip/opus/ent/session"
-	"github.com/kilip/opus/ent/user"
 )
 
 // Session is the model entity for the Session schema.
@@ -19,14 +18,26 @@ type Session struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID uuid.UUID `json:"id,omitempty"`
-	// UserID holds the value of the "user_id" field.
-	UserID uuid.UUID `json:"user_id,omitempty"`
-	// TokenHash holds the value of the "token_hash" field.
-	TokenHash string `json:"token_hash,omitempty"`
-	// ExpiresAt holds the value of the "expires_at" field.
-	ExpiresAt time.Time `json:"expires_at,omitempty"`
+	// TaskID holds the value of the "task_id" field.
+	TaskID uuid.UUID `json:"task_id,omitempty"`
+	// NodeID holds the value of the "node_id" field.
+	NodeID uuid.UUID `json:"node_id,omitempty"`
+	// Provider holds the value of the "provider" field.
+	Provider string `json:"provider,omitempty"`
+	// ProviderAccount holds the value of the "provider_account" field.
+	ProviderAccount string `json:"provider_account,omitempty"`
+	// Status holds the value of the "status" field.
+	Status session.Status `json:"status,omitempty"`
+	// FailureReason holds the value of the "failure_reason" field.
+	FailureReason *string `json:"failure_reason,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
+	// StartedAt holds the value of the "started_at" field.
+	StartedAt *time.Time `json:"started_at,omitempty"`
+	// EndedAt holds the value of the "ended_at" field.
+	EndedAt *time.Time `json:"ended_at,omitempty"`
+	// UpdatedAt holds the value of the "updated_at" field.
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the SessionQuery when eager-loading is set.
 	Edges        SessionEdges `json:"edges"`
@@ -35,22 +46,20 @@ type Session struct {
 
 // SessionEdges holds the relations/edges for other nodes in the graph.
 type SessionEdges struct {
-	// User holds the value of the user edge.
-	User *User `json:"user,omitempty"`
+	// Events holds the value of the events edge.
+	Events []*SessionEvent `json:"events,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
 	loadedTypes [1]bool
 }
 
-// UserOrErr returns the User value or an error if the edge
-// was not loaded in eager-loading, or loaded but was not found.
-func (e SessionEdges) UserOrErr() (*User, error) {
-	if e.User != nil {
-		return e.User, nil
-	} else if e.loadedTypes[0] {
-		return nil, &NotFoundError{label: user.Label}
+// EventsOrErr returns the Events value or an error if the edge
+// was not loaded in eager-loading.
+func (e SessionEdges) EventsOrErr() ([]*SessionEvent, error) {
+	if e.loadedTypes[0] {
+		return e.Events, nil
 	}
-	return nil, &NotLoadedError{edge: "user"}
+	return nil, &NotLoadedError{edge: "events"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -58,11 +67,11 @@ func (*Session) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case session.FieldTokenHash:
+		case session.FieldProvider, session.FieldProviderAccount, session.FieldStatus, session.FieldFailureReason:
 			values[i] = new(sql.NullString)
-		case session.FieldExpiresAt, session.FieldCreatedAt:
+		case session.FieldCreatedAt, session.FieldStartedAt, session.FieldEndedAt, session.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
-		case session.FieldID, session.FieldUserID:
+		case session.FieldID, session.FieldTaskID, session.FieldNodeID:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -85,29 +94,68 @@ func (_m *Session) assignValues(columns []string, values []any) error {
 			} else if value != nil {
 				_m.ID = *value
 			}
-		case session.FieldUserID:
+		case session.FieldTaskID:
 			if value, ok := values[i].(*uuid.UUID); !ok {
-				return fmt.Errorf("unexpected type %T for field user_id", values[i])
+				return fmt.Errorf("unexpected type %T for field task_id", values[i])
 			} else if value != nil {
-				_m.UserID = *value
+				_m.TaskID = *value
 			}
-		case session.FieldTokenHash:
+		case session.FieldNodeID:
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field node_id", values[i])
+			} else if value != nil {
+				_m.NodeID = *value
+			}
+		case session.FieldProvider:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field token_hash", values[i])
+				return fmt.Errorf("unexpected type %T for field provider", values[i])
 			} else if value.Valid {
-				_m.TokenHash = value.String
+				_m.Provider = value.String
 			}
-		case session.FieldExpiresAt:
-			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field expires_at", values[i])
+		case session.FieldProviderAccount:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field provider_account", values[i])
 			} else if value.Valid {
-				_m.ExpiresAt = value.Time
+				_m.ProviderAccount = value.String
+			}
+		case session.FieldStatus:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field status", values[i])
+			} else if value.Valid {
+				_m.Status = session.Status(value.String)
+			}
+		case session.FieldFailureReason:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field failure_reason", values[i])
+			} else if value.Valid {
+				_m.FailureReason = new(string)
+				*_m.FailureReason = value.String
 			}
 		case session.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
 				_m.CreatedAt = value.Time
+			}
+		case session.FieldStartedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field started_at", values[i])
+			} else if value.Valid {
+				_m.StartedAt = new(time.Time)
+				*_m.StartedAt = value.Time
+			}
+		case session.FieldEndedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field ended_at", values[i])
+			} else if value.Valid {
+				_m.EndedAt = new(time.Time)
+				*_m.EndedAt = value.Time
+			}
+		case session.FieldUpdatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
+			} else if value.Valid {
+				_m.UpdatedAt = value.Time
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -122,9 +170,9 @@ func (_m *Session) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
 }
 
-// QueryUser queries the "user" edge of the Session entity.
-func (_m *Session) QueryUser() *UserQuery {
-	return NewSessionClient(_m.config).QueryUser(_m)
+// QueryEvents queries the "events" edge of the Session entity.
+func (_m *Session) QueryEvents() *SessionEventQuery {
+	return NewSessionClient(_m.config).QueryEvents(_m)
 }
 
 // Update returns a builder for updating this Session.
@@ -150,17 +198,41 @@ func (_m *Session) String() string {
 	var builder strings.Builder
 	builder.WriteString("Session(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
-	builder.WriteString("user_id=")
-	builder.WriteString(fmt.Sprintf("%v", _m.UserID))
+	builder.WriteString("task_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.TaskID))
 	builder.WriteString(", ")
-	builder.WriteString("token_hash=")
-	builder.WriteString(_m.TokenHash)
+	builder.WriteString("node_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.NodeID))
 	builder.WriteString(", ")
-	builder.WriteString("expires_at=")
-	builder.WriteString(_m.ExpiresAt.Format(time.ANSIC))
+	builder.WriteString("provider=")
+	builder.WriteString(_m.Provider)
+	builder.WriteString(", ")
+	builder.WriteString("provider_account=")
+	builder.WriteString(_m.ProviderAccount)
+	builder.WriteString(", ")
+	builder.WriteString("status=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Status))
+	builder.WriteString(", ")
+	if v := _m.FailureReason; v != nil {
+		builder.WriteString("failure_reason=")
+		builder.WriteString(*v)
+	}
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	if v := _m.StartedAt; v != nil {
+		builder.WriteString("started_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	builder.WriteString(", ")
+	if v := _m.EndedAt; v != nil {
+		builder.WriteString("ended_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	builder.WriteString(", ")
+	builder.WriteString("updated_at=")
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
 	builder.WriteByte(')')
 	return builder.String()
 }

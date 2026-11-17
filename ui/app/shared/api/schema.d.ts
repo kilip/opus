@@ -416,6 +416,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List sessions
+         * @description Returns sessions filtered by optional taskId, nodeId, and status.
+         */
+        get: operations["list-sessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a session
+         * @description Returns a single session by its identifier.
+         */
+        get: operations["get-session"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/sessions/{id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Stream session events (SSE)
+         * @description Streams ordered historical events (seq > after_seq) then live events via SSE until terminal status or disconnect.
+         */
+        get: operations["stream-session-events"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/setup": {
         parameters: {
             query?: never;
@@ -701,6 +761,21 @@ export interface components {
         };
         /** @enum {string} */
         "domain.Role": "master" | "worker";
+        "domain.SessionResponse": {
+            createdAt?: string;
+            endedAt?: string;
+            failureReason?: string;
+            id?: string;
+            nodeId?: string;
+            provider?: string;
+            providerAccount?: string;
+            startedAt?: string;
+            status?: components["schemas"]["domain.SessionStatus"];
+            taskId?: string;
+            updatedAt?: string;
+        };
+        /** @enum {string} */
+        "domain.SessionStatus": "queued" | "running" | "completed" | "failed" | "cancelled";
         "domain.SetupStatusResponse": {
             needs_setup?: boolean;
         };
@@ -841,6 +916,11 @@ export interface components {
             error?: string;
             meta?: components["schemas"]["httpx.Meta"];
         };
+        "httpx.Response-array_domain_SessionResponse": {
+            data?: components["schemas"]["domain.SessionResponse"][];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
         "httpx.Response-array_domain_Task": {
             data?: components["schemas"]["domain.Task"][];
             error?: string;
@@ -873,6 +953,11 @@ export interface components {
         };
         "httpx.Response-domain_ProjectNodeResponse": {
             data?: components["schemas"]["domain.ProjectNodeResponse"];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Response-domain_SessionResponse": {
+            data?: components["schemas"]["domain.SessionResponse"];
             error?: string;
             meta?: components["schemas"]["httpx.Meta"];
         };
@@ -1872,6 +1957,154 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "list-sessions": {
+        parameters: {
+            query?: {
+                /** @description Filter by task ID */
+                taskId?: string;
+                /** @description Filter by node ID */
+                nodeId?: string;
+                /** @description Filter by session status */
+                status?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-array_domain_SessionResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "get-session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Session ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-domain_SessionResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "stream-session-events": {
+        parameters: {
+            query?: {
+                /** @description Return events with seq greater than after_seq */
+                after_seq?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Session ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description SSE event stream */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": components["schemas"]["httpx.ErrorResponse"];
                 };
             };
         };

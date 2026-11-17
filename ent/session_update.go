@@ -14,7 +14,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kilip/opus/ent/predicate"
 	"github.com/kilip/opus/ent/session"
-	"github.com/kilip/opus/ent/user"
+	"github.com/kilip/opus/ent/sessionevent"
 )
 
 // SessionUpdate is the builder for updating Session entities.
@@ -30,51 +30,155 @@ func (_u *SessionUpdate) Where(ps ...predicate.Session) *SessionUpdate {
 	return _u
 }
 
-// SetUserID sets the "user_id" field.
-func (_u *SessionUpdate) SetUserID(v uuid.UUID) *SessionUpdate {
-	_u.mutation.SetUserID(v)
+// SetTaskID sets the "task_id" field.
+func (_u *SessionUpdate) SetTaskID(v uuid.UUID) *SessionUpdate {
+	_u.mutation.SetTaskID(v)
 	return _u
 }
 
-// SetNillableUserID sets the "user_id" field if the given value is not nil.
-func (_u *SessionUpdate) SetNillableUserID(v *uuid.UUID) *SessionUpdate {
+// SetNillableTaskID sets the "task_id" field if the given value is not nil.
+func (_u *SessionUpdate) SetNillableTaskID(v *uuid.UUID) *SessionUpdate {
 	if v != nil {
-		_u.SetUserID(*v)
+		_u.SetTaskID(*v)
 	}
 	return _u
 }
 
-// SetTokenHash sets the "token_hash" field.
-func (_u *SessionUpdate) SetTokenHash(v string) *SessionUpdate {
-	_u.mutation.SetTokenHash(v)
+// SetNodeID sets the "node_id" field.
+func (_u *SessionUpdate) SetNodeID(v uuid.UUID) *SessionUpdate {
+	_u.mutation.SetNodeID(v)
 	return _u
 }
 
-// SetNillableTokenHash sets the "token_hash" field if the given value is not nil.
-func (_u *SessionUpdate) SetNillableTokenHash(v *string) *SessionUpdate {
+// SetNillableNodeID sets the "node_id" field if the given value is not nil.
+func (_u *SessionUpdate) SetNillableNodeID(v *uuid.UUID) *SessionUpdate {
 	if v != nil {
-		_u.SetTokenHash(*v)
+		_u.SetNodeID(*v)
 	}
 	return _u
 }
 
-// SetExpiresAt sets the "expires_at" field.
-func (_u *SessionUpdate) SetExpiresAt(v time.Time) *SessionUpdate {
-	_u.mutation.SetExpiresAt(v)
+// SetProvider sets the "provider" field.
+func (_u *SessionUpdate) SetProvider(v string) *SessionUpdate {
+	_u.mutation.SetProvider(v)
 	return _u
 }
 
-// SetNillableExpiresAt sets the "expires_at" field if the given value is not nil.
-func (_u *SessionUpdate) SetNillableExpiresAt(v *time.Time) *SessionUpdate {
+// SetNillableProvider sets the "provider" field if the given value is not nil.
+func (_u *SessionUpdate) SetNillableProvider(v *string) *SessionUpdate {
 	if v != nil {
-		_u.SetExpiresAt(*v)
+		_u.SetProvider(*v)
 	}
 	return _u
 }
 
-// SetUser sets the "user" edge to the User entity.
-func (_u *SessionUpdate) SetUser(v *User) *SessionUpdate {
-	return _u.SetUserID(v.ID)
+// SetProviderAccount sets the "provider_account" field.
+func (_u *SessionUpdate) SetProviderAccount(v string) *SessionUpdate {
+	_u.mutation.SetProviderAccount(v)
+	return _u
+}
+
+// SetNillableProviderAccount sets the "provider_account" field if the given value is not nil.
+func (_u *SessionUpdate) SetNillableProviderAccount(v *string) *SessionUpdate {
+	if v != nil {
+		_u.SetProviderAccount(*v)
+	}
+	return _u
+}
+
+// SetStatus sets the "status" field.
+func (_u *SessionUpdate) SetStatus(v session.Status) *SessionUpdate {
+	_u.mutation.SetStatus(v)
+	return _u
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (_u *SessionUpdate) SetNillableStatus(v *session.Status) *SessionUpdate {
+	if v != nil {
+		_u.SetStatus(*v)
+	}
+	return _u
+}
+
+// SetFailureReason sets the "failure_reason" field.
+func (_u *SessionUpdate) SetFailureReason(v string) *SessionUpdate {
+	_u.mutation.SetFailureReason(v)
+	return _u
+}
+
+// SetNillableFailureReason sets the "failure_reason" field if the given value is not nil.
+func (_u *SessionUpdate) SetNillableFailureReason(v *string) *SessionUpdate {
+	if v != nil {
+		_u.SetFailureReason(*v)
+	}
+	return _u
+}
+
+// ClearFailureReason clears the value of the "failure_reason" field.
+func (_u *SessionUpdate) ClearFailureReason() *SessionUpdate {
+	_u.mutation.ClearFailureReason()
+	return _u
+}
+
+// SetStartedAt sets the "started_at" field.
+func (_u *SessionUpdate) SetStartedAt(v time.Time) *SessionUpdate {
+	_u.mutation.SetStartedAt(v)
+	return _u
+}
+
+// SetNillableStartedAt sets the "started_at" field if the given value is not nil.
+func (_u *SessionUpdate) SetNillableStartedAt(v *time.Time) *SessionUpdate {
+	if v != nil {
+		_u.SetStartedAt(*v)
+	}
+	return _u
+}
+
+// ClearStartedAt clears the value of the "started_at" field.
+func (_u *SessionUpdate) ClearStartedAt() *SessionUpdate {
+	_u.mutation.ClearStartedAt()
+	return _u
+}
+
+// SetEndedAt sets the "ended_at" field.
+func (_u *SessionUpdate) SetEndedAt(v time.Time) *SessionUpdate {
+	_u.mutation.SetEndedAt(v)
+	return _u
+}
+
+// SetNillableEndedAt sets the "ended_at" field if the given value is not nil.
+func (_u *SessionUpdate) SetNillableEndedAt(v *time.Time) *SessionUpdate {
+	if v != nil {
+		_u.SetEndedAt(*v)
+	}
+	return _u
+}
+
+// ClearEndedAt clears the value of the "ended_at" field.
+func (_u *SessionUpdate) ClearEndedAt() *SessionUpdate {
+	_u.mutation.ClearEndedAt()
+	return _u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (_u *SessionUpdate) SetUpdatedAt(v time.Time) *SessionUpdate {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
+}
+
+// AddEventIDs adds the "events" edge to the SessionEvent entity by IDs.
+func (_u *SessionUpdate) AddEventIDs(ids ...uuid.UUID) *SessionUpdate {
+	_u.mutation.AddEventIDs(ids...)
+	return _u
+}
+
+// AddEvents adds the "events" edges to the SessionEvent entity.
+func (_u *SessionUpdate) AddEvents(v ...*SessionEvent) *SessionUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddEventIDs(ids...)
 }
 
 // Mutation returns the SessionMutation object of the builder.
@@ -82,14 +186,30 @@ func (_u *SessionUpdate) Mutation() *SessionMutation {
 	return _u.mutation
 }
 
-// ClearUser clears the "user" edge to the User entity.
-func (_u *SessionUpdate) ClearUser() *SessionUpdate {
-	_u.mutation.ClearUser()
+// ClearEvents clears all "events" edges to the SessionEvent entity.
+func (_u *SessionUpdate) ClearEvents() *SessionUpdate {
+	_u.mutation.ClearEvents()
 	return _u
+}
+
+// RemoveEventIDs removes the "events" edge to SessionEvent entities by IDs.
+func (_u *SessionUpdate) RemoveEventIDs(ids ...uuid.UUID) *SessionUpdate {
+	_u.mutation.RemoveEventIDs(ids...)
+	return _u
+}
+
+// RemoveEvents removes "events" edges to SessionEvent entities.
+func (_u *SessionUpdate) RemoveEvents(v ...*SessionEvent) *SessionUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveEventIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (_u *SessionUpdate) Save(ctx context.Context) (int, error) {
+	_u.defaults()
 	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
@@ -115,15 +235,25 @@ func (_u *SessionUpdate) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (_u *SessionUpdate) defaults() {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
+		v := session.UpdateDefaultUpdatedAt()
+		_u.mutation.SetUpdatedAt(v)
+	}
+}
+
 // check runs all checks and user-defined validators on the builder.
 func (_u *SessionUpdate) check() error {
-	if v, ok := _u.mutation.TokenHash(); ok {
-		if err := session.TokenHashValidator(v); err != nil {
-			return &ValidationError{Name: "token_hash", err: fmt.Errorf(`ent: validator failed for field "Session.token_hash": %w`, err)}
+	if v, ok := _u.mutation.Provider(); ok {
+		if err := session.ProviderValidator(v); err != nil {
+			return &ValidationError{Name: "provider", err: fmt.Errorf(`ent: validator failed for field "Session.provider": %w`, err)}
 		}
 	}
-	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "Session.user"`)
+	if v, ok := _u.mutation.Status(); ok {
+		if err := session.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Session.status": %w`, err)}
+		}
 	}
 	return nil
 }
@@ -140,34 +270,80 @@ func (_u *SessionUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			}
 		}
 	}
-	if value, ok := _u.mutation.TokenHash(); ok {
-		_spec.SetField(session.FieldTokenHash, field.TypeString, value)
+	if value, ok := _u.mutation.TaskID(); ok {
+		_spec.SetField(session.FieldTaskID, field.TypeUUID, value)
 	}
-	if value, ok := _u.mutation.ExpiresAt(); ok {
-		_spec.SetField(session.FieldExpiresAt, field.TypeTime, value)
+	if value, ok := _u.mutation.NodeID(); ok {
+		_spec.SetField(session.FieldNodeID, field.TypeUUID, value)
 	}
-	if _u.mutation.UserCleared() {
+	if value, ok := _u.mutation.Provider(); ok {
+		_spec.SetField(session.FieldProvider, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.ProviderAccount(); ok {
+		_spec.SetField(session.FieldProviderAccount, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Status(); ok {
+		_spec.SetField(session.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.FailureReason(); ok {
+		_spec.SetField(session.FieldFailureReason, field.TypeString, value)
+	}
+	if _u.mutation.FailureReasonCleared() {
+		_spec.ClearField(session.FieldFailureReason, field.TypeString)
+	}
+	if value, ok := _u.mutation.StartedAt(); ok {
+		_spec.SetField(session.FieldStartedAt, field.TypeTime, value)
+	}
+	if _u.mutation.StartedAtCleared() {
+		_spec.ClearField(session.FieldStartedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.EndedAt(); ok {
+		_spec.SetField(session.FieldEndedAt, field.TypeTime, value)
+	}
+	if _u.mutation.EndedAtCleared() {
+		_spec.ClearField(session.FieldEndedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.UpdatedAt(); ok {
+		_spec.SetField(session.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if _u.mutation.EventsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   session.UserTable,
-			Columns: []string{session.UserColumn},
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   session.EventsTable,
+			Columns: []string{session.EventsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(sessionevent.FieldID, field.TypeUUID),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.UserIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.RemovedEventsIDs(); len(nodes) > 0 && !_u.mutation.EventsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   session.UserTable,
-			Columns: []string{session.UserColumn},
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   session.EventsTable,
+			Columns: []string{session.EventsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(sessionevent.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.EventsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   session.EventsTable,
+			Columns: []string{session.EventsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sessionevent.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -195,51 +371,155 @@ type SessionUpdateOne struct {
 	mutation *SessionMutation
 }
 
-// SetUserID sets the "user_id" field.
-func (_u *SessionUpdateOne) SetUserID(v uuid.UUID) *SessionUpdateOne {
-	_u.mutation.SetUserID(v)
+// SetTaskID sets the "task_id" field.
+func (_u *SessionUpdateOne) SetTaskID(v uuid.UUID) *SessionUpdateOne {
+	_u.mutation.SetTaskID(v)
 	return _u
 }
 
-// SetNillableUserID sets the "user_id" field if the given value is not nil.
-func (_u *SessionUpdateOne) SetNillableUserID(v *uuid.UUID) *SessionUpdateOne {
+// SetNillableTaskID sets the "task_id" field if the given value is not nil.
+func (_u *SessionUpdateOne) SetNillableTaskID(v *uuid.UUID) *SessionUpdateOne {
 	if v != nil {
-		_u.SetUserID(*v)
+		_u.SetTaskID(*v)
 	}
 	return _u
 }
 
-// SetTokenHash sets the "token_hash" field.
-func (_u *SessionUpdateOne) SetTokenHash(v string) *SessionUpdateOne {
-	_u.mutation.SetTokenHash(v)
+// SetNodeID sets the "node_id" field.
+func (_u *SessionUpdateOne) SetNodeID(v uuid.UUID) *SessionUpdateOne {
+	_u.mutation.SetNodeID(v)
 	return _u
 }
 
-// SetNillableTokenHash sets the "token_hash" field if the given value is not nil.
-func (_u *SessionUpdateOne) SetNillableTokenHash(v *string) *SessionUpdateOne {
+// SetNillableNodeID sets the "node_id" field if the given value is not nil.
+func (_u *SessionUpdateOne) SetNillableNodeID(v *uuid.UUID) *SessionUpdateOne {
 	if v != nil {
-		_u.SetTokenHash(*v)
+		_u.SetNodeID(*v)
 	}
 	return _u
 }
 
-// SetExpiresAt sets the "expires_at" field.
-func (_u *SessionUpdateOne) SetExpiresAt(v time.Time) *SessionUpdateOne {
-	_u.mutation.SetExpiresAt(v)
+// SetProvider sets the "provider" field.
+func (_u *SessionUpdateOne) SetProvider(v string) *SessionUpdateOne {
+	_u.mutation.SetProvider(v)
 	return _u
 }
 
-// SetNillableExpiresAt sets the "expires_at" field if the given value is not nil.
-func (_u *SessionUpdateOne) SetNillableExpiresAt(v *time.Time) *SessionUpdateOne {
+// SetNillableProvider sets the "provider" field if the given value is not nil.
+func (_u *SessionUpdateOne) SetNillableProvider(v *string) *SessionUpdateOne {
 	if v != nil {
-		_u.SetExpiresAt(*v)
+		_u.SetProvider(*v)
 	}
 	return _u
 }
 
-// SetUser sets the "user" edge to the User entity.
-func (_u *SessionUpdateOne) SetUser(v *User) *SessionUpdateOne {
-	return _u.SetUserID(v.ID)
+// SetProviderAccount sets the "provider_account" field.
+func (_u *SessionUpdateOne) SetProviderAccount(v string) *SessionUpdateOne {
+	_u.mutation.SetProviderAccount(v)
+	return _u
+}
+
+// SetNillableProviderAccount sets the "provider_account" field if the given value is not nil.
+func (_u *SessionUpdateOne) SetNillableProviderAccount(v *string) *SessionUpdateOne {
+	if v != nil {
+		_u.SetProviderAccount(*v)
+	}
+	return _u
+}
+
+// SetStatus sets the "status" field.
+func (_u *SessionUpdateOne) SetStatus(v session.Status) *SessionUpdateOne {
+	_u.mutation.SetStatus(v)
+	return _u
+}
+
+// SetNillableStatus sets the "status" field if the given value is not nil.
+func (_u *SessionUpdateOne) SetNillableStatus(v *session.Status) *SessionUpdateOne {
+	if v != nil {
+		_u.SetStatus(*v)
+	}
+	return _u
+}
+
+// SetFailureReason sets the "failure_reason" field.
+func (_u *SessionUpdateOne) SetFailureReason(v string) *SessionUpdateOne {
+	_u.mutation.SetFailureReason(v)
+	return _u
+}
+
+// SetNillableFailureReason sets the "failure_reason" field if the given value is not nil.
+func (_u *SessionUpdateOne) SetNillableFailureReason(v *string) *SessionUpdateOne {
+	if v != nil {
+		_u.SetFailureReason(*v)
+	}
+	return _u
+}
+
+// ClearFailureReason clears the value of the "failure_reason" field.
+func (_u *SessionUpdateOne) ClearFailureReason() *SessionUpdateOne {
+	_u.mutation.ClearFailureReason()
+	return _u
+}
+
+// SetStartedAt sets the "started_at" field.
+func (_u *SessionUpdateOne) SetStartedAt(v time.Time) *SessionUpdateOne {
+	_u.mutation.SetStartedAt(v)
+	return _u
+}
+
+// SetNillableStartedAt sets the "started_at" field if the given value is not nil.
+func (_u *SessionUpdateOne) SetNillableStartedAt(v *time.Time) *SessionUpdateOne {
+	if v != nil {
+		_u.SetStartedAt(*v)
+	}
+	return _u
+}
+
+// ClearStartedAt clears the value of the "started_at" field.
+func (_u *SessionUpdateOne) ClearStartedAt() *SessionUpdateOne {
+	_u.mutation.ClearStartedAt()
+	return _u
+}
+
+// SetEndedAt sets the "ended_at" field.
+func (_u *SessionUpdateOne) SetEndedAt(v time.Time) *SessionUpdateOne {
+	_u.mutation.SetEndedAt(v)
+	return _u
+}
+
+// SetNillableEndedAt sets the "ended_at" field if the given value is not nil.
+func (_u *SessionUpdateOne) SetNillableEndedAt(v *time.Time) *SessionUpdateOne {
+	if v != nil {
+		_u.SetEndedAt(*v)
+	}
+	return _u
+}
+
+// ClearEndedAt clears the value of the "ended_at" field.
+func (_u *SessionUpdateOne) ClearEndedAt() *SessionUpdateOne {
+	_u.mutation.ClearEndedAt()
+	return _u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (_u *SessionUpdateOne) SetUpdatedAt(v time.Time) *SessionUpdateOne {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
+}
+
+// AddEventIDs adds the "events" edge to the SessionEvent entity by IDs.
+func (_u *SessionUpdateOne) AddEventIDs(ids ...uuid.UUID) *SessionUpdateOne {
+	_u.mutation.AddEventIDs(ids...)
+	return _u
+}
+
+// AddEvents adds the "events" edges to the SessionEvent entity.
+func (_u *SessionUpdateOne) AddEvents(v ...*SessionEvent) *SessionUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddEventIDs(ids...)
 }
 
 // Mutation returns the SessionMutation object of the builder.
@@ -247,10 +527,25 @@ func (_u *SessionUpdateOne) Mutation() *SessionMutation {
 	return _u.mutation
 }
 
-// ClearUser clears the "user" edge to the User entity.
-func (_u *SessionUpdateOne) ClearUser() *SessionUpdateOne {
-	_u.mutation.ClearUser()
+// ClearEvents clears all "events" edges to the SessionEvent entity.
+func (_u *SessionUpdateOne) ClearEvents() *SessionUpdateOne {
+	_u.mutation.ClearEvents()
 	return _u
+}
+
+// RemoveEventIDs removes the "events" edge to SessionEvent entities by IDs.
+func (_u *SessionUpdateOne) RemoveEventIDs(ids ...uuid.UUID) *SessionUpdateOne {
+	_u.mutation.RemoveEventIDs(ids...)
+	return _u
+}
+
+// RemoveEvents removes "events" edges to SessionEvent entities.
+func (_u *SessionUpdateOne) RemoveEvents(v ...*SessionEvent) *SessionUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveEventIDs(ids...)
 }
 
 // Where appends a list predicates to the SessionUpdate builder.
@@ -268,6 +563,7 @@ func (_u *SessionUpdateOne) Select(field string, fields ...string) *SessionUpdat
 
 // Save executes the query and returns the updated Session entity.
 func (_u *SessionUpdateOne) Save(ctx context.Context) (*Session, error) {
+	_u.defaults()
 	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
@@ -293,15 +589,25 @@ func (_u *SessionUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (_u *SessionUpdateOne) defaults() {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
+		v := session.UpdateDefaultUpdatedAt()
+		_u.mutation.SetUpdatedAt(v)
+	}
+}
+
 // check runs all checks and user-defined validators on the builder.
 func (_u *SessionUpdateOne) check() error {
-	if v, ok := _u.mutation.TokenHash(); ok {
-		if err := session.TokenHashValidator(v); err != nil {
-			return &ValidationError{Name: "token_hash", err: fmt.Errorf(`ent: validator failed for field "Session.token_hash": %w`, err)}
+	if v, ok := _u.mutation.Provider(); ok {
+		if err := session.ProviderValidator(v); err != nil {
+			return &ValidationError{Name: "provider", err: fmt.Errorf(`ent: validator failed for field "Session.provider": %w`, err)}
 		}
 	}
-	if _u.mutation.UserCleared() && len(_u.mutation.UserIDs()) > 0 {
-		return errors.New(`ent: clearing a required unique edge "Session.user"`)
+	if v, ok := _u.mutation.Status(); ok {
+		if err := session.StatusValidator(v); err != nil {
+			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Session.status": %w`, err)}
+		}
 	}
 	return nil
 }
@@ -335,34 +641,80 @@ func (_u *SessionUpdateOne) sqlSave(ctx context.Context) (_node *Session, err er
 			}
 		}
 	}
-	if value, ok := _u.mutation.TokenHash(); ok {
-		_spec.SetField(session.FieldTokenHash, field.TypeString, value)
+	if value, ok := _u.mutation.TaskID(); ok {
+		_spec.SetField(session.FieldTaskID, field.TypeUUID, value)
 	}
-	if value, ok := _u.mutation.ExpiresAt(); ok {
-		_spec.SetField(session.FieldExpiresAt, field.TypeTime, value)
+	if value, ok := _u.mutation.NodeID(); ok {
+		_spec.SetField(session.FieldNodeID, field.TypeUUID, value)
 	}
-	if _u.mutation.UserCleared() {
+	if value, ok := _u.mutation.Provider(); ok {
+		_spec.SetField(session.FieldProvider, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.ProviderAccount(); ok {
+		_spec.SetField(session.FieldProviderAccount, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Status(); ok {
+		_spec.SetField(session.FieldStatus, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.FailureReason(); ok {
+		_spec.SetField(session.FieldFailureReason, field.TypeString, value)
+	}
+	if _u.mutation.FailureReasonCleared() {
+		_spec.ClearField(session.FieldFailureReason, field.TypeString)
+	}
+	if value, ok := _u.mutation.StartedAt(); ok {
+		_spec.SetField(session.FieldStartedAt, field.TypeTime, value)
+	}
+	if _u.mutation.StartedAtCleared() {
+		_spec.ClearField(session.FieldStartedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.EndedAt(); ok {
+		_spec.SetField(session.FieldEndedAt, field.TypeTime, value)
+	}
+	if _u.mutation.EndedAtCleared() {
+		_spec.ClearField(session.FieldEndedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.UpdatedAt(); ok {
+		_spec.SetField(session.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if _u.mutation.EventsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   session.UserTable,
-			Columns: []string{session.UserColumn},
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   session.EventsTable,
+			Columns: []string{session.EventsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(sessionevent.FieldID, field.TypeUUID),
 			},
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := _u.mutation.UserIDs(); len(nodes) > 0 {
+	if nodes := _u.mutation.RemovedEventsIDs(); len(nodes) > 0 && !_u.mutation.EventsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2O,
-			Inverse: true,
-			Table:   session.UserTable,
-			Columns: []string{session.UserColumn},
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   session.EventsTable,
+			Columns: []string{session.EventsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(user.FieldID, field.TypeUUID),
+				IDSpec: sqlgraph.NewFieldSpec(sessionevent.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.EventsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   session.EventsTable,
+			Columns: []string{session.EventsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(sessionevent.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

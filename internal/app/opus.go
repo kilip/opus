@@ -15,6 +15,7 @@ import (
 	"github.com/kilip/opus/internal/platform/eventbus"
 	"github.com/kilip/opus/internal/platform/mailer"
 	"github.com/kilip/opus/internal/project"
+	"github.com/kilip/opus/internal/session"
 	"github.com/kilip/opus/internal/task"
 	"github.com/kilip/opus/internal/tracker"
 	"github.com/kilip/opus/internal/worker"
@@ -45,6 +46,7 @@ type Option func(*options)
 type options struct {
 	node    *node.Node
 	project *project.Project
+	session *session.Session
 	task    *task.Task
 	tracker *tracker.Tracker
 	worker  *worker.Worker
@@ -62,6 +64,13 @@ func WithNode(n *node.Node) Option {
 func WithProject(p *project.Project) Option {
 	return func(o *options) {
 		o.project = p
+	}
+}
+
+// WithSession injects a pre-configured Session feature into GetFiber.
+func WithSession(s *session.Session) Option {
+	return func(o *options) {
+		o.session = s
 	}
 }
 

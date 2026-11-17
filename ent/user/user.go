@@ -28,10 +28,10 @@ const (
 	// Table holds the table name of the user in the database.
 	Table = "users"
 	// SessionsTable is the table that holds the sessions relation/edge.
-	SessionsTable = "sessions"
-	// SessionsInverseTable is the table name for the Session entity.
-	// It exists in this package in order to avoid circular dependency with the "session" package.
-	SessionsInverseTable = "sessions"
+	SessionsTable = "auth_sessions"
+	// SessionsInverseTable is the table name for the AuthSession entity.
+	// It exists in this package in order to avoid circular dependency with the "authsession" package.
+	SessionsInverseTable = "auth_sessions"
 	// SessionsColumn is the table column denoting the sessions relation/edge.
 	SessionsColumn = "user_id"
 	// AccountsTable is the table that holds the accounts relation/edge.

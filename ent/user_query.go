@@ -15,8 +15,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/kilip/opus/ent/account"
 	"github.com/kilip/opus/ent/auditlog"
+	"github.com/kilip/opus/ent/authsession"
 	"github.com/kilip/opus/ent/predicate"
-	"github.com/kilip/opus/ent/session"
 	"github.com/kilip/opus/ent/user"
 )
 
@@ -27,7 +27,7 @@ type UserQuery struct {
 	order         []user.OrderOption
 	inters        []Interceptor
 	predicates    []predicate.User
-	withSessions  *SessionQuery
+	withSessions  *AuthSessionQuery
 	withAccounts  *AccountQuery
 	withAuditLogs *AuditLogQuery
 	// intermediate query (i.e. traversal path).
@@ -67,8 +67,8 @@ func (_q *UserQuery) Order(o ...user.OrderOption) *UserQuery {
 }
 
 // QuerySessions chains the current query on the "sessions" edge.
-func (_q *UserQuery) QuerySessions() *SessionQuery {
-	query := (&SessionClient{config: _q.config}).Query()
+func (_q *UserQuery) QuerySessions() *AuthSessionQuery {
+	query := (&AuthSessionClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
 			return nil, err
@@ -79,7 +79,7 @@ func (_q *UserQuery) QuerySessions() *SessionQuery {
 		}
 		step := sqlgraph.NewStep(
 			sqlgraph.From(user.Table, user.FieldID, selector),
-			sqlgraph.To(session.Table, session.FieldID),
+			sqlgraph.To(authsession.Table, authsession.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, user.SessionsTable, user.SessionsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
@@ -335,8 +335,8 @@ func (_q *UserQuery) Clone() *UserQuery {
 
 // WithSessions tells the query-builder to eager-load the nodes that are connected to
 // the "sessions" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *UserQuery) WithSessions(opts ...func(*SessionQuery)) *UserQuery {
-	query := (&SessionClient{config: _q.config}).Query()
+func (_q *UserQuery) WithSessions(opts ...func(*AuthSessionQuery)) *UserQuery {
+	query := (&AuthSessionClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
@@ -470,8 +470,8 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	}
 	if query := _q.withSessions; query != nil {
 		if err := _q.loadSessions(ctx, query, nodes,
-			func(n *User) { n.Edges.Sessions = []*Session{} },
-			func(n *User, e *Session) { n.Edges.Sessions = append(n.Edges.Sessions, e) }); err != nil {
+			func(n *User) { n.Edges.Sessions = []*AuthSession{} },
+			func(n *User, e *AuthSession) { n.Edges.Sessions = append(n.Edges.Sessions, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -492,7 +492,7 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	return nodes, nil
 }
 
-func (_q *UserQuery) loadSessions(ctx context.Context, query *SessionQuery, nodes []*User, init func(*User), assign func(*User, *Session)) error {
+func (_q *UserQuery) loadSessions(ctx context.Context, query *AuthSessionQuery, nodes []*User, init func(*User), assign func(*User, *AuthSession)) error {
 	fks := make([]driver.Value, 0, len(nodes))
 	nodeids := make(map[uuid.UUID]*User)
 	for i := range nodes {
@@ -503,9 +503,9 @@ func (_q *UserQuery) loadSessions(ctx context.Context, query *SessionQuery, node
 		}
 	}
 	if len(query.ctx.Fields) > 0 {
-		query.ctx.AppendFieldOnce(session.FieldUserID)
+		query.ctx.AppendFieldOnce(authsession.FieldUserID)
 	}
-	query.Where(predicate.Session(func(s *sql.Selector) {
+	query.Where(predicate.AuthSession(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(user.SessionsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)

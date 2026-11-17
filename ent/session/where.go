@@ -56,19 +56,29 @@ func IDLTE(id uuid.UUID) predicate.Session {
 	return predicate.Session(sql.FieldLTE(FieldID, id))
 }
 
-// UserID applies equality check predicate on the "user_id" field. It's identical to UserIDEQ.
-func UserID(v uuid.UUID) predicate.Session {
-	return predicate.Session(sql.FieldEQ(FieldUserID, v))
+// TaskID applies equality check predicate on the "task_id" field. It's identical to TaskIDEQ.
+func TaskID(v uuid.UUID) predicate.Session {
+	return predicate.Session(sql.FieldEQ(FieldTaskID, v))
 }
 
-// TokenHash applies equality check predicate on the "token_hash" field. It's identical to TokenHashEQ.
-func TokenHash(v string) predicate.Session {
-	return predicate.Session(sql.FieldEQ(FieldTokenHash, v))
+// NodeID applies equality check predicate on the "node_id" field. It's identical to NodeIDEQ.
+func NodeID(v uuid.UUID) predicate.Session {
+	return predicate.Session(sql.FieldEQ(FieldNodeID, v))
 }
 
-// ExpiresAt applies equality check predicate on the "expires_at" field. It's identical to ExpiresAtEQ.
-func ExpiresAt(v time.Time) predicate.Session {
-	return predicate.Session(sql.FieldEQ(FieldExpiresAt, v))
+// Provider applies equality check predicate on the "provider" field. It's identical to ProviderEQ.
+func Provider(v string) predicate.Session {
+	return predicate.Session(sql.FieldEQ(FieldProvider, v))
+}
+
+// ProviderAccount applies equality check predicate on the "provider_account" field. It's identical to ProviderAccountEQ.
+func ProviderAccount(v string) predicate.Session {
+	return predicate.Session(sql.FieldEQ(FieldProviderAccount, v))
+}
+
+// FailureReason applies equality check predicate on the "failure_reason" field. It's identical to FailureReasonEQ.
+func FailureReason(v string) predicate.Session {
+	return predicate.Session(sql.FieldEQ(FieldFailureReason, v))
 }
 
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
@@ -76,129 +86,324 @@ func CreatedAt(v time.Time) predicate.Session {
 	return predicate.Session(sql.FieldEQ(FieldCreatedAt, v))
 }
 
-// UserIDEQ applies the EQ predicate on the "user_id" field.
-func UserIDEQ(v uuid.UUID) predicate.Session {
-	return predicate.Session(sql.FieldEQ(FieldUserID, v))
+// StartedAt applies equality check predicate on the "started_at" field. It's identical to StartedAtEQ.
+func StartedAt(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldEQ(FieldStartedAt, v))
 }
 
-// UserIDNEQ applies the NEQ predicate on the "user_id" field.
-func UserIDNEQ(v uuid.UUID) predicate.Session {
-	return predicate.Session(sql.FieldNEQ(FieldUserID, v))
+// EndedAt applies equality check predicate on the "ended_at" field. It's identical to EndedAtEQ.
+func EndedAt(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldEQ(FieldEndedAt, v))
 }
 
-// UserIDIn applies the In predicate on the "user_id" field.
-func UserIDIn(vs ...uuid.UUID) predicate.Session {
-	return predicate.Session(sql.FieldIn(FieldUserID, vs...))
+// UpdatedAt applies equality check predicate on the "updated_at" field. It's identical to UpdatedAtEQ.
+func UpdatedAt(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldEQ(FieldUpdatedAt, v))
 }
 
-// UserIDNotIn applies the NotIn predicate on the "user_id" field.
-func UserIDNotIn(vs ...uuid.UUID) predicate.Session {
-	return predicate.Session(sql.FieldNotIn(FieldUserID, vs...))
+// TaskIDEQ applies the EQ predicate on the "task_id" field.
+func TaskIDEQ(v uuid.UUID) predicate.Session {
+	return predicate.Session(sql.FieldEQ(FieldTaskID, v))
 }
 
-// TokenHashEQ applies the EQ predicate on the "token_hash" field.
-func TokenHashEQ(v string) predicate.Session {
-	return predicate.Session(sql.FieldEQ(FieldTokenHash, v))
+// TaskIDNEQ applies the NEQ predicate on the "task_id" field.
+func TaskIDNEQ(v uuid.UUID) predicate.Session {
+	return predicate.Session(sql.FieldNEQ(FieldTaskID, v))
 }
 
-// TokenHashNEQ applies the NEQ predicate on the "token_hash" field.
-func TokenHashNEQ(v string) predicate.Session {
-	return predicate.Session(sql.FieldNEQ(FieldTokenHash, v))
+// TaskIDIn applies the In predicate on the "task_id" field.
+func TaskIDIn(vs ...uuid.UUID) predicate.Session {
+	return predicate.Session(sql.FieldIn(FieldTaskID, vs...))
 }
 
-// TokenHashIn applies the In predicate on the "token_hash" field.
-func TokenHashIn(vs ...string) predicate.Session {
-	return predicate.Session(sql.FieldIn(FieldTokenHash, vs...))
+// TaskIDNotIn applies the NotIn predicate on the "task_id" field.
+func TaskIDNotIn(vs ...uuid.UUID) predicate.Session {
+	return predicate.Session(sql.FieldNotIn(FieldTaskID, vs...))
 }
 
-// TokenHashNotIn applies the NotIn predicate on the "token_hash" field.
-func TokenHashNotIn(vs ...string) predicate.Session {
-	return predicate.Session(sql.FieldNotIn(FieldTokenHash, vs...))
+// TaskIDGT applies the GT predicate on the "task_id" field.
+func TaskIDGT(v uuid.UUID) predicate.Session {
+	return predicate.Session(sql.FieldGT(FieldTaskID, v))
 }
 
-// TokenHashGT applies the GT predicate on the "token_hash" field.
-func TokenHashGT(v string) predicate.Session {
-	return predicate.Session(sql.FieldGT(FieldTokenHash, v))
+// TaskIDGTE applies the GTE predicate on the "task_id" field.
+func TaskIDGTE(v uuid.UUID) predicate.Session {
+	return predicate.Session(sql.FieldGTE(FieldTaskID, v))
 }
 
-// TokenHashGTE applies the GTE predicate on the "token_hash" field.
-func TokenHashGTE(v string) predicate.Session {
-	return predicate.Session(sql.FieldGTE(FieldTokenHash, v))
+// TaskIDLT applies the LT predicate on the "task_id" field.
+func TaskIDLT(v uuid.UUID) predicate.Session {
+	return predicate.Session(sql.FieldLT(FieldTaskID, v))
 }
 
-// TokenHashLT applies the LT predicate on the "token_hash" field.
-func TokenHashLT(v string) predicate.Session {
-	return predicate.Session(sql.FieldLT(FieldTokenHash, v))
+// TaskIDLTE applies the LTE predicate on the "task_id" field.
+func TaskIDLTE(v uuid.UUID) predicate.Session {
+	return predicate.Session(sql.FieldLTE(FieldTaskID, v))
 }
 
-// TokenHashLTE applies the LTE predicate on the "token_hash" field.
-func TokenHashLTE(v string) predicate.Session {
-	return predicate.Session(sql.FieldLTE(FieldTokenHash, v))
+// NodeIDEQ applies the EQ predicate on the "node_id" field.
+func NodeIDEQ(v uuid.UUID) predicate.Session {
+	return predicate.Session(sql.FieldEQ(FieldNodeID, v))
 }
 
-// TokenHashContains applies the Contains predicate on the "token_hash" field.
-func TokenHashContains(v string) predicate.Session {
-	return predicate.Session(sql.FieldContains(FieldTokenHash, v))
+// NodeIDNEQ applies the NEQ predicate on the "node_id" field.
+func NodeIDNEQ(v uuid.UUID) predicate.Session {
+	return predicate.Session(sql.FieldNEQ(FieldNodeID, v))
 }
 
-// TokenHashHasPrefix applies the HasPrefix predicate on the "token_hash" field.
-func TokenHashHasPrefix(v string) predicate.Session {
-	return predicate.Session(sql.FieldHasPrefix(FieldTokenHash, v))
+// NodeIDIn applies the In predicate on the "node_id" field.
+func NodeIDIn(vs ...uuid.UUID) predicate.Session {
+	return predicate.Session(sql.FieldIn(FieldNodeID, vs...))
 }
 
-// TokenHashHasSuffix applies the HasSuffix predicate on the "token_hash" field.
-func TokenHashHasSuffix(v string) predicate.Session {
-	return predicate.Session(sql.FieldHasSuffix(FieldTokenHash, v))
+// NodeIDNotIn applies the NotIn predicate on the "node_id" field.
+func NodeIDNotIn(vs ...uuid.UUID) predicate.Session {
+	return predicate.Session(sql.FieldNotIn(FieldNodeID, vs...))
 }
 
-// TokenHashEqualFold applies the EqualFold predicate on the "token_hash" field.
-func TokenHashEqualFold(v string) predicate.Session {
-	return predicate.Session(sql.FieldEqualFold(FieldTokenHash, v))
+// NodeIDGT applies the GT predicate on the "node_id" field.
+func NodeIDGT(v uuid.UUID) predicate.Session {
+	return predicate.Session(sql.FieldGT(FieldNodeID, v))
 }
 
-// TokenHashContainsFold applies the ContainsFold predicate on the "token_hash" field.
-func TokenHashContainsFold(v string) predicate.Session {
-	return predicate.Session(sql.FieldContainsFold(FieldTokenHash, v))
+// NodeIDGTE applies the GTE predicate on the "node_id" field.
+func NodeIDGTE(v uuid.UUID) predicate.Session {
+	return predicate.Session(sql.FieldGTE(FieldNodeID, v))
 }
 
-// ExpiresAtEQ applies the EQ predicate on the "expires_at" field.
-func ExpiresAtEQ(v time.Time) predicate.Session {
-	return predicate.Session(sql.FieldEQ(FieldExpiresAt, v))
+// NodeIDLT applies the LT predicate on the "node_id" field.
+func NodeIDLT(v uuid.UUID) predicate.Session {
+	return predicate.Session(sql.FieldLT(FieldNodeID, v))
 }
 
-// ExpiresAtNEQ applies the NEQ predicate on the "expires_at" field.
-func ExpiresAtNEQ(v time.Time) predicate.Session {
-	return predicate.Session(sql.FieldNEQ(FieldExpiresAt, v))
+// NodeIDLTE applies the LTE predicate on the "node_id" field.
+func NodeIDLTE(v uuid.UUID) predicate.Session {
+	return predicate.Session(sql.FieldLTE(FieldNodeID, v))
 }
 
-// ExpiresAtIn applies the In predicate on the "expires_at" field.
-func ExpiresAtIn(vs ...time.Time) predicate.Session {
-	return predicate.Session(sql.FieldIn(FieldExpiresAt, vs...))
+// ProviderEQ applies the EQ predicate on the "provider" field.
+func ProviderEQ(v string) predicate.Session {
+	return predicate.Session(sql.FieldEQ(FieldProvider, v))
 }
 
-// ExpiresAtNotIn applies the NotIn predicate on the "expires_at" field.
-func ExpiresAtNotIn(vs ...time.Time) predicate.Session {
-	return predicate.Session(sql.FieldNotIn(FieldExpiresAt, vs...))
+// ProviderNEQ applies the NEQ predicate on the "provider" field.
+func ProviderNEQ(v string) predicate.Session {
+	return predicate.Session(sql.FieldNEQ(FieldProvider, v))
 }
 
-// ExpiresAtGT applies the GT predicate on the "expires_at" field.
-func ExpiresAtGT(v time.Time) predicate.Session {
-	return predicate.Session(sql.FieldGT(FieldExpiresAt, v))
+// ProviderIn applies the In predicate on the "provider" field.
+func ProviderIn(vs ...string) predicate.Session {
+	return predicate.Session(sql.FieldIn(FieldProvider, vs...))
 }
 
-// ExpiresAtGTE applies the GTE predicate on the "expires_at" field.
-func ExpiresAtGTE(v time.Time) predicate.Session {
-	return predicate.Session(sql.FieldGTE(FieldExpiresAt, v))
+// ProviderNotIn applies the NotIn predicate on the "provider" field.
+func ProviderNotIn(vs ...string) predicate.Session {
+	return predicate.Session(sql.FieldNotIn(FieldProvider, vs...))
 }
 
-// ExpiresAtLT applies the LT predicate on the "expires_at" field.
-func ExpiresAtLT(v time.Time) predicate.Session {
-	return predicate.Session(sql.FieldLT(FieldExpiresAt, v))
+// ProviderGT applies the GT predicate on the "provider" field.
+func ProviderGT(v string) predicate.Session {
+	return predicate.Session(sql.FieldGT(FieldProvider, v))
 }
 
-// ExpiresAtLTE applies the LTE predicate on the "expires_at" field.
-func ExpiresAtLTE(v time.Time) predicate.Session {
-	return predicate.Session(sql.FieldLTE(FieldExpiresAt, v))
+// ProviderGTE applies the GTE predicate on the "provider" field.
+func ProviderGTE(v string) predicate.Session {
+	return predicate.Session(sql.FieldGTE(FieldProvider, v))
+}
+
+// ProviderLT applies the LT predicate on the "provider" field.
+func ProviderLT(v string) predicate.Session {
+	return predicate.Session(sql.FieldLT(FieldProvider, v))
+}
+
+// ProviderLTE applies the LTE predicate on the "provider" field.
+func ProviderLTE(v string) predicate.Session {
+	return predicate.Session(sql.FieldLTE(FieldProvider, v))
+}
+
+// ProviderContains applies the Contains predicate on the "provider" field.
+func ProviderContains(v string) predicate.Session {
+	return predicate.Session(sql.FieldContains(FieldProvider, v))
+}
+
+// ProviderHasPrefix applies the HasPrefix predicate on the "provider" field.
+func ProviderHasPrefix(v string) predicate.Session {
+	return predicate.Session(sql.FieldHasPrefix(FieldProvider, v))
+}
+
+// ProviderHasSuffix applies the HasSuffix predicate on the "provider" field.
+func ProviderHasSuffix(v string) predicate.Session {
+	return predicate.Session(sql.FieldHasSuffix(FieldProvider, v))
+}
+
+// ProviderEqualFold applies the EqualFold predicate on the "provider" field.
+func ProviderEqualFold(v string) predicate.Session {
+	return predicate.Session(sql.FieldEqualFold(FieldProvider, v))
+}
+
+// ProviderContainsFold applies the ContainsFold predicate on the "provider" field.
+func ProviderContainsFold(v string) predicate.Session {
+	return predicate.Session(sql.FieldContainsFold(FieldProvider, v))
+}
+
+// ProviderAccountEQ applies the EQ predicate on the "provider_account" field.
+func ProviderAccountEQ(v string) predicate.Session {
+	return predicate.Session(sql.FieldEQ(FieldProviderAccount, v))
+}
+
+// ProviderAccountNEQ applies the NEQ predicate on the "provider_account" field.
+func ProviderAccountNEQ(v string) predicate.Session {
+	return predicate.Session(sql.FieldNEQ(FieldProviderAccount, v))
+}
+
+// ProviderAccountIn applies the In predicate on the "provider_account" field.
+func ProviderAccountIn(vs ...string) predicate.Session {
+	return predicate.Session(sql.FieldIn(FieldProviderAccount, vs...))
+}
+
+// ProviderAccountNotIn applies the NotIn predicate on the "provider_account" field.
+func ProviderAccountNotIn(vs ...string) predicate.Session {
+	return predicate.Session(sql.FieldNotIn(FieldProviderAccount, vs...))
+}
+
+// ProviderAccountGT applies the GT predicate on the "provider_account" field.
+func ProviderAccountGT(v string) predicate.Session {
+	return predicate.Session(sql.FieldGT(FieldProviderAccount, v))
+}
+
+// ProviderAccountGTE applies the GTE predicate on the "provider_account" field.
+func ProviderAccountGTE(v string) predicate.Session {
+	return predicate.Session(sql.FieldGTE(FieldProviderAccount, v))
+}
+
+// ProviderAccountLT applies the LT predicate on the "provider_account" field.
+func ProviderAccountLT(v string) predicate.Session {
+	return predicate.Session(sql.FieldLT(FieldProviderAccount, v))
+}
+
+// ProviderAccountLTE applies the LTE predicate on the "provider_account" field.
+func ProviderAccountLTE(v string) predicate.Session {
+	return predicate.Session(sql.FieldLTE(FieldProviderAccount, v))
+}
+
+// ProviderAccountContains applies the Contains predicate on the "provider_account" field.
+func ProviderAccountContains(v string) predicate.Session {
+	return predicate.Session(sql.FieldContains(FieldProviderAccount, v))
+}
+
+// ProviderAccountHasPrefix applies the HasPrefix predicate on the "provider_account" field.
+func ProviderAccountHasPrefix(v string) predicate.Session {
+	return predicate.Session(sql.FieldHasPrefix(FieldProviderAccount, v))
+}
+
+// ProviderAccountHasSuffix applies the HasSuffix predicate on the "provider_account" field.
+func ProviderAccountHasSuffix(v string) predicate.Session {
+	return predicate.Session(sql.FieldHasSuffix(FieldProviderAccount, v))
+}
+
+// ProviderAccountEqualFold applies the EqualFold predicate on the "provider_account" field.
+func ProviderAccountEqualFold(v string) predicate.Session {
+	return predicate.Session(sql.FieldEqualFold(FieldProviderAccount, v))
+}
+
+// ProviderAccountContainsFold applies the ContainsFold predicate on the "provider_account" field.
+func ProviderAccountContainsFold(v string) predicate.Session {
+	return predicate.Session(sql.FieldContainsFold(FieldProviderAccount, v))
+}
+
+// StatusEQ applies the EQ predicate on the "status" field.
+func StatusEQ(v Status) predicate.Session {
+	return predicate.Session(sql.FieldEQ(FieldStatus, v))
+}
+
+// StatusNEQ applies the NEQ predicate on the "status" field.
+func StatusNEQ(v Status) predicate.Session {
+	return predicate.Session(sql.FieldNEQ(FieldStatus, v))
+}
+
+// StatusIn applies the In predicate on the "status" field.
+func StatusIn(vs ...Status) predicate.Session {
+	return predicate.Session(sql.FieldIn(FieldStatus, vs...))
+}
+
+// StatusNotIn applies the NotIn predicate on the "status" field.
+func StatusNotIn(vs ...Status) predicate.Session {
+	return predicate.Session(sql.FieldNotIn(FieldStatus, vs...))
+}
+
+// FailureReasonEQ applies the EQ predicate on the "failure_reason" field.
+func FailureReasonEQ(v string) predicate.Session {
+	return predicate.Session(sql.FieldEQ(FieldFailureReason, v))
+}
+
+// FailureReasonNEQ applies the NEQ predicate on the "failure_reason" field.
+func FailureReasonNEQ(v string) predicate.Session {
+	return predicate.Session(sql.FieldNEQ(FieldFailureReason, v))
+}
+
+// FailureReasonIn applies the In predicate on the "failure_reason" field.
+func FailureReasonIn(vs ...string) predicate.Session {
+	return predicate.Session(sql.FieldIn(FieldFailureReason, vs...))
+}
+
+// FailureReasonNotIn applies the NotIn predicate on the "failure_reason" field.
+func FailureReasonNotIn(vs ...string) predicate.Session {
+	return predicate.Session(sql.FieldNotIn(FieldFailureReason, vs...))
+}
+
+// FailureReasonGT applies the GT predicate on the "failure_reason" field.
+func FailureReasonGT(v string) predicate.Session {
+	return predicate.Session(sql.FieldGT(FieldFailureReason, v))
+}
+
+// FailureReasonGTE applies the GTE predicate on the "failure_reason" field.
+func FailureReasonGTE(v string) predicate.Session {
+	return predicate.Session(sql.FieldGTE(FieldFailureReason, v))
+}
+
+// FailureReasonLT applies the LT predicate on the "failure_reason" field.
+func FailureReasonLT(v string) predicate.Session {
+	return predicate.Session(sql.FieldLT(FieldFailureReason, v))
+}
+
+// FailureReasonLTE applies the LTE predicate on the "failure_reason" field.
+func FailureReasonLTE(v string) predicate.Session {
+	return predicate.Session(sql.FieldLTE(FieldFailureReason, v))
+}
+
+// FailureReasonContains applies the Contains predicate on the "failure_reason" field.
+func FailureReasonContains(v string) predicate.Session {
+	return predicate.Session(sql.FieldContains(FieldFailureReason, v))
+}
+
+// FailureReasonHasPrefix applies the HasPrefix predicate on the "failure_reason" field.
+func FailureReasonHasPrefix(v string) predicate.Session {
+	return predicate.Session(sql.FieldHasPrefix(FieldFailureReason, v))
+}
+
+// FailureReasonHasSuffix applies the HasSuffix predicate on the "failure_reason" field.
+func FailureReasonHasSuffix(v string) predicate.Session {
+	return predicate.Session(sql.FieldHasSuffix(FieldFailureReason, v))
+}
+
+// FailureReasonIsNil applies the IsNil predicate on the "failure_reason" field.
+func FailureReasonIsNil() predicate.Session {
+	return predicate.Session(sql.FieldIsNull(FieldFailureReason))
+}
+
+// FailureReasonNotNil applies the NotNil predicate on the "failure_reason" field.
+func FailureReasonNotNil() predicate.Session {
+	return predicate.Session(sql.FieldNotNull(FieldFailureReason))
+}
+
+// FailureReasonEqualFold applies the EqualFold predicate on the "failure_reason" field.
+func FailureReasonEqualFold(v string) predicate.Session {
+	return predicate.Session(sql.FieldEqualFold(FieldFailureReason, v))
+}
+
+// FailureReasonContainsFold applies the ContainsFold predicate on the "failure_reason" field.
+func FailureReasonContainsFold(v string) predicate.Session {
+	return predicate.Session(sql.FieldContainsFold(FieldFailureReason, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
@@ -241,21 +446,161 @@ func CreatedAtLTE(v time.Time) predicate.Session {
 	return predicate.Session(sql.FieldLTE(FieldCreatedAt, v))
 }
 
-// HasUser applies the HasEdge predicate on the "user" edge.
-func HasUser() predicate.Session {
+// StartedAtEQ applies the EQ predicate on the "started_at" field.
+func StartedAtEQ(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldEQ(FieldStartedAt, v))
+}
+
+// StartedAtNEQ applies the NEQ predicate on the "started_at" field.
+func StartedAtNEQ(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldNEQ(FieldStartedAt, v))
+}
+
+// StartedAtIn applies the In predicate on the "started_at" field.
+func StartedAtIn(vs ...time.Time) predicate.Session {
+	return predicate.Session(sql.FieldIn(FieldStartedAt, vs...))
+}
+
+// StartedAtNotIn applies the NotIn predicate on the "started_at" field.
+func StartedAtNotIn(vs ...time.Time) predicate.Session {
+	return predicate.Session(sql.FieldNotIn(FieldStartedAt, vs...))
+}
+
+// StartedAtGT applies the GT predicate on the "started_at" field.
+func StartedAtGT(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldGT(FieldStartedAt, v))
+}
+
+// StartedAtGTE applies the GTE predicate on the "started_at" field.
+func StartedAtGTE(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldGTE(FieldStartedAt, v))
+}
+
+// StartedAtLT applies the LT predicate on the "started_at" field.
+func StartedAtLT(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldLT(FieldStartedAt, v))
+}
+
+// StartedAtLTE applies the LTE predicate on the "started_at" field.
+func StartedAtLTE(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldLTE(FieldStartedAt, v))
+}
+
+// StartedAtIsNil applies the IsNil predicate on the "started_at" field.
+func StartedAtIsNil() predicate.Session {
+	return predicate.Session(sql.FieldIsNull(FieldStartedAt))
+}
+
+// StartedAtNotNil applies the NotNil predicate on the "started_at" field.
+func StartedAtNotNil() predicate.Session {
+	return predicate.Session(sql.FieldNotNull(FieldStartedAt))
+}
+
+// EndedAtEQ applies the EQ predicate on the "ended_at" field.
+func EndedAtEQ(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldEQ(FieldEndedAt, v))
+}
+
+// EndedAtNEQ applies the NEQ predicate on the "ended_at" field.
+func EndedAtNEQ(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldNEQ(FieldEndedAt, v))
+}
+
+// EndedAtIn applies the In predicate on the "ended_at" field.
+func EndedAtIn(vs ...time.Time) predicate.Session {
+	return predicate.Session(sql.FieldIn(FieldEndedAt, vs...))
+}
+
+// EndedAtNotIn applies the NotIn predicate on the "ended_at" field.
+func EndedAtNotIn(vs ...time.Time) predicate.Session {
+	return predicate.Session(sql.FieldNotIn(FieldEndedAt, vs...))
+}
+
+// EndedAtGT applies the GT predicate on the "ended_at" field.
+func EndedAtGT(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldGT(FieldEndedAt, v))
+}
+
+// EndedAtGTE applies the GTE predicate on the "ended_at" field.
+func EndedAtGTE(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldGTE(FieldEndedAt, v))
+}
+
+// EndedAtLT applies the LT predicate on the "ended_at" field.
+func EndedAtLT(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldLT(FieldEndedAt, v))
+}
+
+// EndedAtLTE applies the LTE predicate on the "ended_at" field.
+func EndedAtLTE(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldLTE(FieldEndedAt, v))
+}
+
+// EndedAtIsNil applies the IsNil predicate on the "ended_at" field.
+func EndedAtIsNil() predicate.Session {
+	return predicate.Session(sql.FieldIsNull(FieldEndedAt))
+}
+
+// EndedAtNotNil applies the NotNil predicate on the "ended_at" field.
+func EndedAtNotNil() predicate.Session {
+	return predicate.Session(sql.FieldNotNull(FieldEndedAt))
+}
+
+// UpdatedAtEQ applies the EQ predicate on the "updated_at" field.
+func UpdatedAtEQ(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldEQ(FieldUpdatedAt, v))
+}
+
+// UpdatedAtNEQ applies the NEQ predicate on the "updated_at" field.
+func UpdatedAtNEQ(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldNEQ(FieldUpdatedAt, v))
+}
+
+// UpdatedAtIn applies the In predicate on the "updated_at" field.
+func UpdatedAtIn(vs ...time.Time) predicate.Session {
+	return predicate.Session(sql.FieldIn(FieldUpdatedAt, vs...))
+}
+
+// UpdatedAtNotIn applies the NotIn predicate on the "updated_at" field.
+func UpdatedAtNotIn(vs ...time.Time) predicate.Session {
+	return predicate.Session(sql.FieldNotIn(FieldUpdatedAt, vs...))
+}
+
+// UpdatedAtGT applies the GT predicate on the "updated_at" field.
+func UpdatedAtGT(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldGT(FieldUpdatedAt, v))
+}
+
+// UpdatedAtGTE applies the GTE predicate on the "updated_at" field.
+func UpdatedAtGTE(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldGTE(FieldUpdatedAt, v))
+}
+
+// UpdatedAtLT applies the LT predicate on the "updated_at" field.
+func UpdatedAtLT(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldLT(FieldUpdatedAt, v))
+}
+
+// UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
+func UpdatedAtLTE(v time.Time) predicate.Session {
+	return predicate.Session(sql.FieldLTE(FieldUpdatedAt, v))
+}
+
+// HasEvents applies the HasEdge predicate on the "events" edge.
+func HasEvents() predicate.Session {
 	return predicate.Session(func(s *sql.Selector) {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, UserTable, UserColumn),
+			sqlgraph.Edge(sqlgraph.O2M, false, EventsTable, EventsColumn),
 		)
 		sqlgraph.HasNeighbors(s, step)
 	})
 }
 
-// HasUserWith applies the HasEdge predicate on the "user" edge with a given conditions (other predicates).
-func HasUserWith(preds ...predicate.User) predicate.Session {
+// HasEventsWith applies the HasEdge predicate on the "events" edge with a given conditions (other predicates).
+func HasEventsWith(preds ...predicate.SessionEvent) predicate.Session {
 	return predicate.Session(func(s *sql.Selector) {
-		step := newUserStep()
+		step := newEventsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

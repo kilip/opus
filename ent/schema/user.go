@@ -32,7 +32,7 @@ func (User) Fields() []ent.Field {
 // Edges of the User.
 func (User) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.To("sessions", Session.Type).
+		edge.To("sessions", AuthSession.Type).
 			Annotations(
 				entsql.OnDelete(entsql.Cascade),
 			),

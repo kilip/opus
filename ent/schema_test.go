@@ -36,7 +36,7 @@ func TestSchema_SessionAndOTP(t *testing.T) {
 	// 2. Create a session for that user
 	expiresAt := time.Now().Add(24 * time.Hour)
 	tokenHash := "hash123456"
-	sess, err := client.Session.Create().
+	sess, err := client.AuthSession.Create().
 		SetUserID(u.ID).
 		SetTokenHash(tokenHash).
 		SetExpiresAt(expiresAt).
@@ -67,7 +67,7 @@ func TestSchema_SessionAndOTP(t *testing.T) {
 	}
 
 	// Read session
-	gotSess, err := client.Session.Get(ctx, sess.ID)
+	gotSess, err := client.AuthSession.Get(ctx, sess.ID)
 	if err != nil {
 		t.Fatalf("get session failed: %v", err)
 	}
@@ -97,7 +97,7 @@ func TestSchema_SessionAndOTP(t *testing.T) {
 	if err := client.User.DeleteOneID(u.ID).Exec(ctx); err != nil {
 		t.Fatalf("delete user failed: %v", err)
 	}
-	stillSess, err := client.Session.Get(ctx, sess.ID)
+	stillSess, err := client.AuthSession.Get(ctx, sess.ID)
 	if err == nil {
 		t.Fatalf("expected session to be deleted via cascade, but found: %+v", stillSess)
 	}
@@ -289,7 +289,7 @@ func TestSchema_UUIDv7(t *testing.T) {
 	}
 
 	// 2. Session
-	sess, err := client.Session.Create().
+	sess, err := client.AuthSession.Create().
 		SetUserID(u.ID).
 		SetTokenHash("token_hash_uuidv7").
 		SetExpiresAt(time.Now().Add(time.Hour)).

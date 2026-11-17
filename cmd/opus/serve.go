@@ -7,6 +7,7 @@ import (
 	"github.com/kilip/opus/internal/node"
 	"github.com/kilip/opus/internal/platform/eventbus"
 	"github.com/kilip/opus/internal/project"
+	"github.com/kilip/opus/internal/session"
 	"github.com/kilip/opus/internal/task"
 	"github.com/kilip/opus/internal/tracker"
 	"github.com/kilip/opus/internal/worker"
@@ -53,6 +54,10 @@ func newServeCmd() *cobra.Command {
 				}),
 			)
 			taskFeature = task.New(db, bus, task.WithProjectChecker(projectFeature))
+			sessionFeature := session.New(db, session.Config{Bus: bus})
+			nodeFeature.Hub().OnEvent(func(nodeID string, env node.Envelope) {
+				sessionFeature.HandleWorkerEvent(ctx, nodeID, env)
+			})
 			trackerFeature = tracker.New(db, tracker.Config{
 				PollInterval: cfg.TrackerPollInterval,
 				Logger:       logger,
@@ -61,6 +66,7 @@ func newServeCmd() *cobra.Command {
 			fiberApp := app.GetFiber(cfg, logger, db, bus,
 				app.WithNode(nodeFeature),
 				app.WithProject(projectFeature),
+				app.WithSession(sessionFeature),
 				app.WithTask(taskFeature),
 				app.WithTracker(trackerFeature),
 			)

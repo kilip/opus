@@ -19,6 +19,7 @@ import (
 	"github.com/kilip/opus/ent/account"
 	"github.com/kilip/opus/ent/activity"
 	"github.com/kilip/opus/ent/auditlog"
+	"github.com/kilip/opus/ent/authsession"
 	"github.com/kilip/opus/ent/counter"
 	"github.com/kilip/opus/ent/jointoken"
 	"github.com/kilip/opus/ent/node"
@@ -26,6 +27,7 @@ import (
 	"github.com/kilip/opus/ent/project"
 	"github.com/kilip/opus/ent/projectnode"
 	"github.com/kilip/opus/ent/session"
+	"github.com/kilip/opus/ent/sessionevent"
 	"github.com/kilip/opus/ent/task"
 	"github.com/kilip/opus/ent/trackerpr"
 	"github.com/kilip/opus/ent/trackersettings"
@@ -44,6 +46,8 @@ type Client struct {
 	Activity *ActivityClient
 	// AuditLog is the client for interacting with the AuditLog builders.
 	AuditLog *AuditLogClient
+	// AuthSession is the client for interacting with the AuthSession builders.
+	AuthSession *AuthSessionClient
 	// Counter is the client for interacting with the Counter builders.
 	Counter *CounterClient
 	// JoinToken is the client for interacting with the JoinToken builders.
@@ -58,6 +62,8 @@ type Client struct {
 	ProjectNode *ProjectNodeClient
 	// Session is the client for interacting with the Session builders.
 	Session *SessionClient
+	// SessionEvent is the client for interacting with the SessionEvent builders.
+	SessionEvent *SessionEventClient
 	// Task is the client for interacting with the Task builders.
 	Task *TaskClient
 	// TrackerPR is the client for interacting with the TrackerPR builders.
@@ -82,6 +88,7 @@ func (c *Client) init() {
 	c.Account = NewAccountClient(c.config)
 	c.Activity = NewActivityClient(c.config)
 	c.AuditLog = NewAuditLogClient(c.config)
+	c.AuthSession = NewAuthSessionClient(c.config)
 	c.Counter = NewCounterClient(c.config)
 	c.JoinToken = NewJoinTokenClient(c.config)
 	c.Node = NewNodeClient(c.config)
@@ -89,6 +96,7 @@ func (c *Client) init() {
 	c.Project = NewProjectClient(c.config)
 	c.ProjectNode = NewProjectNodeClient(c.config)
 	c.Session = NewSessionClient(c.config)
+	c.SessionEvent = NewSessionEventClient(c.config)
 	c.Task = NewTaskClient(c.config)
 	c.TrackerPR = NewTrackerPRClient(c.config)
 	c.TrackerSettings = NewTrackerSettingsClient(c.config)
@@ -189,6 +197,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Account:         NewAccountClient(cfg),
 		Activity:        NewActivityClient(cfg),
 		AuditLog:        NewAuditLogClient(cfg),
+		AuthSession:     NewAuthSessionClient(cfg),
 		Counter:         NewCounterClient(cfg),
 		JoinToken:       NewJoinTokenClient(cfg),
 		Node:            NewNodeClient(cfg),
@@ -196,6 +205,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Project:         NewProjectClient(cfg),
 		ProjectNode:     NewProjectNodeClient(cfg),
 		Session:         NewSessionClient(cfg),
+		SessionEvent:    NewSessionEventClient(cfg),
 		Task:            NewTaskClient(cfg),
 		TrackerPR:       NewTrackerPRClient(cfg),
 		TrackerSettings: NewTrackerSettingsClient(cfg),
@@ -223,6 +233,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Account:         NewAccountClient(cfg),
 		Activity:        NewActivityClient(cfg),
 		AuditLog:        NewAuditLogClient(cfg),
+		AuthSession:     NewAuthSessionClient(cfg),
 		Counter:         NewCounterClient(cfg),
 		JoinToken:       NewJoinTokenClient(cfg),
 		Node:            NewNodeClient(cfg),
@@ -230,6 +241,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Project:         NewProjectClient(cfg),
 		ProjectNode:     NewProjectNodeClient(cfg),
 		Session:         NewSessionClient(cfg),
+		SessionEvent:    NewSessionEventClient(cfg),
 		Task:            NewTaskClient(cfg),
 		TrackerPR:       NewTrackerPRClient(cfg),
 		TrackerSettings: NewTrackerSettingsClient(cfg),
@@ -264,9 +276,9 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.Account, c.Activity, c.AuditLog, c.Counter, c.JoinToken, c.Node, c.OTP,
-		c.Project, c.ProjectNode, c.Session, c.Task, c.TrackerPR, c.TrackerSettings,
-		c.TrackerSync, c.User,
+		c.Account, c.Activity, c.AuditLog, c.AuthSession, c.Counter, c.JoinToken,
+		c.Node, c.OTP, c.Project, c.ProjectNode, c.Session, c.SessionEvent, c.Task,
+		c.TrackerPR, c.TrackerSettings, c.TrackerSync, c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -276,9 +288,9 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.Account, c.Activity, c.AuditLog, c.Counter, c.JoinToken, c.Node, c.OTP,
-		c.Project, c.ProjectNode, c.Session, c.Task, c.TrackerPR, c.TrackerSettings,
-		c.TrackerSync, c.User,
+		c.Account, c.Activity, c.AuditLog, c.AuthSession, c.Counter, c.JoinToken,
+		c.Node, c.OTP, c.Project, c.ProjectNode, c.Session, c.SessionEvent, c.Task,
+		c.TrackerPR, c.TrackerSettings, c.TrackerSync, c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -293,6 +305,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Activity.mutate(ctx, m)
 	case *AuditLogMutation:
 		return c.AuditLog.mutate(ctx, m)
+	case *AuthSessionMutation:
+		return c.AuthSession.mutate(ctx, m)
 	case *CounterMutation:
 		return c.Counter.mutate(ctx, m)
 	case *JoinTokenMutation:
@@ -307,6 +321,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.ProjectNode.mutate(ctx, m)
 	case *SessionMutation:
 		return c.Session.mutate(ctx, m)
+	case *SessionEventMutation:
+		return c.SessionEvent.mutate(ctx, m)
 	case *TaskMutation:
 		return c.Task.mutate(ctx, m)
 	case *TrackerPRMutation:
@@ -766,6 +782,155 @@ func (c *AuditLogClient) mutate(ctx context.Context, m *AuditLogMutation) (Value
 		return (&AuditLogDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown AuditLog mutation op: %q", m.Op())
+	}
+}
+
+// AuthSessionClient is a client for the AuthSession schema.
+type AuthSessionClient struct {
+	config
+}
+
+// NewAuthSessionClient returns a client for the AuthSession from the given config.
+func NewAuthSessionClient(c config) *AuthSessionClient {
+	return &AuthSessionClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `authsession.Hooks(f(g(h())))`.
+func (c *AuthSessionClient) Use(hooks ...Hook) {
+	c.hooks.AuthSession = append(c.hooks.AuthSession, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `authsession.Intercept(f(g(h())))`.
+func (c *AuthSessionClient) Intercept(interceptors ...Interceptor) {
+	c.inters.AuthSession = append(c.inters.AuthSession, interceptors...)
+}
+
+// Create returns a builder for creating a AuthSession entity.
+func (c *AuthSessionClient) Create() *AuthSessionCreate {
+	mutation := newAuthSessionMutation(c.config, OpCreate)
+	return &AuthSessionCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of AuthSession entities.
+func (c *AuthSessionClient) CreateBulk(builders ...*AuthSessionCreate) *AuthSessionCreateBulk {
+	return &AuthSessionCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *AuthSessionClient) MapCreateBulk(slice any, setFunc func(*AuthSessionCreate, int)) *AuthSessionCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &AuthSessionCreateBulk{err: fmt.Errorf("calling to AuthSessionClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*AuthSessionCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &AuthSessionCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for AuthSession.
+func (c *AuthSessionClient) Update() *AuthSessionUpdate {
+	mutation := newAuthSessionMutation(c.config, OpUpdate)
+	return &AuthSessionUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *AuthSessionClient) UpdateOne(_m *AuthSession) *AuthSessionUpdateOne {
+	mutation := newAuthSessionMutation(c.config, OpUpdateOne, withAuthSession(_m))
+	return &AuthSessionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *AuthSessionClient) UpdateOneID(id uuid.UUID) *AuthSessionUpdateOne {
+	mutation := newAuthSessionMutation(c.config, OpUpdateOne, withAuthSessionID(id))
+	return &AuthSessionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for AuthSession.
+func (c *AuthSessionClient) Delete() *AuthSessionDelete {
+	mutation := newAuthSessionMutation(c.config, OpDelete)
+	return &AuthSessionDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *AuthSessionClient) DeleteOne(_m *AuthSession) *AuthSessionDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *AuthSessionClient) DeleteOneID(id uuid.UUID) *AuthSessionDeleteOne {
+	builder := c.Delete().Where(authsession.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &AuthSessionDeleteOne{builder}
+}
+
+// Query returns a query builder for AuthSession.
+func (c *AuthSessionClient) Query() *AuthSessionQuery {
+	return &AuthSessionQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeAuthSession},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a AuthSession entity by its id.
+func (c *AuthSessionClient) Get(ctx context.Context, id uuid.UUID) (*AuthSession, error) {
+	return c.Query().Where(authsession.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *AuthSessionClient) GetX(ctx context.Context, id uuid.UUID) *AuthSession {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a AuthSession.
+func (c *AuthSessionClient) QueryUser(_m *AuthSession) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(authsession.Table, authsession.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, authsession.UserTable, authsession.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *AuthSessionClient) Hooks() []Hook {
+	return c.hooks.AuthSession
+}
+
+// Interceptors returns the client interceptors.
+func (c *AuthSessionClient) Interceptors() []Interceptor {
+	return c.inters.AuthSession
+}
+
+func (c *AuthSessionClient) mutate(ctx context.Context, m *AuthSessionMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&AuthSessionCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&AuthSessionUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&AuthSessionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&AuthSessionDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown AuthSession mutation op: %q", m.Op())
 	}
 }
 
@@ -1787,15 +1952,15 @@ func (c *SessionClient) GetX(ctx context.Context, id uuid.UUID) *Session {
 	return obj
 }
 
-// QueryUser queries the user edge of a Session.
-func (c *SessionClient) QueryUser(_m *Session) *UserQuery {
-	query := (&UserClient{config: c.config}).Query()
+// QueryEvents queries the events edge of a Session.
+func (c *SessionClient) QueryEvents(_m *Session) *SessionEventQuery {
+	query := (&SessionEventClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(session.Table, session.FieldID, id),
-			sqlgraph.To(user.Table, user.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, session.UserTable, session.UserColumn),
+			sqlgraph.To(sessionevent.Table, sessionevent.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, session.EventsTable, session.EventsColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -1825,6 +1990,155 @@ func (c *SessionClient) mutate(ctx context.Context, m *SessionMutation) (Value, 
 		return (&SessionDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Session mutation op: %q", m.Op())
+	}
+}
+
+// SessionEventClient is a client for the SessionEvent schema.
+type SessionEventClient struct {
+	config
+}
+
+// NewSessionEventClient returns a client for the SessionEvent from the given config.
+func NewSessionEventClient(c config) *SessionEventClient {
+	return &SessionEventClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `sessionevent.Hooks(f(g(h())))`.
+func (c *SessionEventClient) Use(hooks ...Hook) {
+	c.hooks.SessionEvent = append(c.hooks.SessionEvent, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `sessionevent.Intercept(f(g(h())))`.
+func (c *SessionEventClient) Intercept(interceptors ...Interceptor) {
+	c.inters.SessionEvent = append(c.inters.SessionEvent, interceptors...)
+}
+
+// Create returns a builder for creating a SessionEvent entity.
+func (c *SessionEventClient) Create() *SessionEventCreate {
+	mutation := newSessionEventMutation(c.config, OpCreate)
+	return &SessionEventCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of SessionEvent entities.
+func (c *SessionEventClient) CreateBulk(builders ...*SessionEventCreate) *SessionEventCreateBulk {
+	return &SessionEventCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *SessionEventClient) MapCreateBulk(slice any, setFunc func(*SessionEventCreate, int)) *SessionEventCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &SessionEventCreateBulk{err: fmt.Errorf("calling to SessionEventClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*SessionEventCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &SessionEventCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for SessionEvent.
+func (c *SessionEventClient) Update() *SessionEventUpdate {
+	mutation := newSessionEventMutation(c.config, OpUpdate)
+	return &SessionEventUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *SessionEventClient) UpdateOne(_m *SessionEvent) *SessionEventUpdateOne {
+	mutation := newSessionEventMutation(c.config, OpUpdateOne, withSessionEvent(_m))
+	return &SessionEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *SessionEventClient) UpdateOneID(id uuid.UUID) *SessionEventUpdateOne {
+	mutation := newSessionEventMutation(c.config, OpUpdateOne, withSessionEventID(id))
+	return &SessionEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for SessionEvent.
+func (c *SessionEventClient) Delete() *SessionEventDelete {
+	mutation := newSessionEventMutation(c.config, OpDelete)
+	return &SessionEventDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *SessionEventClient) DeleteOne(_m *SessionEvent) *SessionEventDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *SessionEventClient) DeleteOneID(id uuid.UUID) *SessionEventDeleteOne {
+	builder := c.Delete().Where(sessionevent.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &SessionEventDeleteOne{builder}
+}
+
+// Query returns a query builder for SessionEvent.
+func (c *SessionEventClient) Query() *SessionEventQuery {
+	return &SessionEventQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeSessionEvent},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a SessionEvent entity by its id.
+func (c *SessionEventClient) Get(ctx context.Context, id uuid.UUID) (*SessionEvent, error) {
+	return c.Query().Where(sessionevent.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *SessionEventClient) GetX(ctx context.Context, id uuid.UUID) *SessionEvent {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QuerySession queries the session edge of a SessionEvent.
+func (c *SessionEventClient) QuerySession(_m *SessionEvent) *SessionQuery {
+	query := (&SessionClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(sessionevent.Table, sessionevent.FieldID, id),
+			sqlgraph.To(session.Table, session.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, sessionevent.SessionTable, sessionevent.SessionColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *SessionEventClient) Hooks() []Hook {
+	return c.hooks.SessionEvent
+}
+
+// Interceptors returns the client interceptors.
+func (c *SessionEventClient) Interceptors() []Interceptor {
+	return c.inters.SessionEvent
+}
+
+func (c *SessionEventClient) mutate(ctx context.Context, m *SessionEventMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&SessionEventCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&SessionEventUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&SessionEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&SessionEventDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown SessionEvent mutation op: %q", m.Op())
 	}
 }
 
@@ -2565,13 +2879,13 @@ func (c *UserClient) GetX(ctx context.Context, id uuid.UUID) *User {
 }
 
 // QuerySessions queries the sessions edge of a User.
-func (c *UserClient) QuerySessions(_m *User) *SessionQuery {
-	query := (&SessionClient{config: c.config}).Query()
+func (c *UserClient) QuerySessions(_m *User) *AuthSessionQuery {
+	query := (&AuthSessionClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(user.Table, user.FieldID, id),
-			sqlgraph.To(session.Table, session.FieldID),
+			sqlgraph.To(authsession.Table, authsession.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, user.SessionsTable, user.SessionsColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
@@ -2640,13 +2954,13 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Account, Activity, AuditLog, Counter, JoinToken, Node, OTP, Project,
-		ProjectNode, Session, Task, TrackerPR, TrackerSettings, TrackerSync,
-		User []ent.Hook
+		Account, Activity, AuditLog, AuthSession, Counter, JoinToken, Node, OTP,
+		Project, ProjectNode, Session, SessionEvent, Task, TrackerPR, TrackerSettings,
+		TrackerSync, User []ent.Hook
 	}
 	inters struct {
-		Account, Activity, AuditLog, Counter, JoinToken, Node, OTP, Project,
-		ProjectNode, Session, Task, TrackerPR, TrackerSettings, TrackerSync,
-		User []ent.Interceptor
+		Account, Activity, AuditLog, AuthSession, Counter, JoinToken, Node, OTP,
+		Project, ProjectNode, Session, SessionEvent, Task, TrackerPR, TrackerSettings,
+		TrackerSync, User []ent.Interceptor
 	}
 )
