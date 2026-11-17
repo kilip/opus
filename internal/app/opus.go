@@ -12,6 +12,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/kilip/opus/ent"
 	"github.com/kilip/opus/internal/node"
+	"github.com/kilip/opus/internal/notify"
 	"github.com/kilip/opus/internal/platform/eventbus"
 	"github.com/kilip/opus/internal/platform/mailer"
 	"github.com/kilip/opus/internal/project"
@@ -129,6 +130,15 @@ func New(cfg Config, fiberApp *fiber.App, logger *slog.Logger, db *ent.Client, b
 }
 
 func (o *Opus) Serve(ctx context.Context) error {
+	if o.bus != nil {
+		if err := notify.New(notify.Config{
+			BotToken: o.cfg.NotifyTelegramBotToken,
+			ChatID:   o.cfg.NotifyTelegramChatID,
+			Logger:   o.logger,
+		}).Register(o.bus); err != nil {
+			o.logger.ErrorContext(ctx, "failed to register notify subscriber", "error", err)
+		}
+	}
 	if o.node != nil {
 		if err := o.node.Start(ctx); err != nil {
 			o.logger.ErrorContext(ctx, "failed to start node detector", "error", err)
