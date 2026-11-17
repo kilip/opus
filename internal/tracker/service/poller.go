@@ -227,6 +227,16 @@ func (p *Poller) syncProject(ctx context.Context, proj project.Record) {
 		}
 	}
 
+	if p.tasks != nil {
+		if err := p.reconcileProjectOutbound(ctx, proj); err != nil {
+			if ctx.Err() != nil {
+				return
+			}
+			p.recordSyncError(ctx, "tracker outbound sync failed", proj, err)
+			return
+		}
+	}
+
 	var maxUpdated time.Time
 	for _, iss := range issues {
 		if iss.UpdatedAt.After(maxUpdated) {

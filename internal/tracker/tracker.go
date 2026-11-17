@@ -9,6 +9,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/kilip/opus/ent"
+	"github.com/kilip/opus/internal/platform/eventbus"
 	"github.com/kilip/opus/internal/project"
 	"github.com/kilip/opus/internal/task"
 	"github.com/kilip/opus/internal/tracker/domain"
@@ -54,6 +55,7 @@ type Config struct {
 	PollInterval time.Duration
 	Runner       github.Runner
 	Tasks        *task.Task
+	Bus          *eventbus.Bus
 	Logger       *slog.Logger
 	Now          func() time.Time
 	OnStop       func()
@@ -82,6 +84,13 @@ func New(client *ent.Client, cfg ...Config) *Tracker {
 		Now:          c.Now,
 		OnStop:       c.OnStop,
 	})
+	if c.Bus != nil {
+		if err := poller.Subscribe(c.Bus); err != nil {
+			if c.Logger != nil {
+				c.Logger.Error("failed to subscribe tracker outbound sync", "error", err)
+			}
+		}
+	}
 	return &Tracker{
 		svc:     svc,
 		poller:  poller,

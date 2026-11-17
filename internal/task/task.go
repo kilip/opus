@@ -78,6 +78,7 @@ type (
 	Assignee                 = domain.Assignee
 	ImportTaskRequest        = domain.ImportTaskRequest
 	UpdateTaskRequest        = domain.UpdateTaskRequest
+	TaskFilter               = domain.TaskFilter
 	TaskReceivedPayload      = domain.TaskReceivedPayload
 	TaskStatusChangedPayload = domain.TaskStatusChangedPayload
 	ProjectChecker           = service.ProjectChecker
@@ -164,6 +165,16 @@ func (t *Task) RemoveLabel(ctx context.Context, id, label string) error {
 // SetLabels replaces all labels on task id without publishing events.
 func (t *Task) SetLabels(ctx context.Context, id string, labels []string) error {
 	return t.svc.SetLabels(ctx, id, labels)
+}
+
+// List returns tasks matching optional filters.
+func (t *Task) List(ctx context.Context, filters ...TaskFilter) ([]Record, error) {
+	return t.svc.List(ctx, filters...)
+}
+
+// ListActivity returns the activity timeline of task id, oldest first.
+func (t *Task) ListActivity(ctx context.Context, id string) ([]Activity, error) {
+	return t.svc.ListActivity(ctx, id)
 }
 
 // AddActivity appends an activity entry with optional author to task id.

@@ -82,6 +82,9 @@ func TestPoller_PRSync_LinkCursorAndCrossRepoIsolation(t *testing.T) {
 				prCalls = append(prCalls, slices.Clone(args))
 				return prsPayload, nil
 			}
+			if len(args) >= 2 && args[0] == "issue" && args[1] == "view" {
+				return []byte(`{"number":104,"state":"OPEN","labels":[{"name":"status:in-progress"}],"url":"https://github.com/kilip/opus/issues/104","comments":[]}`), nil
+			}
 			return []byte("[]"), nil
 		},
 	})

@@ -173,6 +173,7 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 				PollInterval: cfg.TrackerPollInterval,
 				Logger:       logger,
 				Tasks:        taskFeature,
+				Bus:          bus,
 			})
 		}
 		taskFeature.Register(api)

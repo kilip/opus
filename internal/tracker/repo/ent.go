@@ -205,25 +205,47 @@ func (r *Ent) ListProjects(ctx context.Context) ([]project.Record, error) {
 	}
 	out := make([]project.Record, len(rows))
 	for i, p := range rows {
-		var labels map[string]string
-		if len(p.TrackerLabels) > 0 {
-			labels = maps.Clone(p.TrackerLabels)
-		}
-		out[i] = project.Record{
-			ID:              p.ID.String(),
-			Slug:            p.Slug,
-			Name:            p.Name,
-			RepoProvider:    p.RepoProvider,
-			RepoRef:         p.RepoRef,
-			TrackerProvider: p.TrackerProvider,
-			TrackerRef:      p.TrackerRef,
-			DefaultBranch:   p.DefaultBranch,
-			TrackerLabels:   labels,
-			CreatedAt:       p.CreatedAt,
-			UpdatedAt:       p.UpdatedAt,
-		}
+		out[i] = toProjectRecord(p)
 	}
 	return out, nil
+}
+
+// GetProject returns a project by ID, or domain.ErrProjectNotFound.
+func (r *Ent) GetProject(ctx context.Context, projectID string) (project.Record, error) {
+	uid, err := uuid.Parse(projectID)
+	if err != nil {
+		return project.Record{}, domain.ErrInvalidProjectID
+	}
+	p, err := r.client.Project.Query().
+		Where(entproject.IDEQ(uid)).
+		Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return project.Record{}, domain.ErrProjectNotFound
+		}
+		return project.Record{}, err
+	}
+	return toProjectRecord(p), nil
+}
+
+func toProjectRecord(p *ent.Project) project.Record {
+	var labels map[string]string
+	if len(p.TrackerLabels) > 0 {
+		labels = maps.Clone(p.TrackerLabels)
+	}
+	return project.Record{
+		ID:              p.ID.String(),
+		Slug:            p.Slug,
+		Name:            p.Name,
+		RepoProvider:    p.RepoProvider,
+		RepoRef:         p.RepoRef,
+		TrackerProvider: p.TrackerProvider,
+		TrackerRef:      p.TrackerRef,
+		DefaultBranch:   p.DefaultBranch,
+		TrackerLabels:   labels,
+		CreatedAt:       p.CreatedAt,
+		UpdatedAt:       p.UpdatedAt,
+	}
 }
 
 func toSyncDomain(row *ent.TrackerSync) domain.TrackerSync {

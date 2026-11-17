@@ -74,12 +74,15 @@ func TestPoller_InboundIssueSync_CursorAndFixture(t *testing.T) {
 			if len(args) >= 2 && args[0] == "auth" && args[1] == "status" {
 				return []byte("Logged in"), nil
 			}
-			if len(args) > 0 && args[0] == "issue" {
+			if len(args) >= 2 && args[0] == "issue" && args[1] == "list" {
 				issueCalls = append(issueCalls, slices.Clone(args))
 				if failNext {
 					return nil, errors.New("gh unavailable")
 				}
 				return payload, nil
+			}
+			if len(args) >= 2 && args[0] == "issue" && args[1] == "view" {
+				return []byte(`{"number":104,"state":"OPEN","labels":[{"name":"status:in-progress"}],"url":"https://github.com/kilip/opus/issues/104","comments":[]}`), nil
 			}
 			return []byte("[]"), nil
 		},
@@ -635,11 +638,14 @@ func TestPoller_InboundIssueSync_MalformedJSONDoesNotBlockOtherProjects(t *testi
 					repoArg = args[i+1]
 				}
 			}
-			if repoArg == "org/bad" && len(args) > 0 && args[0] == "issue" {
+			if repoArg == "org/bad" && len(args) >= 2 && args[0] == "issue" && args[1] == "list" {
 				return []byte(`{malformed-json`), nil
 			}
-			if repoArg == "org/good" && len(args) > 0 && args[0] == "issue" {
+			if repoArg == "org/good" && len(args) >= 2 && args[0] == "issue" && args[1] == "list" {
 				return []byte(`[{"number":21,"title":"Good issue","body":"Synced","state":"OPEN","stateReason":"","labels":[],"updatedAt":"2026-11-17T01:55:00Z","url":"https://github.com/org/good/issues/21"}]`), nil
+			}
+			if repoArg == "org/good" && len(args) >= 2 && args[0] == "issue" && args[1] == "view" {
+				return []byte(`{"number":21,"state":"OPEN","labels":[{"name":"status:todo"}],"url":"https://github.com/org/good/issues/21","comments":[]}`), nil
 			}
 			return []byte("[]"), nil
 		},

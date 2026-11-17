@@ -46,7 +46,7 @@ func (p *Poller) syncIssue(ctx context.Context, proj project.Record, effective d
 		return err
 	}
 
-	if existing != nil && existing.SourceStatus == "deleted" {
+	if existing != nil && (existing.SourceStatus == "deleted" || existing.SourceStatus == "transferred") {
 		return nil
 	}
 
