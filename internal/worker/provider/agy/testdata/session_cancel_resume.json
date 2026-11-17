@@ -1,0 +1,36 @@
+{
+  "cancelNotification": {
+    "jsonrpc": "2.0",
+    "method": "session/cancel",
+    "params": {
+      "sessionId": "00000000-0000-4000-8000-000000000001"
+    }
+  },
+  "promptResultOnCancel": {
+    "jsonrpc": "2.0",
+    "id": 3,
+    "result": {
+      "stopReason": "cancelled"
+    }
+  },
+  "resumeRequest": {
+    "jsonrpc": "2.0",
+    "id": 2,
+    "method": "session/resume",
+    "params": {
+      "sessionId": "00000000-0000-4000-8000-000000000001",
+      "cwd": "/tmp/opus-wt-example",
+      "mcpServers": []
+    }
+  },
+  "resumeResponse": {
+    "jsonrpc": "2.0",
+    "id": 2,
+    "result": {
+      "sessionId": "00000000-0000-4000-8000-000000000001",
+      "modes": {
+        "currentModeId": "default"
+      }
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "unauthenticatedNote": "When no credentials exist, agy acp still answers initialize and session/new (advertising authMethods), and rejects unauthenticated API calls with 'Authentication required. Please visit the URL to log in:' / unauthenticatedAuthResult. In headless workers, pass --dangerously-skip-permissions or pre-authenticate via 'agy acp --login'.",
+  "quotaExhaustedPattern": {
+    "regex": "RESOURCE_EXHAUSTED|quota|\\b429\\b|exhausted your capacity|rate.?limit",
+    "lowQuotaBanner": "[quota] model <model> is low on quota (<pct> remaining, resets at <RFC3339>)",
+    "exampleError": {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "error": {
+        "code": -32000,
+        "message": "RESOURCE_EXHAUSTED: You have exhausted your capacity on this model. Your quota will reset after ..."
+      }
+    }
+  }
+}
