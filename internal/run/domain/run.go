@@ -180,3 +180,11 @@ type ListFilter struct {
 	ProjectID *uuid.UUID
 	State     *RunState
 }
+
+// ProjectNodeCandidate describes a node mapped to a project for run placement.
+type ProjectNodeCandidate struct {
+	NodeID     uuid.UUID
+	Name       string
+	Online     bool
+	MappedPath string
+}

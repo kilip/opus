@@ -6,6 +6,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kilip/opus/ent"
+	entnode "github.com/kilip/opus/ent/node"
+	"github.com/kilip/opus/ent/projectnode"
 	entrun "github.com/kilip/opus/ent/run"
 	"github.com/kilip/opus/internal/run/domain"
 )
@@ -156,6 +158,49 @@ func (r *Ent) Transition(
 		return domain.Run{}, err
 	}
 	return toDomainRun(updated), nil
+}
+
+// HasActiveRun reports whether taskID already has a non-terminal Run.
+func (r *Ent) HasActiveRun(ctx context.Context, taskID uuid.UUID) (bool, error) {
+	return r.db.Run.Query().
+		Where(
+			entrun.TaskIDEQ(taskID),
+			entrun.StateIn(
+				entrun.StateQueued,
+				entrun.StatePreparing,
+				entrun.StateRunning,
+				entrun.StatePaused,
+			),
+		).
+		Exist(ctx)
+}
+
+// ListProjectNodes returns nodes mapped to projectID with their online status and mapped path.
+func (r *Ent) ListProjectNodes(ctx context.Context, projectID uuid.UUID) ([]domain.ProjectNodeCandidate, error) {
+	rows, err := r.db.ProjectNode.Query().
+		Where(projectnode.ProjectIDEQ(projectID)).
+		WithNode().
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.ProjectNodeCandidate, 0, len(rows))
+	for _, row := range rows {
+		if row.Edges.Node == nil {
+			continue
+		}
+		var path string
+		if row.Path != nil {
+			path = *row.Path
+		}
+		out = append(out, domain.ProjectNodeCandidate{
+			NodeID:     row.Edges.Node.ID,
+			Name:       row.Edges.Node.Name,
+			Online:     row.Edges.Node.Status == entnode.StatusOnline,
+			MappedPath: path,
+		})
+	}
+	return out, nil
 }
 
 func toDomainRun(row *ent.Run) domain.Run {

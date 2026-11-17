@@ -4,6 +4,7 @@ package run
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,6 +13,8 @@ import (
 	"github.com/kilip/opus/internal/run/domain"
 	"github.com/kilip/opus/internal/run/repo"
 	"github.com/kilip/opus/internal/run/service"
+	"github.com/kilip/opus/internal/session"
+	"github.com/kilip/opus/internal/task"
 )
 
 // Mode, state, and event constants re-exported from domain.
@@ -55,13 +58,19 @@ type (
 
 // Config configures the run feature.
 type Config struct {
-	Bus *eventbus.Bus
-	Now func() time.Time
+	Bus          *eventbus.Bus
+	Now          func() time.Time
+	Tasks        *task.Task
+	Sessions     *session.Session
+	PollInterval time.Duration
+	Logger       *slog.Logger
+	IsAgyReady   func(ctx context.Context, nodeID uuid.UUID) bool
 }
 
 // Feature is the public facade for the run feature.
 type Feature struct {
-	svc *service.Service
+	svc        *service.Service
+	reconciler service.ReconcilerConfig
 }
 
 // New constructs the run feature wired to Ent and the shared event bus.
@@ -71,7 +80,26 @@ func New(db *ent.Client, cfg Config) *Feature {
 		Bus: cfg.Bus,
 		Now: cfg.Now,
 	})
-	return &Feature{svc: svc}
+	return &Feature{
+		svc: svc,
+		reconciler: service.ReconcilerConfig{
+			Tasks:        cfg.Tasks,
+			Sessions:     cfg.Sessions,
+			PollInterval: cfg.PollInterval,
+			Logger:       cfg.Logger,
+			IsAgyReady:   cfg.IsAgyReady,
+		},
+	}
+}
+
+// Run starts the reconciler loop and blocks until ctx is cancelled.
+func (f *Feature) Run(ctx context.Context) error {
+	return f.svc.Run(ctx, f.reconciler)
+}
+
+// ReconcileOnce runs a single eligibility scan across tasks.
+func (f *Feature) ReconcileOnce(ctx context.Context) error {
+	return f.svc.ReconcileOnce(ctx, f.reconciler)
 }
 
 // Create creates a new Run in the queued state.
