@@ -93,3 +93,11 @@ func (s *Tracker) EffectiveLabels(ctx context.Context, proj project.Record) (dom
 	}
 	return domain.ResolveEffectiveLabels(global, proj.TrackerLabels), nil
 }
+
+// ListTaskPRs returns tracked pull request snapshots linked to taskID.
+func (s *Tracker) ListTaskPRs(ctx context.Context, taskID string) ([]domain.TrackerPR, error) {
+	if _, err := uuid.Parse(taskID); err != nil {
+		return nil, domain.ErrInvalidTaskID
+	}
+	return s.repo.ListPRsByTask(ctx, taskID)
+}

@@ -17,6 +17,7 @@ import (
 	"github.com/kilip/opus/ent/predicate"
 	"github.com/kilip/opus/ent/project"
 	"github.com/kilip/opus/ent/task"
+	"github.com/kilip/opus/ent/trackerpr"
 )
 
 // TaskQuery is the builder for querying Task entities.
@@ -28,6 +29,7 @@ type TaskQuery struct {
 	predicates     []predicate.Task
 	withProject    *ProjectQuery
 	withActivities *ActivityQuery
+	withTrackerPrs *TrackerPRQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -101,6 +103,28 @@ func (_q *TaskQuery) QueryActivities() *ActivityQuery {
 			sqlgraph.From(task.Table, task.FieldID, selector),
 			sqlgraph.To(activity.Table, activity.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, task.ActivitiesTable, task.ActivitiesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryTrackerPrs chains the current query on the "tracker_prs" edge.
+func (_q *TaskQuery) QueryTrackerPrs() *TrackerPRQuery {
+	query := (&TrackerPRClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(task.Table, task.FieldID, selector),
+			sqlgraph.To(trackerpr.Table, trackerpr.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, task.TrackerPrsTable, task.TrackerPrsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -302,6 +326,7 @@ func (_q *TaskQuery) Clone() *TaskQuery {
 		predicates:     append([]predicate.Task{}, _q.predicates...),
 		withProject:    _q.withProject.Clone(),
 		withActivities: _q.withActivities.Clone(),
+		withTrackerPrs: _q.withTrackerPrs.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -327,6 +352,17 @@ func (_q *TaskQuery) WithActivities(opts ...func(*ActivityQuery)) *TaskQuery {
 		opt(query)
 	}
 	_q.withActivities = query
+	return _q
+}
+
+// WithTrackerPrs tells the query-builder to eager-load the nodes that are connected to
+// the "tracker_prs" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *TaskQuery) WithTrackerPrs(opts ...func(*TrackerPRQuery)) *TaskQuery {
+	query := (&TrackerPRClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withTrackerPrs = query
 	return _q
 }
 
@@ -408,9 +444,10 @@ func (_q *TaskQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Task, e
 	var (
 		nodes       = []*Task{}
 		_spec       = _q.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [3]bool{
 			_q.withProject != nil,
 			_q.withActivities != nil,
+			_q.withTrackerPrs != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -441,6 +478,13 @@ func (_q *TaskQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Task, e
 		if err := _q.loadActivities(ctx, query, nodes,
 			func(n *Task) { n.Edges.Activities = []*Activity{} },
 			func(n *Task, e *Activity) { n.Edges.Activities = append(n.Edges.Activities, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withTrackerPrs; query != nil {
+		if err := _q.loadTrackerPrs(ctx, query, nodes,
+			func(n *Task) { n.Edges.TrackerPrs = []*TrackerPR{} },
+			func(n *Task, e *TrackerPR) { n.Edges.TrackerPrs = append(n.Edges.TrackerPrs, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -501,6 +545,39 @@ func (_q *TaskQuery) loadActivities(ctx context.Context, query *ActivityQuery, n
 		node, ok := nodeids[fk]
 		if !ok {
 			return fmt.Errorf(`unexpected referenced foreign-key "task_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *TaskQuery) loadTrackerPrs(ctx context.Context, query *TrackerPRQuery, nodes []*Task, init func(*Task), assign func(*Task, *TrackerPR)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Task)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(trackerpr.FieldTaskID)
+	}
+	query.Where(predicate.TrackerPR(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(task.TrackerPrsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.TaskID
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "task_id" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "task_id" returned %v for node %v`, *fk, n.ID)
 		}
 		assign(node, n)
 	}

@@ -266,6 +266,52 @@ var (
 			},
 		},
 	}
+	// TrackerPrsColumns holds the columns for the "tracker_prs" table.
+	TrackerPrsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "number", Type: field.TypeInt},
+		{Name: "state", Type: field.TypeEnum, Enums: []string{"open", "closed", "merged"}, Default: "open"},
+		{Name: "is_draft", Type: field.TypeBool, Default: false},
+		{Name: "review_state", Type: field.TypeString, Default: ""},
+		{Name: "checks_summary", Type: field.TypeEnum, Enums: []string{"passing", "failing", "pending", "none"}, Default: "none"},
+		{Name: "url", Type: field.TypeString, Default: ""},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "project_id", Type: field.TypeUUID},
+		{Name: "task_id", Type: field.TypeUUID, Nullable: true},
+	}
+	// TrackerPrsTable holds the schema information for the "tracker_prs" table.
+	TrackerPrsTable = &schema.Table{
+		Name:       "tracker_prs",
+		Columns:    TrackerPrsColumns,
+		PrimaryKey: []*schema.Column{TrackerPrsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "tracker_prs_projects_tracker_prs",
+				Columns:    []*schema.Column{TrackerPrsColumns[9]},
+				RefColumns: []*schema.Column{ProjectsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "tracker_prs_tasks_tracker_prs",
+				Columns:    []*schema.Column{TrackerPrsColumns[10]},
+				RefColumns: []*schema.Column{TasksColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "trackerpr_project_id_number",
+				Unique:  true,
+				Columns: []*schema.Column{TrackerPrsColumns[9], TrackerPrsColumns[1]},
+			},
+			{
+				Name:    "trackerpr_task_id",
+				Unique:  false,
+				Columns: []*schema.Column{TrackerPrsColumns[10]},
+			},
+		},
+	}
 	// TrackerSettingsColumns holds the columns for the "tracker_settings" table.
 	TrackerSettingsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -325,6 +371,7 @@ var (
 		ProjectNodesTable,
 		SessionsTable,
 		TasksTable,
+		TrackerPrsTable,
 		TrackerSettingsTable,
 		TrackerSyncsTable,
 		UsersTable,
@@ -339,5 +386,7 @@ func init() {
 	ProjectNodesTable.ForeignKeys[1].RefTable = ProjectsTable
 	SessionsTable.ForeignKeys[0].RefTable = UsersTable
 	TasksTable.ForeignKeys[0].RefTable = ProjectsTable
+	TrackerPrsTable.ForeignKeys[0].RefTable = ProjectsTable
+	TrackerPrsTable.ForeignKeys[1].RefTable = TasksTable
 	TrackerSyncsTable.ForeignKeys[0].RefTable = ProjectsTable
 }

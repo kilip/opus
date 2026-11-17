@@ -224,3 +224,66 @@ func TestHandler_SettingsGetAndPut(t *testing.T) {
 		t.Fatalf("expected defaults after reset, got %v", resetData.StatusLabels)
 	}
 }
+
+func TestHandler_ListTaskPRs(t *testing.T) {
+	app, client, r := setupApp(t)
+	ctx := context.Background()
+
+	// Invalid UUID -> 400
+	resp := doReq(t, app, http.MethodGet, "/api/tasks/not-a-uuid/prs", nil)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400 for invalid task id, got %d", resp.StatusCode)
+	}
+
+	// Unknown task -> 404
+	resp = doReq(t, app, http.MethodGet, "/api/tasks/01930000-0000-7000-8000-000000000099/prs", nil)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected 404 for unknown task, got %d", resp.StatusCode)
+	}
+
+	proj, err := client.Project.Create().
+		SetSlug("opus").
+		SetName("Opus").
+		SetRepoProvider("github").
+		SetRepoRef("kilip/opus").
+		SetTrackerProvider("github").
+		SetTrackerRef("kilip/opus").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+	tsk, err := client.Task.Create().
+		SetProjectID(proj.ID).
+		SetKey("OP-1").
+		SetTitle("Test task").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create task: %v", err)
+	}
+
+	taskID := tsk.ID.String()
+	if _, err := r.UpsertPR(ctx, repo.UpsertPRInput{
+		ProjectID:     proj.ID.String(),
+		Number:        105,
+		TaskID:        &taskID,
+		State:         domain.PRStateOpen,
+		IsDraft:       false,
+		ReviewState:   "APPROVED",
+		ChecksSummary: domain.ChecksPassing,
+		URL:           "https://github.com/kilip/opus/pull/105",
+	}); err != nil {
+		t.Fatalf("UpsertPR: %v", err)
+	}
+
+	resp = doReq(t, app, http.MethodGet, "/api/tasks/"+taskID+"/prs", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+	body := decodeBody[httpx.Response[[]domain.TrackerPR]](t, resp)
+	if len(body.Data) != 1 {
+		t.Fatalf("expected 1 PR, got %d", len(body.Data))
+	}
+	if body.Data[0].Number != 105 || body.Data[0].ChecksSummary != domain.ChecksPassing || body.Data[0].ReviewState != "APPROVED" {
+		t.Fatalf("unexpected PR payload: %+v", body.Data[0])
+	}
+}

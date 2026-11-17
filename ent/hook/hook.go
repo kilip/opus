@@ -141,6 +141,18 @@ func (f TaskFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error)
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.TaskMutation", m)
 }
 
+// The TrackerPRFunc type is an adapter to allow the use of ordinary
+// function as TrackerPR mutator.
+type TrackerPRFunc func(context.Context, *ent.TrackerPRMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f TrackerPRFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.TrackerPRMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.TrackerPRMutation", m)
+}
+
 // The TrackerSettingsFunc type is an adapter to allow the use of ordinary
 // function as TrackerSettings mutator.
 type TrackerSettingsFunc func(context.Context, *ent.TrackerSettingsMutation) (ent.Value, error)

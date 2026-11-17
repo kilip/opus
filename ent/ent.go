@@ -23,6 +23,7 @@ import (
 	"github.com/kilip/opus/ent/projectnode"
 	"github.com/kilip/opus/ent/session"
 	"github.com/kilip/opus/ent/task"
+	"github.com/kilip/opus/ent/trackerpr"
 	"github.com/kilip/opus/ent/trackersettings"
 	"github.com/kilip/opus/ent/trackersync"
 	"github.com/kilip/opus/ent/user"
@@ -97,6 +98,7 @@ func checkColumn(t, c string) error {
 			projectnode.Table:     projectnode.ValidColumn,
 			session.Table:         session.ValidColumn,
 			task.Table:            task.ValidColumn,
+			trackerpr.Table:       trackerpr.ValidColumn,
 			trackersettings.Table: trackersettings.ValidColumn,
 			trackersync.Table:     trackersync.ValidColumn,
 			user.Table:            user.ValidColumn,

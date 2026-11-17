@@ -84,6 +84,21 @@
                 ],
                 "type": "object"
             },
+            "domain.ChecksSummary": {
+                "enum": [
+                    "passing",
+                    "failing",
+                    "pending",
+                    "none"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "ChecksPassing",
+                    "ChecksFailing",
+                    "ChecksPending",
+                    "ChecksNone"
+                ]
+            },
             "domain.CreateActivityRequest": {
                 "properties": {
                     "body": {
@@ -236,6 +251,19 @@
                     }
                 },
                 "type": "object"
+            },
+            "domain.PRState": {
+                "enum": [
+                    "open",
+                    "closed",
+                    "merged"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "PRStateOpen",
+                    "PRStateClosed",
+                    "PRStateMerged"
+                ]
             },
             "domain.Project": {
                 "properties": {
@@ -487,6 +515,53 @@
                     "TaskTypeRefactor",
                     "TaskTypeDocs"
                 ]
+            },
+            "domain.TrackerPR": {
+                "properties": {
+                    "checksSummary": {
+                        "$ref": "#/components/schemas/domain.ChecksSummary"
+                    },
+                    "createdAt": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "isDraft": {
+                        "type": "boolean"
+                    },
+                    "number": {
+                        "type": "integer"
+                    },
+                    "projectId": {
+                        "type": "string"
+                    },
+                    "reviewState": {
+                        "type": "string"
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/domain.PRState"
+                    },
+                    "taskId": {
+                        "type": "string"
+                    },
+                    "updatedAt": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "checksSummary",
+                    "createdAt",
+                    "id",
+                    "number",
+                    "projectId",
+                    "state",
+                    "updatedAt"
+                ],
+                "type": "object"
             },
             "domain.TrackerSettingsResponse": {
                 "properties": {
@@ -761,6 +836,24 @@
                     "data": {
                         "items": {
                             "$ref": "#/components/schemas/domain.Task"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
+            "httpx.Response-array_domain_TrackerPR": {
+                "properties": {
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/domain.TrackerPR"
                         },
                         "type": "array",
                         "uniqueItems": false
@@ -2616,6 +2709,69 @@
                 "summary": "Create task activity",
                 "tags": [
                     "tasks"
+                ]
+            }
+        },
+        "/tasks/{id}/prs": {
+            "get": {
+                "description": "Returns tracked GitHub pull request snapshots linked to the specified task.",
+                "operationId": "list-task-prs",
+                "parameters": [
+                    {
+                        "description": "Task ID",
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-array_domain_TrackerPR"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "List pull requests linked to a task",
+                "tags": [
+                    "tracker"
                 ]
             }
         },

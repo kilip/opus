@@ -27,6 +27,7 @@ import (
 	"github.com/kilip/opus/ent/projectnode"
 	"github.com/kilip/opus/ent/session"
 	"github.com/kilip/opus/ent/task"
+	"github.com/kilip/opus/ent/trackerpr"
 	"github.com/kilip/opus/ent/trackersettings"
 	"github.com/kilip/opus/ent/trackersync"
 	"github.com/kilip/opus/ent/user"
@@ -59,6 +60,8 @@ type Client struct {
 	Session *SessionClient
 	// Task is the client for interacting with the Task builders.
 	Task *TaskClient
+	// TrackerPR is the client for interacting with the TrackerPR builders.
+	TrackerPR *TrackerPRClient
 	// TrackerSettings is the client for interacting with the TrackerSettings builders.
 	TrackerSettings *TrackerSettingsClient
 	// TrackerSync is the client for interacting with the TrackerSync builders.
@@ -87,6 +90,7 @@ func (c *Client) init() {
 	c.ProjectNode = NewProjectNodeClient(c.config)
 	c.Session = NewSessionClient(c.config)
 	c.Task = NewTaskClient(c.config)
+	c.TrackerPR = NewTrackerPRClient(c.config)
 	c.TrackerSettings = NewTrackerSettingsClient(c.config)
 	c.TrackerSync = NewTrackerSyncClient(c.config)
 	c.User = NewUserClient(c.config)
@@ -193,6 +197,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		ProjectNode:     NewProjectNodeClient(cfg),
 		Session:         NewSessionClient(cfg),
 		Task:            NewTaskClient(cfg),
+		TrackerPR:       NewTrackerPRClient(cfg),
 		TrackerSettings: NewTrackerSettingsClient(cfg),
 		TrackerSync:     NewTrackerSyncClient(cfg),
 		User:            NewUserClient(cfg),
@@ -226,6 +231,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		ProjectNode:     NewProjectNodeClient(cfg),
 		Session:         NewSessionClient(cfg),
 		Task:            NewTaskClient(cfg),
+		TrackerPR:       NewTrackerPRClient(cfg),
 		TrackerSettings: NewTrackerSettingsClient(cfg),
 		TrackerSync:     NewTrackerSyncClient(cfg),
 		User:            NewUserClient(cfg),
@@ -259,8 +265,8 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Account, c.Activity, c.AuditLog, c.Counter, c.JoinToken, c.Node, c.OTP,
-		c.Project, c.ProjectNode, c.Session, c.Task, c.TrackerSettings, c.TrackerSync,
-		c.User,
+		c.Project, c.ProjectNode, c.Session, c.Task, c.TrackerPR, c.TrackerSettings,
+		c.TrackerSync, c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -271,8 +277,8 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Account, c.Activity, c.AuditLog, c.Counter, c.JoinToken, c.Node, c.OTP,
-		c.Project, c.ProjectNode, c.Session, c.Task, c.TrackerSettings, c.TrackerSync,
-		c.User,
+		c.Project, c.ProjectNode, c.Session, c.Task, c.TrackerPR, c.TrackerSettings,
+		c.TrackerSync, c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -303,6 +309,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Session.mutate(ctx, m)
 	case *TaskMutation:
 		return c.Task.mutate(ctx, m)
+	case *TrackerPRMutation:
+		return c.TrackerPR.mutate(ctx, m)
 	case *TrackerSettingsMutation:
 		return c.TrackerSettings.mutate(ctx, m)
 	case *TrackerSyncMutation:
@@ -1465,6 +1473,22 @@ func (c *ProjectClient) QueryTrackerSync(_m *Project) *TrackerSyncQuery {
 	return query
 }
 
+// QueryTrackerPrs queries the tracker_prs edge of a Project.
+func (c *ProjectClient) QueryTrackerPrs(_m *Project) *TrackerPRQuery {
+	query := (&TrackerPRClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, id),
+			sqlgraph.To(trackerpr.Table, trackerpr.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.TrackerPrsTable, project.TrackerPrsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *ProjectClient) Hooks() []Hook {
 	return c.hooks.Project
@@ -1944,6 +1968,22 @@ func (c *TaskClient) QueryActivities(_m *Task) *ActivityQuery {
 	return query
 }
 
+// QueryTrackerPrs queries the tracker_prs edge of a Task.
+func (c *TaskClient) QueryTrackerPrs(_m *Task) *TrackerPRQuery {
+	query := (&TrackerPRClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(task.Table, task.FieldID, id),
+			sqlgraph.To(trackerpr.Table, trackerpr.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, task.TrackerPrsTable, task.TrackerPrsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *TaskClient) Hooks() []Hook {
 	return c.hooks.Task
@@ -1966,6 +2006,171 @@ func (c *TaskClient) mutate(ctx context.Context, m *TaskMutation) (Value, error)
 		return (&TaskDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Task mutation op: %q", m.Op())
+	}
+}
+
+// TrackerPRClient is a client for the TrackerPR schema.
+type TrackerPRClient struct {
+	config
+}
+
+// NewTrackerPRClient returns a client for the TrackerPR from the given config.
+func NewTrackerPRClient(c config) *TrackerPRClient {
+	return &TrackerPRClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `trackerpr.Hooks(f(g(h())))`.
+func (c *TrackerPRClient) Use(hooks ...Hook) {
+	c.hooks.TrackerPR = append(c.hooks.TrackerPR, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `trackerpr.Intercept(f(g(h())))`.
+func (c *TrackerPRClient) Intercept(interceptors ...Interceptor) {
+	c.inters.TrackerPR = append(c.inters.TrackerPR, interceptors...)
+}
+
+// Create returns a builder for creating a TrackerPR entity.
+func (c *TrackerPRClient) Create() *TrackerPRCreate {
+	mutation := newTrackerPRMutation(c.config, OpCreate)
+	return &TrackerPRCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of TrackerPR entities.
+func (c *TrackerPRClient) CreateBulk(builders ...*TrackerPRCreate) *TrackerPRCreateBulk {
+	return &TrackerPRCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *TrackerPRClient) MapCreateBulk(slice any, setFunc func(*TrackerPRCreate, int)) *TrackerPRCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &TrackerPRCreateBulk{err: fmt.Errorf("calling to TrackerPRClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*TrackerPRCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &TrackerPRCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for TrackerPR.
+func (c *TrackerPRClient) Update() *TrackerPRUpdate {
+	mutation := newTrackerPRMutation(c.config, OpUpdate)
+	return &TrackerPRUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *TrackerPRClient) UpdateOne(_m *TrackerPR) *TrackerPRUpdateOne {
+	mutation := newTrackerPRMutation(c.config, OpUpdateOne, withTrackerPR(_m))
+	return &TrackerPRUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *TrackerPRClient) UpdateOneID(id uuid.UUID) *TrackerPRUpdateOne {
+	mutation := newTrackerPRMutation(c.config, OpUpdateOne, withTrackerPRID(id))
+	return &TrackerPRUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for TrackerPR.
+func (c *TrackerPRClient) Delete() *TrackerPRDelete {
+	mutation := newTrackerPRMutation(c.config, OpDelete)
+	return &TrackerPRDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *TrackerPRClient) DeleteOne(_m *TrackerPR) *TrackerPRDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *TrackerPRClient) DeleteOneID(id uuid.UUID) *TrackerPRDeleteOne {
+	builder := c.Delete().Where(trackerpr.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &TrackerPRDeleteOne{builder}
+}
+
+// Query returns a query builder for TrackerPR.
+func (c *TrackerPRClient) Query() *TrackerPRQuery {
+	return &TrackerPRQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeTrackerPR},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a TrackerPR entity by its id.
+func (c *TrackerPRClient) Get(ctx context.Context, id uuid.UUID) (*TrackerPR, error) {
+	return c.Query().Where(trackerpr.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *TrackerPRClient) GetX(ctx context.Context, id uuid.UUID) *TrackerPR {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryProject queries the project edge of a TrackerPR.
+func (c *TrackerPRClient) QueryProject(_m *TrackerPR) *ProjectQuery {
+	query := (&ProjectClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(trackerpr.Table, trackerpr.FieldID, id),
+			sqlgraph.To(project.Table, project.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, trackerpr.ProjectTable, trackerpr.ProjectColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryTask queries the task edge of a TrackerPR.
+func (c *TrackerPRClient) QueryTask(_m *TrackerPR) *TaskQuery {
+	query := (&TaskClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(trackerpr.Table, trackerpr.FieldID, id),
+			sqlgraph.To(task.Table, task.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, trackerpr.TaskTable, trackerpr.TaskColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *TrackerPRClient) Hooks() []Hook {
+	return c.hooks.TrackerPR
+}
+
+// Interceptors returns the client interceptors.
+func (c *TrackerPRClient) Interceptors() []Interceptor {
+	return c.inters.TrackerPR
+}
+
+func (c *TrackerPRClient) mutate(ctx context.Context, m *TrackerPRMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&TrackerPRCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&TrackerPRUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&TrackerPRUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&TrackerPRDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown TrackerPR mutation op: %q", m.Op())
 	}
 }
 
@@ -2436,11 +2641,12 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 type (
 	hooks struct {
 		Account, Activity, AuditLog, Counter, JoinToken, Node, OTP, Project,
-		ProjectNode, Session, Task, TrackerSettings, TrackerSync, User []ent.Hook
+		ProjectNode, Session, Task, TrackerPR, TrackerSettings, TrackerSync,
+		User []ent.Hook
 	}
 	inters struct {
 		Account, Activity, AuditLog, Counter, JoinToken, Node, OTP, Project,
-		ProjectNode, Session, Task, TrackerSettings, TrackerSync,
+		ProjectNode, Session, Task, TrackerPR, TrackerSettings, TrackerSync,
 		User []ent.Interceptor
 	}
 )

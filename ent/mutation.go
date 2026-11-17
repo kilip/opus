@@ -24,6 +24,7 @@ import (
 	"github.com/kilip/opus/ent/projectnode"
 	"github.com/kilip/opus/ent/session"
 	"github.com/kilip/opus/ent/task"
+	"github.com/kilip/opus/ent/trackerpr"
 	"github.com/kilip/opus/ent/trackersettings"
 	"github.com/kilip/opus/ent/trackersync"
 	"github.com/kilip/opus/ent/user"
@@ -49,6 +50,7 @@ const (
 	TypeProjectNode     = "ProjectNode"
 	TypeSession         = "Session"
 	TypeTask            = "Task"
+	TypeTrackerPR       = "TrackerPR"
 	TypeTrackerSettings = "TrackerSettings"
 	TypeTrackerSync     = "TrackerSync"
 	TypeUser            = "User"
@@ -4133,6 +4135,9 @@ type ProjectMutation struct {
 	clearedtasks         bool
 	tracker_sync         *uuid.UUID
 	clearedtracker_sync  bool
+	tracker_prs          map[uuid.UUID]struct{}
+	removedtracker_prs   map[uuid.UUID]struct{}
+	clearedtracker_prs   bool
 	done                 bool
 	oldValue             func(context.Context) (*Project, error)
 	predicates           []predicate.Project
@@ -4762,6 +4767,60 @@ func (m *ProjectMutation) ResetTrackerSync() {
 	m.clearedtracker_sync = false
 }
 
+// AddTrackerPrIDs adds the "tracker_prs" edge to the TrackerPR entity by ids.
+func (m *ProjectMutation) AddTrackerPrIDs(ids ...uuid.UUID) {
+	if m.tracker_prs == nil {
+		m.tracker_prs = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.tracker_prs[ids[i]] = struct{}{}
+	}
+}
+
+// ClearTrackerPrs clears the "tracker_prs" edge to the TrackerPR entity.
+func (m *ProjectMutation) ClearTrackerPrs() {
+	m.clearedtracker_prs = true
+}
+
+// TrackerPrsCleared reports if the "tracker_prs" edge to the TrackerPR entity was cleared.
+func (m *ProjectMutation) TrackerPrsCleared() bool {
+	return m.clearedtracker_prs
+}
+
+// RemoveTrackerPrIDs removes the "tracker_prs" edge to the TrackerPR entity by IDs.
+func (m *ProjectMutation) RemoveTrackerPrIDs(ids ...uuid.UUID) {
+	if m.removedtracker_prs == nil {
+		m.removedtracker_prs = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.tracker_prs, ids[i])
+		m.removedtracker_prs[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedTrackerPrs returns the removed IDs of the "tracker_prs" edge to the TrackerPR entity.
+func (m *ProjectMutation) RemovedTrackerPrsIDs() (ids []uuid.UUID) {
+	for id := range m.removedtracker_prs {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// TrackerPrsIDs returns the "tracker_prs" edge IDs in the mutation.
+func (m *ProjectMutation) TrackerPrsIDs() (ids []uuid.UUID) {
+	for id := range m.tracker_prs {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetTrackerPrs resets all changes to the "tracker_prs" edge.
+func (m *ProjectMutation) ResetTrackerPrs() {
+	m.tracker_prs = nil
+	m.clearedtracker_prs = false
+	m.removedtracker_prs = nil
+}
+
 // Where appends a list predicates to the ProjectMutation builder.
 func (m *ProjectMutation) Where(ps ...predicate.Project) {
 	m.predicates = append(m.predicates, ps...)
@@ -5057,7 +5116,7 @@ func (m *ProjectMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ProjectMutation) AddedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.project_nodes != nil {
 		edges = append(edges, project.EdgeProjectNodes)
 	}
@@ -5066,6 +5125,9 @@ func (m *ProjectMutation) AddedEdges() []string {
 	}
 	if m.tracker_sync != nil {
 		edges = append(edges, project.EdgeTrackerSync)
+	}
+	if m.tracker_prs != nil {
+		edges = append(edges, project.EdgeTrackerPrs)
 	}
 	return edges
 }
@@ -5090,18 +5152,27 @@ func (m *ProjectMutation) AddedIDs(name string) []ent.Value {
 		if id := m.tracker_sync; id != nil {
 			return []ent.Value{*id}
 		}
+	case project.EdgeTrackerPrs:
+		ids := make([]ent.Value, 0, len(m.tracker_prs))
+		for id := range m.tracker_prs {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ProjectMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.removedproject_nodes != nil {
 		edges = append(edges, project.EdgeProjectNodes)
 	}
 	if m.removedtasks != nil {
 		edges = append(edges, project.EdgeTasks)
+	}
+	if m.removedtracker_prs != nil {
+		edges = append(edges, project.EdgeTrackerPrs)
 	}
 	return edges
 }
@@ -5122,13 +5193,19 @@ func (m *ProjectMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case project.EdgeTrackerPrs:
+		ids := make([]ent.Value, 0, len(m.removedtracker_prs))
+		for id := range m.removedtracker_prs {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ProjectMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.clearedproject_nodes {
 		edges = append(edges, project.EdgeProjectNodes)
 	}
@@ -5137,6 +5214,9 @@ func (m *ProjectMutation) ClearedEdges() []string {
 	}
 	if m.clearedtracker_sync {
 		edges = append(edges, project.EdgeTrackerSync)
+	}
+	if m.clearedtracker_prs {
+		edges = append(edges, project.EdgeTrackerPrs)
 	}
 	return edges
 }
@@ -5151,6 +5231,8 @@ func (m *ProjectMutation) EdgeCleared(name string) bool {
 		return m.clearedtasks
 	case project.EdgeTrackerSync:
 		return m.clearedtracker_sync
+	case project.EdgeTrackerPrs:
+		return m.clearedtracker_prs
 	}
 	return false
 }
@@ -5178,6 +5260,9 @@ func (m *ProjectMutation) ResetEdge(name string) error {
 		return nil
 	case project.EdgeTrackerSync:
 		m.ResetTrackerSync()
+		return nil
+	case project.EdgeTrackerPrs:
+		m.ResetTrackerPrs()
 		return nil
 	}
 	return fmt.Errorf("unknown Project edge %s", name)
@@ -6296,36 +6381,39 @@ func (m *SessionMutation) ResetEdge(name string) error {
 // TaskMutation represents an operation that mutates the Task nodes in the graph.
 type TaskMutation struct {
 	config
-	op                Op
-	typ               string
-	id                *uuid.UUID
-	key               *string
-	source            *string
-	external_id       *string
-	external_url      *string
-	title             *string
-	description       *string
-	status            *task.Status
-	source_status     *string
-	priority          *string
-	_type             *string
-	assignee_id       *string
-	assignee_name     *string
-	due_date          *string
-	labels            *[]string
-	appendlabels      []string
-	created_at        *time.Time
-	updated_at        *time.Time
-	synced_at         *time.Time
-	clearedFields     map[string]struct{}
-	project           *uuid.UUID
-	clearedproject    bool
-	activities        map[uuid.UUID]struct{}
-	removedactivities map[uuid.UUID]struct{}
-	clearedactivities bool
-	done              bool
-	oldValue          func(context.Context) (*Task, error)
-	predicates        []predicate.Task
+	op                 Op
+	typ                string
+	id                 *uuid.UUID
+	key                *string
+	source             *string
+	external_id        *string
+	external_url       *string
+	title              *string
+	description        *string
+	status             *task.Status
+	source_status      *string
+	priority           *string
+	_type              *string
+	assignee_id        *string
+	assignee_name      *string
+	due_date           *string
+	labels             *[]string
+	appendlabels       []string
+	created_at         *time.Time
+	updated_at         *time.Time
+	synced_at          *time.Time
+	clearedFields      map[string]struct{}
+	project            *uuid.UUID
+	clearedproject     bool
+	activities         map[uuid.UUID]struct{}
+	removedactivities  map[uuid.UUID]struct{}
+	clearedactivities  bool
+	tracker_prs        map[uuid.UUID]struct{}
+	removedtracker_prs map[uuid.UUID]struct{}
+	clearedtracker_prs bool
+	done               bool
+	oldValue           func(context.Context) (*Task, error)
+	predicates         []predicate.Task
 }
 
 var _ ent.Mutation = (*TaskMutation)(nil)
@@ -7228,6 +7316,60 @@ func (m *TaskMutation) ResetActivities() {
 	m.removedactivities = nil
 }
 
+// AddTrackerPrIDs adds the "tracker_prs" edge to the TrackerPR entity by ids.
+func (m *TaskMutation) AddTrackerPrIDs(ids ...uuid.UUID) {
+	if m.tracker_prs == nil {
+		m.tracker_prs = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.tracker_prs[ids[i]] = struct{}{}
+	}
+}
+
+// ClearTrackerPrs clears the "tracker_prs" edge to the TrackerPR entity.
+func (m *TaskMutation) ClearTrackerPrs() {
+	m.clearedtracker_prs = true
+}
+
+// TrackerPrsCleared reports if the "tracker_prs" edge to the TrackerPR entity was cleared.
+func (m *TaskMutation) TrackerPrsCleared() bool {
+	return m.clearedtracker_prs
+}
+
+// RemoveTrackerPrIDs removes the "tracker_prs" edge to the TrackerPR entity by IDs.
+func (m *TaskMutation) RemoveTrackerPrIDs(ids ...uuid.UUID) {
+	if m.removedtracker_prs == nil {
+		m.removedtracker_prs = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.tracker_prs, ids[i])
+		m.removedtracker_prs[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedTrackerPrs returns the removed IDs of the "tracker_prs" edge to the TrackerPR entity.
+func (m *TaskMutation) RemovedTrackerPrsIDs() (ids []uuid.UUID) {
+	for id := range m.removedtracker_prs {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// TrackerPrsIDs returns the "tracker_prs" edge IDs in the mutation.
+func (m *TaskMutation) TrackerPrsIDs() (ids []uuid.UUID) {
+	for id := range m.tracker_prs {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetTrackerPrs resets all changes to the "tracker_prs" edge.
+func (m *TaskMutation) ResetTrackerPrs() {
+	m.tracker_prs = nil
+	m.clearedtracker_prs = false
+	m.removedtracker_prs = nil
+}
+
 // Where appends a list predicates to the TaskMutation builder.
 func (m *TaskMutation) Where(ps ...predicate.Task) {
 	m.predicates = append(m.predicates, ps...)
@@ -7677,12 +7819,15 @@ func (m *TaskMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *TaskMutation) AddedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.project != nil {
 		edges = append(edges, task.EdgeProject)
 	}
 	if m.activities != nil {
 		edges = append(edges, task.EdgeActivities)
+	}
+	if m.tracker_prs != nil {
+		edges = append(edges, task.EdgeTrackerPrs)
 	}
 	return edges
 }
@@ -7701,15 +7846,24 @@ func (m *TaskMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case task.EdgeTrackerPrs:
+		ids := make([]ent.Value, 0, len(m.tracker_prs))
+		for id := range m.tracker_prs {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *TaskMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.removedactivities != nil {
 		edges = append(edges, task.EdgeActivities)
+	}
+	if m.removedtracker_prs != nil {
+		edges = append(edges, task.EdgeTrackerPrs)
 	}
 	return edges
 }
@@ -7724,18 +7878,27 @@ func (m *TaskMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case task.EdgeTrackerPrs:
+		ids := make([]ent.Value, 0, len(m.removedtracker_prs))
+		for id := range m.removedtracker_prs {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *TaskMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.clearedproject {
 		edges = append(edges, task.EdgeProject)
 	}
 	if m.clearedactivities {
 		edges = append(edges, task.EdgeActivities)
+	}
+	if m.clearedtracker_prs {
+		edges = append(edges, task.EdgeTrackerPrs)
 	}
 	return edges
 }
@@ -7748,6 +7911,8 @@ func (m *TaskMutation) EdgeCleared(name string) bool {
 		return m.clearedproject
 	case task.EdgeActivities:
 		return m.clearedactivities
+	case task.EdgeTrackerPrs:
+		return m.clearedtracker_prs
 	}
 	return false
 }
@@ -7773,8 +7938,987 @@ func (m *TaskMutation) ResetEdge(name string) error {
 	case task.EdgeActivities:
 		m.ResetActivities()
 		return nil
+	case task.EdgeTrackerPrs:
+		m.ResetTrackerPrs()
+		return nil
 	}
 	return fmt.Errorf("unknown Task edge %s", name)
+}
+
+// TrackerPRMutation represents an operation that mutates the TrackerPR nodes in the graph.
+type TrackerPRMutation struct {
+	config
+	op             Op
+	typ            string
+	id             *uuid.UUID
+	number         *int
+	addnumber      *int
+	state          *trackerpr.State
+	is_draft       *bool
+	review_state   *string
+	checks_summary *trackerpr.ChecksSummary
+	url            *string
+	created_at     *time.Time
+	updated_at     *time.Time
+	clearedFields  map[string]struct{}
+	project        *uuid.UUID
+	clearedproject bool
+	task           *uuid.UUID
+	clearedtask    bool
+	done           bool
+	oldValue       func(context.Context) (*TrackerPR, error)
+	predicates     []predicate.TrackerPR
+}
+
+var _ ent.Mutation = (*TrackerPRMutation)(nil)
+
+// trackerprOption allows management of the mutation configuration using functional options.
+type trackerprOption func(*TrackerPRMutation)
+
+// newTrackerPRMutation creates new mutation for the TrackerPR entity.
+func newTrackerPRMutation(c config, op Op, opts ...trackerprOption) *TrackerPRMutation {
+	m := &TrackerPRMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeTrackerPR,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withTrackerPRID sets the ID field of the mutation.
+func withTrackerPRID(id uuid.UUID) trackerprOption {
+	return func(m *TrackerPRMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *TrackerPR
+		)
+		m.oldValue = func(ctx context.Context) (*TrackerPR, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().TrackerPR.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withTrackerPR sets the old TrackerPR of the mutation.
+func withTrackerPR(node *TrackerPR) trackerprOption {
+	return func(m *TrackerPRMutation) {
+		m.oldValue = func(context.Context) (*TrackerPR, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m TrackerPRMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m TrackerPRMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of TrackerPR entities.
+func (m *TrackerPRMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *TrackerPRMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *TrackerPRMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().TrackerPR.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetProjectID sets the "project_id" field.
+func (m *TrackerPRMutation) SetProjectID(u uuid.UUID) {
+	m.project = &u
+}
+
+// ProjectID returns the value of the "project_id" field in the mutation.
+func (m *TrackerPRMutation) ProjectID() (r uuid.UUID, exists bool) {
+	v := m.project
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProjectID returns the old "project_id" field's value of the TrackerPR entity.
+// If the TrackerPR object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TrackerPRMutation) OldProjectID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProjectID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProjectID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProjectID: %w", err)
+	}
+	return oldValue.ProjectID, nil
+}
+
+// ResetProjectID resets all changes to the "project_id" field.
+func (m *TrackerPRMutation) ResetProjectID() {
+	m.project = nil
+}
+
+// SetNumber sets the "number" field.
+func (m *TrackerPRMutation) SetNumber(i int) {
+	m.number = &i
+	m.addnumber = nil
+}
+
+// Number returns the value of the "number" field in the mutation.
+func (m *TrackerPRMutation) Number() (r int, exists bool) {
+	v := m.number
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldNumber returns the old "number" field's value of the TrackerPR entity.
+// If the TrackerPR object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TrackerPRMutation) OldNumber(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldNumber is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldNumber requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldNumber: %w", err)
+	}
+	return oldValue.Number, nil
+}
+
+// AddNumber adds i to the "number" field.
+func (m *TrackerPRMutation) AddNumber(i int) {
+	if m.addnumber != nil {
+		*m.addnumber += i
+	} else {
+		m.addnumber = &i
+	}
+}
+
+// AddedNumber returns the value that was added to the "number" field in this mutation.
+func (m *TrackerPRMutation) AddedNumber() (r int, exists bool) {
+	v := m.addnumber
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetNumber resets all changes to the "number" field.
+func (m *TrackerPRMutation) ResetNumber() {
+	m.number = nil
+	m.addnumber = nil
+}
+
+// SetTaskID sets the "task_id" field.
+func (m *TrackerPRMutation) SetTaskID(u uuid.UUID) {
+	m.task = &u
+}
+
+// TaskID returns the value of the "task_id" field in the mutation.
+func (m *TrackerPRMutation) TaskID() (r uuid.UUID, exists bool) {
+	v := m.task
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTaskID returns the old "task_id" field's value of the TrackerPR entity.
+// If the TrackerPR object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TrackerPRMutation) OldTaskID(ctx context.Context) (v *uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTaskID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTaskID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTaskID: %w", err)
+	}
+	return oldValue.TaskID, nil
+}
+
+// ClearTaskID clears the value of the "task_id" field.
+func (m *TrackerPRMutation) ClearTaskID() {
+	m.task = nil
+	m.clearedFields[trackerpr.FieldTaskID] = struct{}{}
+}
+
+// TaskIDCleared returns if the "task_id" field was cleared in this mutation.
+func (m *TrackerPRMutation) TaskIDCleared() bool {
+	_, ok := m.clearedFields[trackerpr.FieldTaskID]
+	return ok
+}
+
+// ResetTaskID resets all changes to the "task_id" field.
+func (m *TrackerPRMutation) ResetTaskID() {
+	m.task = nil
+	delete(m.clearedFields, trackerpr.FieldTaskID)
+}
+
+// SetState sets the "state" field.
+func (m *TrackerPRMutation) SetState(t trackerpr.State) {
+	m.state = &t
+}
+
+// State returns the value of the "state" field in the mutation.
+func (m *TrackerPRMutation) State() (r trackerpr.State, exists bool) {
+	v := m.state
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldState returns the old "state" field's value of the TrackerPR entity.
+// If the TrackerPR object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TrackerPRMutation) OldState(ctx context.Context) (v trackerpr.State, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldState is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldState requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldState: %w", err)
+	}
+	return oldValue.State, nil
+}
+
+// ResetState resets all changes to the "state" field.
+func (m *TrackerPRMutation) ResetState() {
+	m.state = nil
+}
+
+// SetIsDraft sets the "is_draft" field.
+func (m *TrackerPRMutation) SetIsDraft(b bool) {
+	m.is_draft = &b
+}
+
+// IsDraft returns the value of the "is_draft" field in the mutation.
+func (m *TrackerPRMutation) IsDraft() (r bool, exists bool) {
+	v := m.is_draft
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIsDraft returns the old "is_draft" field's value of the TrackerPR entity.
+// If the TrackerPR object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TrackerPRMutation) OldIsDraft(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIsDraft is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIsDraft requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIsDraft: %w", err)
+	}
+	return oldValue.IsDraft, nil
+}
+
+// ResetIsDraft resets all changes to the "is_draft" field.
+func (m *TrackerPRMutation) ResetIsDraft() {
+	m.is_draft = nil
+}
+
+// SetReviewState sets the "review_state" field.
+func (m *TrackerPRMutation) SetReviewState(s string) {
+	m.review_state = &s
+}
+
+// ReviewState returns the value of the "review_state" field in the mutation.
+func (m *TrackerPRMutation) ReviewState() (r string, exists bool) {
+	v := m.review_state
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldReviewState returns the old "review_state" field's value of the TrackerPR entity.
+// If the TrackerPR object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TrackerPRMutation) OldReviewState(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldReviewState is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldReviewState requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldReviewState: %w", err)
+	}
+	return oldValue.ReviewState, nil
+}
+
+// ResetReviewState resets all changes to the "review_state" field.
+func (m *TrackerPRMutation) ResetReviewState() {
+	m.review_state = nil
+}
+
+// SetChecksSummary sets the "checks_summary" field.
+func (m *TrackerPRMutation) SetChecksSummary(ts trackerpr.ChecksSummary) {
+	m.checks_summary = &ts
+}
+
+// ChecksSummary returns the value of the "checks_summary" field in the mutation.
+func (m *TrackerPRMutation) ChecksSummary() (r trackerpr.ChecksSummary, exists bool) {
+	v := m.checks_summary
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChecksSummary returns the old "checks_summary" field's value of the TrackerPR entity.
+// If the TrackerPR object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TrackerPRMutation) OldChecksSummary(ctx context.Context) (v trackerpr.ChecksSummary, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChecksSummary is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChecksSummary requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChecksSummary: %w", err)
+	}
+	return oldValue.ChecksSummary, nil
+}
+
+// ResetChecksSummary resets all changes to the "checks_summary" field.
+func (m *TrackerPRMutation) ResetChecksSummary() {
+	m.checks_summary = nil
+}
+
+// SetURL sets the "url" field.
+func (m *TrackerPRMutation) SetURL(s string) {
+	m.url = &s
+}
+
+// URL returns the value of the "url" field in the mutation.
+func (m *TrackerPRMutation) URL() (r string, exists bool) {
+	v := m.url
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldURL returns the old "url" field's value of the TrackerPR entity.
+// If the TrackerPR object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TrackerPRMutation) OldURL(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldURL is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldURL requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldURL: %w", err)
+	}
+	return oldValue.URL, nil
+}
+
+// ResetURL resets all changes to the "url" field.
+func (m *TrackerPRMutation) ResetURL() {
+	m.url = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *TrackerPRMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *TrackerPRMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the TrackerPR entity.
+// If the TrackerPR object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TrackerPRMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *TrackerPRMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *TrackerPRMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *TrackerPRMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the TrackerPR entity.
+// If the TrackerPR object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TrackerPRMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *TrackerPRMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// ClearProject clears the "project" edge to the Project entity.
+func (m *TrackerPRMutation) ClearProject() {
+	m.clearedproject = true
+	m.clearedFields[trackerpr.FieldProjectID] = struct{}{}
+}
+
+// ProjectCleared reports if the "project" edge to the Project entity was cleared.
+func (m *TrackerPRMutation) ProjectCleared() bool {
+	return m.clearedproject
+}
+
+// ProjectIDs returns the "project" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ProjectID instead. It exists only for internal usage by the builders.
+func (m *TrackerPRMutation) ProjectIDs() (ids []uuid.UUID) {
+	if id := m.project; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetProject resets all changes to the "project" edge.
+func (m *TrackerPRMutation) ResetProject() {
+	m.project = nil
+	m.clearedproject = false
+}
+
+// ClearTask clears the "task" edge to the Task entity.
+func (m *TrackerPRMutation) ClearTask() {
+	m.clearedtask = true
+	m.clearedFields[trackerpr.FieldTaskID] = struct{}{}
+}
+
+// TaskCleared reports if the "task" edge to the Task entity was cleared.
+func (m *TrackerPRMutation) TaskCleared() bool {
+	return m.TaskIDCleared() || m.clearedtask
+}
+
+// TaskIDs returns the "task" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// TaskID instead. It exists only for internal usage by the builders.
+func (m *TrackerPRMutation) TaskIDs() (ids []uuid.UUID) {
+	if id := m.task; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetTask resets all changes to the "task" edge.
+func (m *TrackerPRMutation) ResetTask() {
+	m.task = nil
+	m.clearedtask = false
+}
+
+// Where appends a list predicates to the TrackerPRMutation builder.
+func (m *TrackerPRMutation) Where(ps ...predicate.TrackerPR) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the TrackerPRMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *TrackerPRMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.TrackerPR, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *TrackerPRMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *TrackerPRMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (TrackerPR).
+func (m *TrackerPRMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *TrackerPRMutation) Fields() []string {
+	fields := make([]string, 0, 10)
+	if m.project != nil {
+		fields = append(fields, trackerpr.FieldProjectID)
+	}
+	if m.number != nil {
+		fields = append(fields, trackerpr.FieldNumber)
+	}
+	if m.task != nil {
+		fields = append(fields, trackerpr.FieldTaskID)
+	}
+	if m.state != nil {
+		fields = append(fields, trackerpr.FieldState)
+	}
+	if m.is_draft != nil {
+		fields = append(fields, trackerpr.FieldIsDraft)
+	}
+	if m.review_state != nil {
+		fields = append(fields, trackerpr.FieldReviewState)
+	}
+	if m.checks_summary != nil {
+		fields = append(fields, trackerpr.FieldChecksSummary)
+	}
+	if m.url != nil {
+		fields = append(fields, trackerpr.FieldURL)
+	}
+	if m.created_at != nil {
+		fields = append(fields, trackerpr.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, trackerpr.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *TrackerPRMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case trackerpr.FieldProjectID:
+		return m.ProjectID()
+	case trackerpr.FieldNumber:
+		return m.Number()
+	case trackerpr.FieldTaskID:
+		return m.TaskID()
+	case trackerpr.FieldState:
+		return m.State()
+	case trackerpr.FieldIsDraft:
+		return m.IsDraft()
+	case trackerpr.FieldReviewState:
+		return m.ReviewState()
+	case trackerpr.FieldChecksSummary:
+		return m.ChecksSummary()
+	case trackerpr.FieldURL:
+		return m.URL()
+	case trackerpr.FieldCreatedAt:
+		return m.CreatedAt()
+	case trackerpr.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *TrackerPRMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case trackerpr.FieldProjectID:
+		return m.OldProjectID(ctx)
+	case trackerpr.FieldNumber:
+		return m.OldNumber(ctx)
+	case trackerpr.FieldTaskID:
+		return m.OldTaskID(ctx)
+	case trackerpr.FieldState:
+		return m.OldState(ctx)
+	case trackerpr.FieldIsDraft:
+		return m.OldIsDraft(ctx)
+	case trackerpr.FieldReviewState:
+		return m.OldReviewState(ctx)
+	case trackerpr.FieldChecksSummary:
+		return m.OldChecksSummary(ctx)
+	case trackerpr.FieldURL:
+		return m.OldURL(ctx)
+	case trackerpr.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case trackerpr.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown TrackerPR field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *TrackerPRMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case trackerpr.FieldProjectID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProjectID(v)
+		return nil
+	case trackerpr.FieldNumber:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetNumber(v)
+		return nil
+	case trackerpr.FieldTaskID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTaskID(v)
+		return nil
+	case trackerpr.FieldState:
+		v, ok := value.(trackerpr.State)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetState(v)
+		return nil
+	case trackerpr.FieldIsDraft:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIsDraft(v)
+		return nil
+	case trackerpr.FieldReviewState:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetReviewState(v)
+		return nil
+	case trackerpr.FieldChecksSummary:
+		v, ok := value.(trackerpr.ChecksSummary)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChecksSummary(v)
+		return nil
+	case trackerpr.FieldURL:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetURL(v)
+		return nil
+	case trackerpr.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case trackerpr.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown TrackerPR field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *TrackerPRMutation) AddedFields() []string {
+	var fields []string
+	if m.addnumber != nil {
+		fields = append(fields, trackerpr.FieldNumber)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *TrackerPRMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case trackerpr.FieldNumber:
+		return m.AddedNumber()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *TrackerPRMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case trackerpr.FieldNumber:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddNumber(v)
+		return nil
+	}
+	return fmt.Errorf("unknown TrackerPR numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *TrackerPRMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(trackerpr.FieldTaskID) {
+		fields = append(fields, trackerpr.FieldTaskID)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *TrackerPRMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *TrackerPRMutation) ClearField(name string) error {
+	switch name {
+	case trackerpr.FieldTaskID:
+		m.ClearTaskID()
+		return nil
+	}
+	return fmt.Errorf("unknown TrackerPR nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *TrackerPRMutation) ResetField(name string) error {
+	switch name {
+	case trackerpr.FieldProjectID:
+		m.ResetProjectID()
+		return nil
+	case trackerpr.FieldNumber:
+		m.ResetNumber()
+		return nil
+	case trackerpr.FieldTaskID:
+		m.ResetTaskID()
+		return nil
+	case trackerpr.FieldState:
+		m.ResetState()
+		return nil
+	case trackerpr.FieldIsDraft:
+		m.ResetIsDraft()
+		return nil
+	case trackerpr.FieldReviewState:
+		m.ResetReviewState()
+		return nil
+	case trackerpr.FieldChecksSummary:
+		m.ResetChecksSummary()
+		return nil
+	case trackerpr.FieldURL:
+		m.ResetURL()
+		return nil
+	case trackerpr.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case trackerpr.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown TrackerPR field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *TrackerPRMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.project != nil {
+		edges = append(edges, trackerpr.EdgeProject)
+	}
+	if m.task != nil {
+		edges = append(edges, trackerpr.EdgeTask)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *TrackerPRMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case trackerpr.EdgeProject:
+		if id := m.project; id != nil {
+			return []ent.Value{*id}
+		}
+	case trackerpr.EdgeTask:
+		if id := m.task; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *TrackerPRMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *TrackerPRMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *TrackerPRMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedproject {
+		edges = append(edges, trackerpr.EdgeProject)
+	}
+	if m.clearedtask {
+		edges = append(edges, trackerpr.EdgeTask)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *TrackerPRMutation) EdgeCleared(name string) bool {
+	switch name {
+	case trackerpr.EdgeProject:
+		return m.clearedproject
+	case trackerpr.EdgeTask:
+		return m.clearedtask
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *TrackerPRMutation) ClearEdge(name string) error {
+	switch name {
+	case trackerpr.EdgeProject:
+		m.ClearProject()
+		return nil
+	case trackerpr.EdgeTask:
+		m.ClearTask()
+		return nil
+	}
+	return fmt.Errorf("unknown TrackerPR unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *TrackerPRMutation) ResetEdge(name string) error {
+	switch name {
+	case trackerpr.EdgeProject:
+		m.ResetProject()
+		return nil
+	case trackerpr.EdgeTask:
+		m.ResetTask()
+		return nil
+	}
+	return fmt.Errorf("unknown TrackerPR edge %s", name)
 }
 
 // TrackerSettingsMutation represents an operation that mutates the TrackerSettings nodes in the graph.

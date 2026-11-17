@@ -27,6 +27,8 @@ var (
 	ErrInvalidLabelConfig = domain.ErrInvalidLabelConfig
 	ErrProjectNotFound    = domain.ErrProjectNotFound
 	ErrInvalidProjectID   = domain.ErrInvalidProjectID
+	ErrInvalidTaskID      = domain.ErrInvalidTaskID
+	ErrTaskNotFound       = domain.ErrTaskNotFound
 )
 
 // Re-exported domain and provider types.
@@ -36,6 +38,9 @@ type (
 	TrackerSettingsResponse      = domain.TrackerSettingsResponse
 	UpdateTrackerSettingsRequest = domain.UpdateTrackerSettingsRequest
 	EffectiveLabelMap            = domain.EffectiveLabelMap
+	TrackerPR                    = domain.TrackerPR
+	PRState                      = domain.PRState
+	ChecksSummary                = domain.ChecksSummary
 	Runner                       = github.Runner
 )
 

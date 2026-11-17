@@ -68,9 +68,11 @@ type TaskEdges struct {
 	Project *Project `json:"project,omitempty"`
 	// Activities holds the value of the activities edge.
 	Activities []*Activity `json:"activities,omitempty"`
+	// TrackerPrs holds the value of the tracker_prs edge.
+	TrackerPrs []*TrackerPR `json:"tracker_prs,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [3]bool
 }
 
 // ProjectOrErr returns the Project value or an error if the edge
@@ -91,6 +93,15 @@ func (e TaskEdges) ActivitiesOrErr() ([]*Activity, error) {
 		return e.Activities, nil
 	}
 	return nil, &NotLoadedError{edge: "activities"}
+}
+
+// TrackerPrsOrErr returns the TrackerPrs value or an error if the edge
+// was not loaded in eager-loading.
+func (e TaskEdges) TrackerPrsOrErr() ([]*TrackerPR, error) {
+	if e.loadedTypes[2] {
+		return e.TrackerPrs, nil
+	}
+	return nil, &NotLoadedError{edge: "tracker_prs"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -262,6 +273,11 @@ func (_m *Task) QueryProject() *ProjectQuery {
 // QueryActivities queries the "activities" edge of the Task entity.
 func (_m *Task) QueryActivities() *ActivityQuery {
 	return NewTaskClient(_m.config).QueryActivities(_m)
+}
+
+// QueryTrackerPrs queries the "tracker_prs" edge of the Task entity.
+func (_m *Task) QueryTrackerPrs() *TrackerPRQuery {
+	return NewTaskClient(_m.config).QueryTrackerPrs(_m)
 }
 
 // Update returns a builder for updating this Task.

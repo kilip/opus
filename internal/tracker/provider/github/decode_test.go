@@ -120,3 +120,37 @@ func TestListIssues_CursorArgs(t *testing.T) {
 		t.Fatalf("args with cursor = %v, want %v", gotArgs, wantWithCursor)
 	}
 }
+
+func TestListPRs_CursorArgs(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("testdata", "prs.json"))
+	if err != nil {
+		t.Fatalf("read prs fixture: %v", err)
+	}
+
+	var gotArgs []string
+	runner := func(_ context.Context, args ...string) ([]byte, error) {
+		gotArgs = slices.Clone(args)
+		return data, nil
+	}
+
+	prs, err := ListPRs(context.Background(), runner, "kilip/opus", "")
+	if err != nil {
+		t.Fatalf("ListPRs without cursor: %v", err)
+	}
+	if len(prs) != 2 {
+		t.Fatalf("expected 2 PRs, got %d", len(prs))
+	}
+	wantNoCursor := []string{"pr", "list", "--repo", "kilip/opus", "--state", "all", "--limit", "100", "--json", PRJSONFields}
+	if !slices.Equal(gotArgs, wantNoCursor) {
+		t.Fatalf("args without cursor = %v, want %v", gotArgs, wantNoCursor)
+	}
+
+	cursor := "2026-11-17T02:00:00Z"
+	if _, err := ListPRs(context.Background(), runner, "kilip/opus", cursor); err != nil {
+		t.Fatalf("ListPRs with cursor: %v", err)
+	}
+	wantWithCursor := append(slices.Clone(wantNoCursor), "--search", "updated:>="+cursor)
+	if !slices.Equal(gotArgs, wantWithCursor) {
+		t.Fatalf("args with cursor = %v, want %v", gotArgs, wantWithCursor)
+	}
+}

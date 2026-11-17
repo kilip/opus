@@ -18,6 +18,7 @@ import (
 	"github.com/kilip/opus/ent/schema"
 	"github.com/kilip/opus/ent/session"
 	"github.com/kilip/opus/ent/task"
+	"github.com/kilip/opus/ent/trackerpr"
 	"github.com/kilip/opus/ent/trackersettings"
 	"github.com/kilip/opus/ent/trackersync"
 	"github.com/kilip/opus/ent/user"
@@ -277,6 +278,38 @@ func init() {
 	taskDescID := taskFields[0].Descriptor()
 	// task.DefaultID holds the default value on creation for the id field.
 	task.DefaultID = taskDescID.Default.(func() uuid.UUID)
+	trackerprFields := schema.TrackerPR{}.Fields()
+	_ = trackerprFields
+	// trackerprDescNumber is the schema descriptor for number field.
+	trackerprDescNumber := trackerprFields[2].Descriptor()
+	// trackerpr.NumberValidator is a validator for the "number" field. It is called by the builders before save.
+	trackerpr.NumberValidator = trackerprDescNumber.Validators[0].(func(int) error)
+	// trackerprDescIsDraft is the schema descriptor for is_draft field.
+	trackerprDescIsDraft := trackerprFields[5].Descriptor()
+	// trackerpr.DefaultIsDraft holds the default value on creation for the is_draft field.
+	trackerpr.DefaultIsDraft = trackerprDescIsDraft.Default.(bool)
+	// trackerprDescReviewState is the schema descriptor for review_state field.
+	trackerprDescReviewState := trackerprFields[6].Descriptor()
+	// trackerpr.DefaultReviewState holds the default value on creation for the review_state field.
+	trackerpr.DefaultReviewState = trackerprDescReviewState.Default.(string)
+	// trackerprDescURL is the schema descriptor for url field.
+	trackerprDescURL := trackerprFields[8].Descriptor()
+	// trackerpr.DefaultURL holds the default value on creation for the url field.
+	trackerpr.DefaultURL = trackerprDescURL.Default.(string)
+	// trackerprDescCreatedAt is the schema descriptor for created_at field.
+	trackerprDescCreatedAt := trackerprFields[9].Descriptor()
+	// trackerpr.DefaultCreatedAt holds the default value on creation for the created_at field.
+	trackerpr.DefaultCreatedAt = trackerprDescCreatedAt.Default.(func() time.Time)
+	// trackerprDescUpdatedAt is the schema descriptor for updated_at field.
+	trackerprDescUpdatedAt := trackerprFields[10].Descriptor()
+	// trackerpr.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	trackerpr.DefaultUpdatedAt = trackerprDescUpdatedAt.Default.(func() time.Time)
+	// trackerpr.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	trackerpr.UpdateDefaultUpdatedAt = trackerprDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// trackerprDescID is the schema descriptor for id field.
+	trackerprDescID := trackerprFields[0].Descriptor()
+	// trackerpr.DefaultID holds the default value on creation for the id field.
+	trackerpr.DefaultID = trackerprDescID.Default.(func() uuid.UUID)
 	trackersettingsFields := schema.TrackerSettings{}.Fields()
 	_ = trackersettingsFields
 	// trackersettingsDescUpdatedAt is the schema descriptor for updated_at field.

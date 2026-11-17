@@ -197,7 +197,7 @@ func (p *Poller) syncProject(ctx context.Context, proj project.Record) {
 		return
 	}
 
-	prs, err := github.ListPRs(ctx, p.runner, proj.TrackerRef)
+	prs, err := github.ListPRs(ctx, p.runner, proj.TrackerRef, syncState.Cursor)
 	if err != nil {
 		if ctx.Err() != nil {
 			return
@@ -213,6 +213,16 @@ func (p *Poller) syncProject(ctx context.Context, proj project.Record) {
 				return
 			}
 			p.recordSyncError(ctx, "tracker inbound issue sync failed", proj, err)
+			return
+		}
+	}
+
+	if len(prs) > 0 {
+		if err := p.syncPRs(ctx, proj, prs); err != nil {
+			if ctx.Err() != nil {
+				return
+			}
+			p.recordSyncError(ctx, "tracker inbound pr sync failed", proj, err)
 			return
 		}
 	}

@@ -56,6 +56,8 @@ const (
 	EdgeProject = "project"
 	// EdgeActivities holds the string denoting the activities edge name in mutations.
 	EdgeActivities = "activities"
+	// EdgeTrackerPrs holds the string denoting the tracker_prs edge name in mutations.
+	EdgeTrackerPrs = "tracker_prs"
 	// Table holds the table name of the task in the database.
 	Table = "tasks"
 	// ProjectTable is the table that holds the project relation/edge.
@@ -72,6 +74,13 @@ const (
 	ActivitiesInverseTable = "activities"
 	// ActivitiesColumn is the table column denoting the activities relation/edge.
 	ActivitiesColumn = "task_id"
+	// TrackerPrsTable is the table that holds the tracker_prs relation/edge.
+	TrackerPrsTable = "tracker_prs"
+	// TrackerPrsInverseTable is the table name for the TrackerPR entity.
+	// It exists in this package in order to avoid circular dependency with the "trackerpr" package.
+	TrackerPrsInverseTable = "tracker_prs"
+	// TrackerPrsColumn is the table column denoting the tracker_prs relation/edge.
+	TrackerPrsColumn = "task_id"
 )
 
 // Columns holds all SQL columns for task fields.
@@ -287,6 +296,20 @@ func ByActivities(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newActivitiesStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByTrackerPrsCount orders the results by tracker_prs count.
+func ByTrackerPrsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newTrackerPrsStep(), opts...)
+	}
+}
+
+// ByTrackerPrs orders the results by tracker_prs terms.
+func ByTrackerPrs(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newTrackerPrsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newProjectStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -299,5 +322,12 @@ func newActivitiesStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(ActivitiesInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, ActivitiesTable, ActivitiesColumn),
+	)
+}
+func newTrackerPrsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(TrackerPrsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, TrackerPrsTable, TrackerPrsColumn),
 	)
 }

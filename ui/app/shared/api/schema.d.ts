@@ -548,6 +548,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tasks/{id}/prs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List pull requests linked to a task
+         * @description Returns tracked GitHub pull request snapshots linked to the specified task.
+         */
+        get: operations["list-task-prs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/tracker/settings": {
         parameters: {
             query?: never;
@@ -598,6 +618,8 @@ export interface components {
             id: string;
             name: string;
         };
+        /** @enum {string} */
+        "domain.ChecksSummary": "passing" | "failing" | "pending" | "none";
         "domain.CreateActivityRequest": {
             body: string;
             kind?: components["schemas"]["domain.ActivityKind"];
@@ -649,6 +671,8 @@ export interface components {
             code?: string;
             email?: string;
         };
+        /** @enum {string} */
+        "domain.PRState": "open" | "closed" | "merged";
         "domain.Project": {
             created_at?: string;
             default_branch?: string;
@@ -716,6 +740,19 @@ export interface components {
         "domain.TaskStatus": "backlog" | "todo" | "in-progress" | "review" | "blocked" | "done";
         /** @enum {string} */
         "domain.TaskType": "feat" | "bug" | "chore" | "refactor" | "docs";
+        "domain.TrackerPR": {
+            checksSummary: components["schemas"]["domain.ChecksSummary"];
+            createdAt: string;
+            id: string;
+            isDraft?: boolean;
+            number: number;
+            projectId: string;
+            reviewState?: string;
+            state: components["schemas"]["domain.PRState"];
+            taskId?: string;
+            updatedAt: string;
+            url?: string;
+        };
         "domain.TrackerSettingsResponse": {
             statusLabels: {
                 [key: string]: string;
@@ -806,6 +843,11 @@ export interface components {
         };
         "httpx.Response-array_domain_Task": {
             data?: components["schemas"]["domain.Task"][];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Response-array_domain_TrackerPR": {
+            data?: components["schemas"]["domain.TrackerPR"][];
             error?: string;
             meta?: components["schemas"]["httpx.Meta"];
         };
@@ -2212,6 +2254,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["httpx.Response-domain_Activity"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "list-task-prs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Task ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-array_domain_TrackerPR"];
                 };
             };
             /** @description Bad Request */

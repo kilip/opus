@@ -17,6 +17,7 @@ import (
 	"github.com/kilip/opus/ent/predicate"
 	"github.com/kilip/opus/ent/project"
 	"github.com/kilip/opus/ent/task"
+	"github.com/kilip/opus/ent/trackerpr"
 )
 
 // TaskUpdate is the builder for updating Task entities.
@@ -304,6 +305,21 @@ func (_u *TaskUpdate) AddActivities(v ...*Activity) *TaskUpdate {
 	return _u.AddActivityIDs(ids...)
 }
 
+// AddTrackerPrIDs adds the "tracker_prs" edge to the TrackerPR entity by IDs.
+func (_u *TaskUpdate) AddTrackerPrIDs(ids ...uuid.UUID) *TaskUpdate {
+	_u.mutation.AddTrackerPrIDs(ids...)
+	return _u
+}
+
+// AddTrackerPrs adds the "tracker_prs" edges to the TrackerPR entity.
+func (_u *TaskUpdate) AddTrackerPrs(v ...*TrackerPR) *TaskUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddTrackerPrIDs(ids...)
+}
+
 // Mutation returns the TaskMutation object of the builder.
 func (_u *TaskUpdate) Mutation() *TaskMutation {
 	return _u.mutation
@@ -334,6 +350,27 @@ func (_u *TaskUpdate) RemoveActivities(v ...*Activity) *TaskUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveActivityIDs(ids...)
+}
+
+// ClearTrackerPrs clears all "tracker_prs" edges to the TrackerPR entity.
+func (_u *TaskUpdate) ClearTrackerPrs() *TaskUpdate {
+	_u.mutation.ClearTrackerPrs()
+	return _u
+}
+
+// RemoveTrackerPrIDs removes the "tracker_prs" edge to TrackerPR entities by IDs.
+func (_u *TaskUpdate) RemoveTrackerPrIDs(ids ...uuid.UUID) *TaskUpdate {
+	_u.mutation.RemoveTrackerPrIDs(ids...)
+	return _u
+}
+
+// RemoveTrackerPrs removes "tracker_prs" edges to TrackerPR entities.
+func (_u *TaskUpdate) RemoveTrackerPrs(v ...*TrackerPR) *TaskUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveTrackerPrIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -554,6 +591,51 @@ func (_u *TaskUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(activity.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.TrackerPrsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   task.TrackerPrsTable,
+			Columns: []string{task.TrackerPrsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trackerpr.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedTrackerPrsIDs(); len(nodes) > 0 && !_u.mutation.TrackerPrsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   task.TrackerPrsTable,
+			Columns: []string{task.TrackerPrsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trackerpr.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.TrackerPrsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   task.TrackerPrsTable,
+			Columns: []string{task.TrackerPrsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trackerpr.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -853,6 +935,21 @@ func (_u *TaskUpdateOne) AddActivities(v ...*Activity) *TaskUpdateOne {
 	return _u.AddActivityIDs(ids...)
 }
 
+// AddTrackerPrIDs adds the "tracker_prs" edge to the TrackerPR entity by IDs.
+func (_u *TaskUpdateOne) AddTrackerPrIDs(ids ...uuid.UUID) *TaskUpdateOne {
+	_u.mutation.AddTrackerPrIDs(ids...)
+	return _u
+}
+
+// AddTrackerPrs adds the "tracker_prs" edges to the TrackerPR entity.
+func (_u *TaskUpdateOne) AddTrackerPrs(v ...*TrackerPR) *TaskUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddTrackerPrIDs(ids...)
+}
+
 // Mutation returns the TaskMutation object of the builder.
 func (_u *TaskUpdateOne) Mutation() *TaskMutation {
 	return _u.mutation
@@ -883,6 +980,27 @@ func (_u *TaskUpdateOne) RemoveActivities(v ...*Activity) *TaskUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveActivityIDs(ids...)
+}
+
+// ClearTrackerPrs clears all "tracker_prs" edges to the TrackerPR entity.
+func (_u *TaskUpdateOne) ClearTrackerPrs() *TaskUpdateOne {
+	_u.mutation.ClearTrackerPrs()
+	return _u
+}
+
+// RemoveTrackerPrIDs removes the "tracker_prs" edge to TrackerPR entities by IDs.
+func (_u *TaskUpdateOne) RemoveTrackerPrIDs(ids ...uuid.UUID) *TaskUpdateOne {
+	_u.mutation.RemoveTrackerPrIDs(ids...)
+	return _u
+}
+
+// RemoveTrackerPrs removes "tracker_prs" edges to TrackerPR entities.
+func (_u *TaskUpdateOne) RemoveTrackerPrs(v ...*TrackerPR) *TaskUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveTrackerPrIDs(ids...)
 }
 
 // Where appends a list predicates to the TaskUpdate builder.
@@ -1133,6 +1251,51 @@ func (_u *TaskUpdateOne) sqlSave(ctx context.Context) (_node *Task, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(activity.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.TrackerPrsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   task.TrackerPrsTable,
+			Columns: []string{task.TrackerPrsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trackerpr.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedTrackerPrsIDs(); len(nodes) > 0 && !_u.mutation.TrackerPrsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   task.TrackerPrsTable,
+			Columns: []string{task.TrackerPrsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trackerpr.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.TrackerPrsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   task.TrackerPrsTable,
+			Columns: []string{task.TrackerPrsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trackerpr.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

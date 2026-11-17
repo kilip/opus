@@ -1162,6 +1162,29 @@ func HasActivitiesWith(preds ...predicate.Activity) predicate.Task {
 	})
 }
 
+// HasTrackerPrs applies the HasEdge predicate on the "tracker_prs" edge.
+func HasTrackerPrs() predicate.Task {
+	return predicate.Task(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, TrackerPrsTable, TrackerPrsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasTrackerPrsWith applies the HasEdge predicate on the "tracker_prs" edge with a given conditions (other predicates).
+func HasTrackerPrsWith(preds ...predicate.TrackerPR) predicate.Task {
+	return predicate.Task(func(s *sql.Selector) {
+		step := newTrackerPrsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Task) predicate.Task {
 	return predicate.Task(sql.AndPredicates(predicates...))

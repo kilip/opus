@@ -103,8 +103,13 @@ func ListIssues(ctx context.Context, runner Runner, repo, since string) ([]Issue
 }
 
 // ListPRs runs `gh pr list` for repo and decodes the JSON response.
-func ListPRs(ctx context.Context, runner Runner, repo string) ([]PullRequest, error) {
-	out, err := runner(ctx, "pr", "list", "--repo", repo, "--state", "all", "--limit", "100", "--json", PRJSONFields)
+// When since is non-empty, it filters PRs via `--search "updated:>=" + since`.
+func ListPRs(ctx context.Context, runner Runner, repo, since string) ([]PullRequest, error) {
+	args := []string{"pr", "list", "--repo", repo, "--state", "all", "--limit", "100", "--json", PRJSONFields}
+	if since != "" {
+		args = append(args, "--search", "updated:>="+since)
+	}
+	out, err := runner(ctx, args...)
 	if err != nil {
 		return nil, err
 	}

@@ -39,6 +39,9 @@ type Session func(*sql.Selector)
 // Task is the predicate function for task builders.
 type Task func(*sql.Selector)
 
+// TrackerPR is the predicate function for trackerpr builders.
+type TrackerPR func(*sql.Selector)
+
 // TrackerSettings is the predicate function for trackersettings builders.
 type TrackerSettings func(*sql.Selector)
 

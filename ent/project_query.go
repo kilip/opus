@@ -17,6 +17,7 @@ import (
 	"github.com/kilip/opus/ent/project"
 	"github.com/kilip/opus/ent/projectnode"
 	"github.com/kilip/opus/ent/task"
+	"github.com/kilip/opus/ent/trackerpr"
 	"github.com/kilip/opus/ent/trackersync"
 )
 
@@ -30,6 +31,7 @@ type ProjectQuery struct {
 	withProjectNodes *ProjectNodeQuery
 	withTasks        *TaskQuery
 	withTrackerSync  *TrackerSyncQuery
+	withTrackerPrs   *TrackerPRQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -125,6 +127,28 @@ func (_q *ProjectQuery) QueryTrackerSync() *TrackerSyncQuery {
 			sqlgraph.From(project.Table, project.FieldID, selector),
 			sqlgraph.To(trackersync.Table, trackersync.FieldID),
 			sqlgraph.Edge(sqlgraph.O2O, false, project.TrackerSyncTable, project.TrackerSyncColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryTrackerPrs chains the current query on the "tracker_prs" edge.
+func (_q *ProjectQuery) QueryTrackerPrs() *TrackerPRQuery {
+	query := (&TrackerPRClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, selector),
+			sqlgraph.To(trackerpr.Table, trackerpr.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.TrackerPrsTable, project.TrackerPrsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -327,6 +351,7 @@ func (_q *ProjectQuery) Clone() *ProjectQuery {
 		withProjectNodes: _q.withProjectNodes.Clone(),
 		withTasks:        _q.withTasks.Clone(),
 		withTrackerSync:  _q.withTrackerSync.Clone(),
+		withTrackerPrs:   _q.withTrackerPrs.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -363,6 +388,17 @@ func (_q *ProjectQuery) WithTrackerSync(opts ...func(*TrackerSyncQuery)) *Projec
 		opt(query)
 	}
 	_q.withTrackerSync = query
+	return _q
+}
+
+// WithTrackerPrs tells the query-builder to eager-load the nodes that are connected to
+// the "tracker_prs" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *ProjectQuery) WithTrackerPrs(opts ...func(*TrackerPRQuery)) *ProjectQuery {
+	query := (&TrackerPRClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withTrackerPrs = query
 	return _q
 }
 
@@ -444,10 +480,11 @@ func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 	var (
 		nodes       = []*Project{}
 		_spec       = _q.querySpec()
-		loadedTypes = [3]bool{
+		loadedTypes = [4]bool{
 			_q.withProjectNodes != nil,
 			_q.withTasks != nil,
 			_q.withTrackerSync != nil,
+			_q.withTrackerPrs != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -485,6 +522,13 @@ func (_q *ProjectQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Proj
 	if query := _q.withTrackerSync; query != nil {
 		if err := _q.loadTrackerSync(ctx, query, nodes, nil,
 			func(n *Project, e *TrackerSync) { n.Edges.TrackerSync = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withTrackerPrs; query != nil {
+		if err := _q.loadTrackerPrs(ctx, query, nodes,
+			func(n *Project) { n.Edges.TrackerPrs = []*TrackerPR{} },
+			func(n *Project, e *TrackerPR) { n.Edges.TrackerPrs = append(n.Edges.TrackerPrs, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -563,6 +607,36 @@ func (_q *ProjectQuery) loadTrackerSync(ctx context.Context, query *TrackerSyncQ
 	}
 	query.Where(predicate.TrackerSync(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(project.TrackerSyncColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.ProjectID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "project_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *ProjectQuery) loadTrackerPrs(ctx context.Context, query *TrackerPRQuery, nodes []*Project, init func(*Project), assign func(*Project, *TrackerPR)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[uuid.UUID]*Project)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(trackerpr.FieldProjectID)
+	}
+	query.Where(predicate.TrackerPR(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(project.TrackerPrsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

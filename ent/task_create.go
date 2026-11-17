@@ -14,6 +14,7 @@ import (
 	"github.com/kilip/opus/ent/activity"
 	"github.com/kilip/opus/ent/project"
 	"github.com/kilip/opus/ent/task"
+	"github.com/kilip/opus/ent/trackerpr"
 )
 
 // TaskCreate is the builder for creating a Task entity.
@@ -275,6 +276,21 @@ func (_c *TaskCreate) AddActivities(v ...*Activity) *TaskCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddActivityIDs(ids...)
+}
+
+// AddTrackerPrIDs adds the "tracker_prs" edge to the TrackerPR entity by IDs.
+func (_c *TaskCreate) AddTrackerPrIDs(ids ...uuid.UUID) *TaskCreate {
+	_c.mutation.AddTrackerPrIDs(ids...)
+	return _c
+}
+
+// AddTrackerPrs adds the "tracker_prs" edges to the TrackerPR entity.
+func (_c *TaskCreate) AddTrackerPrs(v ...*TrackerPR) *TaskCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddTrackerPrIDs(ids...)
 }
 
 // Mutation returns the TaskMutation object of the builder.
@@ -568,6 +584,22 @@ func (_c *TaskCreate) createSpec() (*Task, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(activity.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.TrackerPrsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   task.TrackerPrsTable,
+			Columns: []string{task.TrackerPrsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trackerpr.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

@@ -14,6 +14,7 @@ import (
 	"github.com/kilip/opus/ent/project"
 	"github.com/kilip/opus/ent/projectnode"
 	"github.com/kilip/opus/ent/task"
+	"github.com/kilip/opus/ent/trackerpr"
 	"github.com/kilip/opus/ent/trackersync"
 )
 
@@ -169,6 +170,21 @@ func (_c *ProjectCreate) SetNillableTrackerSyncID(id *uuid.UUID) *ProjectCreate 
 // SetTrackerSync sets the "tracker_sync" edge to the TrackerSync entity.
 func (_c *ProjectCreate) SetTrackerSync(v *TrackerSync) *ProjectCreate {
 	return _c.SetTrackerSyncID(v.ID)
+}
+
+// AddTrackerPrIDs adds the "tracker_prs" edge to the TrackerPR entity by IDs.
+func (_c *ProjectCreate) AddTrackerPrIDs(ids ...uuid.UUID) *ProjectCreate {
+	_c.mutation.AddTrackerPrIDs(ids...)
+	return _c
+}
+
+// AddTrackerPrs adds the "tracker_prs" edges to the TrackerPR entity.
+func (_c *ProjectCreate) AddTrackerPrs(v ...*TrackerPR) *ProjectCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddTrackerPrIDs(ids...)
 }
 
 // Mutation returns the ProjectMutation object of the builder.
@@ -404,6 +420,22 @@ func (_c *ProjectCreate) createSpec() (*Project, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(trackersync.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.TrackerPrsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.TrackerPrsTable,
+			Columns: []string{project.TrackerPrsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trackerpr.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

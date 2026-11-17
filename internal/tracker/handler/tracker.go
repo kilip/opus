@@ -14,6 +14,7 @@ var (
 	_ = (*domain.TrackerStatusResponse)(nil)
 	_ = (*domain.TrackerSettingsResponse)(nil)
 	_ = (*domain.UpdateTrackerSettingsRequest)(nil)
+	_ = (*domain.TrackerPR)(nil)
 )
 
 // Handler serves tracker endpoints.
@@ -29,6 +30,7 @@ func New(svc *service.Tracker) *Handler {
 // Register mounts tracker routes on r.
 func (h *Handler) Register(r fiber.Router) {
 	r.Get("/projects/:id/tracker", h.GetProjectStatus)
+	r.Get("/tasks/:id/prs", h.ListTaskPRs)
 	g := r.Group("/tracker")
 	g.Get("/settings", h.GetSettings)
 	g.Put("/settings", h.UpdateSettings)
@@ -98,12 +100,35 @@ func (h *Handler) UpdateSettings(c fiber.Ctx) error {
 	return httpx.OK(c, resp)
 }
 
+// ListTaskPRs godoc
+//
+//	@Summary		List pull requests linked to a task
+//	@Description	Returns tracked GitHub pull request snapshots linked to the specified task.
+//	@ID				list-task-prs
+//	@Tags			tracker
+//	@Produce		json
+//	@Param			id	path		string	true	"Task ID"
+//	@Success		200	{object}	httpx.Response[[]domain.TrackerPR]
+//	@Failure		400	{object}	httpx.ErrorResponse
+//	@Failure		404	{object}	httpx.ErrorResponse
+//	@Failure		500	{object}	httpx.ErrorResponse
+//	@Router			/tasks/{id}/prs [get]
+func (h *Handler) ListTaskPRs(c fiber.Ctx) error {
+	resp, err := h.svc.ListTaskPRs(c.Context(), c.Params("id"))
+	if err != nil {
+		return mapErr(err)
+	}
+	return httpx.OK(c, resp)
+}
+
 func mapErr(err error) error {
 	switch {
 	case errors.Is(err, domain.ErrInvalidProjectID),
+		errors.Is(err, domain.ErrInvalidTaskID),
 		errors.Is(err, domain.ErrInvalidLabelConfig):
 		return httpx.BadRequest(err)
-	case errors.Is(err, domain.ErrProjectNotFound):
+	case errors.Is(err, domain.ErrProjectNotFound),
+		errors.Is(err, domain.ErrTaskNotFound):
 		return httpx.NotFound(err)
 	default:
 		return err

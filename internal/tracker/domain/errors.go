@@ -11,4 +11,8 @@ var (
 	ErrProjectNotFound = errors.New("PROJECT_NOT_FOUND")
 	// ErrInvalidProjectID indicates the project ID path parameter is malformed.
 	ErrInvalidProjectID = errors.New("INVALID_PROJECT_ID")
+	// ErrInvalidTaskID indicates the task ID path parameter is malformed.
+	ErrInvalidTaskID = errors.New("INVALID_TASK_ID")
+	// ErrTaskNotFound indicates the target task does not exist.
+	ErrTaskNotFound = errors.New("TASK_NOT_FOUND")
 )

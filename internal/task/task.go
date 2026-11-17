@@ -77,6 +77,7 @@ type (
 	Activity                 = domain.Activity
 	Assignee                 = domain.Assignee
 	ImportTaskRequest        = domain.ImportTaskRequest
+	UpdateTaskRequest        = domain.UpdateTaskRequest
 	TaskReceivedPayload      = domain.TaskReceivedPayload
 	TaskStatusChangedPayload = domain.TaskStatusChangedPayload
 	ProjectChecker           = service.ProjectChecker
@@ -138,6 +139,11 @@ func (t *Task) Get(ctx context.Context, id string) (Record, error) {
 // Import upserts a task by (source, externalId) for sibling features.
 func (t *Task) Import(ctx context.Context, req ImportTaskRequest) (Record, error) {
 	return t.svc.Import(ctx, req)
+}
+
+// Update updates a task by ID through the task service, publishing events on status transitions.
+func (t *Task) Update(ctx context.Context, id string, req UpdateTaskRequest) (Record, error) {
+	return t.svc.Update(ctx, id, req)
 }
 
 // FindByExternal returns the task matching (source, externalId), or ErrTaskNotFound.
