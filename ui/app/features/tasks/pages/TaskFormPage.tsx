@@ -13,7 +13,7 @@ import {
 	useMoveTask,
 	useUpdateTask,
 } from "../api/actions";
-import { useTask, useTaskActivity } from "../api/queries";
+import { useProjects, useTask, useTaskActivity } from "../api/queries";
 import type { Task, TaskStatus, UpdateTaskRequest } from "../api/types";
 import {
 	ASSIGNEES,
@@ -27,6 +27,7 @@ export const meta = () => [{ title: "Task · Opus" }];
 
 type Draft = {
 	title: string;
+	projectId: string;
 	/** 0–3, star widget level. */
 	priority: number;
 	/** Assignee display name; empty for unassigned. */
@@ -39,6 +40,7 @@ type Draft = {
 function toDraft(task?: Task): Draft {
 	return {
 		title: task?.title ?? "",
+		projectId: task?.projectId ?? "",
 		priority: task ? priorityLevel(task.priority) : 0,
 		assignee: task ? (task.assignee?.name ?? "") : CURRENT_USER,
 		deadline: task?.dueDate ?? "",
@@ -106,13 +108,36 @@ function TaskForm({ task }: { task?: Task }) {
 	const moveTaskMutation = useMoveTask();
 	const addActivityMutation = useAddTaskActivity();
 	const { data: activity } = useTaskActivity(task?.id);
+	const { data: projects = [] } = useProjects();
 	const ids = {
 		title: useId(),
+		project: useId(),
 		assignee: useId(),
 		deadline: useId(),
 		tags: useId(),
 		desc: useId(),
 	};
+
+	const projectOptions = useMemo(() => {
+		if (task?.projectId && !projects.some((p) => p.id === task.projectId)) {
+			return [
+				{
+					id: task.projectId,
+					name: task.projectId,
+					slug: task.projectId,
+					repo_provider: "",
+					repo_ref: "",
+					tracker_provider: "",
+					tracker_ref: "",
+					default_branch: "main",
+					created_at: "",
+					updated_at: "",
+				},
+				...projects,
+			];
+		}
+		return projects;
+	}, [projects, task]);
 
 	const baseline = useMemo(() => toDraft(task), [task]);
 	const [draft, setDraft] = useState<Draft>(baseline);
@@ -147,6 +172,7 @@ function TaskForm({ task }: { task?: Task }) {
 
 	const dirty = !task || JSON.stringify(draft) !== JSON.stringify(baseline);
 	const titleInvalid = attempted && !draft.title.trim();
+	const projectInvalid = attempted && !draft.projectId.trim();
 	const status = task?.status ?? newStage;
 
 	function set<K extends keyof Draft>(key: K, value: Draft[K]) {
@@ -155,7 +181,8 @@ function TaskForm({ task }: { task?: Task }) {
 
 	async function save() {
 		const title = draft.title.trim();
-		if (!title) {
+		const projectId = draft.projectId.trim();
+		if (!title || (!task && !projectId)) {
 			setAttempted(true);
 			return;
 		}
@@ -183,6 +210,7 @@ function TaskForm({ task }: { task?: Task }) {
 			setDraft({ ...draft, title, tagsText: labels.join(", ") });
 		} else {
 			const created = await createTaskMutation.mutateAsync({
+				projectId,
 				title,
 				status: newStage,
 				priority: priorityFromLevel(draft.priority),
@@ -275,6 +303,27 @@ function TaskForm({ task }: { task?: Task }) {
 						</div>
 
 						<div className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
+							<Field id={ids.project} label="Project">
+								<select
+									id={ids.project}
+									className="field"
+									required
+									disabled={Boolean(task)}
+									value={draft.projectId}
+									aria-invalid={projectInvalid}
+									onChange={(e) => set("projectId", e.target.value)}
+								>
+									<option value="">Select project…</option>
+									{projectOptions.map((p) => (
+										<option key={p.id} value={p.id}>
+											{`${p.name} (${p.slug})`}
+										</option>
+									))}
+								</select>
+								{projectInvalid && (
+									<p className="mt-1 text-danger-ink">A project is required.</p>
+								)}
+							</Field>
 							<Field id={ids.assignee} label="Assignee">
 								<select
 									id={ids.assignee}

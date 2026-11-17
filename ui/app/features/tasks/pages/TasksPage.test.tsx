@@ -6,12 +6,13 @@ import { renderToString } from "react-dom/server";
 import { MemoryRouter } from "react-router";
 
 import { taskKeys } from "../api/keys";
-import type { Task } from "../api/types";
+import type { Project, Task } from "../api/types";
 import TasksPage from "./TasksPage";
 
 const mockTask: Task = {
 	id: "task-1",
 	key: "OP-1",
+	projectId: "proj-1",
 	title: "Test task",
 	description: "Test description",
 	status: "todo",
@@ -23,12 +24,41 @@ const mockTask: Task = {
 	updatedAt: "2026-01-01T00:00:00Z",
 };
 
+const mockProjects: Project[] = [
+	{
+		id: "proj-1",
+		slug: "project-alpha",
+		name: "Project Alpha",
+		repo_provider: "github",
+		repo_ref: "org/alpha",
+		tracker_provider: "github",
+		tracker_ref: "org/alpha",
+		default_branch: "main",
+		created_at: "2026-01-01T00:00:00Z",
+		updated_at: "2026-01-01T00:00:00Z",
+	},
+	{
+		id: "proj-2",
+		slug: "project-beta",
+		name: "Project Beta",
+		repo_provider: "github",
+		repo_ref: "org/beta",
+		tracker_provider: "github",
+		tracker_ref: "org/beta",
+		default_branch: "main",
+		created_at: "2026-01-01T00:00:00Z",
+		updated_at: "2026-01-01T00:00:00Z",
+	},
+];
+
 function renderTasksPage({
 	tasks,
+	projects = mockProjects,
 	url = "/tasks",
 	queryState,
 }: {
 	tasks?: Task[];
+	projects?: Project[];
 	url?: string;
 	queryState?: { status: "error"; error: Error };
 } = {}) {
@@ -42,10 +72,17 @@ function renderTasksPage({
 		},
 	});
 
+	if (projects !== undefined) {
+		queryClient.setQueryData(taskKeys.projects(), projects);
+	}
+
+	const urlObj = new URL(url, "http://localhost");
+	const projectId = urlObj.searchParams.get("projectId") ?? undefined;
+
 	if (queryState) {
 		queryClient
 			.getQueryCache()
-			.build(queryClient, { queryKey: taskKeys.list() })
+			.build(queryClient, { queryKey: taskKeys.list({ projectId }) })
 			.setState({
 				status: queryState.status,
 				error: queryState.error,
@@ -53,7 +90,7 @@ function renderTasksPage({
 				fetchStatus: "idle",
 			});
 	} else if (tasks !== undefined) {
-		queryClient.setQueryData(taskKeys.list(), tasks);
+		queryClient.setQueryData(taskKeys.list({ projectId }), tasks);
 	}
 
 	return renderToString(
@@ -69,7 +106,7 @@ function renderTasksPage({
 	);
 }
 
-describe("TasksPage (AC1, AC2, AC3, AC4)", () => {
+describe("TasksPage (AC1, AC2, AC3, AC4, AC6)", () => {
 	it("shows empty state with heading and create task link in kanban view (AC1)", () => {
 		const html = renderTasksPage({ tasks: [], url: "/tasks" });
 
@@ -119,5 +156,24 @@ describe("TasksPage (AC1, AC2, AC3, AC4)", () => {
 		assert.match(html, /Could not load tasks/);
 		assert.match(html, /Failed to load tasks/);
 		assert.doesNotMatch(html, /No tasks yet/);
+	});
+
+	it("renders project filter options and filters tasks (AC6)", () => {
+		const html = renderTasksPage({
+			tasks: [mockTask],
+			projects: mockProjects,
+			url: "/tasks?projectId=proj-1",
+		});
+
+		assert.match(html, /aria-label="Filter by project"/);
+		assert.match(
+			html,
+			/<option[^>]*value="proj-1"[^>]*>Project Alpha<\/option>/,
+		);
+		assert.match(
+			html,
+			/<option[^>]*value="proj-2"[^>]*>Project Beta<\/option>/,
+		);
+		assert.match(html, /Test task/);
 	});
 });

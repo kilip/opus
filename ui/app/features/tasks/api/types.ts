@@ -17,3 +17,4 @@ export type ActivityKind = Schemas["domain.ActivityKind"];
 export type CreateTaskRequest = Schemas["domain.CreateTaskRequest"];
 export type UpdateTaskRequest = Schemas["domain.UpdateTaskRequest"];
 export type CreateActivityRequest = Schemas["domain.CreateActivityRequest"];
+export type Project = Schemas["domain.Project"];

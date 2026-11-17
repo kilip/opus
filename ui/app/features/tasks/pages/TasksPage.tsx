@@ -5,7 +5,7 @@ import { Button, buttonClass } from "~/shared/components/Button";
 import { ControlPanel } from "~/shared/components/ControlPanel";
 import { Icon } from "~/shared/components/Icon";
 import { SearchBar } from "~/shared/components/SearchBar";
-import { useTasks } from "../api/queries";
+import { useProjects, useTasks } from "../api/queries";
 import { EmptyTasks } from "../components/EmptyTasks";
 import { KanbanBoard } from "../components/KanbanBoard";
 import { TaskList } from "../components/TaskList";
@@ -20,9 +20,14 @@ export const meta = () => [
 ];
 
 export default function TasksPage() {
-	const tasksQuery = useTasks();
 	const [params, setParams] = useSearchParams();
 	const view = params.get("view") === "list" ? "list" : "kanban";
+	const selectedProject = params.get("projectId") ?? "";
+
+	const { data: projects = [] } = useProjects();
+	const tasksQuery = useTasks(
+		selectedProject ? { projectId: selectedProject } : undefined,
+	);
 
 	const [query, setQuery] = useState("");
 	const [active, setActive] = useState<ReadonlySet<string>>(new Set());
@@ -83,6 +88,27 @@ export default function TasksPage() {
 							active={active}
 							onToggleFilter={toggleFilter}
 						/>
+						<select
+							aria-label="Filter by project"
+							className="field h-8 py-0 text-sm"
+							value={selectedProject}
+							onChange={(e) => {
+								const next = new URLSearchParams(params);
+								if (e.target.value) {
+									next.set("projectId", e.target.value);
+								} else {
+									next.delete("projectId");
+								}
+								setParams(next);
+							}}
+						>
+							<option value="">All projects</option>
+							{projects.map((p) => (
+								<option key={p.id} value={p.id}>
+									{p.name}
+								</option>
+							))}
+						</select>
 						<fieldset
 							aria-label="View"
 							className="m-0 inline-flex min-w-0 overflow-hidden rounded-md border border-line-strong p-0"
@@ -98,9 +124,15 @@ export default function TasksPage() {
 									type="button"
 									aria-label={`${v.label} view`}
 									aria-pressed={view === v.id}
-									onClick={() =>
-										setParams(v.id === "list" ? { view: "list" } : {})
-									}
+									onClick={() => {
+										const next = new URLSearchParams(params);
+										if (v.id === "list") {
+											next.set("view", "list");
+										} else {
+											next.delete("view");
+										}
+										setParams(next);
+									}}
 									className="inline-flex h-8 w-9 items-center justify-center bg-surface text-muted hover:bg-surface-2 aria-pressed:bg-primary-soft aria-pressed:text-primary-ink"
 								>
 									<Icon name={v.icon} size={17} />

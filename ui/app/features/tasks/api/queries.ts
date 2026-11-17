@@ -3,13 +3,31 @@ import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, unwrap } from "~/shared/api/client";
 import { TASK_ERRORS } from "./errors";
 import { taskKeys } from "./keys";
-import type { Activity, Task } from "./types";
+import type { Activity, Project, Task } from "./types";
 
-export const tasksQueryOptions = () =>
+export const tasksQueryOptions = (params?: { projectId?: string }) =>
 	queryOptions({
-		queryKey: taskKeys.list(),
+		queryKey: taskKeys.list(params),
 		queryFn: async ({ signal }): Promise<Task[]> =>
-			unwrap(api.GET("/tasks" as never, { signal } as never), TASK_ERRORS),
+			unwrap(
+				api.GET(
+					"/tasks" as never,
+					{
+						params: {
+							query: params?.projectId ? { projectId: params.projectId } : {},
+						},
+						signal,
+					} as never,
+				),
+				TASK_ERRORS,
+			),
+	});
+
+export const projectsQueryOptions = () =>
+	queryOptions({
+		queryKey: taskKeys.projects(),
+		queryFn: async ({ signal }): Promise<Project[]> =>
+			unwrap(api.GET("/projects" as never, { signal } as never)),
 	});
 
 export const taskQueryOptions = (id: string) =>
@@ -47,9 +65,14 @@ export const taskActivityQueryOptions = (id: string) =>
 export const taskListQuery = tasksQueryOptions;
 export const taskQuery = taskQueryOptions;
 export const taskActivityQuery = taskActivityQueryOptions;
+export const projectsQuery = projectsQueryOptions;
 
-export function useTasks() {
-	return useQuery(tasksQueryOptions());
+export function useTasks(params?: { projectId?: string }) {
+	return useQuery(tasksQueryOptions(params));
+}
+
+export function useProjects() {
+	return useQuery(projectsQueryOptions());
 }
 
 /** Fetch a single task. Pass `undefined` to disable the query (e.g. for a new task). */

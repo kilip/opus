@@ -1,16 +1,25 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 
 import { Icon } from "~/shared/components/Icon";
 import { useTaskActions } from "../api/actions";
+import { useProjects } from "../api/queries";
 import type { Task } from "../api/types";
 import { CURRENT_USER, STAGES } from "../model";
 import { TaskCard } from "./TaskCard";
 
 export function KanbanBoard({ tasks }: { tasks: Task[] }) {
 	const { createTask, moveTask } = useTaskActions();
+	const [params] = useSearchParams();
+	const { data: projects = [] } = useProjects();
 	const [dragId, setDragId] = useState<string | null>(null);
 	const [overStage, setOverStage] = useState<string | null>(null);
 	const [adding, setAdding] = useState<string | null>(null);
+
+	const activeProjectId =
+		params.get("projectId") ||
+		(tasks.length > 0 ? tasks[0].projectId : "") ||
+		(projects.length > 0 ? projects[0].id : "");
 
 	function endDrag() {
 		setDragId(null);
@@ -67,14 +76,17 @@ export function KanbanBoard({ tasks }: { tasks: Task[] }) {
 							{adding === stage.id && (
 								<QuickAdd
 									onSubmit={(title) => {
-										createTask({
-											title,
-											status: stage.id,
-											priority: "1",
-											assignee: { id: CURRENT_USER, name: CURRENT_USER },
-											labels: [],
-											description: "",
-										});
+										if (activeProjectId) {
+											createTask({
+												projectId: activeProjectId,
+												title,
+												status: stage.id,
+												priority: "1",
+												assignee: { id: CURRENT_USER, name: CURRENT_USER },
+												labels: [],
+												description: "",
+											});
+										}
 									}}
 									onClose={() => setAdding(null)}
 								/>
