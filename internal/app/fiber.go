@@ -137,27 +137,44 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 		nodeFeature.RegisterPublic(api)
 		api.Use(authFeature.Middleware())
 		authFeature.Register(authRoutes) // GET /me, POST /logout (protected)
-		var trackerFeature *tracker.Tracker
+		var (
+			projectFeature *project.Project
+			taskFeature    *task.Task
+			trackerFeature *tracker.Tracker
+		)
+		if o.project != nil {
+			projectFeature = o.project
+		} else {
+			projectFeature = project.New(db,
+				project.WithNodeReader(nodeFeature),
+				project.WithTaskCounter(func(ctx context.Context, projectID string) (int, error) {
+					if taskFeature == nil {
+						return 0, nil
+					}
+					return taskFeature.CountByProject(ctx, projectID)
+				}),
+				project.WithTrackerLabelValidator(func(ctx context.Context, labels map[string]string) error {
+					if trackerFeature == nil {
+						return nil
+					}
+					return trackerFeature.ValidateProjectLabels(ctx, labels)
+				}),
+			)
+		}
+		if o.task != nil {
+			taskFeature = o.task
+		} else {
+			taskFeature = task.New(db, bus, task.WithProjectChecker(projectFeature))
+		}
 		if o.tracker != nil {
 			trackerFeature = o.tracker
 		} else {
 			trackerFeature = tracker.New(db, tracker.Config{
 				PollInterval: cfg.TrackerPollInterval,
 				Logger:       logger,
+				Tasks:        taskFeature,
 			})
 		}
-		var taskFeature *task.Task
-		projectFeature := project.New(db,
-			project.WithNodeReader(nodeFeature),
-			project.WithTaskCounter(func(ctx context.Context, projectID string) (int, error) {
-				if taskFeature == nil {
-					return 0, nil
-				}
-				return taskFeature.CountByProject(ctx, projectID)
-			}),
-			project.WithTrackerLabelValidator(trackerFeature.ValidateProjectLabels),
-		)
-		taskFeature = task.New(db, bus, task.WithProjectChecker(projectFeature))
 		taskFeature.Register(api)
 		nodeFeature.Register(api)
 		projectFeature.Register(api)

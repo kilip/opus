@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/kilip/opus/internal/project"
+	"github.com/kilip/opus/internal/task"
 	"github.com/kilip/opus/internal/tracker/provider/github"
 	"github.com/kilip/opus/internal/tracker/repo"
 )
@@ -18,6 +19,7 @@ const DefaultPollInterval = 60 * time.Second
 type PollerConfig struct {
 	PollInterval time.Duration
 	Runner       github.Runner
+	Tasks        *task.Task
 	Logger       *slog.Logger
 	Now          func() time.Time
 	OnStop       func()
@@ -27,6 +29,7 @@ type PollerConfig struct {
 type Poller struct {
 	repo         *repo.Ent
 	runner       github.Runner
+	tasks        *task.Task
 	pollInterval time.Duration
 	logger       *slog.Logger
 	now          func() time.Time
@@ -60,6 +63,7 @@ func NewPoller(r *repo.Ent, cfg PollerConfig) *Poller {
 	return &Poller{
 		repo:         r,
 		runner:       runner,
+		tasks:        cfg.Tasks,
 		pollInterval: interval,
 		logger:       logger,
 		now:          now,
@@ -175,15 +179,21 @@ func (p *Poller) SyncOnce(ctx context.Context) {
 }
 
 func (p *Poller) syncProject(ctx context.Context, proj project.Record) {
-	issues, err := github.ListIssues(ctx, p.runner, proj.TrackerRef)
+	syncState, err := p.repo.GetSyncByProject(ctx, proj.ID)
 	if err != nil {
 		if ctx.Err() != nil {
 			return
 		}
-		p.logger.WarnContext(ctx, "tracker sync issues failed", "project_id", proj.ID, "repo", proj.TrackerRef, "error", err)
-		if saveErr := p.repo.UpsertLastError(ctx, proj.ID, err.Error()); saveErr != nil {
-			p.logger.ErrorContext(ctx, "failed to store tracker error", "project_id", proj.ID, "error", saveErr)
+		p.recordSyncError(ctx, "tracker get sync state failed", proj, err)
+		return
+	}
+
+	issues, err := github.ListIssues(ctx, p.runner, proj.TrackerRef, syncState.Cursor)
+	if err != nil {
+		if ctx.Err() != nil {
+			return
 		}
+		p.recordSyncError(ctx, "tracker sync issues failed", proj, err)
 		return
 	}
 
@@ -192,14 +202,21 @@ func (p *Poller) syncProject(ctx context.Context, proj project.Record) {
 		if ctx.Err() != nil {
 			return
 		}
-		p.logger.WarnContext(ctx, "tracker sync prs failed", "project_id", proj.ID, "repo", proj.TrackerRef, "error", err)
-		if saveErr := p.repo.UpsertLastError(ctx, proj.ID, err.Error()); saveErr != nil {
-			p.logger.ErrorContext(ctx, "failed to store tracker error", "project_id", proj.ID, "error", saveErr)
-		}
+		p.recordSyncError(ctx, "tracker sync prs failed", proj, err)
 		return
 	}
 
 	now := p.now().UTC()
+	if p.tasks != nil && len(issues) > 0 {
+		if err := p.syncIssues(ctx, proj, issues, now); err != nil {
+			if ctx.Err() != nil {
+				return
+			}
+			p.recordSyncError(ctx, "tracker inbound issue sync failed", proj, err)
+			return
+		}
+	}
+
 	var maxUpdated time.Time
 	for _, iss := range issues {
 		if iss.UpdatedAt.After(maxUpdated) {
@@ -212,12 +229,21 @@ func (p *Poller) syncProject(ctx context.Context, proj project.Record) {
 		}
 	}
 
-	cursor := now.Format(time.RFC3339)
+	cursor := syncState.Cursor
 	if !maxUpdated.IsZero() {
 		cursor = maxUpdated.UTC().Format(time.RFC3339)
+	} else if cursor == "" {
+		cursor = now.Format(time.RFC3339)
 	}
 
 	if _, err := p.repo.SaveSyncSuccess(ctx, proj.ID, cursor, now); err != nil && ctx.Err() == nil {
 		p.logger.ErrorContext(ctx, "failed to save tracker sync state", "project_id", proj.ID, "error", err)
+	}
+}
+
+func (p *Poller) recordSyncError(ctx context.Context, msg string, proj project.Record, err error) {
+	p.logger.WarnContext(ctx, msg, "project_id", proj.ID, "repo", proj.TrackerRef, "error", err)
+	if saveErr := p.repo.UpsertLastError(ctx, proj.ID, err.Error()); saveErr != nil {
+		p.logger.ErrorContext(ctx, "failed to store tracker error", "project_id", proj.ID, "error", saveErr)
 	}
 }

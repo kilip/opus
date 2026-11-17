@@ -11,6 +11,8 @@ import (
 	"github.com/kilip/opus/internal/node"
 	"github.com/kilip/opus/internal/platform/eventbus"
 	"github.com/kilip/opus/internal/platform/mailer"
+	"github.com/kilip/opus/internal/project"
+	"github.com/kilip/opus/internal/task"
 	"github.com/kilip/opus/internal/tracker"
 )
 
@@ -38,6 +40,8 @@ type Option func(*options)
 
 type options struct {
 	node    *node.Node
+	project *project.Project
+	task    *task.Task
 	tracker *tracker.Tracker
 }
 
@@ -45,6 +49,20 @@ type options struct {
 func WithNode(n *node.Node) Option {
 	return func(o *options) {
 		o.node = n
+	}
+}
+
+// WithProject injects a pre-configured Project feature into GetFiber.
+func WithProject(p *project.Project) Option {
+	return func(o *options) {
+		o.project = p
+	}
+}
+
+// WithTask injects a pre-configured Task feature into GetFiber.
+func WithTask(t *task.Task) Option {
+	return func(o *options) {
+		o.task = t
 	}
 }
 

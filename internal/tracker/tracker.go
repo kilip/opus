@@ -10,6 +10,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/kilip/opus/ent"
 	"github.com/kilip/opus/internal/project"
+	"github.com/kilip/opus/internal/task"
 	"github.com/kilip/opus/internal/tracker/domain"
 	"github.com/kilip/opus/internal/tracker/handler"
 	"github.com/kilip/opus/internal/tracker/provider/github"
@@ -47,6 +48,7 @@ func DefaultStatusLabels() map[string]string {
 type Config struct {
 	PollInterval time.Duration
 	Runner       github.Runner
+	Tasks        *task.Task
 	Logger       *slog.Logger
 	Now          func() time.Time
 	OnStop       func()
@@ -70,6 +72,7 @@ func New(client *ent.Client, cfg ...Config) *Tracker {
 	poller := service.NewPoller(r, service.PollerConfig{
 		PollInterval: c.PollInterval,
 		Runner:       c.Runner,
+		Tasks:        c.Tasks,
 		Logger:       c.Logger,
 		Now:          c.Now,
 		OnStop:       c.OnStop,

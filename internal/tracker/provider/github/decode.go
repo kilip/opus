@@ -89,8 +89,13 @@ func CheckAuth(ctx context.Context, runner Runner) error {
 }
 
 // ListIssues runs `gh issue list` for repo and decodes the JSON response.
-func ListIssues(ctx context.Context, runner Runner, repo string) ([]Issue, error) {
-	out, err := runner(ctx, "issue", "list", "--repo", repo, "--state", "all", "--limit", "100", "--json", IssueJSONFields)
+// When since is non-empty, it filters issues via `--search "updated:>=" + since`.
+func ListIssues(ctx context.Context, runner Runner, repo, since string) ([]Issue, error) {
+	args := []string{"issue", "list", "--repo", repo, "--state", "all", "--limit", "100", "--json", IssueJSONFields}
+	if since != "" {
+		args = append(args, "--search", "updated:>="+since)
+	}
+	out, err := runner(ctx, args...)
 	if err != nil {
 		return nil, err
 	}

@@ -1,9 +1,13 @@
 package main
 
 import (
+	"context"
+
 	"github.com/kilip/opus/internal/app"
 	"github.com/kilip/opus/internal/node"
 	"github.com/kilip/opus/internal/platform/eventbus"
+	"github.com/kilip/opus/internal/project"
+	"github.com/kilip/opus/internal/task"
 	"github.com/kilip/opus/internal/tracker"
 	"github.com/spf13/cobra"
 )
@@ -28,11 +32,37 @@ func newServeCmd() *cobra.Command {
 			}
 			bus := eventbus.New(eventbus.WithLogger(logger))
 			nodeFeature := node.New(db, node.Config{BaseURL: cfg.BaseURL, Bus: bus})
-			trackerFeature := tracker.New(db, tracker.Config{
+			var (
+				taskFeature    *task.Task
+				trackerFeature *tracker.Tracker
+			)
+			projectFeature := project.New(db,
+				project.WithNodeReader(nodeFeature),
+				project.WithTaskCounter(func(ctx context.Context, projectID string) (int, error) {
+					if taskFeature == nil {
+						return 0, nil
+					}
+					return taskFeature.CountByProject(ctx, projectID)
+				}),
+				project.WithTrackerLabelValidator(func(ctx context.Context, labels map[string]string) error {
+					if trackerFeature == nil {
+						return nil
+					}
+					return trackerFeature.ValidateProjectLabels(ctx, labels)
+				}),
+			)
+			taskFeature = task.New(db, bus, task.WithProjectChecker(projectFeature))
+			trackerFeature = tracker.New(db, tracker.Config{
 				PollInterval: cfg.TrackerPollInterval,
 				Logger:       logger,
+				Tasks:        taskFeature,
 			})
-			fiberApp := app.GetFiber(cfg, logger, db, bus, app.WithNode(nodeFeature), app.WithTracker(trackerFeature))
+			fiberApp := app.GetFiber(cfg, logger, db, bus,
+				app.WithNode(nodeFeature),
+				app.WithProject(projectFeature),
+				app.WithTask(taskFeature),
+				app.WithTracker(trackerFeature),
+			)
 			return app.New(cfg, fiberApp, logger, db, bus, app.WithNode(nodeFeature), app.WithTracker(trackerFeature)).Serve(ctx)
 		},
 	}
