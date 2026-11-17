@@ -31,6 +31,10 @@ const (
 	EnvelopeTypeCommand   = domain.EnvelopeTypeCommand
 	EnvelopeTypeEvent     = domain.EnvelopeTypeEvent
 
+	ToolStatusReady           = domain.ToolStatusReady
+	ToolStatusUnauthenticated = domain.ToolStatusUnauthenticated
+	ToolStatusMissing         = domain.ToolStatusMissing
+
 	DefaultDetectorTimeout  = service.DefaultDetectorTimeout
 	DefaultDetectorInterval = service.DefaultDetectorInterval
 )
@@ -61,6 +65,9 @@ type (
 	JoinNodeRequest   = domain.JoinNodeRequest
 	JoinNodeResponse  = domain.JoinNodeResponse
 	Envelope          = domain.Envelope
+	ToolStatus        = domain.ToolStatus
+	Capabilities      = domain.Capabilities
+	HelloPayload      = domain.HelloPayload
 	RateLimitConfig   = handler.RateLimitConfig
 	Hub               = service.Hub
 	Conn              = service.Conn
@@ -165,6 +172,15 @@ func (n *Node) Bootstrap(ctx context.Context) error {
 		n.hub.SetMasterID(master.ID)
 	}
 	return nil
+}
+
+// MasterID returns the registered master node ID, or empty string if not bootstrapped.
+func (n *Node) MasterID(ctx context.Context) (string, error) {
+	master, err := n.svc.GetMaster(ctx)
+	if err != nil || master == nil {
+		return "", err
+	}
+	return master.ID, nil
 }
 
 // List returns every registered node as NodeResponse DTOs.

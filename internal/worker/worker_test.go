@@ -6,11 +6,15 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
 	"net"
+	"os"
+	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -591,5 +595,272 @@ func TestWorker_InProcess_Lifecycle(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for Run to exit")
+	}
+}
+
+func TestWorker_BootstrapDirs_AppHome(t *testing.T) {
+	appHome := t.TempDir()
+	t.Setenv("APP_HOME", appHome)
+
+	transport := worker.NewInProcess()
+	defer func() { _ = transport.Close() }()
+
+	w := worker.New(worker.Config{
+		NodeID:    "node-bootstrap",
+		InProcess: transport,
+		Logger:    slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+	if w.HomeDir() != appHome {
+		t.Fatalf("expected HomeDir %q, got %q", appHome, w.HomeDir())
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- w.Run(ctx)
+	}()
+
+	select {
+	case <-transport.Events:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for hello")
+	}
+
+	for _, sub := range []string{"repos", "wt", "logs"} {
+		info, err := os.Stat(filepath.Join(appHome, sub))
+		if err != nil {
+			t.Fatalf("expected %s dir to exist: %v", sub, err)
+		}
+		if !info.IsDir() {
+			t.Errorf("expected %s to be a directory", sub)
+		}
+	}
+
+	cancel()
+	if err := <-done; err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+
+	// Verify default to ~/.opus when APP_HOME is unset.
+	fakeHome := t.TempDir()
+	t.Setenv("APP_HOME", "")
+	t.Setenv("HOME", fakeHome)
+	wDefault := worker.New(worker.Config{NodeID: "node-default-home"})
+	expected := filepath.Join(fakeHome, ".opus")
+	if wDefault.HomeDir() != expected {
+		t.Errorf("expected default HomeDir %q, got %q", expected, wDefault.HomeDir())
+	}
+}
+
+func TestWorker_StartRun_DuplicateAndCancel(t *testing.T) {
+	t.Setenv("APP_HOME", t.TempDir())
+	transport := worker.NewInProcess()
+	defer func() { _ = transport.Close() }()
+
+	started := make(chan string, 2)
+	cancelled := make(chan string, 2)
+
+	w := worker.New(worker.Config{
+		NodeID:            "master-node",
+		InProcess:         transport,
+		HeartbeatInterval: time.Hour,
+		Logger:            slog.New(slog.NewTextHandler(io.Discard, nil)),
+		OnStartRun: func(ctx context.Context, cmd worker.StartRun) error {
+			started <- cmd.RunID
+			<-ctx.Done()
+			cancelled <- cmd.RunID
+			return nil
+		},
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- w.Run(ctx)
+	}()
+
+	// Drain initial hello.
+	select {
+	case env := <-transport.Events:
+		if env.Type != node.EnvelopeTypeHello {
+			t.Fatalf("expected hello, got %s", env.Type)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for hello")
+	}
+
+	// 1. Send start_run for run-1.
+	startEnv, err := worker.NewStartRunEnvelope("cmd-start-1", worker.StartRun{
+		RunID:  "run-1",
+		TaskID: "task-1",
+	})
+	if err != nil {
+		t.Fatalf("encode start_run: %v", err)
+	}
+	if err := transport.SendCommand(ctx, startEnv); err != nil {
+		t.Fatalf("send start_run: %v", err)
+	}
+
+	select {
+	case id := <-started:
+		if id != "run-1" {
+			t.Fatalf("expected run-1 started, got %s", id)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for OnStartRun")
+	}
+
+	// 2. Duplicate start_run for active run-1 emits run_error without panicking.
+	dupEnv, err := worker.NewStartRunEnvelope("cmd-start-dup", worker.StartRun{
+		RunID: "run-1",
+	})
+	if err != nil {
+		t.Fatalf("encode duplicate start_run: %v", err)
+	}
+	if err := transport.SendCommand(ctx, dupEnv); err != nil {
+		t.Fatalf("send duplicate start_run: %v", err)
+	}
+
+	select {
+	case env := <-transport.Events:
+		if env.Type != node.EnvelopeTypeEvent {
+			t.Fatalf("expected event envelope, got %s", env.Type)
+		}
+		var evt worker.Event
+		if err := json.Unmarshal(env.Payload, &evt); err != nil {
+			t.Fatalf("unmarshal event: %v", err)
+		}
+		if evt.Type != worker.EventRunError || evt.RunID != "run-1" {
+			t.Errorf("expected run_error for run-1, got %+v", evt)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for duplicate run error event")
+	}
+
+	// 3. Send cancel_run for run-1, verify context cancelled and run_cancelled emitted.
+	cancelEnv, err := worker.NewCancelRunEnvelope("cmd-cancel-1", worker.CancelRun{
+		RunID:  "run-1",
+		Reason: "user requested",
+	})
+	if err != nil {
+		t.Fatalf("encode cancel_run: %v", err)
+	}
+	if err := transport.SendCommand(ctx, cancelEnv); err != nil {
+		t.Fatalf("send cancel_run: %v", err)
+	}
+
+	select {
+	case id := <-cancelled:
+		if id != "run-1" {
+			t.Fatalf("expected run-1 cancelled, got %s", id)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for run context cancellation")
+	}
+
+	select {
+	case env := <-transport.Events:
+		if env.Type != node.EnvelopeTypeEvent {
+			t.Fatalf("expected event envelope, got %s", env.Type)
+		}
+		var evt worker.Event
+		if err := json.Unmarshal(env.Payload, &evt); err != nil {
+			t.Fatalf("unmarshal event: %v", err)
+		}
+		if evt.Type != worker.EventRunCancelled || evt.RunID != "run-1" || evt.Reason != "user requested" {
+			t.Errorf("unexpected cancel event: %+v", evt)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for run_cancelled event")
+	}
+
+	cancel()
+	if err := <-done; err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+}
+
+func TestWorker_Capabilities_HelloAndUpdateEvent(t *testing.T) {
+	t.Setenv("APP_HOME", t.TempDir())
+	transport := worker.NewInProcess()
+	defer func() { _ = transport.Close() }()
+
+	var ready atomic.Bool
+	w := worker.New(worker.Config{
+		NodeID:            "cap-node",
+		InProcess:         transport,
+		HeartbeatInterval: 25 * time.Millisecond,
+		Logger:            slog.New(slog.NewTextHandler(io.Discard, nil)),
+		CapabilityProbe: func(_ context.Context) worker.Capabilities {
+			if ready.Load() {
+				return worker.Capabilities{
+					Agy: worker.ToolStatusReady,
+					Gh:  worker.ToolStatusReady,
+				}
+			}
+			return worker.Capabilities{
+				Agy: worker.ToolStatusUnauthenticated,
+				Gh:  worker.ToolStatusMissing,
+			}
+		},
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- w.Run(ctx)
+	}()
+
+	// 1. Hello carries initial capabilities.
+	select {
+	case env := <-transport.Events:
+		if env.Type != node.EnvelopeTypeHello {
+			t.Fatalf("expected hello, got %s", env.Type)
+		}
+		var hello worker.HelloPayload
+		if err := json.Unmarshal(env.Payload, &hello); err != nil {
+			t.Fatalf("unmarshal hello payload: %v", err)
+		}
+		if hello.Capabilities.Agy != worker.ToolStatusUnauthenticated || hello.Capabilities.Gh != worker.ToolStatusMissing {
+			t.Errorf("unexpected hello capabilities: %+v", hello.Capabilities)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for hello")
+	}
+
+	// 2. Flip capability state and expect a capability update event.
+	ready.Store(true)
+
+	deadline := time.After(2 * time.Second)
+	for {
+		select {
+		case env := <-transport.Events:
+			if env.Type != node.EnvelopeTypeEvent {
+				continue
+			}
+			var evt worker.Event
+			if err := json.Unmarshal(env.Payload, &evt); err != nil {
+				t.Fatalf("unmarshal event: %v", err)
+			}
+			if evt.Type != worker.EventCapabilities || evt.Capabilities == nil {
+				t.Fatalf("unexpected event: %+v", evt)
+			}
+			if evt.Capabilities.Agy != worker.ToolStatusReady || evt.Capabilities.Gh != worker.ToolStatusReady {
+				t.Errorf("unexpected updated capabilities: %+v", evt.Capabilities)
+			}
+			cancel()
+			if err := <-done; err != nil {
+				t.Fatalf("Run returned error: %v", err)
+			}
+			return
+		case <-deadline:
+			t.Fatal("timed out waiting for capabilities_updated event")
+		}
 	}
 }

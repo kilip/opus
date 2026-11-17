@@ -20,8 +20,11 @@ type NodeConfig struct {
 	MasterURL  string `json:"masterUrl"`
 }
 
-// opusHomeDir returns the path to ~/.opus, checking $HOME then os.UserHomeDir().
+// opusHomeDir returns the path to $APP_HOME or ~/.opus, checking $HOME then os.UserHomeDir().
 func opusHomeDir() (string, error) {
+	if appHome := os.Getenv("APP_HOME"); appHome != "" {
+		return appHome, nil
+	}
 	if home := os.Getenv("HOME"); home != "" {
 		return filepath.Join(home, opusDirName), nil
 	}

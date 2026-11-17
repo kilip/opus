@@ -2,18 +2,54 @@ package worker
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/fasthttp/websocket"
 	"github.com/kilip/opus/internal/node"
+	"github.com/kilip/opus/internal/worker/domain"
 )
+
+// Re-exported command and event constants from domain.
+const (
+	CommandStartRun   = domain.CommandStartRun
+	CommandCancelRun  = domain.CommandCancelRun
+	EventRunCancelled = domain.EventRunCancelled
+	EventRunError     = domain.EventRunError
+	EventCapabilities = domain.EventCapabilities
+
+	ToolStatusReady           = node.ToolStatusReady
+	ToolStatusUnauthenticated = node.ToolStatusUnauthenticated
+	ToolStatusMissing         = node.ToolStatusMissing
+)
+
+// Re-exported payload types and envelope constructors from domain.
+type (
+	StartRun     = domain.StartRun
+	CancelRun    = domain.CancelRun
+	Event        = domain.Event
+	Capabilities = domain.Capabilities
+	HelloPayload = domain.HelloPayload
+	ToolStatus   = domain.ToolStatus
+)
+
+var (
+	NewStartRunEnvelope  = domain.NewStartRunEnvelope
+	NewCancelRunEnvelope = domain.NewCancelRunEnvelope
+)
+
+// RunFunc is the pluggable runner callback invoked for each start_run command.
+// The provided ctx is cancelled when cancel_run is received for cmd.RunID or when the worker stops.
+type RunFunc func(ctx context.Context, cmd StartRun) error
 
 // ponytail: exponential backoff capped at 30s; add jitter if worker cluster exceeds 1k nodes
 const (
@@ -63,6 +99,17 @@ type Config struct {
 
 	// OnConnect is an optional callback invoked when WebSocket connects and hello is sent.
 	OnConnect func()
+
+	// HomeDir is the worker data root directory (<APP_HOME>/{repos,wt,logs}).
+	// Defaults to $APP_HOME if set, otherwise ~/.opus.
+	HomeDir string
+
+	// CapabilityProbe detects local tool availability.
+	// Defaults to DefaultCapabilityProbe if nil.
+	CapabilityProbe CapabilityProbe
+
+	// OnStartRun is the pluggable runner callback invoked for start_run commands.
+	OnStartRun RunFunc
 }
 
 // Worker is the control channel client for a worker node.
@@ -74,9 +121,17 @@ type Worker struct {
 	maxBackoff        time.Duration
 	dialer            *websocket.Dialer
 	inProc            *InProcessTransport
+	homeDir           string
+	probe             CapabilityProbe
 
-	mu     sync.Mutex
-	wsConn *websocket.Conn
+	mu       sync.Mutex
+	wsConn   *websocket.Conn
+	lastCaps domain.Capabilities
+
+	runsMu sync.Mutex
+	runs   map[string]context.CancelFunc
+	runCtx context.Context
+	runsWg sync.WaitGroup
 }
 
 // New creates a new Worker instance with the given configuration.
@@ -106,6 +161,11 @@ func New(cfg Config) *Worker {
 		dialer = websocket.DefaultDialer
 	}
 
+	probe := cfg.CapabilityProbe
+	if probe == nil {
+		probe = DefaultCapabilityProbe
+	}
+
 	return &Worker{
 		cfg:               cfg,
 		logger:            logger,
@@ -114,16 +174,61 @@ func New(cfg Config) *Worker {
 		maxBackoff:        maxBack,
 		dialer:            dialer,
 		inProc:            cfg.InProcess,
+		homeDir:           resolveHomeDir(cfg.HomeDir),
+		probe:             probe,
+		runs:              make(map[string]context.CancelFunc),
 	}
 }
 
+func resolveHomeDir(explicit string) string {
+	if explicit != "" {
+		return explicit
+	}
+	if env := os.Getenv("APP_HOME"); env != "" {
+		return env
+	}
+	if home := os.Getenv("HOME"); home != "" {
+		return filepath.Join(home, ".opus")
+	}
+	if home, err := os.UserHomeDir(); err == nil && home != "" {
+		return filepath.Join(home, ".opus")
+	}
+	return ".opus"
+}
+
+// HomeDir returns the resolved worker home directory.
+func (w *Worker) HomeDir() string {
+	return w.homeDir
+}
+
+func (w *Worker) bootstrapDirs() error {
+	for _, sub := range []string{"repos", "wt", "logs"} {
+		dir := filepath.Join(w.homeDir, sub)
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("bootstrap worker dir %s: %w", dir, err)
+		}
+	}
+	return nil
+}
+
 // Run starts the worker control channel client loop.
-// It connects to the master, sends hello, periodically heartbeats, and processes commands.
+// It bootstraps local directories, connects to the master, sends hello,
+// periodically heartbeats, and processes commands.
 // Run returns nil when ctx is cancelled.
 func (w *Worker) Run(ctx context.Context) error {
 	if ctx.Err() != nil {
 		return nil
 	}
+
+	if err := w.bootstrapDirs(); err != nil {
+		return err
+	}
+
+	w.runsMu.Lock()
+	w.runCtx = ctx
+	w.runsMu.Unlock()
+
+	defer w.runsWg.Wait()
 
 	if w.inProc != nil {
 		return w.runInProcess(ctx)
@@ -157,10 +262,66 @@ func (w *Worker) Connected() bool {
 	return w.wsConn != nil
 }
 
+func (w *Worker) buildHelloEnvelope(ctx context.Context) (node.Envelope, error) {
+	caps := w.probe(ctx)
+	w.mu.Lock()
+	w.lastCaps = caps
+	w.mu.Unlock()
+
+	raw, err := json.Marshal(domain.HelloPayload{
+		NodeID:       w.cfg.NodeID,
+		Capabilities: caps,
+	})
+	if err != nil {
+		return node.Envelope{}, err
+	}
+	return node.Envelope{
+		Type:    node.EnvelopeTypeHello,
+		ID:      fmt.Sprintf("hello-%s", w.cfg.NodeID),
+		Payload: raw,
+	}, nil
+}
+
+// CheckCapabilities probes local tool capabilities and emits a capability update
+// event upward if the state changed since the last report.
+func (w *Worker) CheckCapabilities(ctx context.Context) error {
+	caps := w.probe(ctx)
+	w.mu.Lock()
+	changed := caps != w.lastCaps
+	if changed {
+		w.lastCaps = caps
+	}
+	w.mu.Unlock()
+
+	if !changed {
+		return nil
+	}
+	return w.sendWorkerEvent(ctx, domain.Event{
+		Type:         domain.EventCapabilities,
+		Capabilities: &caps,
+	})
+}
+
+func (w *Worker) sendWorkerEvent(ctx context.Context, evt domain.Event) error {
+	raw, err := json.Marshal(evt)
+	if err != nil {
+		return err
+	}
+	env := node.Envelope{
+		Type:    node.EnvelopeTypeEvent,
+		ID:      fmt.Sprintf("evt-%s-%d", w.cfg.NodeID, time.Now().UnixNano()),
+		Payload: raw,
+	}
+	if w.inProc != nil {
+		return w.inProc.SendEvent(ctx, env)
+	}
+	return w.Send(env)
+}
+
 func (w *Worker) runInProcess(ctx context.Context) error {
-	helloEnv := node.Envelope{
-		Type: node.EnvelopeTypeHello,
-		ID:   fmt.Sprintf("hello-%s", w.cfg.NodeID),
+	helloEnv, err := w.buildHelloEnvelope(ctx)
+	if err != nil {
+		return err
 	}
 	if err := w.inProc.SendEvent(ctx, helloEnv); err != nil {
 		if ctx.Err() != nil {
@@ -194,6 +355,7 @@ func (w *Worker) runInProcess(ctx context.Context) error {
 				if err := w.inProc.SendEvent(ctx, hbEnv); err != nil {
 					return
 				}
+				_ = w.CheckCapabilities(ctx)
 			}
 		}
 	}()
@@ -250,9 +412,11 @@ func (w *Worker) runWebSocket(ctx context.Context) error {
 
 		w.setConn(conn)
 
-		helloEnv := node.Envelope{
-			Type: node.EnvelopeTypeHello,
-			ID:   fmt.Sprintf("hello-%s", w.cfg.NodeID),
+		helloEnv, err := w.buildHelloEnvelope(ctx)
+		if err != nil {
+			_ = conn.Close()
+			w.clearConn()
+			return err
 		}
 		if err := w.writeEnvelope(conn, helloEnv); err != nil {
 			w.logger.Warn("failed to send hello", "err", err)
@@ -343,6 +507,7 @@ func (w *Worker) heartbeatLoop(ctx context.Context, conn *websocket.Conn, stop <
 				_ = conn.Close()
 				return
 			}
+			_ = w.CheckCapabilities(ctx)
 		}
 	}
 }
@@ -364,9 +529,129 @@ func (w *Worker) handleEnvelope(env node.Envelope) {
 		if w.cfg.OnCommand != nil {
 			w.cfg.OnCommand(env)
 		}
+		w.dispatchCommand(env)
 	default:
 		w.logger.Debug("received envelope", "type", env.Type, "id", env.ID)
 	}
+}
+
+func (w *Worker) dispatchCommand(env node.Envelope) {
+	if len(env.Payload) == 0 {
+		return
+	}
+	var hdr struct {
+		Type   string `json:"type"`
+		Action string `json:"action"`
+	}
+	if err := json.Unmarshal(env.Payload, &hdr); err != nil {
+		w.logger.Warn("invalid command payload", "id", env.ID, "err", err)
+		return
+	}
+	cmdType := hdr.Type
+	if cmdType == "" {
+		cmdType = hdr.Action
+	}
+
+	switch cmdType {
+	case domain.CommandStartRun:
+		var cmd domain.StartRun
+		if err := json.Unmarshal(env.Payload, &cmd); err != nil {
+			_ = w.sendWorkerEvent(w.baseContext(), domain.Event{
+				Type:  domain.EventRunError,
+				Error: fmt.Sprintf("invalid start_run payload: %v", err),
+			})
+			return
+		}
+		w.handleStartRun(cmd)
+	case domain.CommandCancelRun:
+		var cmd domain.CancelRun
+		if err := json.Unmarshal(env.Payload, &cmd); err != nil {
+			_ = w.sendWorkerEvent(w.baseContext(), domain.Event{
+				Type:  domain.EventRunError,
+				Error: fmt.Sprintf("invalid cancel_run payload: %v", err),
+			})
+			return
+		}
+		w.handleCancelRun(cmd)
+	}
+}
+
+func (w *Worker) baseContext() context.Context {
+	w.runsMu.Lock()
+	ctx := w.runCtx
+	w.runsMu.Unlock()
+	if ctx != nil {
+		return ctx
+	}
+	return context.Background()
+}
+
+func (w *Worker) handleStartRun(cmd domain.StartRun) {
+	baseCtx := w.baseContext()
+	if cmd.RunID == "" {
+		_ = w.sendWorkerEvent(baseCtx, domain.Event{
+			Type:  domain.EventRunError,
+			Error: "runId is required",
+		})
+		return
+	}
+
+	w.runsMu.Lock()
+	if _, exists := w.runs[cmd.RunID]; exists {
+		w.runsMu.Unlock()
+		_ = w.sendWorkerEvent(baseCtx, domain.Event{
+			Type:  domain.EventRunError,
+			RunID: cmd.RunID,
+			Error: "run already active",
+		})
+		return
+	}
+
+	runCtx, cancel := context.WithCancel(baseCtx)
+	w.runs[cmd.RunID] = cancel
+	w.runsWg.Add(1)
+	w.runsMu.Unlock()
+
+	go func() {
+		defer func() {
+			cancel()
+			w.runsMu.Lock()
+			delete(w.runs, cmd.RunID)
+			w.runsMu.Unlock()
+			w.runsWg.Done()
+		}()
+
+		if w.cfg.OnStartRun == nil {
+			<-runCtx.Done()
+			return
+		}
+		if err := w.cfg.OnStartRun(runCtx, cmd); err != nil && runCtx.Err() == nil {
+			_ = w.sendWorkerEvent(baseCtx, domain.Event{
+				Type:  domain.EventRunError,
+				RunID: cmd.RunID,
+				Error: err.Error(),
+			})
+		}
+	}()
+}
+
+func (w *Worker) handleCancelRun(cmd domain.CancelRun) {
+	if cmd.RunID == "" {
+		return
+	}
+	w.runsMu.Lock()
+	cancel, ok := w.runs[cmd.RunID]
+	w.runsMu.Unlock()
+	if !ok {
+		w.logger.Debug("cancel_run for unknown or finished run", "runId", cmd.RunID)
+		return
+	}
+	cancel()
+	_ = w.sendWorkerEvent(w.baseContext(), domain.Event{
+		Type:   domain.EventRunCancelled,
+		RunID:  cmd.RunID,
+		Reason: cmd.Reason,
+	})
 }
 
 func buildWSURL(rawURL string) (string, error) {

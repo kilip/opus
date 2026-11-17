@@ -2,8 +2,11 @@ package app
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"log/slog"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -14,6 +17,7 @@ import (
 	"github.com/kilip/opus/internal/project"
 	"github.com/kilip/opus/internal/task"
 	"github.com/kilip/opus/internal/tracker"
+	"github.com/kilip/opus/internal/worker"
 )
 
 // NewMailer creates a mailer.Mailer based on configuration.
@@ -43,6 +47,8 @@ type options struct {
 	project *project.Project
 	task    *task.Task
 	tracker *tracker.Tracker
+	worker  *worker.Worker
+	inProc  *worker.InProcessTransport
 }
 
 // WithNode injects a pre-configured Node feature into GetFiber and Opus.
@@ -73,6 +79,14 @@ func WithTracker(t *tracker.Tracker) Option {
 	}
 }
 
+// WithWorker injects an in-process Worker and its transport into Opus.
+func WithWorker(w *worker.Worker, inProc *worker.InProcessTransport) Option {
+	return func(o *options) {
+		o.worker = w
+		o.inProc = inProc
+	}
+}
+
 type Opus struct {
 	cfg     Config
 	fiber   *fiber.App
@@ -81,6 +95,8 @@ type Opus struct {
 	bus     *eventbus.Bus
 	node    *node.Node
 	tracker *tracker.Tracker
+	worker  *worker.Worker
+	inProc  *worker.InProcessTransport
 }
 
 func New(cfg Config, fiberApp *fiber.App, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus, opts ...Option) *Opus {
@@ -98,6 +114,8 @@ func New(cfg Config, fiberApp *fiber.App, logger *slog.Logger, db *ent.Client, b
 		bus:     bus,
 		node:    o.node,
 		tracker: o.tracker,
+		worker:  o.worker,
+		inProc:  o.inProc,
 	}
 }
 
@@ -113,6 +131,8 @@ func (o *Opus) Serve(ctx context.Context) error {
 		}
 	}
 
+	stopWorker := o.startMasterWorker(ctx)
+
 	addr := net.JoinHostPort(o.cfg.Host, o.cfg.Port)
 	o.logger.InfoContext(ctx, "starting server", "addr", addr)
 	err := o.fiber.Listen(addr, fiber.ListenConfig{
@@ -121,6 +141,7 @@ func (o *Opus) Serve(ctx context.Context) error {
 		ShutdownTimeout:       o.cfg.ShutdownTimeout,
 	})
 
+	stopWorker()
 	if o.node != nil {
 		o.node.Stop()
 	}
@@ -146,4 +167,81 @@ func (o *Opus) Serve(ctx context.Context) error {
 		}
 	}
 	return err
+}
+
+func (o *Opus) startMasterWorker(ctx context.Context) func() {
+	if o.worker == nil {
+		return func() {}
+	}
+
+	workerCtx, cancel := context.WithCancel(ctx)
+	var wg sync.WaitGroup
+	var unregister func()
+
+	if o.inProc != nil && o.node != nil {
+		masterID, err := o.node.MasterID(ctx)
+		if err != nil {
+			o.logger.ErrorContext(ctx, "failed to resolve master node id", "error", err)
+		} else if masterID != "" {
+			unregister = o.node.Hub().RegisterLocal(masterID, &inProcessConn{transport: o.inProc})
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for {
+					select {
+					case <-workerCtx.Done():
+						return
+					case env, ok := <-o.inProc.Events:
+						if !ok {
+							return
+						}
+						if err := o.node.Hub().Dispatch(masterID, env); err != nil {
+							o.logger.WarnContext(workerCtx, "failed to dispatch master worker envelope", "type", env.Type, "error", err)
+						}
+					}
+				}
+			}()
+		}
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := o.worker.Run(workerCtx); err != nil && !errors.Is(err, context.Canceled) {
+			o.logger.ErrorContext(workerCtx, "master worker stopped with error", "error", err)
+		}
+	}()
+
+	return func() {
+		cancel()
+		if unregister != nil {
+			unregister()
+		}
+		if o.inProc != nil {
+			_ = o.inProc.Close()
+		}
+		wg.Wait()
+	}
+}
+
+type inProcessConn struct {
+	transport *worker.InProcessTransport
+}
+
+func (c *inProcessConn) WriteJSON(v any) error {
+	env, ok := v.(node.Envelope)
+	if !ok {
+		raw, err := json.Marshal(v)
+		if err != nil {
+			return err
+		}
+		if err := json.Unmarshal(raw, &env); err != nil {
+			return err
+		}
+	}
+	return c.transport.SendCommand(context.Background(), env)
+}
+
+func (c *inProcessConn) Close() error {
+	return c.transport.Close()
 }

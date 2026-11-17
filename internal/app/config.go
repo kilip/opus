@@ -12,6 +12,7 @@ import (
 
 type Config struct {
 	AppName                string        `env:"APP_NAME, default=opus"`
+	AppHome                string        `env:"APP_HOME, default="`
 	Host                   string        `env:"APP_HOST, default=0.0.0.0"`
 	Port                   string        `env:"APP_PORT, default=7880"`
 	LogLevel               slog.Level    `env:"APP_LOG_LEVEL, default=info"`

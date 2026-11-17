@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
@@ -25,6 +26,7 @@ import (
 	"github.com/kilip/opus/internal/node"
 	"github.com/kilip/opus/internal/platform/eventbus"
 	"github.com/kilip/opus/internal/tracker"
+	"github.com/kilip/opus/internal/worker"
 	_ "modernc.org/sqlite"
 )
 
@@ -604,5 +606,137 @@ func TestOpus_Serve_ShutdownSequence_WithTracker(t *testing.T) {
 	n := runtime.Stack(buf, true)
 	if strings.Contains(string(buf[:n]), "tracker/service.(*Poller)") {
 		t.Fatalf("goroutine leak: tracker poller goroutine still active after Serve returned:\n%s", buf[:n])
+	}
+}
+
+func TestOpus_MasterWorker_InProcessRoundTrip(t *testing.T) {
+	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared&_pragma=foreign_keys(ON)&_pragma=busy_timeout(10000)")
+	if err != nil {
+		t.Fatalf("open sqlite failed: %v", err)
+	}
+	db.SetMaxOpenConns(1)
+	drv := entsql.OpenDB(dialect.SQLite, db)
+	client := enttest.NewClient(t, enttest.WithOptions(ent.Driver(drv)))
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	bus := eventbus.New(eventbus.WithLogger(logger))
+	nodeFeature := node.New(client, node.Config{BaseURL: "http://127.0.0.1:0", Bus: bus})
+	if err := nodeFeature.Bootstrap(context.Background()); err != nil {
+		t.Fatalf("bootstrap node: %v", err)
+	}
+	masterID, err := nodeFeature.MasterID(context.Background())
+	if err != nil || masterID == "" {
+		t.Fatalf("resolve master ID: id=%q err=%v", masterID, err)
+	}
+
+	cfg := app.Config{
+		AppName:         "opus",
+		Host:            "127.0.0.1",
+		Port:            "0",
+		ShutdownTimeout: 2 * time.Second,
+		AppHome:         t.TempDir(),
+	}
+
+	fiberApp := fiber.New()
+	started := make(chan string, 1)
+	events := make(chan worker.Event, 4)
+
+	nodeFeature.Hub().OnEvent(func(nodeID string, env node.Envelope) {
+		if nodeID != masterID {
+			return
+		}
+		var evt worker.Event
+		if err := json.Unmarshal(env.Payload, &evt); err == nil {
+			events <- evt
+		}
+	})
+
+	inProc := worker.NewInProcess()
+	masterWorker := worker.New(worker.Config{
+		NodeID:            masterID,
+		HomeDir:           cfg.AppHome,
+		InProcess:         inProc,
+		HeartbeatInterval: time.Hour,
+		Logger:            logger,
+		CapabilityProbe: func(_ context.Context) worker.Capabilities {
+			return worker.Capabilities{
+				Agy: worker.ToolStatusReady,
+				Gh:  worker.ToolStatusReady,
+			}
+		},
+		OnStartRun: func(ctx context.Context, cmd worker.StartRun) error {
+			started <- cmd.RunID
+			<-ctx.Done()
+			return nil
+		},
+	})
+
+	opusApp := app.New(cfg, fiberApp, logger, client, bus,
+		app.WithNode(nodeFeature),
+		app.WithWorker(masterWorker, inProc),
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	serveDone := make(chan error, 1)
+	go func() {
+		serveDone <- opusApp.Serve(ctx)
+	}()
+
+	// Wait until master in-process worker is registered on Hub.
+	deadline := time.Now().Add(2 * time.Second)
+	for !nodeFeature.Hub().Connected(masterID) {
+		if time.Now().After(deadline) {
+			t.Fatal("timed out waiting for master worker registration on Hub")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	startEnv, err := worker.NewStartRunEnvelope("cmd-master-1", worker.StartRun{RunID: "master-run-1"})
+	if err != nil {
+		t.Fatalf("encode start_run: %v", err)
+	}
+	if err := nodeFeature.Hub().Send(masterID, startEnv); err != nil {
+		t.Fatalf("hub send start_run: %v", err)
+	}
+
+	select {
+	case id := <-started:
+		if id != "master-run-1" {
+			t.Fatalf("expected master-run-1 started, got %s", id)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for master OnStartRun")
+	}
+
+	cancelEnv, err := worker.NewCancelRunEnvelope("cmd-master-cancel-1", worker.CancelRun{
+		RunID:  "master-run-1",
+		Reason: "stop",
+	})
+	if err != nil {
+		t.Fatalf("encode cancel_run: %v", err)
+	}
+	if err := nodeFeature.Hub().Send(masterID, cancelEnv); err != nil {
+		t.Fatalf("hub send cancel_run: %v", err)
+	}
+
+	select {
+	case evt := <-events:
+		if evt.Type != worker.EventRunCancelled || evt.RunID != "master-run-1" {
+			t.Fatalf("expected run_cancelled for master-run-1, got %+v", evt)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for master worker event")
+	}
+
+	cancel()
+	select {
+	case err := <-serveDone:
+		if err != nil {
+			t.Fatalf("unexpected Serve error: %v", err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("timed out waiting for Serve to exit")
 	}
 }

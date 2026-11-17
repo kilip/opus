@@ -97,6 +97,23 @@ func (h *Hub) Register(nodeID string, conn Conn) (func(), error) {
 	return cleanup, nil
 }
 
+// RegisterLocal registers an in-process connection (such as the master node's
+// local worker) without triggering ErrMasterConnectForbidden.
+func (h *Hub) RegisterLocal(nodeID string, conn Conn) func() {
+	h.mu.Lock()
+	nc := &nodeConn{conn: conn}
+	h.conns[nodeID] = nc
+	h.mu.Unlock()
+
+	return func() {
+		h.mu.Lock()
+		if cur, ok := h.conns[nodeID]; ok && cur == nc {
+			delete(h.conns, nodeID)
+		}
+		h.mu.Unlock()
+	}
+}
+
 // Connected returns true if nodeID currently has an active connection.
 func (h *Hub) Connected(nodeID string) bool {
 	h.mu.RLock()

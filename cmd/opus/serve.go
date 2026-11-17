@@ -9,6 +9,7 @@ import (
 	"github.com/kilip/opus/internal/project"
 	"github.com/kilip/opus/internal/task"
 	"github.com/kilip/opus/internal/tracker"
+	"github.com/kilip/opus/internal/worker"
 	"github.com/spf13/cobra"
 )
 
@@ -63,7 +64,19 @@ func newServeCmd() *cobra.Command {
 				app.WithTask(taskFeature),
 				app.WithTracker(trackerFeature),
 			)
-			return app.New(cfg, fiberApp, logger, db, bus, app.WithNode(nodeFeature), app.WithTracker(trackerFeature)).Serve(ctx)
+			masterID, _ := nodeFeature.MasterID(ctx)
+			inProc := worker.NewInProcess()
+			masterWorker := worker.New(worker.Config{
+				NodeID:    masterID,
+				HomeDir:   cfg.AppHome,
+				InProcess: inProc,
+				Logger:    logger,
+			})
+			return app.New(cfg, fiberApp, logger, db, bus,
+				app.WithNode(nodeFeature),
+				app.WithTracker(trackerFeature),
+				app.WithWorker(masterWorker, inProc),
+			).Serve(ctx)
 		},
 	}
 }

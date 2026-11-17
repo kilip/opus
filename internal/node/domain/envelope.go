@@ -30,6 +30,27 @@ type Envelope struct {
 	Payload json.RawMessage `json:"payload,omitempty"`
 }
 
+// ToolStatus represents the availability state of a local worker tool.
+type ToolStatus string
+
+const (
+	ToolStatusReady           ToolStatus = "ready"
+	ToolStatusUnauthenticated ToolStatus = "unauthenticated"
+	ToolStatusMissing         ToolStatus = "missing"
+)
+
+// Capabilities reports local tool availability on a worker node.
+type Capabilities struct {
+	Agy ToolStatus `json:"agy"`
+	Gh  ToolStatus `json:"gh"`
+}
+
+// HelloPayload is the payload carried by a hello envelope.
+type HelloPayload struct {
+	NodeID       string       `json:"nodeId,omitempty"`
+	Capabilities Capabilities `json:"capabilities"`
+}
+
 // Encode serializes the Envelope to JSON bytes after validating the envelope type.
 func (e Envelope) Encode() ([]byte, error) {
 	if !IsValidEnvelopeType(e.Type) {
