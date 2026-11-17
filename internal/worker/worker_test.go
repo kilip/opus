@@ -864,3 +864,69 @@ func TestWorker_Capabilities_HelloAndUpdateEvent(t *testing.T) {
 		}
 	}
 }
+
+func TestWorker_ReportAgyUnauthenticated_And_WorkerAgyBin(t *testing.T) {
+	t.Setenv("APP_HOME", t.TempDir())
+	bin := filepath.Join(t.TempDir(), "fake-agy")
+	if err := os.WriteFile(bin, []byte("#!/bin/sh\necho 'ready'\nexit 0\n"), 0o755); err != nil {
+		t.Fatalf("write fake agy: %v", err)
+	}
+	t.Setenv("WORKER_AGY_BIN", bin)
+
+	transport := worker.NewInProcess()
+	defer func() { _ = transport.Close() }()
+
+	w := worker.New(worker.Config{
+		NodeID:            "agy-bin-node",
+		InProcess:         transport,
+		HeartbeatInterval: time.Hour,
+		Logger:            slog.New(slog.NewTextHandler(io.Discard, nil)),
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- w.Run(ctx)
+	}()
+
+	// Initial hello should report agy=ready from fake WORKER_AGY_BIN.
+	select {
+	case env := <-transport.Events:
+		if env.Type != node.EnvelopeTypeHello {
+			t.Fatalf("expected hello, got %s", env.Type)
+		}
+		var hello worker.HelloPayload
+		if err := json.Unmarshal(env.Payload, &hello); err != nil {
+			t.Fatalf("unmarshal hello: %v", err)
+		}
+		if hello.Capabilities.Agy != worker.ToolStatusReady {
+			t.Fatalf("expected agy=ready, got %s", hello.Capabilities.Agy)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for hello")
+	}
+
+	// Reporting unauthenticated emits capabilities_updated with agy=unauthenticated.
+	if err := w.ReportAgyUnauthenticated(ctx); err != nil {
+		t.Fatalf("ReportAgyUnauthenticated: %v", err)
+	}
+	select {
+	case env := <-transport.Events:
+		var evt worker.Event
+		if err := json.Unmarshal(env.Payload, &evt); err != nil {
+			t.Fatalf("unmarshal event: %v", err)
+		}
+		if evt.Type != worker.EventCapabilities || evt.Capabilities == nil || evt.Capabilities.Agy != worker.ToolStatusUnauthenticated {
+			t.Fatalf("expected unauthenticated capability update, got %+v", evt)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for capabilities_updated")
+	}
+
+	cancel()
+	if err := <-done; err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+}

@@ -105,8 +105,11 @@ type Config struct {
 	HomeDir string
 
 	// CapabilityProbe detects local tool availability.
-	// Defaults to DefaultCapabilityProbe if nil.
+	// Defaults to NewCapabilityProbe(AgyBin) if nil.
 	CapabilityProbe CapabilityProbe
+
+	// AgyBin is the agy binary path or name (defaults to WORKER_AGY_BIN, then "agy").
+	AgyBin string
 
 	// OnStartRun is the pluggable runner callback invoked for start_run commands.
 	OnStartRun RunFunc
@@ -163,7 +166,7 @@ func New(cfg Config) *Worker {
 
 	probe := cfg.CapabilityProbe
 	if probe == nil {
-		probe = DefaultCapabilityProbe
+		probe = NewCapabilityProbe(cfg.AgyBin)
 	}
 
 	return &Worker{
@@ -289,6 +292,27 @@ func (w *Worker) CheckCapabilities(ctx context.Context) error {
 	w.mu.Lock()
 	changed := caps != w.lastCaps
 	if changed {
+		w.lastCaps = caps
+	}
+	w.mu.Unlock()
+
+	if !changed {
+		return nil
+	}
+	return w.sendWorkerEvent(ctx, domain.Event{
+		Type:         domain.EventCapabilities,
+		Capabilities: &caps,
+	})
+}
+
+// ReportAgyUnauthenticated updates the worker's agy capability to unauthenticated
+// and emits a capabilities_updated event if the state changed.
+func (w *Worker) ReportAgyUnauthenticated(ctx context.Context) error {
+	w.mu.Lock()
+	caps := w.lastCaps
+	changed := caps.Agy != node.ToolStatusUnauthenticated
+	if changed {
+		caps.Agy = node.ToolStatusUnauthenticated
 		w.lastCaps = caps
 	}
 	w.mu.Unlock()

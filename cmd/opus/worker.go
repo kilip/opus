@@ -40,6 +40,7 @@ func runWorker(ctx context.Context) error {
 		MasterURL:  cfg.MasterURL,
 		NodeID:     cfg.NodeID,
 		Credential: cfg.Credential,
+		AgyBin:     os.Getenv("WORKER_AGY_BIN"),
 		Logger:     slog.Default(),
 	})
 	return w.Run(ctx)

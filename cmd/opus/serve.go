@@ -69,6 +69,7 @@ func newServeCmd() *cobra.Command {
 			masterWorker := worker.New(worker.Config{
 				NodeID:    masterID,
 				HomeDir:   cfg.AppHome,
+				AgyBin:    cfg.WorkerAgyBin,
 				InProcess: inProc,
 				Logger:    logger,
 			})

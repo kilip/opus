@@ -42,6 +42,7 @@ type Config struct {
 	FacebookClientID       string        `env:"AUTH_FACEBOOK_ID, default="`
 	FacebookClientSecret   string        `env:"AUTH_FACEBOOK_SECRET, default="`
 	TrackerPollInterval    time.Duration `env:"TRACKER_POLL_INTERVAL, default=60s"`
+	WorkerAgyBin           string        `env:"WORKER_AGY_BIN, default=agy"`
 }
 
 func loadEnvFile(path string) {
