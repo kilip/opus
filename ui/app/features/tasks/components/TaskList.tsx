@@ -50,6 +50,23 @@ export function TaskList({ tasks }: { tasks: Task[] }) {
 											))}
 										</span>
 									)}
+									{task.source && task.source !== "manual" && (
+										<span className="relative z-10 ml-2 inline-flex items-center gap-1.5 align-middle">
+											{task.sourceStatus && (
+												<Tag tone="neutral">{task.sourceStatus}</Tag>
+											)}
+											{task.externalUrl && (
+												<a
+													href={task.externalUrl}
+													target="_blank"
+													rel="noopener noreferrer"
+													className="text-xs font-medium text-primary hover:underline"
+												>
+													{task.externalId || task.source}
+												</a>
+											)}
+										</span>
+									)}
 								</td>
 								<td className="px-3 py-2">
 									{task.assignee ? (

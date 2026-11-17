@@ -1,13 +1,24 @@
-import { type ReactNode, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 
 import { Button } from "~/shared/components/Button";
 import { ControlPanel } from "~/shared/components/ControlPanel";
 import { Icon } from "~/shared/components/Icon";
 import { Tag } from "~/shared/components/Tag";
-import { useProjects } from "../api/queries";
+import { formatAbsoluteTime, formatRelativeTime } from "~/shared/util/dates";
+import { useUpdateTrackerSettings } from "../api/actions";
+import {
+	useProjects,
+	useProjectTracker,
+	useTrackerSettings,
+} from "../api/queries";
 import type { Project } from "../api/types";
 import { CreateProjectModal } from "../components/CreateProjectModal";
 import { EditProjectModal } from "../components/EditProjectModal";
+import {
+	DEFAULT_STATUS_LABELS,
+	TRACKER_STATUS_ORDER,
+	type TrackerStatusKey,
+} from "../model";
 
 export const meta = () => [
 	{ title: "Projects · Opus" },
@@ -68,6 +79,7 @@ export default function ProjectsPage({
 							<th className="px-4 py-3">Project</th>
 							<th className="px-4 py-3">Repository</th>
 							<th className="px-4 py-3">Default Branch</th>
+							<th className="px-4 py-3">Sync Health</th>
 							<th className="px-4 py-3 text-right">Actions</th>
 						</tr>
 					</thead>
@@ -93,6 +105,9 @@ export default function ProjectsPage({
 								</td>
 								<td className="px-4 py-3">
 									<Tag tone="neutral">{project.default_branch || "main"}</Tag>
+								</td>
+								<td className="px-4 py-3">
+									<ProjectTrackerStatusCell projectId={project.id ?? ""} />
 								</td>
 								<td className="px-4 py-3 text-right">
 									<Button
@@ -123,6 +138,7 @@ export default function ProjectsPage({
 
 			<div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 p-6">
 				{content}
+				<GlobalTrackerLabelsSection />
 			</div>
 
 			<CreateProjectModal
@@ -138,5 +154,176 @@ export default function ProjectsPage({
 				/>
 			)}
 		</>
+	);
+}
+
+function ProjectTrackerStatusCell({ projectId }: { projectId: string }) {
+	const trackerQuery = useProjectTracker(projectId);
+	if (!projectId || trackerQuery.isPending) {
+		return <span className="text-xs text-muted">Checking…</span>;
+	}
+	if (trackerQuery.isError) {
+		return <span className="text-xs text-muted">Sync status unavailable</span>;
+	}
+	const { lastSyncAt, lastError } = trackerQuery.data;
+	return (
+		<div className="flex flex-col items-start gap-1">
+			{lastSyncAt ? (
+				<time
+					dateTime={lastSyncAt}
+					title={formatAbsoluteTime(lastSyncAt)}
+					className="text-xs text-muted"
+				>
+					Synced {formatRelativeTime(lastSyncAt)}
+				</time>
+			) : (
+				<span className="text-xs text-muted">Never synced</span>
+			)}
+			{lastError && (
+				<div
+					role="alert"
+					className="inline-flex items-center gap-1 rounded border border-danger/30 bg-danger/10 px-2 py-0.5 text-xs font-medium text-danger"
+				>
+					<Icon name="x" size={12} aria-hidden="true" />
+					<span>Sync error: {lastError}</span>
+				</div>
+			)}
+		</div>
+	);
+}
+
+function GlobalTrackerLabelsSection() {
+	const settingsQuery = useTrackerSettings();
+	const updateSettings = useUpdateTrackerSettings();
+	const [draft, setDraft] = useState<Partial<Record<TrackerStatusKey, string>>>(
+		{},
+	);
+	const [saved, setSaved] = useState(false);
+
+	const serverLabels = settingsQuery.data?.statusLabels;
+	useEffect(() => {
+		if (!serverLabels) return;
+		const next: Partial<Record<TrackerStatusKey, string>> = {};
+		for (const status of TRACKER_STATUS_ORDER) {
+			const val = serverLabels[status];
+			next[status] = val && val !== DEFAULT_STATUS_LABELS[status] ? val : "";
+		}
+		setDraft(next);
+	}, [serverLabels]);
+
+	function handleSave(e: FormEvent) {
+		e.preventDefault();
+		setSaved(false);
+		const statusLabels: Record<string, string> = {};
+		for (const status of TRACKER_STATUS_ORDER) {
+			const v = draft[status]?.trim();
+			if (v) statusLabels[status] = v;
+		}
+		updateSettings.mutate(
+			{ statusLabels },
+			{
+				onSuccess: () => {
+					setSaved(true);
+					setTimeout(() => setSaved(false), 2500);
+				},
+			},
+		);
+	}
+
+	function handleReset() {
+		setSaved(false);
+		setDraft({});
+		updateSettings.mutate({ statusLabels: {} });
+	}
+
+	const errorMessage = updateSettings.error?.message ?? null;
+
+	return (
+		<section
+			aria-labelledby="tracker-labels-heading"
+			className="rounded-lg border border-line bg-surface p-5"
+		>
+			<div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3">
+				<div>
+					<h2
+						id="tracker-labels-heading"
+						className="text-base font-semibold text-fg"
+					>
+						Tracker labels
+					</h2>
+					<p className="text-xs text-muted">
+						Global GitHub status-to-label mappings. Leave blank to use the
+						default label.
+					</p>
+				</div>
+				<Button
+					type="button"
+					variant="ghost"
+					onClick={handleReset}
+					disabled={updateSettings.isPending}
+				>
+					Reset to defaults
+				</Button>
+			</div>
+
+			<form onSubmit={handleSave} className="mt-4 flex flex-col gap-4">
+				<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+					{TRACKER_STATUS_ORDER.map((status) => (
+						<div key={status} className="flex flex-col gap-1">
+							<label
+								htmlFor={`global-tracker-label-${status}`}
+								className="text-xs font-semibold uppercase tracking-wider text-muted"
+							>
+								{status}
+							</label>
+							<input
+								id={`global-tracker-label-${status}`}
+								type="text"
+								value={draft[status] ?? ""}
+								placeholder={DEFAULT_STATUS_LABELS[status]}
+								onChange={(e) =>
+									setDraft((prev) => ({ ...prev, [status]: e.target.value }))
+								}
+								className="field text-sm"
+							/>
+						</div>
+					))}
+					<div className="flex flex-col gap-1">
+						<span className="text-xs font-semibold uppercase tracking-wider text-muted">
+							done
+						</span>
+						<input
+							type="text"
+							readOnly
+							disabled
+							value="closes the issue"
+							aria-label="done"
+							className="field cursor-not-allowed bg-surface-2 text-sm text-muted"
+						/>
+					</div>
+				</div>
+
+				{errorMessage && (
+					<p role="alert" className="text-xs font-medium text-danger">
+						{errorMessage}
+					</p>
+				)}
+				{saved && (
+					<p className="text-xs font-medium text-success">
+						Tracker labels saved.
+					</p>
+				)}
+
+				<div className="flex justify-end">
+					<Button
+						type="submit"
+						variant="primary"
+						disabled={updateSettings.isPending}
+					>
+						{updateSettings.isPending ? "Saving…" : "Save tracker labels"}
+					</Button>
+				</div>
+			</form>
+		</section>
 	);
 }

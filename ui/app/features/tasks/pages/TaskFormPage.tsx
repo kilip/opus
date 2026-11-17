@@ -7,14 +7,26 @@ import { Chatter, type ChatterMessage } from "~/shared/components/Chatter";
 import { ControlPanel } from "~/shared/components/ControlPanel";
 import { Priority } from "~/shared/components/Priority";
 import { Statusbar } from "~/shared/components/Statusbar";
+import { Tag } from "~/shared/components/Tag";
 import {
 	useAddTaskActivity,
 	useCreateTask,
 	useMoveTask,
 	useUpdateTask,
 } from "../api/actions";
-import { useProjects, useTask, useTaskActivity } from "../api/queries";
-import type { Task, TaskStatus, UpdateTaskRequest } from "../api/types";
+import {
+	useProjects,
+	useTask,
+	useTaskActivity,
+	useTaskPRs,
+} from "../api/queries";
+import type {
+	ChecksSummary,
+	PRState,
+	Task,
+	TaskStatus,
+	UpdateTaskRequest,
+} from "../api/types";
 import {
 	ASSIGNEES,
 	CURRENT_USER,
@@ -108,6 +120,7 @@ function TaskForm({ task }: { task?: Task }) {
 	const moveTaskMutation = useMoveTask();
 	const addActivityMutation = useAddTaskActivity();
 	const { data: activity } = useTaskActivity(task?.id);
+	const { data: prs } = useTaskPRs(task?.id);
 	const { data: projects = [] } = useProjects();
 	const ids = {
 		title: useId(),
@@ -259,7 +272,26 @@ function TaskForm({ task }: { task?: Task }) {
 						</div>
 					)
 				}
-				right={task && <span className="text-muted">{task.key}</span>}
+				right={
+					task && (
+						<div className="flex items-center gap-2">
+							{task.source && task.source !== "manual" && task.sourceStatus && (
+								<Tag tone="neutral">{task.sourceStatus}</Tag>
+							)}
+							{task.source && task.source !== "manual" && task.externalUrl && (
+								<a
+									href={task.externalUrl}
+									target="_blank"
+									rel="noopener noreferrer"
+									className="text-xs font-medium text-primary hover:underline"
+								>
+									{task.externalId || task.source}
+								</a>
+							)}
+							<span className="text-muted">{task.key}</span>
+						</div>
+					)
+				}
 			/>
 
 			<div className="flex justify-end border-b border-line bg-surface px-4 py-2">
@@ -374,6 +406,50 @@ function TaskForm({ task }: { task?: Task }) {
 								onChange={(e) => set("description", e.target.value)}
 							/>
 						</Field>
+
+						{task && prs && prs.length > 0 && (
+							<section
+								aria-label="Linked Pull Requests"
+								className="flex flex-col gap-2 border-t border-line pt-4"
+							>
+								<h2 className="text-sm font-semibold text-fg">Pull Requests</h2>
+								<ul className="divide-y divide-line rounded-md border border-line">
+									{prs.map((pr) => (
+										<li
+											key={pr.id}
+											className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm"
+										>
+											<div className="flex items-center gap-2">
+												{pr.url ? (
+													<a
+														href={pr.url}
+														target="_blank"
+														rel="noopener noreferrer"
+														className="font-mono font-medium text-primary hover:underline"
+													>
+														#{pr.number}
+													</a>
+												) : (
+													<span className="font-mono font-medium">
+														#{pr.number}
+													</span>
+												)}
+												<Tag tone={prStateTone(pr.state)}>{pr.state}</Tag>
+												{pr.isDraft && <Tag tone="neutral">draft</Tag>}
+											</div>
+											<div className="flex items-center gap-2">
+												{pr.reviewState && (
+													<Tag tone="neutral">{pr.reviewState}</Tag>
+												)}
+												<Tag tone={checksTone(pr.checksSummary)}>
+													checks: {pr.checksSummary}
+												</Tag>
+											</div>
+										</li>
+									))}
+								</ul>
+							</section>
+						)}
 					</form>
 
 					<aside className="lg:sticky lg:top-4 lg:self-start">
@@ -396,6 +472,30 @@ function TaskForm({ task }: { task?: Task }) {
 			</div>
 		</>
 	);
+}
+
+function prStateTone(state: PRState) {
+	switch (state) {
+		case "merged":
+			return "primary" as const;
+		case "closed":
+			return "danger" as const;
+		default:
+			return "success" as const;
+	}
+}
+
+function checksTone(summary: ChecksSummary) {
+	switch (summary) {
+		case "passing":
+			return "success" as const;
+		case "failing":
+			return "danger" as const;
+		case "pending":
+			return "accent" as const;
+		default:
+			return "neutral" as const;
+	}
 }
 
 function Field({

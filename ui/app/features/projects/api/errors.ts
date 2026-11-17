@@ -10,4 +10,6 @@ export const PROJECT_ERRORS: Record<string, string> = {
 		"Project cannot be deleted because it still has associated tasks.",
 	PROJECT_INVALID_PATH: "Node path must be an absolute path starting with '/'.",
 	NODE_NOT_FOUND: "Node not found.",
+	TRACKER_INVALID_LABEL_CONFIG:
+		"Status labels must be non-empty, unique, and at most 50 characters.",
 };

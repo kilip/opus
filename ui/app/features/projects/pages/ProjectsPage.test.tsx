@@ -12,6 +12,8 @@ import type {
 	CreateProjectRequest,
 	Project,
 	ProjectNodeResponse,
+	TrackerSettingsResponse,
+	TrackerStatusResponse,
 	UpdateProjectNodePathRequest,
 	UpdateProjectRequest,
 } from "../api/types";
@@ -26,10 +28,14 @@ function renderWithClient(
 		projects,
 		queryState,
 		nodeMappings,
+		trackerStatuses,
+		trackerSettings,
 	}: {
 		projects?: Project[];
 		queryState?: { status: "error"; error: Error };
 		nodeMappings?: { projectId: string; mappings: ProjectNodeResponse[] };
+		trackerStatuses?: Record<string, TrackerStatusResponse>;
+		trackerSettings?: TrackerSettingsResponse;
 	} = {},
 ) {
 	const queryClient = new QueryClient({
@@ -61,6 +67,16 @@ function renderWithClient(
 			projectKeys.nodes(nodeMappings.projectId),
 			nodeMappings.mappings,
 		);
+	}
+
+	if (trackerStatuses) {
+		for (const [projectId, status] of Object.entries(trackerStatuses)) {
+			queryClient.setQueryData(projectKeys.tracker(projectId), status);
+		}
+	}
+
+	if (trackerSettings) {
+		queryClient.setQueryData(projectKeys.trackerSettings(), trackerSettings);
 	}
 
 	return {
@@ -667,6 +683,198 @@ describe("Projects Feature (AC1, AC2, AC3, AC4, AC5)", () => {
 				null,
 				`File ${file} has illegal sibling feature import: ${invalidImport?.[0]}`,
 			);
+		}
+	});
+});
+
+describe("Projects Tracker Health & Labels (AC3, AC4, AC6)", () => {
+	const sampleProject: Project = {
+		id: "proj-gh",
+		slug: "opus",
+		name: "Opus",
+		repo_provider: "github",
+		repo_ref: "kilip/opus",
+		tracker_provider: "github",
+		tracker_ref: "kilip/opus",
+		default_branch: "main",
+		trackerLabels: { "in-progress": "wip" },
+		created_at: "2026-11-17T00:00:00Z",
+		updated_at: "2026-11-17T00:00:00Z",
+	};
+
+	it("renders last sync time (relative + absolute title) and distinct lastError alert (AC3)", () => {
+		const { html } = renderWithClient(<ProjectsPage />, {
+			projects: [sampleProject],
+			trackerStatuses: {
+				"proj-gh": {
+					lastSyncAt: "2026-11-17T07:00:00Z",
+					lastError: "gh rate limit exceeded",
+				},
+			},
+			trackerSettings: {
+				statusLabels: {
+					backlog: "status:backlog",
+					todo: "status:todo",
+					"in-progress": "status:in-progress",
+					review: "status:review",
+					blocked: "status:blocked",
+				},
+			},
+		});
+
+		assert.match(html, /<time[^>]*dateTime="2026-11-17T07:00:00Z"[^>]*title="/);
+		assert.match(html, /Synced /);
+		assert.match(
+			html,
+			/role="alert"[^>]*>.*Sync error: (?:<!-- -->)?gh rate limit exceeded/s,
+		);
+	});
+
+	it("renders global Tracker labels section and read-only done field (AC6)", () => {
+		const { html } = renderWithClient(<ProjectsPage />, {
+			projects: [sampleProject],
+			trackerStatuses: {
+				"proj-gh": { lastSyncAt: "2026-11-17T07:00:00Z", lastError: "" },
+			},
+			trackerSettings: {
+				statusLabels: {
+					backlog: "status:backlog",
+					todo: "status:todo",
+					"in-progress": "status:in-progress",
+					review: "status:review",
+					blocked: "status:blocked",
+				},
+			},
+		});
+
+		assert.match(html, /Tracker labels/);
+		assert.match(html, /placeholder="status:backlog"/);
+		assert.match(html, /placeholder="status:in-progress"/);
+		assert.match(html, /aria-label="done"[^>]*value="closes the issue"/);
+		assert.match(html, /Reset to defaults/);
+	});
+
+	it("renders EditProjectModal tracker label overrides with global placeholders and reset button (AC6)", () => {
+		const { html } = renderWithClient(
+			<EditProjectModal
+				project={sampleProject}
+				isOpen={true}
+				onClose={() => {}}
+			/>,
+			{
+				nodeMappings: { projectId: "proj-gh", mappings: [] },
+				trackerSettings: {
+					statusLabels: {
+						backlog: "global:backlog",
+						todo: "global:todo",
+						"in-progress": "global:wip",
+						review: "global:review",
+						blocked: "global:blocked",
+					},
+				},
+			},
+		);
+
+		assert.match(html, /Reset to global/);
+		assert.match(html, /placeholder="global:backlog"/);
+		assert.match(html, /value="wip"/);
+		assert.match(html, /value="closes the issue"/);
+	});
+
+	it("mocks API for tracker settings save, reset, and 400 validation error (AC6)", async () => {
+		const originalPut = api.PUT;
+		const originalPatch = api.PATCH;
+		const requests: Array<{ path: string; body: unknown }> = [];
+
+		(api as unknown as { PUT: typeof api.PUT }).PUT = (async (
+			path: string,
+			opts?: { body?: unknown },
+		) => {
+			requests.push({ path, body: opts?.body });
+			if (
+				opts?.body &&
+				typeof opts.body === "object" &&
+				"statusLabels" in opts.body &&
+				(opts.body as { statusLabels: Record<string, string> }).statusLabels
+					.todo === "status:backlog"
+			) {
+				return {
+					data: undefined,
+					error: { error: "TRACKER_INVALID_LABEL_CONFIG" },
+					response: new Response(null, { status: 400 }),
+				};
+			}
+			return {
+				data: {
+					data: {
+						statusLabels:
+							(
+								opts?.body as
+									| { statusLabels?: Record<string, string> }
+									| undefined
+							)?.statusLabels ?? {},
+					},
+				},
+				error: undefined,
+				response: new Response(null, { status: 200 }),
+			};
+		}) as unknown as typeof api.PUT;
+
+		(api as unknown as { PATCH: typeof api.PATCH }).PATCH = (async (
+			path: string,
+			opts?: { body?: unknown },
+		) => {
+			requests.push({ path, body: opts?.body });
+			return {
+				data: { data: sampleProject },
+				error: undefined,
+				response: new Response(null, { status: 200 }),
+			};
+		}) as unknown as typeof api.PATCH;
+
+		try {
+			// Save global settings
+			const saved = await unwrap(
+				api.PUT("/tracker/settings", {
+					body: { statusLabels: { "in-progress": "doing" } },
+				}),
+				PROJECT_ERRORS,
+			);
+			assert.deepStrictEqual(saved, {
+				statusLabels: { "in-progress": "doing" },
+			});
+
+			// Reset project trackerLabels
+			await unwrap(
+				api.PATCH("/projects/{id}", {
+					params: { path: { id: "proj-gh" } },
+					body: { trackerLabels: {} },
+				}),
+				PROJECT_ERRORS,
+			);
+			assert.deepStrictEqual(requests[1], {
+				path: "/projects/{id}",
+				body: { trackerLabels: {} },
+			});
+
+			// 400 validation error
+			await assert.rejects(
+				async () =>
+					unwrap(
+						api.PUT("/tracker/settings", {
+							body: { statusLabels: { todo: "status:backlog" } },
+						}),
+						PROJECT_ERRORS,
+					),
+				(err: unknown) =>
+					err instanceof ApiError &&
+					err.status === 400 &&
+					err.code === "TRACKER_INVALID_LABEL_CONFIG" &&
+					err.message === PROJECT_ERRORS.TRACKER_INVALID_LABEL_CONFIG,
+			);
+		} finally {
+			(api as unknown as { PUT: typeof api.PUT }).PUT = originalPut;
+			(api as unknown as { PATCH: typeof api.PATCH }).PATCH = originalPatch;
 		}
 	});
 });

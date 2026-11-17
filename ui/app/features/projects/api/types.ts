@@ -8,3 +8,7 @@ export type UpdateProjectRequest = Schemas["domain.UpdateProjectRequest"];
 export type ProjectNodeResponse = Schemas["domain.ProjectNodeResponse"];
 export type UpdateProjectNodePathRequest =
 	Schemas["domain.UpdateProjectNodePathRequest"];
+export type TrackerStatusResponse = Schemas["domain.TrackerStatusResponse"];
+export type TrackerSettingsResponse = Schemas["domain.TrackerSettingsResponse"];
+export type UpdateTrackerSettingsRequest =
+	Schemas["domain.UpdateTrackerSettingsRequest"];

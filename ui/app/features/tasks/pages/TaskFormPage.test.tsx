@@ -6,7 +6,8 @@ import { renderToString } from "react-dom/server";
 import { MemoryRouter, Route, Routes } from "react-router";
 
 import { taskKeys } from "../api/keys";
-import type { Project, Task } from "../api/types";
+import type { Project, Task, TrackerPR } from "../api/types";
+import { TaskList } from "../components/TaskList";
 import TaskFormPage from "./TaskFormPage";
 
 const mockProjects: Project[] = [
@@ -55,10 +56,12 @@ function renderTaskFormPage({
 	taskId = "new",
 	task,
 	projects = mockProjects,
+	prs,
 }: {
 	taskId?: string;
 	task?: Task;
 	projects?: Project[];
+	prs?: TrackerPR[];
 } = {}) {
 	const queryClient = new QueryClient({
 		defaultOptions: {
@@ -75,6 +78,9 @@ function renderTaskFormPage({
 	}
 	if (task !== undefined) {
 		queryClient.setQueryData(taskKeys.detail(task.id), task);
+	}
+	if (task !== undefined && prs !== undefined) {
+		queryClient.setQueryData(taskKeys.prs(task.id), prs);
 	}
 
 	return renderToString(
@@ -121,5 +127,81 @@ describe("TaskFormPage Project Picker (AC6)", () => {
 
 		assert.match(html, /<select[^>]*disabled/);
 		assert.match(html, /value="proj-1"/);
+	});
+});
+
+describe("Task GitHub Context & Linked PRs (AC1, AC2, AC4)", () => {
+	const ghTask: Task = {
+		...mockTask,
+		id: "task-gh",
+		key: "OP-104",
+		source: "github",
+		externalId: "kilip/opus#104",
+		externalUrl: "https://github.com/kilip/opus/issues/104",
+		sourceStatus: "open",
+	};
+
+	const mockPRs: TrackerPR[] = [
+		{
+			id: "pr-1",
+			projectId: "proj-1",
+			taskId: "task-gh",
+			number: 105,
+			state: "open",
+			isDraft: true,
+			reviewState: "REVIEW_REQUIRED",
+			checksSummary: "pending",
+			url: "https://github.com/kilip/opus/pull/105",
+			createdAt: "2026-11-17T01:00:00Z",
+			updatedAt: "2026-11-17T02:00:00Z",
+		},
+	];
+
+	it("renders external link, sourceStatus, and linked PRs for github task", () => {
+		const html = renderTaskFormPage({
+			taskId: "task-gh",
+			task: ghTask,
+			prs: mockPRs,
+		});
+
+		assert.match(
+			html,
+			/href="https:\/\/github\.com\/kilip\/opus\/issues\/104"[^>]*target="_blank"[^>]*rel="noopener noreferrer"/,
+		);
+		assert.match(html, />open</);
+		assert.match(html, /Pull Requests/);
+		assert.match(
+			html,
+			/href="https:\/\/github\.com\/kilip\/opus\/pull\/105"[^>]*target="_blank"[^>]*rel="noopener noreferrer"[^>]*>#(?:<!-- -->)?105<\/a>/,
+		);
+		assert.match(html, />draft</);
+		assert.match(html, />REVIEW_REQUIRED</);
+		assert.match(html, />checks: (?:<!-- -->)?pending</);
+	});
+
+	it("omits external link and PR section for task without source", () => {
+		const html = renderTaskFormPage({
+			taskId: "task-1",
+			task: mockTask,
+		});
+
+		assert.doesNotMatch(html, /rel="noopener noreferrer"/);
+		assert.doesNotMatch(html, /Pull Requests/);
+	});
+
+	it("renders external link and sourceStatus in TaskList for sourced tasks only", () => {
+		const html = renderToString(
+			createElement(
+				MemoryRouter,
+				null,
+				createElement(TaskList, { tasks: [ghTask, mockTask] }),
+			),
+		);
+
+		assert.match(
+			html,
+			/href="https:\/\/github\.com\/kilip\/opus\/issues\/104"[^>]*target="_blank"[^>]*rel="noopener noreferrer"[^>]*>kilip\/opus#104<\/a>/,
+		);
+		assert.match(html, />open</);
 	});
 });

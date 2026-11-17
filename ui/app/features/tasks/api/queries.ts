@@ -3,7 +3,7 @@ import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, unwrap } from "~/shared/api/client";
 import { TASK_ERRORS } from "./errors";
 import { taskKeys } from "./keys";
-import type { Activity, Project, Task } from "./types";
+import type { Activity, Project, Task, TrackerPR } from "./types";
 
 export const tasksQueryOptions = (params?: { projectId?: string }) =>
 	queryOptions({
@@ -62,6 +62,19 @@ export const taskActivityQueryOptions = (id: string) =>
 			),
 	});
 
+export const taskPRsQueryOptions = (id: string) =>
+	queryOptions({
+		queryKey: taskKeys.prs(id),
+		queryFn: async ({ signal }): Promise<TrackerPR[]> =>
+			unwrap(
+				api.GET("/tasks/{id}/prs", {
+					params: { path: { id } },
+					signal,
+				}),
+				TASK_ERRORS,
+			),
+	});
+
 export const taskListQuery = tasksQueryOptions;
 export const taskQuery = taskQueryOptions;
 export const taskActivityQuery = taskActivityQueryOptions;
@@ -92,6 +105,13 @@ export function useTask(id: string | undefined) {
 export function useTaskActivity(id: string | undefined) {
 	return useQuery({
 		...taskActivityQueryOptions(id ?? ""),
+		enabled: Boolean(id),
+	});
+}
+
+export function useTaskPRs(id: string | undefined) {
+	return useQuery({
+		...taskPRsQueryOptions(id ?? ""),
 		enabled: Boolean(id),
 	});
 }

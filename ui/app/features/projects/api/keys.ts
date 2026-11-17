@@ -4,4 +4,7 @@ export const projectKeys = {
 	list: () => [...projectKeys.all, "list"] as const,
 	detail: (id: string) => [...projectKeys.all, "detail", id] as const,
 	nodes: (id: string) => [...projectKeys.all, "detail", id, "nodes"] as const,
+	tracker: (id: string) =>
+		[...projectKeys.all, "detail", id, "tracker"] as const,
+	trackerSettings: () => [...projectKeys.all, "tracker", "settings"] as const,
 };

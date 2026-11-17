@@ -18,3 +18,6 @@ export type CreateTaskRequest = Schemas["domain.CreateTaskRequest"];
 export type UpdateTaskRequest = Schemas["domain.UpdateTaskRequest"];
 export type CreateActivityRequest = Schemas["domain.CreateActivityRequest"];
 export type Project = Schemas["domain.Project"];
+export type TrackerPR = Schemas["domain.TrackerPR"];
+export type PRState = Schemas["domain.PRState"];
+export type ChecksSummary = Schemas["domain.ChecksSummary"];

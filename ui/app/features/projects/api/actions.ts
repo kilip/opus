@@ -8,7 +8,9 @@ import type {
 	CreateProjectRequest,
 	Project,
 	ProjectNodeResponse,
+	TrackerSettingsResponse,
 	UpdateProjectRequest,
+	UpdateTrackerSettingsRequest,
 } from "./types";
 
 export function useCreateProject() {
@@ -105,6 +107,27 @@ export function useSetProjectNodePath() {
 		onSuccess: (_data, variables) => {
 			queryClient.invalidateQueries({
 				queryKey: projectKeys.nodes(variables.projectId),
+			});
+		},
+	});
+}
+
+export function useUpdateTrackerSettings() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: async (
+			req: UpdateTrackerSettingsRequest,
+		): Promise<TrackerSettingsResponse> =>
+			unwrap(
+				api.PUT("/tracker/settings", {
+					body: req,
+				}),
+				PROJECT_ERRORS,
+			),
+		onSuccess: () => {
+			queryClient.invalidateQueries({
+				queryKey: projectKeys.trackerSettings(),
 			});
 		},
 	});

@@ -8,15 +8,31 @@ import {
 	useSetProjectNodePath,
 	useUpdateProject,
 } from "../api/actions";
-import { useProjectNodeMappings } from "../api/queries";
+import { useProjectNodeMappings, useTrackerSettings } from "../api/queries";
 import type { Project, ProjectNodeResponse } from "../api/types";
-import { DEFAULT_BRANCH } from "../model";
+import {
+	DEFAULT_BRANCH,
+	DEFAULT_STATUS_LABELS,
+	TRACKER_STATUS_ORDER,
+	type TrackerStatusKey,
+} from "../model";
 
 export type EditProjectModalProps = {
 	project: Project | null;
 	isOpen: boolean;
 	onClose: () => void;
 };
+
+function extractTrackerLabels(
+	project: Project | null,
+): Partial<Record<TrackerStatusKey, string>> {
+	const next: Partial<Record<TrackerStatusKey, string>> = {};
+	for (const status of TRACKER_STATUS_ORDER) {
+		const v = project?.trackerLabels?.[status];
+		if (v) next[status] = v;
+	}
+	return next;
+}
 
 function NodePathRow({
 	node,
@@ -118,6 +134,9 @@ export function EditProjectModal({
 	const [defaultBranch, setDefaultBranch] = useState(DEFAULT_BRANCH);
 	const [trackerProvider, setTrackerProvider] = useState("");
 	const [trackerRef, setTrackerRef] = useState("");
+	const [trackerLabels, setTrackerLabels] = useState<
+		Partial<Record<TrackerStatusKey, string>>
+	>(() => extractTrackerLabels(project));
 	const [confirmingDelete, setConfirmingDelete] = useState(false);
 	const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -127,12 +146,19 @@ export function EditProjectModal({
 			setDefaultBranch(project.default_branch ?? DEFAULT_BRANCH);
 			setTrackerProvider(project.tracker_provider ?? "");
 			setTrackerRef(project.tracker_ref ?? "");
+			const nextLabels: Partial<Record<TrackerStatusKey, string>> = {};
+			for (const status of TRACKER_STATUS_ORDER) {
+				const v = project.trackerLabels?.[status];
+				if (v) nextLabels[status] = v;
+			}
+			setTrackerLabels(nextLabels);
 			setConfirmingDelete(false);
 			setSaveSuccess(false);
 		}
 	}, [project]);
 
 	const nodesQuery = useProjectNodeMappings(project?.id ?? "");
+	const trackerSettingsQuery = useTrackerSettings();
 
 	if (!isOpen || !project) {
 		return null;
@@ -145,6 +171,11 @@ export function EditProjectModal({
 		e.preventDefault();
 		if (!project) return;
 		setSaveSuccess(false);
+		const overrides: Record<string, string> = {};
+		for (const status of TRACKER_STATUS_ORDER) {
+			const v = trackerLabels[status]?.trim();
+			if (v) overrides[status] = v;
+		}
 		updateProject.mutate(
 			{
 				id: project.id ?? "",
@@ -152,6 +183,25 @@ export function EditProjectModal({
 				default_branch: defaultBranch.trim() || DEFAULT_BRANCH,
 				tracker_provider: trackerProvider.trim(),
 				tracker_ref: trackerRef.trim(),
+				trackerLabels: overrides,
+			},
+			{
+				onSuccess: () => {
+					setSaveSuccess(true);
+					setTimeout(() => setSaveSuccess(false), 2500);
+				},
+			},
+		);
+	}
+
+	function handleResetTrackerLabels() {
+		if (!project) return;
+		setSaveSuccess(false);
+		setTrackerLabels({});
+		updateProject.mutate(
+			{
+				id: project.id ?? "",
+				trackerLabels: {},
 			},
 			{
 				onSuccess: () => {
@@ -330,6 +380,72 @@ export function EditProjectModal({
 								className="field mt-1"
 							/>
 						</div>
+					</div>
+
+					<div className="border-t border-line pt-4">
+						<div className="flex items-center justify-between gap-2">
+							<div>
+								<h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
+									Tracker labels
+								</h3>
+								<p className="text-xs text-muted">
+									Override global status labels for this project.
+								</p>
+							</div>
+							<Button
+								type="button"
+								variant="ghost"
+								onClick={handleResetTrackerLabels}
+								disabled={updateProject.isPending}
+							>
+								Reset to global
+							</Button>
+						</div>
+
+						<div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+							{TRACKER_STATUS_ORDER.map((status) => (
+								<div key={status} className="flex flex-col gap-1">
+									<label
+										htmlFor={`edit-project-tracker-label-${status}`}
+										className="text-xs font-medium text-muted"
+									>
+										{status}
+									</label>
+									<input
+										id={`edit-project-tracker-label-${status}`}
+										type="text"
+										value={trackerLabels[status] ?? ""}
+										placeholder={
+											trackerSettingsQuery.data?.statusLabels?.[status] ??
+											DEFAULT_STATUS_LABELS[status]
+										}
+										onChange={(e) =>
+											setTrackerLabels((prev) => ({
+												...prev,
+												[status]: e.target.value,
+											}))
+										}
+										className="field text-sm"
+									/>
+								</div>
+							))}
+							<div className="flex flex-col gap-1">
+								<span className="text-xs font-medium text-muted">done</span>
+								<input
+									type="text"
+									readOnly
+									disabled
+									value="closes the issue"
+									aria-label="done"
+									className="field cursor-not-allowed bg-surface-2 text-sm text-muted"
+								/>
+							</div>
+						</div>
+						{updateErrorMessage && (
+							<p role="alert" className="mt-2 text-xs font-medium text-danger">
+								{updateErrorMessage}
+							</p>
+						)}
 					</div>
 
 					<div className="flex items-center justify-end gap-2 pt-2">

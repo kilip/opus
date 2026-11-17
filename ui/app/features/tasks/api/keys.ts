@@ -9,4 +9,5 @@ export const taskKeys = {
 	detail: (id: string) => [...taskKeys.all, "detail", id] as const,
 	activity: (id: string) =>
 		[...taskKeys.all, "detail", id, "activity"] as const,
+	prs: (id: string) => [...taskKeys.all, "detail", id, "prs"] as const,
 };
