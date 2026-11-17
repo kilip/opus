@@ -703,6 +703,7 @@ export interface components {
             source: components["schemas"]["domain.TaskSource"];
             sourceStatus?: string;
             status: components["schemas"]["domain.TaskStatus"];
+            syncedAt?: string;
             title: string;
             type: components["schemas"]["domain.TaskType"];
             updatedAt: string;
