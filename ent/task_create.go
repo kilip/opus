@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/kilip/opus/ent/activity"
+	"github.com/kilip/opus/ent/project"
 	"github.com/kilip/opus/ent/task"
 )
 
@@ -20,6 +21,12 @@ type TaskCreate struct {
 	config
 	mutation *TaskMutation
 	hooks    []Hook
+}
+
+// SetProjectID sets the "project_id" field.
+func (_c *TaskCreate) SetProjectID(v uuid.UUID) *TaskCreate {
+	_c.mutation.SetProjectID(v)
+	return _c
 }
 
 // SetKey sets the "key" field.
@@ -236,6 +243,11 @@ func (_c *TaskCreate) SetNillableID(v *uuid.UUID) *TaskCreate {
 	return _c
 }
 
+// SetProject sets the "project" edge to the Project entity.
+func (_c *TaskCreate) SetProject(v *Project) *TaskCreate {
+	return _c.SetProjectID(v.ID)
+}
+
 // AddActivityIDs adds the "activities" edge to the Activity entity by IDs.
 func (_c *TaskCreate) AddActivityIDs(ids ...uuid.UUID) *TaskCreate {
 	_c.mutation.AddActivityIDs(ids...)
@@ -338,6 +350,9 @@ func (_c *TaskCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *TaskCreate) check() error {
+	if _, ok := _c.mutation.ProjectID(); !ok {
+		return &ValidationError{Name: "project_id", err: errors.New(`ent: missing required field "Task.project_id"`)}
+	}
 	if _, ok := _c.mutation.Key(); !ok {
 		return &ValidationError{Name: "key", err: errors.New(`ent: missing required field "Task.key"`)}
 	}
@@ -406,6 +421,9 @@ func (_c *TaskCreate) check() error {
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Task.updated_at"`)}
+	}
+	if len(_c.mutation.ProjectIDs()) == 0 {
+		return &ValidationError{Name: "project", err: errors.New(`ent: missing required edge "Task.project"`)}
 	}
 	return nil
 }
@@ -505,6 +523,23 @@ func (_c *TaskCreate) createSpec() (*Task, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(task.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
+	}
+	if nodes := _c.mutation.ProjectIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   task.ProjectTable,
+			Columns: []string{task.ProjectColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.ProjectID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.ActivitiesIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"encoding/json"
 	"errors"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
 	"github.com/kilip/opus/internal/platform/httpx"
 	"github.com/kilip/opus/internal/task/domain"
 	"github.com/kilip/opus/internal/task/service"
@@ -37,11 +39,19 @@ func (h *Handler) Register(r fiber.Router) {
 //	@ID				list-tasks
 //	@Tags			tasks
 //	@Produce		json
-//	@Success		200	{object}	httpx.Response[[]domain.Task]
-//	@Failure		500	{object}	httpx.ErrorResponse
+//	@Param			projectId	query		string	false	"Filter tasks by project ID"
+//	@Success		200			{object}	httpx.Response[[]domain.Task]
+//	@Failure		400			{object}	httpx.ErrorResponse
+//	@Failure		500			{object}	httpx.ErrorResponse
 //	@Router			/tasks [get]
 func (h *Handler) List(c fiber.Ctx) error {
-	tasks, err := h.svc.List(c.Context())
+	projectID := c.Query("projectId")
+	if projectID != "" {
+		if _, err := uuid.Parse(projectID); err != nil {
+			return httpx.BadRequest(domain.ErrInvalidProjectID)
+		}
+	}
+	tasks, err := h.svc.List(c.Context(), domain.TaskFilter{ProjectID: projectID})
 	if err != nil {
 		return mapErr(err)
 	}
@@ -60,6 +70,7 @@ func (h *Handler) List(c fiber.Ctx) error {
 //	@Param			request	body		domain.CreateTaskRequest	true	"Create Task Request"
 //	@Success		201		{object}	httpx.Response[domain.Task]
 //	@Failure		400		{object}	httpx.ErrorResponse
+//	@Failure		404		{object}	httpx.ErrorResponse
 //	@Failure		500		{object}	httpx.ErrorResponse
 //	@Router			/tasks [post]
 func (h *Handler) Create(c fiber.Ctx) error {
@@ -110,6 +121,17 @@ func (h *Handler) Get(c fiber.Ctx) error {
 //	@Failure		500		{object}	httpx.ErrorResponse
 //	@Router			/tasks/{id} [patch]
 func (h *Handler) Update(c fiber.Ctx) error {
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(c.Body(), &raw); err != nil {
+		return httpx.BadRequest(err)
+	}
+	if _, ok := raw["projectId"]; ok {
+		return httpx.BadRequest(domain.ErrPatchForbidden)
+	}
+	if _, ok := raw["project_id"]; ok {
+		return httpx.BadRequest(domain.ErrPatchForbidden)
+	}
+
 	var req domain.UpdateTaskRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return httpx.BadRequest(err)
@@ -172,9 +194,13 @@ func (h *Handler) CreateActivity(c fiber.Ctx) error {
 // mapErr maps domain sentinel errors to httpx status errors.
 func mapErr(err error) error {
 	switch {
-	case errors.Is(err, domain.ErrTaskNotFound):
+	case errors.Is(err, domain.ErrTaskNotFound), errors.Is(err, domain.ErrProjectNotFound):
 		return httpx.NotFound(err)
-	case errors.Is(err, domain.ErrTaskTitleEmpty), errors.Is(err, domain.ErrActivityBodyEmpty):
+	case errors.Is(err, domain.ErrTaskTitleEmpty),
+		errors.Is(err, domain.ErrActivityBodyEmpty),
+		errors.Is(err, domain.ErrProjectIDRequired),
+		errors.Is(err, domain.ErrInvalidProjectID),
+		errors.Is(err, domain.ErrPatchForbidden):
 		return httpx.BadRequest(err)
 	default:
 		return err

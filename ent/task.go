@@ -11,6 +11,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
+	"github.com/kilip/opus/ent/project"
 	"github.com/kilip/opus/ent/task"
 )
 
@@ -19,6 +20,8 @@ type Task struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID uuid.UUID `json:"id,omitempty"`
+	// ProjectID holds the value of the "project_id" field.
+	ProjectID uuid.UUID `json:"project_id,omitempty"`
 	// Key holds the value of the "key" field.
 	Key string `json:"key,omitempty"`
 	// Source holds the value of the "source" field.
@@ -59,17 +62,30 @@ type Task struct {
 
 // TaskEdges holds the relations/edges for other nodes in the graph.
 type TaskEdges struct {
+	// Project holds the value of the project edge.
+	Project *Project `json:"project,omitempty"`
 	// Activities holds the value of the activities edge.
 	Activities []*Activity `json:"activities,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
+}
+
+// ProjectOrErr returns the Project value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e TaskEdges) ProjectOrErr() (*Project, error) {
+	if e.Project != nil {
+		return e.Project, nil
+	} else if e.loadedTypes[0] {
+		return nil, &NotFoundError{label: project.Label}
+	}
+	return nil, &NotLoadedError{edge: "project"}
 }
 
 // ActivitiesOrErr returns the Activities value or an error if the edge
 // was not loaded in eager-loading.
 func (e TaskEdges) ActivitiesOrErr() ([]*Activity, error) {
-	if e.loadedTypes[0] {
+	if e.loadedTypes[1] {
 		return e.Activities, nil
 	}
 	return nil, &NotLoadedError{edge: "activities"}
@@ -86,7 +102,7 @@ func (*Task) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullString)
 		case task.FieldCreatedAt, task.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
-		case task.FieldID:
+		case task.FieldID, task.FieldProjectID:
 			values[i] = new(uuid.UUID)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -108,6 +124,12 @@ func (_m *Task) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", values[i])
 			} else if value != nil {
 				_m.ID = *value
+			}
+		case task.FieldProjectID:
+			if value, ok := values[i].(*uuid.UUID); !ok {
+				return fmt.Errorf("unexpected type %T for field project_id", values[i])
+			} else if value != nil {
+				_m.ProjectID = *value
 			}
 		case task.FieldKey:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -223,6 +245,11 @@ func (_m *Task) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
 }
 
+// QueryProject queries the "project" edge of the Task entity.
+func (_m *Task) QueryProject() *ProjectQuery {
+	return NewTaskClient(_m.config).QueryProject(_m)
+}
+
 // QueryActivities queries the "activities" edge of the Task entity.
 func (_m *Task) QueryActivities() *ActivityQuery {
 	return NewTaskClient(_m.config).QueryActivities(_m)
@@ -251,6 +278,9 @@ func (_m *Task) String() string {
 	var builder strings.Builder
 	builder.WriteString("Task(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
+	builder.WriteString("project_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ProjectID))
+	builder.WriteString(", ")
 	builder.WriteString("key=")
 	builder.WriteString(_m.Key)
 	builder.WriteString(", ")

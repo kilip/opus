@@ -10,6 +10,7 @@ const (
 type TaskReceivedPayload struct {
 	ID         string     `json:"id"`
 	Key        string     `json:"key"`
+	ProjectID  string     `json:"projectId"`
 	Source     TaskSource `json:"source"`
 	ExternalID string     `json:"externalId,omitempty"`
 	Status     TaskStatus `json:"status"`
@@ -17,7 +18,8 @@ type TaskReceivedPayload struct {
 
 // TaskStatusChangedPayload is the event payload published when a task stage transitions.
 type TaskStatusChangedPayload struct {
-	ID   string     `json:"id"`
-	From TaskStatus `json:"from"`
-	To   TaskStatus `json:"to"`
+	ID        string     `json:"id"`
+	ProjectID string     `json:"projectId"`
+	From      TaskStatus `json:"from"`
+	To        TaskStatus `json:"to"`
 }

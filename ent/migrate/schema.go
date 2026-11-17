@@ -241,12 +241,21 @@ var (
 		{Name: "labels", Type: field.TypeJSON},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "project_id", Type: field.TypeUUID},
 	}
 	// TasksTable holds the schema information for the "tasks" table.
 	TasksTable = &schema.Table{
 		Name:       "tasks",
 		Columns:    TasksColumns,
 		PrimaryKey: []*schema.Column{TasksColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "tasks_projects_tasks",
+				Columns:    []*schema.Column{TasksColumns[17]},
+				RefColumns: []*schema.Column{ProjectsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
 		Indexes: []*schema.Index{
 			{
 				Name:    "task_source_external_id",
@@ -291,4 +300,5 @@ func init() {
 	ProjectNodesTable.ForeignKeys[0].RefTable = NodesTable
 	ProjectNodesTable.ForeignKeys[1].RefTable = ProjectsTable
 	SessionsTable.ForeignKeys[0].RefTable = UsersTable
+	TasksTable.ForeignKeys[0].RefTable = ProjectsTable
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kilip/opus/ent/project"
 	"github.com/kilip/opus/ent/projectnode"
+	"github.com/kilip/opus/ent/task"
 )
 
 // ProjectCreate is the builder for creating a Project entity.
@@ -127,6 +128,21 @@ func (_c *ProjectCreate) AddProjectNodes(v ...*ProjectNode) *ProjectCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddProjectNodeIDs(ids...)
+}
+
+// AddTaskIDs adds the "tasks" edge to the Task entity by IDs.
+func (_c *ProjectCreate) AddTaskIDs(ids ...uuid.UUID) *ProjectCreate {
+	_c.mutation.AddTaskIDs(ids...)
+	return _c
+}
+
+// AddTasks adds the "tasks" edges to the Task entity.
+func (_c *ProjectCreate) AddTasks(v ...*Task) *ProjectCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddTaskIDs(ids...)
 }
 
 // Mutation returns the ProjectMutation object of the builder.
@@ -326,6 +342,22 @@ func (_c *ProjectCreate) createSpec() (*Project, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(projectnode.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.TasksIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.TasksTable,
+			Columns: []string{project.TasksColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(task.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

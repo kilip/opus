@@ -71,6 +71,7 @@ type Task struct {
 	ID string `json:"id" validate:"required"`
 	// Key is human-readable reference, e.g. OP-12.
 	Key          string       `json:"key" validate:"required"`
+	ProjectID    string       `json:"projectId" validate:"required"`
 	Source       TaskSource   `json:"source" validate:"required"`
 	ExternalID   string       `json:"externalId,omitempty"`
 	ExternalURL  string       `json:"externalUrl,omitempty"`
@@ -86,6 +87,11 @@ type Task struct {
 	Labels    []string  `json:"labels" validate:"required"`
 	CreatedAt time.Time `json:"createdAt" validate:"required"`
 	UpdatedAt time.Time `json:"updatedAt" validate:"required"`
+}
+
+// TaskFilter specifies criteria for listing tasks.
+type TaskFilter struct {
+	ProjectID string
 }
 
 // Activity is one entry of task chatter timeline.

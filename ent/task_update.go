@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kilip/opus/ent/activity"
 	"github.com/kilip/opus/ent/predicate"
+	"github.com/kilip/opus/ent/project"
 	"github.com/kilip/opus/ent/task"
 )
 
@@ -28,6 +29,20 @@ type TaskUpdate struct {
 // Where appends a list predicates to the TaskUpdate builder.
 func (_u *TaskUpdate) Where(ps ...predicate.Task) *TaskUpdate {
 	_u.mutation.Where(ps...)
+	return _u
+}
+
+// SetProjectID sets the "project_id" field.
+func (_u *TaskUpdate) SetProjectID(v uuid.UUID) *TaskUpdate {
+	_u.mutation.SetProjectID(v)
+	return _u
+}
+
+// SetNillableProjectID sets the "project_id" field if the given value is not nil.
+func (_u *TaskUpdate) SetNillableProjectID(v *uuid.UUID) *TaskUpdate {
+	if v != nil {
+		_u.SetProjectID(*v)
+	}
 	return _u
 }
 
@@ -249,6 +264,11 @@ func (_u *TaskUpdate) SetUpdatedAt(v time.Time) *TaskUpdate {
 	return _u
 }
 
+// SetProject sets the "project" edge to the Project entity.
+func (_u *TaskUpdate) SetProject(v *Project) *TaskUpdate {
+	return _u.SetProjectID(v.ID)
+}
+
 // AddActivityIDs adds the "activities" edge to the Activity entity by IDs.
 func (_u *TaskUpdate) AddActivityIDs(ids ...uuid.UUID) *TaskUpdate {
 	_u.mutation.AddActivityIDs(ids...)
@@ -267,6 +287,12 @@ func (_u *TaskUpdate) AddActivities(v ...*Activity) *TaskUpdate {
 // Mutation returns the TaskMutation object of the builder.
 func (_u *TaskUpdate) Mutation() *TaskMutation {
 	return _u.mutation
+}
+
+// ClearProject clears the "project" edge to the Project entity.
+func (_u *TaskUpdate) ClearProject() *TaskUpdate {
+	_u.mutation.ClearProject()
+	return _u
 }
 
 // ClearActivities clears all "activities" edges to the Activity entity.
@@ -358,6 +384,9 @@ func (_u *TaskUpdate) check() error {
 			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "Task.type": %w`, err)}
 		}
 	}
+	if _u.mutation.ProjectCleared() && len(_u.mutation.ProjectIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Task.project"`)
+	}
 	return nil
 }
 
@@ -432,6 +461,35 @@ func (_u *TaskUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(task.FieldUpdatedAt, field.TypeTime, value)
 	}
+	if _u.mutation.ProjectCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   task.ProjectTable,
+			Columns: []string{task.ProjectColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ProjectIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   task.ProjectTable,
+			Columns: []string{task.ProjectColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _u.mutation.ActivitiesCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -495,6 +553,20 @@ type TaskUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *TaskMutation
+}
+
+// SetProjectID sets the "project_id" field.
+func (_u *TaskUpdateOne) SetProjectID(v uuid.UUID) *TaskUpdateOne {
+	_u.mutation.SetProjectID(v)
+	return _u
+}
+
+// SetNillableProjectID sets the "project_id" field if the given value is not nil.
+func (_u *TaskUpdateOne) SetNillableProjectID(v *uuid.UUID) *TaskUpdateOne {
+	if v != nil {
+		_u.SetProjectID(*v)
+	}
+	return _u
 }
 
 // SetKey sets the "key" field.
@@ -715,6 +787,11 @@ func (_u *TaskUpdateOne) SetUpdatedAt(v time.Time) *TaskUpdateOne {
 	return _u
 }
 
+// SetProject sets the "project" edge to the Project entity.
+func (_u *TaskUpdateOne) SetProject(v *Project) *TaskUpdateOne {
+	return _u.SetProjectID(v.ID)
+}
+
 // AddActivityIDs adds the "activities" edge to the Activity entity by IDs.
 func (_u *TaskUpdateOne) AddActivityIDs(ids ...uuid.UUID) *TaskUpdateOne {
 	_u.mutation.AddActivityIDs(ids...)
@@ -733,6 +810,12 @@ func (_u *TaskUpdateOne) AddActivities(v ...*Activity) *TaskUpdateOne {
 // Mutation returns the TaskMutation object of the builder.
 func (_u *TaskUpdateOne) Mutation() *TaskMutation {
 	return _u.mutation
+}
+
+// ClearProject clears the "project" edge to the Project entity.
+func (_u *TaskUpdateOne) ClearProject() *TaskUpdateOne {
+	_u.mutation.ClearProject()
+	return _u
 }
 
 // ClearActivities clears all "activities" edges to the Activity entity.
@@ -837,6 +920,9 @@ func (_u *TaskUpdateOne) check() error {
 			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "Task.type": %w`, err)}
 		}
 	}
+	if _u.mutation.ProjectCleared() && len(_u.mutation.ProjectIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Task.project"`)
+	}
 	return nil
 }
 
@@ -927,6 +1013,35 @@ func (_u *TaskUpdateOne) sqlSave(ctx context.Context) (_node *Task, err error) {
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(task.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if _u.mutation.ProjectCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   task.ProjectTable,
+			Columns: []string{task.ProjectColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ProjectIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   task.ProjectTable,
+			Columns: []string{task.ProjectColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(project.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.ActivitiesCleared() {
 		edge := &sqlgraph.EdgeSpec{

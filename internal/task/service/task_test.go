@@ -10,6 +10,7 @@ import (
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
+	"github.com/google/uuid"
 	"github.com/kilip/opus/ent"
 	"github.com/kilip/opus/ent/enttest"
 	"github.com/kilip/opus/internal/platform/eventbus"
@@ -34,7 +35,23 @@ func setupTestClient(t *testing.T) *ent.Client {
 	return client
 }
 
-func newService(t *testing.T, bus ...*eventbus.Bus) (*service.Task, context.Context) {
+func createTestProject(t *testing.T, client *ent.Client) string {
+	t.Helper()
+	p, err := client.Project.Create().
+		SetSlug(fmt.Sprintf("svc-test-proj-%s", uuid.New().String()[:8])).
+		SetName("Test Project").
+		SetRepoProvider("github").
+		SetRepoRef("org/repo").
+		SetTrackerProvider("github").
+		SetTrackerRef("org/repo").
+		Save(context.Background())
+	if err != nil {
+		t.Fatalf("create test project failed: %v", err)
+	}
+	return p.ID.String()
+}
+
+func newService(t *testing.T, bus ...*eventbus.Bus) (*service.Task, context.Context, string) {
 	t.Helper()
 	var b *eventbus.Bus
 	if len(bus) > 0 {
@@ -43,19 +60,40 @@ func newService(t *testing.T, bus ...*eventbus.Bus) (*service.Task, context.Cont
 		b = eventbus.New()
 	}
 	client := setupTestClient(t)
-	return service.New(repo.New(client), b), context.Background()
+	projectID := createTestProject(t, client)
+	return service.New(repo.New(client), b), context.Background(), projectID
 }
 
-func TestCreateRejectsBlankTitle(t *testing.T) {
-	svc, ctx := newService(t)
-	_, err := svc.Create(ctx, domain.CreateTaskRequest{Title: "  "})
+func TestCreateValidation(t *testing.T) {
+	svc, ctx, projectID := newService(t)
+
+	// Missing project ID
+	_, err := svc.Create(ctx, domain.CreateTaskRequest{Title: "Task"})
+	if !errors.Is(err, domain.ErrProjectIDRequired) {
+		t.Fatalf("expected ErrProjectIDRequired, got %v", err)
+	}
+
+	// Malformed project ID
+	_, err = svc.Create(ctx, domain.CreateTaskRequest{ProjectID: "invalid-uuid", Title: "Task"})
+	if !errors.Is(err, domain.ErrInvalidProjectID) {
+		t.Fatalf("expected ErrInvalidProjectID, got %v", err)
+	}
+
+	// Unknown project ID
+	_, err = svc.Create(ctx, domain.CreateTaskRequest{ProjectID: uuid.New().String(), Title: "Task"})
+	if !errors.Is(err, domain.ErrProjectNotFound) {
+		t.Fatalf("expected ErrProjectNotFound, got %v", err)
+	}
+
+	// Blank title
+	_, err = svc.Create(ctx, domain.CreateTaskRequest{ProjectID: projectID, Title: "  "})
 	if !errors.Is(err, domain.ErrTaskTitleEmpty) {
 		t.Fatalf("expected ErrTaskTitleEmpty, got %v", err)
 	}
 }
 
 func TestUpdateRejectsBlankTitle(t *testing.T) {
-	svc, ctx := newService(t)
+	svc, ctx, _ := newService(t)
 	blank := ""
 	_, err := svc.Update(ctx, "t1", domain.UpdateTaskRequest{Title: &blank})
 	if !errors.Is(err, domain.ErrTaskTitleEmpty) {
@@ -64,7 +102,7 @@ func TestUpdateRejectsBlankTitle(t *testing.T) {
 }
 
 func TestCreateActivityValidatesBeforeLookup(t *testing.T) {
-	svc, ctx := newService(t)
+	svc, ctx, _ := newService(t)
 
 	_, err := svc.CreateActivity(ctx, "t1", domain.CreateActivityRequest{Body: " "})
 	if !errors.Is(err, domain.ErrActivityBodyEmpty) {
@@ -94,10 +132,11 @@ func TestTaskEvents_EmittedAndOrder(t *testing.T) {
 		t.Fatalf("subscribe: %v", err)
 	}
 
-	svc, ctx := newService(t, bus)
+	svc, ctx, projectID := newService(t, bus)
 
 	created, err := svc.Create(ctx, domain.CreateTaskRequest{
-		Title: "Emitted and Order Task",
+		ProjectID: projectID,
+		Title:     "Emitted and Order Task",
 	})
 	if err != nil {
 		t.Fatalf("create task: %v", err)
@@ -137,7 +176,7 @@ func TestTaskEvents_EmittedAndOrder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decode payload 0: %v", err)
 	}
-	if p0.ID != created.ID || p0.Key != created.Key || p0.Source != created.Source || p0.Status != created.Status {
+	if p0.ID != created.ID || p0.Key != created.Key || p0.ProjectID != created.ProjectID || p0.Source != created.Source || p0.Status != created.Status {
 		t.Fatalf("unexpected task.received payload: %+v", p0)
 	}
 
@@ -153,7 +192,7 @@ func TestTaskEvents_EmittedAndOrder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decode payload 1: %v", err)
 	}
-	if p1.ID != created.ID || p1.From != domain.TaskStatusTodo || p1.To != nextStatus {
+	if p1.ID != created.ID || p1.ProjectID != created.ProjectID || p1.From != domain.TaskStatusTodo || p1.To != nextStatus {
 		t.Fatalf("unexpected task.status_changed payload: %+v", p1)
 	}
 }
@@ -175,10 +214,11 @@ func TestTaskEvents_NoEventOnSameStatusUpdate(t *testing.T) {
 		t.Fatalf("subscribe: %v", err)
 	}
 
-	svc, ctx := newService(t, bus)
+	svc, ctx, projectID := newService(t, bus)
 
 	created, err := svc.Create(ctx, domain.CreateTaskRequest{
-		Title: "Same Status Task",
+		ProjectID: projectID,
+		Title:     "Same Status Task",
 	})
 	if err != nil {
 		t.Fatalf("create task: %v", err)
@@ -235,10 +275,10 @@ func TestTaskEvents_NoEventOnFailedWrite(t *testing.T) {
 		t.Fatalf("subscribe: %v", err)
 	}
 
-	svc, ctx := newService(t, bus)
+	svc, ctx, projectID := newService(t, bus)
 
 	// Create with empty title fails
-	_, err = svc.Create(ctx, domain.CreateTaskRequest{Title: "   "})
+	_, err = svc.Create(ctx, domain.CreateTaskRequest{ProjectID: projectID, Title: "   "})
 	if err == nil {
 		t.Fatal("expected error on empty title create")
 	}
@@ -286,12 +326,13 @@ func TestTaskEvents_CreatedAsDone(t *testing.T) {
 		t.Fatalf("subscribe: %v", err)
 	}
 
-	svc, ctx := newService(t, bus)
+	svc, ctx, projectID := newService(t, bus)
 
 	doneStatus := domain.TaskStatusDone
 	created, err := svc.Create(ctx, domain.CreateTaskRequest{
-		Title:  "Task Created As Done",
-		Status: &doneStatus,
+		ProjectID: projectID,
+		Title:     "Task Created As Done",
+		Status:    &doneStatus,
 	})
 	if err != nil {
 		t.Fatalf("create task: %v", err)
@@ -315,7 +356,7 @@ func TestTaskEvents_CreatedAsDone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decode payload: %v", err)
 	}
-	if p.ID != created.ID || p.Status != domain.TaskStatusDone {
+	if p.ID != created.ID || p.ProjectID != created.ProjectID || p.Status != domain.TaskStatusDone {
 		t.Fatalf("expected status %s, got %s (payload: %+v)", domain.TaskStatusDone, p.Status, p)
 	}
 }
@@ -327,10 +368,11 @@ func TestTaskEvents_PublishFailureLoggedAndDoesNotFail(t *testing.T) {
 		t.Fatalf("close bus: %v", err)
 	}
 
-	svc, ctx := newService(t, bus)
+	svc, ctx, projectID := newService(t, bus)
 
 	created, err := svc.Create(ctx, domain.CreateTaskRequest{
-		Title: "Task Despite Closed Bus",
+		ProjectID: projectID,
+		Title:     "Task Despite Closed Bus",
 	})
 	if err != nil {
 		t.Fatalf("expected Create to succeed even with closed bus, got: %v", err)
@@ -375,12 +417,13 @@ func TestTaskEvents_ConcurrentUpdates_Race(t *testing.T) {
 		t.Fatalf("subscribe: %v", err)
 	}
 
-	svc, ctx := newService(t, bus)
+	svc, ctx, projectID := newService(t, bus)
 
 	initialStatus := domain.TaskStatusBacklog
 	created, err := svc.Create(ctx, domain.CreateTaskRequest{
-		Title:  "Concurrent Task",
-		Status: &initialStatus,
+		ProjectID: projectID,
+		Title:     "Concurrent Task",
+		Status:    &initialStatus,
 	})
 	if err != nil {
 		t.Fatalf("create task: %v", err)
@@ -428,6 +471,9 @@ func TestTaskEvents_ConcurrentUpdates_Race(t *testing.T) {
 	for i, ev := range events {
 		if ev.ID != created.ID {
 			t.Fatalf("event %d ID mismatch: expected %s, got %s", i, created.ID, ev.ID)
+		}
+		if ev.ProjectID != created.ProjectID {
+			t.Fatalf("event %d ProjectID mismatch: expected %s, got %s", i, created.ProjectID, ev.ProjectID)
 		}
 		if ev.From != prevTo {
 			t.Fatalf("event %d sequence break: expected from=%s, got from=%s (to=%s)", i, prevTo, ev.From, ev.To)

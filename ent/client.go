@@ -1415,6 +1415,22 @@ func (c *ProjectClient) QueryProjectNodes(_m *Project) *ProjectNodeQuery {
 	return query
 }
 
+// QueryTasks queries the tasks edge of a Project.
+func (c *ProjectClient) QueryTasks(_m *Project) *TaskQuery {
+	query := (&TaskClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, id),
+			sqlgraph.To(task.Table, task.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.TasksTable, project.TasksColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *ProjectClient) Hooks() []Hook {
 	return c.hooks.Project
@@ -1860,6 +1876,22 @@ func (c *TaskClient) GetX(ctx context.Context, id uuid.UUID) *Task {
 		panic(err)
 	}
 	return obj
+}
+
+// QueryProject queries the project edge of a Task.
+func (c *TaskClient) QueryProject(_m *Task) *ProjectQuery {
+	query := (&ProjectClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(task.Table, task.FieldID, id),
+			sqlgraph.To(project.Table, project.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, task.ProjectTable, task.ProjectColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
 }
 
 // QueryActivities queries the activities edge of a Task.

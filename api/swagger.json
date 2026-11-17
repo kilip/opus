@@ -146,6 +146,9 @@
                     "priority": {
                         "$ref": "#/components/schemas/domain.TaskPriority"
                     },
+                    "projectId": {
+                        "type": "string"
+                    },
                     "status": {
                         "$ref": "#/components/schemas/domain.TaskStatus"
                     },
@@ -157,6 +160,7 @@
                     }
                 },
                 "required": [
+                    "projectId",
                     "title"
                 ],
                 "type": "object"
@@ -369,6 +373,9 @@
                     "priority": {
                         "$ref": "#/components/schemas/domain.TaskPriority"
                     },
+                    "projectId": {
+                        "type": "string"
+                    },
                     "source": {
                         "$ref": "#/components/schemas/domain.TaskSource"
                     },
@@ -395,6 +402,7 @@
                     "key",
                     "labels",
                     "priority",
+                    "projectId",
                     "source",
                     "status",
                     "title",
@@ -2099,6 +2107,16 @@
             "get": {
                 "description": "Returns every task, normalised from its source tracker.",
                 "operationId": "list-tasks",
+                "parameters": [
+                    {
+                        "description": "Filter tasks by project ID",
+                        "in": "query",
+                        "name": "projectId",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "content": {
@@ -2109,6 +2127,16 @@
                             }
                         },
                         "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
                     },
                     "500": {
                         "content": {
@@ -2162,6 +2190,16 @@
                             }
                         },
                         "description": "Bad Request"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
                     },
                     "500": {
                         "content": {

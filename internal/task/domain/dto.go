@@ -2,6 +2,7 @@ package domain
 
 // CreateTaskRequest is payload for creating task.
 type CreateTaskRequest struct {
+	ProjectID   string        `json:"projectId" validate:"required"`
 	Title       string        `json:"title" validate:"required"`
 	Description string        `json:"description,omitempty"`
 	Status      *TaskStatus   `json:"status,omitempty"`

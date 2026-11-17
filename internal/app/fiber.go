@@ -130,9 +130,20 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 		nodeFeature.RegisterPublic(api)
 		api.Use(authFeature.Middleware())
 		authFeature.Register(authRoutes) // GET /me, POST /logout (protected)
-		task.New(db, bus).Register(api)
+		var taskFeature *task.Task
+		projectFeature := project.New(db,
+			project.WithNodeReader(nodeFeature),
+			project.WithTaskCounter(func(ctx context.Context, projectID string) (int, error) {
+				if taskFeature == nil {
+					return 0, nil
+				}
+				return taskFeature.CountByProject(ctx, projectID)
+			}),
+		)
+		taskFeature = task.New(db, bus, task.WithProjectChecker(projectFeature))
+		taskFeature.Register(api)
 		nodeFeature.Register(api)
-		project.New(db, project.WithNodeReader(nodeFeature)).Register(api)
+		projectFeature.Register(api)
 	}
 
 	// ponytail: serves embedded SPA without custom Cache-Control headers; add immutable asset caching when CDN/traffic requires.

@@ -9,6 +9,7 @@ import (
 	"github.com/kilip/opus/ent"
 	"github.com/kilip/opus/ent/activity"
 	"github.com/kilip/opus/ent/counter"
+	entproject "github.com/kilip/opus/ent/project"
 	enttask "github.com/kilip/opus/ent/task"
 	"github.com/kilip/opus/internal/task/domain"
 )
@@ -23,11 +24,17 @@ func New(client *ent.Client) *Ent {
 	return &Ent{client: client}
 }
 
-// List returns all tasks ordered by id ascending.
-func (r *Ent) List(ctx context.Context) ([]domain.Task, error) {
-	tasks, err := r.client.Task.Query().
-		Order(enttask.ByID()).
-		All(ctx)
+// List returns all tasks ordered by id ascending, optionally filtered.
+func (r *Ent) List(ctx context.Context, filters ...domain.TaskFilter) ([]domain.Task, error) {
+	q := r.client.Task.Query().Order(enttask.ByID())
+	if len(filters) > 0 && filters[0].ProjectID != "" {
+		uid, err := uuid.Parse(filters[0].ProjectID)
+		if err != nil {
+			return nil, domain.ErrInvalidProjectID
+		}
+		q = q.Where(enttask.ProjectIDEQ(uid))
+	}
+	tasks, err := q.All(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -36,6 +43,24 @@ func (r *Ent) List(ctx context.Context) ([]domain.Task, error) {
 		out[i] = toDomainTask(t)
 	}
 	return out, nil
+}
+
+// CountByProject returns the number of tasks associated with a project ID.
+func (r *Ent) CountByProject(ctx context.Context, projectID string) (int, error) {
+	uid, err := uuid.Parse(projectID)
+	if err != nil {
+		return 0, nil
+	}
+	return r.client.Task.Query().Where(enttask.ProjectIDEQ(uid)).Count(ctx)
+}
+
+// ProjectExists checks if a project with the given ID exists.
+func (r *Ent) ProjectExists(ctx context.Context, projectID string) (bool, error) {
+	uid, err := uuid.Parse(projectID)
+	if err != nil {
+		return false, nil
+	}
+	return r.client.Project.Query().Where(entproject.IDEQ(uid)).Exist(ctx)
 }
 
 // Get returns task by identifier, or domain.ErrTaskNotFound.
@@ -111,8 +136,14 @@ func (r *Ent) Create(ctx context.Context, in CreateInput) (domain.Task, error) {
 	}
 	key := fmt.Sprintf("OP-%d", nextVal)
 
+	projectUID, err := uuid.Parse(in.ProjectID)
+	if err != nil {
+		return domain.Task{}, domain.ErrInvalidProjectID
+	}
+
 	taskCreate := tx.Task.Create().
 		SetKey(key).
+		SetProjectID(projectUID).
 		SetSource(string(source)).
 		SetTitle(in.Title).
 		SetDescription(in.Description).
@@ -349,6 +380,7 @@ func toDomainTask(t *ent.Task) domain.Task {
 	res := domain.Task{
 		ID:           t.ID.String(),
 		Key:          t.Key,
+		ProjectID:    t.ProjectID.String(),
 		Source:       domain.TaskSource(t.Source),
 		ExternalURL:  t.ExternalURL,
 		Title:        t.Title,

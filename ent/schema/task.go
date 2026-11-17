@@ -21,6 +21,7 @@ func (Task) Fields() []ent.Field {
 	return []ent.Field{
 		field.UUID("id", uuid.UUID{}).
 			Default(newID),
+		field.UUID("project_id", uuid.UUID{}),
 		field.String("key").
 			NotEmpty().
 			Unique(),
@@ -69,6 +70,11 @@ func (Task) Fields() []ent.Field {
 // Edges of the Task.
 func (Task) Edges() []ent.Edge {
 	return []ent.Edge{
+		edge.From("project", Project.Type).
+			Ref("tasks").
+			Field("project_id").
+			Required().
+			Unique(),
 		edge.To("activities", Activity.Type).
 			Annotations(
 				entsql.OnDelete(entsql.Cascade),

@@ -3,6 +3,7 @@ package repo
 import "github.com/kilip/opus/internal/task/domain"
 
 type CreateInput struct {
+	ProjectID   string
 	Source      domain.TaskSource
 	ExternalID  string
 	ExternalURL string

@@ -574,6 +574,7 @@ export interface components {
             dueDate?: string;
             labels?: string[];
             priority?: components["schemas"]["domain.TaskPriority"];
+            projectId: string;
             status?: components["schemas"]["domain.TaskStatus"];
             title: string;
             type?: components["schemas"]["domain.TaskType"];
@@ -651,6 +652,7 @@ export interface components {
             key: string;
             labels: string[];
             priority: components["schemas"]["domain.TaskPriority"];
+            projectId: string;
             source: components["schemas"]["domain.TaskSource"];
             sourceStatus?: string;
             status: components["schemas"]["domain.TaskStatus"];
@@ -1833,7 +1835,10 @@ export interface operations {
     };
     "list-tasks": {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Filter tasks by project ID */
+                projectId?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1847,6 +1852,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["httpx.Response-array_domain_Task"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
                 };
             };
             /** @description Internal Server Error */
@@ -1885,6 +1899,15 @@ export interface operations {
             };
             /** @description Bad Request */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

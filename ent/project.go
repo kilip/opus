@@ -46,9 +46,11 @@ type Project struct {
 type ProjectEdges struct {
 	// ProjectNodes holds the value of the project_nodes edge.
 	ProjectNodes []*ProjectNode `json:"project_nodes,omitempty"`
+	// Tasks holds the value of the tasks edge.
+	Tasks []*Task `json:"tasks,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // ProjectNodesOrErr returns the ProjectNodes value or an error if the edge
@@ -58,6 +60,15 @@ func (e ProjectEdges) ProjectNodesOrErr() ([]*ProjectNode, error) {
 		return e.ProjectNodes, nil
 	}
 	return nil, &NotLoadedError{edge: "project_nodes"}
+}
+
+// TasksOrErr returns the Tasks value or an error if the edge
+// was not loaded in eager-loading.
+func (e ProjectEdges) TasksOrErr() ([]*Task, error) {
+	if e.loadedTypes[1] {
+		return e.Tasks, nil
+	}
+	return nil, &NotLoadedError{edge: "tasks"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -162,6 +173,11 @@ func (_m *Project) Value(name string) (ent.Value, error) {
 // QueryProjectNodes queries the "project_nodes" edge of the Project entity.
 func (_m *Project) QueryProjectNodes() *ProjectNodeQuery {
 	return NewProjectClient(_m.config).QueryProjectNodes(_m)
+}
+
+// QueryTasks queries the "tasks" edge of the Project entity.
+func (_m *Project) QueryTasks() *TaskQuery {
+	return NewProjectClient(_m.config).QueryTasks(_m)
 }
 
 // Update returns a builder for updating this Project.

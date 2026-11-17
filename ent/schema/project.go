@@ -53,5 +53,6 @@ func (Project) Edges() []ent.Edge {
 			Annotations(
 				entsql.OnDelete(entsql.Cascade),
 			),
+		edge.To("tasks", Task.Type),
 	}
 }

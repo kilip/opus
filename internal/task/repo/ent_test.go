@@ -36,12 +36,29 @@ func setupTestClient(t *testing.T) *ent.Client {
 	return client
 }
 
+func createTestProject(t *testing.T, client *ent.Client) *ent.Project {
+	t.Helper()
+	p, err := client.Project.Create().
+		SetSlug(fmt.Sprintf("repo-test-proj-%s", uuid.New().String()[:8])).
+		SetName("Test Project").
+		SetRepoProvider("github").
+		SetRepoRef("org/repo").
+		SetTrackerProvider("github").
+		SetTrackerRef("org/repo").
+		Save(context.Background())
+	if err != nil {
+		t.Fatalf("create test project failed: %v", err)
+	}
+	return p
+}
+
 // AC2: Keys are OP-1, OP-2, ... from task_key counter, allocated in same transaction as insert.
 // Test runs 20 concurrent creates and asserts keys OP-1..OP-20 with no gaps or duplicates.
 func TestEntRepo_ConcurrentCreateKeys(t *testing.T) {
 	client := setupTestClient(t)
 	r := repo.New(client)
 	ctx := context.Background()
+	p := createTestProject(t, client)
 
 	const n = 20
 	var wg sync.WaitGroup
@@ -54,7 +71,8 @@ func TestEntRepo_ConcurrentCreateKeys(t *testing.T) {
 		go func(idx int) {
 			defer wg.Done()
 			tsk, err := r.Create(ctx, repo.CreateInput{
-				Title: fmt.Sprintf("Concurrent task %d", idx),
+				ProjectID: p.ID.String(),
+				Title:     fmt.Sprintf("Concurrent task %d", idx),
 			})
 			mu.Lock()
 			defer mu.Unlock()
@@ -103,10 +121,12 @@ func TestEntRepo_ContractParity(t *testing.T) {
 	client := setupTestClient(t)
 	r := repo.New(client)
 	ctx := context.Background()
+	p := createTestProject(t, client)
 
 	// 1. Defaults
 	tsk, err := r.Create(ctx, repo.CreateInput{
-		Title: "Test default task",
+		ProjectID: p.ID.String(),
+		Title:     "Test default task",
 	})
 	if err != nil {
 		t.Fatalf("create failed: %v", err)
@@ -225,9 +245,11 @@ func TestEntRepo_ExternalIDUniqueness(t *testing.T) {
 	client := setupTestClient(t)
 	r := repo.New(client)
 	ctx := context.Background()
+	p := createTestProject(t, client)
 
 	// Two tasks with empty external_id (stored as NULL in DB) should both succeed
 	t1, err := r.Create(ctx, repo.CreateInput{
+		ProjectID:  p.ID.String(),
 		Source:     domain.TaskSourceManual,
 		ExternalID: "",
 		Title:      "Task without external id 1",
@@ -237,6 +259,7 @@ func TestEntRepo_ExternalIDUniqueness(t *testing.T) {
 	}
 
 	t2, err := r.Create(ctx, repo.CreateInput{
+		ProjectID:  p.ID.String(),
 		Source:     domain.TaskSourceManual,
 		ExternalID: "",
 		Title:      "Task without external id 2",
@@ -250,6 +273,7 @@ func TestEntRepo_ExternalIDUniqueness(t *testing.T) {
 
 	// Create task with source + external_id pair
 	_, err = r.Create(ctx, repo.CreateInput{
+		ProjectID:  p.ID.String(),
 		Source:     domain.TaskSourceGitHub,
 		ExternalID: "issue-42",
 		Title:      "GitHub Issue 42",
@@ -260,6 +284,7 @@ func TestEntRepo_ExternalIDUniqueness(t *testing.T) {
 
 	// Duplicate pair must fail
 	_, err = r.Create(ctx, repo.CreateInput{
+		ProjectID:  p.ID.String(),
 		Source:     domain.TaskSourceGitHub,
 		ExternalID: "issue-42",
 		Title:      "GitHub Issue 42 duplicate",
@@ -275,12 +300,14 @@ func TestEntRepo_ListOrderingAndNotFound(t *testing.T) {
 	client := setupTestClient(t)
 	r := repo.New(client)
 	ctx := context.Background()
+	p := createTestProject(t, client)
 
 	// Create multiple tasks
 	var createdIDs []string
 	for i := 1; i <= 5; i++ {
 		tsk, err := r.Create(ctx, repo.CreateInput{
-			Title: fmt.Sprintf("Task %d", i),
+			ProjectID: p.ID.String(),
+			Title:     fmt.Sprintf("Task %d", i),
 		})
 		if err != nil {
 			t.Fatalf("create task %d failed: %v", i, err)
@@ -351,7 +378,9 @@ func TestEntRepo_RestartPersistence(t *testing.T) {
 	client1 := enttest.NewClient(t, enttest.WithOptions(ent.Driver(drv1)))
 
 	r1 := repo.New(client1)
+	p1 := createTestProject(t, client1)
 	created, err := r1.Create(ctx, repo.CreateInput{
+		ProjectID:   p1.ID.String(),
 		Title:       "Persistent Task Across Restarts",
 		Description: "Should persist after client close and reopen",
 	})
@@ -399,12 +428,75 @@ func TestEntRepo_RestartPersistence(t *testing.T) {
 
 	// Create second task on reopened client to ensure counter persists
 	created2, err := r2.Create(ctx, repo.CreateInput{
-		Title: "Second Persistent Task",
+		ProjectID: p1.ID.String(),
+		Title:     "Second Persistent Task",
 	})
 	if err != nil {
 		t.Fatalf("create second task failed: %v", err)
 	}
 	if created2.Key != "OP-2" {
 		t.Fatalf("expected key OP-2, got %s", created2.Key)
+	}
+}
+
+func TestEntRepo_CountAndFilterByProject(t *testing.T) {
+	client := setupTestClient(t)
+	r := repo.New(client)
+	ctx := context.Background()
+
+	p1 := createTestProject(t, client)
+	p2 := createTestProject(t, client)
+
+	// Initially 0 count
+	c0, err := r.CountByProject(ctx, p1.ID.String())
+	if err != nil || c0 != 0 {
+		t.Fatalf("expected count 0, got %d (err: %v)", c0, err)
+	}
+
+	// Create 2 tasks for p1, 1 task for p2
+	_, err = r.Create(ctx, repo.CreateInput{ProjectID: p1.ID.String(), Title: "T1"})
+	if err != nil {
+		t.Fatalf("create T1: %v", err)
+	}
+	_, err = r.Create(ctx, repo.CreateInput{ProjectID: p1.ID.String(), Title: "T2"})
+	if err != nil {
+		t.Fatalf("create T2: %v", err)
+	}
+	_, err = r.Create(ctx, repo.CreateInput{ProjectID: p2.ID.String(), Title: "T3"})
+	if err != nil {
+		t.Fatalf("create T3: %v", err)
+	}
+
+	// Count check
+	cP1, err := r.CountByProject(ctx, p1.ID.String())
+	if err != nil || cP1 != 2 {
+		t.Fatalf("expected count 2 for p1, got %d (err: %v)", cP1, err)
+	}
+	cP2, err := r.CountByProject(ctx, p2.ID.String())
+	if err != nil || cP2 != 1 {
+		t.Fatalf("expected count 1 for p2, got %d (err: %v)", cP2, err)
+	}
+
+	// Filtered list check
+	p1Tasks, err := r.List(ctx, domain.TaskFilter{ProjectID: p1.ID.String()})
+	if err != nil {
+		t.Fatalf("list p1 tasks: %v", err)
+	}
+	if len(p1Tasks) != 2 {
+		t.Fatalf("expected 2 tasks for p1, got %d", len(p1Tasks))
+	}
+	for _, tk := range p1Tasks {
+		if tk.ProjectID != p1.ID.String() {
+			t.Errorf("task project ID = %s, want %s", tk.ProjectID, p1.ID.String())
+		}
+	}
+
+	// Unfiltered list check
+	allTasks, err := r.List(ctx)
+	if err != nil {
+		t.Fatalf("list all tasks: %v", err)
+	}
+	if len(allTasks) != 3 {
+		t.Fatalf("expected 3 total tasks, got %d", len(allTasks))
 	}
 }

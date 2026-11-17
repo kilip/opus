@@ -3,8 +3,10 @@ package app_test
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
 	"crypto/sha256"
 	"database/sql"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -28,6 +30,7 @@ import (
 	"github.com/kilip/opus/internal/node"
 	"github.com/kilip/opus/internal/node/domain"
 	"github.com/kilip/opus/internal/platform/eventbus"
+	"github.com/kilip/opus/internal/project"
 	_ "modernc.org/sqlite"
 )
 
@@ -509,5 +512,136 @@ func TestGetFiber_NodeControlChannel(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for event callback")
+	}
+}
+
+func TestGetFiber_ProjectDeleteGuardWithTasks(t *testing.T) {
+	ctx := context.Background()
+	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared&_pragma=foreign_keys(ON)&_pragma=busy_timeout(10000)")
+	if err != nil {
+		t.Fatalf("open sqlite failed: %v", err)
+	}
+	db.SetMaxOpenConns(1)
+	drv := entsql.OpenDB(dialect.SQLite, db)
+	client := enttest.NewClient(t, enttest.WithOptions(ent.Driver(drv)))
+	t.Cleanup(func() {
+		_ = client.Close()
+	})
+
+	cfg := app.Config{
+		AppName:       "test-opus",
+		BaseURL:       "http://localhost:7880",
+		SessionSecret: "secret-needs-to-be-32-bytes-long-ok",
+	}
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	fiberApp := app.GetFiber(cfg, logger, client, eventbus.New())
+
+	// Create user & session
+	u, err := client.User.Create().
+		SetEmail("admin@example.com").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	token := "valid-session-token-12345678901234567890"
+	mac := hmac.New(sha256.New, []byte(cfg.SessionSecret))
+	mac.Write([]byte(token))
+	tokenHash := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+	_, err = client.Session.Create().
+		SetUserID(u.ID).
+		SetTokenHash(tokenHash).
+		SetExpiresAt(time.Now().Add(time.Hour)).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+
+	authReq := func(method, path string, body any) *http.Request {
+		var r io.Reader
+		if body != nil {
+			b, _ := json.Marshal(body)
+			r = bytes.NewReader(b)
+		}
+		req := httptest.NewRequest(method, path, r)
+		req.Header.Set("Cookie", "opus_session="+token)
+		req.Header.Set("Origin", "http://localhost:7880")
+		if body != nil {
+			req.Header.Set("Content-Type", "application/json")
+		}
+		return req
+	}
+
+	// 1. Create project 1
+	p1Body := project.CreateProjectRequest{
+		Slug:            "p1",
+		Name:            "Project 1",
+		RepoProvider:    "github",
+		RepoRef:         "org/p1",
+		TrackerProvider: "github",
+		TrackerRef:      "org/p1",
+	}
+	respP1, err := fiberApp.Test(authReq("POST", "/api/projects", p1Body))
+	if err != nil || respP1.StatusCode != http.StatusCreated {
+		t.Fatalf("create project 1 failed: %v (code %d)", err, respP1.StatusCode)
+	}
+	var p1Created struct {
+		Data struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	_ = json.NewDecoder(respP1.Body).Decode(&p1Created)
+	p1ID := p1Created.Data.ID
+
+	// 2. Create project 2 (no tasks)
+	p2Body := project.CreateProjectRequest{
+		Slug:            "p2",
+		Name:            "Project 2",
+		RepoProvider:    "github",
+		RepoRef:         "org/p2",
+		TrackerProvider: "github",
+		TrackerRef:      "org/p2",
+	}
+	respP2, err := fiberApp.Test(authReq("POST", "/api/projects", p2Body))
+	if err != nil || respP2.StatusCode != http.StatusCreated {
+		t.Fatalf("create project 2 failed: %v (code %d)", err, respP2.StatusCode)
+	}
+	var p2Created struct {
+		Data struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	_ = json.NewDecoder(respP2.Body).Decode(&p2Created)
+	p2ID := p2Created.Data.ID
+
+	// 3. Create a task for project 1
+	taskBody := map[string]string{
+		"projectId": p1ID,
+		"title":     "Task for P1",
+	}
+	respTask, err := fiberApp.Test(authReq("POST", "/api/tasks", taskBody))
+	if err != nil || respTask.StatusCode != http.StatusCreated {
+		t.Fatalf("create task failed: %v (code %d)", err, respTask.StatusCode)
+	}
+
+	// 4. Attempt DELETE /api/projects/:p1ID -> 409 Conflict (AC5)
+	respDelP1, err := fiberApp.Test(authReq("DELETE", "/api/projects/"+p1ID, nil))
+	if err != nil {
+		t.Fatalf("delete p1 failed: %v", err)
+	}
+	if respDelP1.StatusCode != http.StatusConflict {
+		t.Fatalf("expected 409 Conflict for project with tasks, got %d", respDelP1.StatusCode)
+	}
+	delP1Body := parseResponseBody(t, respDelP1)
+	if delP1Body.Error != "PROJECT_HAS_TASKS" {
+		t.Fatalf("expected PROJECT_HAS_TASKS error, got %s", delP1Body.Error)
+	}
+
+	// 5. DELETE /api/projects/:p2ID (has no tasks) -> 204 No Content (AC5)
+	respDelP2, err := fiberApp.Test(authReq("DELETE", "/api/projects/"+p2ID, nil))
+	if err != nil {
+		t.Fatalf("delete p2 failed: %v", err)
+	}
+	if respDelP2.StatusCode != http.StatusNoContent {
+		t.Fatalf("expected 204 No Content for project without tasks, got %d", respDelP2.StatusCode)
 	}
 }

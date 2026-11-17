@@ -3,6 +3,9 @@
 package project
 
 import (
+	"context"
+	"errors"
+
 	"github.com/gofiber/fiber/v3"
 	"github.com/kilip/opus/ent"
 	"github.com/kilip/opus/internal/project/domain"
@@ -81,4 +84,24 @@ func New(client *ent.Client, opts ...Option) *Project {
 // Register mounts the project HTTP routes on r.
 func (p *Project) Register(r fiber.Router) {
 	p.handler.Register(r)
+}
+
+// Get returns a single project by id, or domain.ErrProjectNotFound.
+func (p *Project) Get(ctx context.Context, id string) (domain.Project, error) {
+	return p.svc.Get(ctx, id)
+}
+
+// Exists checks if a project exists by id.
+func (p *Project) Exists(ctx context.Context, id string) (bool, error) {
+	if p == nil {
+		return false, nil
+	}
+	_, err := p.svc.Get(ctx, id)
+	if err != nil {
+		if errors.Is(err, domain.ErrProjectNotFound) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }

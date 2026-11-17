@@ -340,9 +340,22 @@ func TestSchema_UUIDv7(t *testing.T) {
 		t.Errorf("AuditLog ID version = %d, want 7", v)
 	}
 
+	p, err := client.Project.Create().
+		SetSlug("schema-test-proj").
+		SetName("Schema Test Project").
+		SetRepoProvider("github").
+		SetRepoRef("org/repo").
+		SetTrackerProvider("github").
+		SetTrackerRef("org/repo").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create project failed: %v", err)
+	}
+
 	// 6. Task
 	tsk, err := client.Task.Create().
 		SetKey("OP-1").
+		SetProjectID(p.ID).
 		SetTitle("Test Task").
 		Save(ctx)
 	if err != nil {

@@ -8,29 +8,55 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/kilip/opus/internal/platform/eventbus"
 	"github.com/kilip/opus/internal/task/domain"
 	"github.com/kilip/opus/internal/task/repo"
 )
 
-// Task owns task and activity business rules.
-type Task struct {
-	repo *repo.Ent
-	bus  *eventbus.Bus
-	mu   sync.Mutex
+// ProjectChecker checks whether a project exists.
+type ProjectChecker interface {
+	Exists(ctx context.Context, id string) (bool, error)
 }
 
-// New returns Task service backed by Ent repo and event bus.
-func New(r *repo.Ent, bus *eventbus.Bus) *Task {
-	return &Task{
-		repo: r,
-		bus:  bus,
+// Option configures the Task service.
+type Option func(*Task)
+
+// WithProjectChecker sets the ProjectChecker implementation.
+func WithProjectChecker(pc ProjectChecker) Option {
+	return func(s *Task) {
+		s.projectChecker = pc
 	}
 }
 
-// List returns every task.
-func (s *Task) List(ctx context.Context) ([]domain.Task, error) {
-	return s.repo.List(ctx)
+// Task owns task and activity business rules.
+type Task struct {
+	repo           *repo.Ent
+	bus            *eventbus.Bus
+	projectChecker ProjectChecker
+	mu             sync.Mutex
+}
+
+// New returns Task service backed by Ent repo and event bus.
+func New(r *repo.Ent, bus *eventbus.Bus, opts ...Option) *Task {
+	s := &Task{
+		repo: r,
+		bus:  bus,
+	}
+	for _, opt := range opts {
+		opt(s)
+	}
+	return s
+}
+
+// List returns every task, optionally filtered.
+func (s *Task) List(ctx context.Context, filters ...domain.TaskFilter) ([]domain.Task, error) {
+	return s.repo.List(ctx, filters...)
+}
+
+// CountByProject returns the number of tasks associated with a project ID.
+func (s *Task) CountByProject(ctx context.Context, projectID string) (int, error) {
+	return s.repo.CountByProject(ctx, projectID)
 }
 
 // Get returns task by Opus identifier, or domain.ErrTaskNotFound.
@@ -40,10 +66,32 @@ func (s *Task) Get(ctx context.Context, id string) (domain.Task, error) {
 
 // Create validates req and stores new task.
 func (s *Task) Create(ctx context.Context, req domain.CreateTaskRequest) (domain.Task, error) {
+	if strings.TrimSpace(req.ProjectID) == "" {
+		return domain.Task{}, domain.ErrProjectIDRequired
+	}
+	if _, err := uuid.Parse(req.ProjectID); err != nil {
+		return domain.Task{}, domain.ErrInvalidProjectID
+	}
 	if strings.TrimSpace(req.Title) == "" {
 		return domain.Task{}, domain.ErrTaskTitleEmpty
 	}
+
+	var exists bool
+	var err error
+	if s.projectChecker != nil {
+		exists, err = s.projectChecker.Exists(ctx, req.ProjectID)
+	} else if s.repo != nil {
+		exists, err = s.repo.ProjectExists(ctx, req.ProjectID)
+	}
+	if err != nil {
+		return domain.Task{}, err
+	}
+	if !exists {
+		return domain.Task{}, domain.ErrProjectNotFound
+	}
+
 	t, err := s.repo.Create(ctx, repo.CreateInput{
+		ProjectID:   req.ProjectID,
 		Title:       req.Title,
 		Description: req.Description,
 		Status:      req.Status,
@@ -61,6 +109,7 @@ func (s *Task) Create(ctx context.Context, req domain.CreateTaskRequest) (domain
 		evt, err := eventbus.NewEvent(domain.EventReceived, t.ID, domain.TaskReceivedPayload{
 			ID:         t.ID,
 			Key:        t.Key,
+			ProjectID:  t.ProjectID,
 			Source:     t.Source,
 			ExternalID: t.ExternalID,
 			Status:     t.Status,
@@ -105,9 +154,10 @@ func (s *Task) Update(ctx context.Context, id string, req domain.UpdateTaskReque
 
 	if res.StatusChanged && s.bus != nil {
 		evt, err := eventbus.NewEvent(domain.EventStatusChanged, res.Task.ID, domain.TaskStatusChangedPayload{
-			ID:   res.Task.ID,
-			From: res.PrevStatus,
-			To:   res.Task.Status,
+			ID:        res.Task.ID,
+			ProjectID: res.Task.ProjectID,
+			From:      res.PrevStatus,
+			To:        res.Task.Status,
 		})
 		if err != nil {
 			slog.Error("failed to create task.status_changed event", "task_id", res.Task.ID, "error", err)

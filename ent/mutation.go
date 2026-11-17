@@ -4123,6 +4123,9 @@ type ProjectMutation struct {
 	project_nodes        map[uuid.UUID]struct{}
 	removedproject_nodes map[uuid.UUID]struct{}
 	clearedproject_nodes bool
+	tasks                map[uuid.UUID]struct{}
+	removedtasks         map[uuid.UUID]struct{}
+	clearedtasks         bool
 	done                 bool
 	oldValue             func(context.Context) (*Project, error)
 	predicates           []predicate.Project
@@ -4610,6 +4613,60 @@ func (m *ProjectMutation) ResetProjectNodes() {
 	m.removedproject_nodes = nil
 }
 
+// AddTaskIDs adds the "tasks" edge to the Task entity by ids.
+func (m *ProjectMutation) AddTaskIDs(ids ...uuid.UUID) {
+	if m.tasks == nil {
+		m.tasks = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		m.tasks[ids[i]] = struct{}{}
+	}
+}
+
+// ClearTasks clears the "tasks" edge to the Task entity.
+func (m *ProjectMutation) ClearTasks() {
+	m.clearedtasks = true
+}
+
+// TasksCleared reports if the "tasks" edge to the Task entity was cleared.
+func (m *ProjectMutation) TasksCleared() bool {
+	return m.clearedtasks
+}
+
+// RemoveTaskIDs removes the "tasks" edge to the Task entity by IDs.
+func (m *ProjectMutation) RemoveTaskIDs(ids ...uuid.UUID) {
+	if m.removedtasks == nil {
+		m.removedtasks = make(map[uuid.UUID]struct{})
+	}
+	for i := range ids {
+		delete(m.tasks, ids[i])
+		m.removedtasks[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedTasks returns the removed IDs of the "tasks" edge to the Task entity.
+func (m *ProjectMutation) RemovedTasksIDs() (ids []uuid.UUID) {
+	for id := range m.removedtasks {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// TasksIDs returns the "tasks" edge IDs in the mutation.
+func (m *ProjectMutation) TasksIDs() (ids []uuid.UUID) {
+	for id := range m.tasks {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetTasks resets all changes to the "tasks" edge.
+func (m *ProjectMutation) ResetTasks() {
+	m.tasks = nil
+	m.clearedtasks = false
+	m.removedtasks = nil
+}
+
 // Where appends a list predicates to the ProjectMutation builder.
 func (m *ProjectMutation) Where(ps ...predicate.Project) {
 	m.predicates = append(m.predicates, ps...)
@@ -4879,9 +4936,12 @@ func (m *ProjectMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ProjectMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.project_nodes != nil {
 		edges = append(edges, project.EdgeProjectNodes)
+	}
+	if m.tasks != nil {
+		edges = append(edges, project.EdgeTasks)
 	}
 	return edges
 }
@@ -4896,15 +4956,24 @@ func (m *ProjectMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case project.EdgeTasks:
+		ids := make([]ent.Value, 0, len(m.tasks))
+		for id := range m.tasks {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ProjectMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.removedproject_nodes != nil {
 		edges = append(edges, project.EdgeProjectNodes)
+	}
+	if m.removedtasks != nil {
+		edges = append(edges, project.EdgeTasks)
 	}
 	return edges
 }
@@ -4919,15 +4988,24 @@ func (m *ProjectMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case project.EdgeTasks:
+		ids := make([]ent.Value, 0, len(m.removedtasks))
+		for id := range m.removedtasks {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ProjectMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.clearedproject_nodes {
 		edges = append(edges, project.EdgeProjectNodes)
+	}
+	if m.clearedtasks {
+		edges = append(edges, project.EdgeTasks)
 	}
 	return edges
 }
@@ -4938,6 +5016,8 @@ func (m *ProjectMutation) EdgeCleared(name string) bool {
 	switch name {
 	case project.EdgeProjectNodes:
 		return m.clearedproject_nodes
+	case project.EdgeTasks:
+		return m.clearedtasks
 	}
 	return false
 }
@@ -4956,6 +5036,9 @@ func (m *ProjectMutation) ResetEdge(name string) error {
 	switch name {
 	case project.EdgeProjectNodes:
 		m.ResetProjectNodes()
+		return nil
+	case project.EdgeTasks:
+		m.ResetTasks()
 		return nil
 	}
 	return fmt.Errorf("unknown Project edge %s", name)
@@ -6095,6 +6178,8 @@ type TaskMutation struct {
 	created_at        *time.Time
 	updated_at        *time.Time
 	clearedFields     map[string]struct{}
+	project           *uuid.UUID
+	clearedproject    bool
 	activities        map[uuid.UUID]struct{}
 	removedactivities map[uuid.UUID]struct{}
 	clearedactivities bool
@@ -6205,6 +6290,42 @@ func (m *TaskMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
 	default:
 		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
 	}
+}
+
+// SetProjectID sets the "project_id" field.
+func (m *TaskMutation) SetProjectID(u uuid.UUID) {
+	m.project = &u
+}
+
+// ProjectID returns the value of the "project_id" field in the mutation.
+func (m *TaskMutation) ProjectID() (r uuid.UUID, exists bool) {
+	v := m.project
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProjectID returns the old "project_id" field's value of the Task entity.
+// If the Task object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TaskMutation) OldProjectID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProjectID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProjectID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProjectID: %w", err)
+	}
+	return oldValue.ProjectID, nil
+}
+
+// ResetProjectID resets all changes to the "project_id" field.
+func (m *TaskMutation) ResetProjectID() {
+	m.project = nil
 }
 
 // SetKey sets the "key" field.
@@ -6837,6 +6958,33 @@ func (m *TaskMutation) ResetUpdatedAt() {
 	m.updated_at = nil
 }
 
+// ClearProject clears the "project" edge to the Project entity.
+func (m *TaskMutation) ClearProject() {
+	m.clearedproject = true
+	m.clearedFields[task.FieldProjectID] = struct{}{}
+}
+
+// ProjectCleared reports if the "project" edge to the Project entity was cleared.
+func (m *TaskMutation) ProjectCleared() bool {
+	return m.clearedproject
+}
+
+// ProjectIDs returns the "project" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ProjectID instead. It exists only for internal usage by the builders.
+func (m *TaskMutation) ProjectIDs() (ids []uuid.UUID) {
+	if id := m.project; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetProject resets all changes to the "project" edge.
+func (m *TaskMutation) ResetProject() {
+	m.project = nil
+	m.clearedproject = false
+}
+
 // AddActivityIDs adds the "activities" edge to the Activity entity by ids.
 func (m *TaskMutation) AddActivityIDs(ids ...uuid.UUID) {
 	if m.activities == nil {
@@ -6925,7 +7073,10 @@ func (m *TaskMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *TaskMutation) Fields() []string {
-	fields := make([]string, 0, 16)
+	fields := make([]string, 0, 17)
+	if m.project != nil {
+		fields = append(fields, task.FieldProjectID)
+	}
 	if m.key != nil {
 		fields = append(fields, task.FieldKey)
 	}
@@ -6982,6 +7133,8 @@ func (m *TaskMutation) Fields() []string {
 // schema.
 func (m *TaskMutation) Field(name string) (ent.Value, bool) {
 	switch name {
+	case task.FieldProjectID:
+		return m.ProjectID()
 	case task.FieldKey:
 		return m.Key()
 	case task.FieldSource:
@@ -7023,6 +7176,8 @@ func (m *TaskMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *TaskMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
+	case task.FieldProjectID:
+		return m.OldProjectID(ctx)
 	case task.FieldKey:
 		return m.OldKey(ctx)
 	case task.FieldSource:
@@ -7064,6 +7219,13 @@ func (m *TaskMutation) OldField(ctx context.Context, name string) (ent.Value, er
 // type.
 func (m *TaskMutation) SetField(name string, value ent.Value) error {
 	switch name {
+	case task.FieldProjectID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProjectID(v)
+		return nil
 	case task.FieldKey:
 		v, ok := value.(string)
 		if !ok {
@@ -7246,6 +7408,9 @@ func (m *TaskMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *TaskMutation) ResetField(name string) error {
 	switch name {
+	case task.FieldProjectID:
+		m.ResetProjectID()
+		return nil
 	case task.FieldKey:
 		m.ResetKey()
 		return nil
@@ -7300,7 +7465,10 @@ func (m *TaskMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *TaskMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
+	if m.project != nil {
+		edges = append(edges, task.EdgeProject)
+	}
 	if m.activities != nil {
 		edges = append(edges, task.EdgeActivities)
 	}
@@ -7311,6 +7479,10 @@ func (m *TaskMutation) AddedEdges() []string {
 // name in this mutation.
 func (m *TaskMutation) AddedIDs(name string) []ent.Value {
 	switch name {
+	case task.EdgeProject:
+		if id := m.project; id != nil {
+			return []ent.Value{*id}
+		}
 	case task.EdgeActivities:
 		ids := make([]ent.Value, 0, len(m.activities))
 		for id := range m.activities {
@@ -7323,7 +7495,7 @@ func (m *TaskMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *TaskMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.removedactivities != nil {
 		edges = append(edges, task.EdgeActivities)
 	}
@@ -7346,7 +7518,10 @@ func (m *TaskMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *TaskMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
+	if m.clearedproject {
+		edges = append(edges, task.EdgeProject)
+	}
 	if m.clearedactivities {
 		edges = append(edges, task.EdgeActivities)
 	}
@@ -7357,6 +7532,8 @@ func (m *TaskMutation) ClearedEdges() []string {
 // was cleared in this mutation.
 func (m *TaskMutation) EdgeCleared(name string) bool {
 	switch name {
+	case task.EdgeProject:
+		return m.clearedproject
 	case task.EdgeActivities:
 		return m.clearedactivities
 	}
@@ -7367,6 +7544,9 @@ func (m *TaskMutation) EdgeCleared(name string) bool {
 // if that edge is not defined in the schema.
 func (m *TaskMutation) ClearEdge(name string) error {
 	switch name {
+	case task.EdgeProject:
+		m.ClearProject()
+		return nil
 	}
 	return fmt.Errorf("unknown Task unique edge %s", name)
 }
@@ -7375,6 +7555,9 @@ func (m *TaskMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *TaskMutation) ResetEdge(name string) error {
 	switch name {
+	case task.EdgeProject:
+		m.ResetProject()
+		return nil
 	case task.EdgeActivities:
 		m.ResetActivities()
 		return nil
