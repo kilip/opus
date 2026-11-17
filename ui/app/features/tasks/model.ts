@@ -22,6 +22,7 @@ export const STAGES: TaskStage[] = [
 	{ id: "todo", name: "To Do", tone: "info" },
 	{ id: "in-progress", name: "In Progress", tone: "accent" },
 	{ id: "review", name: "Review", tone: "primary" },
+	{ id: "blocked", name: "Blocked", tone: "danger" },
 	{ id: "done", name: "Done", tone: "success" },
 ];
 
@@ -46,6 +47,7 @@ export const TASK_FILTERS: FilterDef[] = [
 	{ id: "mine", label: "My tasks" },
 	{ id: "agents", label: "Assigned agents" },
 	{ id: "high", label: "High priority" },
+	{ id: "blocked", label: "Blocked" },
 	{ id: "overdue", label: "Overdue" },
 ];
 
@@ -53,6 +55,7 @@ const predicates: Record<string, (t: Task, today: string) => boolean> = {
 	mine: (t) => t.assignee?.name === CURRENT_USER,
 	agents: (t) => t.assignee !== undefined && isAgent(t.assignee.name),
 	high: (t) => priorityLevel(t.priority) >= 2,
+	blocked: (t) => t.status === "blocked",
 	overdue: (t, today) =>
 		t.status !== "done" && t.dueDate !== undefined && t.dueDate < today,
 };

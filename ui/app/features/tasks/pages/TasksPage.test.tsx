@@ -7,6 +7,7 @@ import { MemoryRouter } from "react-router";
 
 import { taskKeys } from "../api/keys";
 import type { Project, Task } from "../api/types";
+import { filterTasks, STAGES, TASK_FILTERS } from "../model";
 import TasksPage from "./TasksPage";
 
 const mockTask: Task = {
@@ -175,5 +176,41 @@ describe("TasksPage (AC1, AC2, AC3, AC4, AC6)", () => {
 			/<option[^>]*value="proj-2"[^>]*>Project Beta<\/option>/,
 		);
 		assert.match(html, /Test task/);
+	});
+
+	it("renders blocked stage column in kanban, badge in list, and filters blocked tasks (AC7)", () => {
+		const blockedTask: Task = {
+			...mockTask,
+			id: "task-blocked",
+			key: "OP-2",
+			title: "Blocked task",
+			status: "blocked",
+		};
+
+		assert.ok(STAGES.some((s) => s.id === "blocked" && s.tone === "danger"));
+		assert.ok(TASK_FILTERS.some((f) => f.id === "blocked"));
+
+		const kanbanHtml = renderTasksPage({
+			tasks: [mockTask, blockedTask],
+			url: "/tasks",
+		});
+		assert.match(kanbanHtml, /aria-label="Blocked"/);
+		assert.match(kanbanHtml, /Blocked task/);
+
+		const listHtml = renderTasksPage({
+			tasks: [mockTask, blockedTask],
+			url: "/tasks?view=list",
+		});
+		assert.match(listHtml, /Blocked<\/span>/);
+
+		const filtered = filterTasks(
+			[mockTask, blockedTask],
+			"",
+			new Set(["blocked"]),
+		);
+		assert.deepStrictEqual(
+			filtered.map((t) => t.id),
+			["task-blocked"],
+		);
 	});
 });
