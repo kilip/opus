@@ -16,6 +16,7 @@ import (
 	"github.com/kilip/opus/ent/otp"
 	"github.com/kilip/opus/ent/project"
 	"github.com/kilip/opus/ent/projectnode"
+	"github.com/kilip/opus/ent/run"
 	"github.com/kilip/opus/ent/schema"
 	"github.com/kilip/opus/ent/session"
 	"github.com/kilip/opus/ent/sessionevent"
@@ -218,6 +219,32 @@ func init() {
 	projectnodeDescID := projectnodeFields[0].Descriptor()
 	// projectnode.DefaultID holds the default value on creation for the id field.
 	projectnode.DefaultID = projectnodeDescID.Default.(func() uuid.UUID)
+	runFields := schema.Run{}.Fields()
+	_ = runFields
+	// runDescStageAttempts is the schema descriptor for stage_attempts field.
+	runDescStageAttempts := runFields[7].Descriptor()
+	// run.DefaultStageAttempts holds the default value on creation for the stage_attempts field.
+	run.DefaultStageAttempts = runDescStageAttempts.Default.(int)
+	// run.StageAttemptsValidator is a validator for the "stage_attempts" field. It is called by the builders before save.
+	run.StageAttemptsValidator = runDescStageAttempts.Validators[0].(func(int) error)
+	// runDescBranch is the schema descriptor for branch field.
+	runDescBranch := runFields[8].Descriptor()
+	// run.DefaultBranch holds the default value on creation for the branch field.
+	run.DefaultBranch = runDescBranch.Default.(string)
+	// runDescCreatedAt is the schema descriptor for created_at field.
+	runDescCreatedAt := runFields[13].Descriptor()
+	// run.DefaultCreatedAt holds the default value on creation for the created_at field.
+	run.DefaultCreatedAt = runDescCreatedAt.Default.(func() time.Time)
+	// runDescUpdatedAt is the schema descriptor for updated_at field.
+	runDescUpdatedAt := runFields[16].Descriptor()
+	// run.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	run.DefaultUpdatedAt = runDescUpdatedAt.Default.(func() time.Time)
+	// run.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	run.UpdateDefaultUpdatedAt = runDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// runDescID is the schema descriptor for id field.
+	runDescID := runFields[0].Descriptor()
+	// run.DefaultID holds the default value on creation for the id field.
+	run.DefaultID = runDescID.Default.(func() uuid.UUID)
 	sessionFields := schema.Session{}.Fields()
 	_ = sessionFields
 	// sessionDescProvider is the schema descriptor for provider field.

@@ -32,6 +32,8 @@ type Tx struct {
 	Project *ProjectClient
 	// ProjectNode is the client for interacting with the ProjectNode builders.
 	ProjectNode *ProjectNodeClient
+	// Run is the client for interacting with the Run builders.
+	Run *RunClient
 	// Session is the client for interacting with the Session builders.
 	Session *SessionClient
 	// SessionEvent is the client for interacting with the SessionEvent builders.
@@ -187,6 +189,7 @@ func (tx *Tx) init() {
 	tx.OTP = NewOTPClient(tx.config)
 	tx.Project = NewProjectClient(tx.config)
 	tx.ProjectNode = NewProjectNodeClient(tx.config)
+	tx.Run = NewRunClient(tx.config)
 	tx.Session = NewSessionClient(tx.config)
 	tx.SessionEvent = NewSessionEventClient(tx.config)
 	tx.Task = NewTaskClient(tx.config)

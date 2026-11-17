@@ -223,6 +223,62 @@ var (
 			},
 		},
 	}
+	// RunsColumns holds the columns for the "runs" table.
+	RunsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "task_id", Type: field.TypeUUID},
+		{Name: "project_id", Type: field.TypeUUID},
+		{Name: "node_id", Type: field.TypeUUID, Nullable: true},
+		{Name: "mode", Type: field.TypeEnum, Enums: []string{"vibe"}, Default: "vibe"},
+		{Name: "state", Type: field.TypeEnum, Enums: []string{"queued", "preparing", "running", "merged", "failed", "needs-info", "paused", "cancelled"}, Default: "queued"},
+		{Name: "stage_attempts", Type: field.TypeInt, Default: 0},
+		{Name: "branch", Type: field.TypeString, Default: ""},
+		{Name: "pr_number", Type: field.TypeInt, Nullable: true},
+		{Name: "report", Type: field.TypeJSON, Nullable: true},
+		{Name: "paused_until", Type: field.TypeTime, Nullable: true},
+		{Name: "failure_reason", Type: field.TypeString, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "started_at", Type: field.TypeTime, Nullable: true},
+		{Name: "ended_at", Type: field.TypeTime, Nullable: true},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "session_id", Type: field.TypeUUID, Nullable: true},
+	}
+	// RunsTable holds the schema information for the "runs" table.
+	RunsTable = &schema.Table{
+		Name:       "runs",
+		Columns:    RunsColumns,
+		PrimaryKey: []*schema.Column{RunsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "runs_sessions_session",
+				Columns:    []*schema.Column{RunsColumns[16]},
+				RefColumns: []*schema.Column{SessionsColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "run_task_id",
+				Unique:  false,
+				Columns: []*schema.Column{RunsColumns[1]},
+			},
+			{
+				Name:    "run_project_id",
+				Unique:  false,
+				Columns: []*schema.Column{RunsColumns[2]},
+			},
+			{
+				Name:    "run_state",
+				Unique:  false,
+				Columns: []*schema.Column{RunsColumns[5]},
+			},
+			{
+				Name:    "run_session_id",
+				Unique:  false,
+				Columns: []*schema.Column{RunsColumns[16]},
+			},
+		},
+	}
 	// SessionsColumns holds the columns for the "sessions" table.
 	SessionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -437,6 +493,7 @@ var (
 		OtPsTable,
 		ProjectsTable,
 		ProjectNodesTable,
+		RunsTable,
 		SessionsTable,
 		SessionEventsTable,
 		TasksTable,
@@ -454,6 +511,7 @@ func init() {
 	AuthSessionsTable.ForeignKeys[0].RefTable = UsersTable
 	ProjectNodesTable.ForeignKeys[0].RefTable = NodesTable
 	ProjectNodesTable.ForeignKeys[1].RefTable = ProjectsTable
+	RunsTable.ForeignKeys[0].RefTable = SessionsTable
 	SessionEventsTable.ForeignKeys[0].RefTable = SessionsTable
 	TasksTable.ForeignKeys[0].RefTable = ProjectsTable
 	TrackerPrsTable.ForeignKeys[0].RefTable = ProjectsTable

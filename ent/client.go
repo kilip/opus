@@ -26,6 +26,7 @@ import (
 	"github.com/kilip/opus/ent/otp"
 	"github.com/kilip/opus/ent/project"
 	"github.com/kilip/opus/ent/projectnode"
+	"github.com/kilip/opus/ent/run"
 	"github.com/kilip/opus/ent/session"
 	"github.com/kilip/opus/ent/sessionevent"
 	"github.com/kilip/opus/ent/task"
@@ -60,6 +61,8 @@ type Client struct {
 	Project *ProjectClient
 	// ProjectNode is the client for interacting with the ProjectNode builders.
 	ProjectNode *ProjectNodeClient
+	// Run is the client for interacting with the Run builders.
+	Run *RunClient
 	// Session is the client for interacting with the Session builders.
 	Session *SessionClient
 	// SessionEvent is the client for interacting with the SessionEvent builders.
@@ -95,6 +98,7 @@ func (c *Client) init() {
 	c.OTP = NewOTPClient(c.config)
 	c.Project = NewProjectClient(c.config)
 	c.ProjectNode = NewProjectNodeClient(c.config)
+	c.Run = NewRunClient(c.config)
 	c.Session = NewSessionClient(c.config)
 	c.SessionEvent = NewSessionEventClient(c.config)
 	c.Task = NewTaskClient(c.config)
@@ -204,6 +208,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		OTP:             NewOTPClient(cfg),
 		Project:         NewProjectClient(cfg),
 		ProjectNode:     NewProjectNodeClient(cfg),
+		Run:             NewRunClient(cfg),
 		Session:         NewSessionClient(cfg),
 		SessionEvent:    NewSessionEventClient(cfg),
 		Task:            NewTaskClient(cfg),
@@ -240,6 +245,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		OTP:             NewOTPClient(cfg),
 		Project:         NewProjectClient(cfg),
 		ProjectNode:     NewProjectNodeClient(cfg),
+		Run:             NewRunClient(cfg),
 		Session:         NewSessionClient(cfg),
 		SessionEvent:    NewSessionEventClient(cfg),
 		Task:            NewTaskClient(cfg),
@@ -277,8 +283,8 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Account, c.Activity, c.AuditLog, c.AuthSession, c.Counter, c.JoinToken,
-		c.Node, c.OTP, c.Project, c.ProjectNode, c.Session, c.SessionEvent, c.Task,
-		c.TrackerPR, c.TrackerSettings, c.TrackerSync, c.User,
+		c.Node, c.OTP, c.Project, c.ProjectNode, c.Run, c.Session, c.SessionEvent,
+		c.Task, c.TrackerPR, c.TrackerSettings, c.TrackerSync, c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -289,8 +295,8 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Account, c.Activity, c.AuditLog, c.AuthSession, c.Counter, c.JoinToken,
-		c.Node, c.OTP, c.Project, c.ProjectNode, c.Session, c.SessionEvent, c.Task,
-		c.TrackerPR, c.TrackerSettings, c.TrackerSync, c.User,
+		c.Node, c.OTP, c.Project, c.ProjectNode, c.Run, c.Session, c.SessionEvent,
+		c.Task, c.TrackerPR, c.TrackerSettings, c.TrackerSync, c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -319,6 +325,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Project.mutate(ctx, m)
 	case *ProjectNodeMutation:
 		return c.ProjectNode.mutate(ctx, m)
+	case *RunMutation:
+		return c.Run.mutate(ctx, m)
 	case *SessionMutation:
 		return c.Session.mutate(ctx, m)
 	case *SessionEventMutation:
@@ -1844,6 +1852,155 @@ func (c *ProjectNodeClient) mutate(ctx context.Context, m *ProjectNodeMutation) 
 	}
 }
 
+// RunClient is a client for the Run schema.
+type RunClient struct {
+	config
+}
+
+// NewRunClient returns a client for the Run from the given config.
+func NewRunClient(c config) *RunClient {
+	return &RunClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `run.Hooks(f(g(h())))`.
+func (c *RunClient) Use(hooks ...Hook) {
+	c.hooks.Run = append(c.hooks.Run, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `run.Intercept(f(g(h())))`.
+func (c *RunClient) Intercept(interceptors ...Interceptor) {
+	c.inters.Run = append(c.inters.Run, interceptors...)
+}
+
+// Create returns a builder for creating a Run entity.
+func (c *RunClient) Create() *RunCreate {
+	mutation := newRunMutation(c.config, OpCreate)
+	return &RunCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of Run entities.
+func (c *RunClient) CreateBulk(builders ...*RunCreate) *RunCreateBulk {
+	return &RunCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *RunClient) MapCreateBulk(slice any, setFunc func(*RunCreate, int)) *RunCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &RunCreateBulk{err: fmt.Errorf("calling to RunClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*RunCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &RunCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for Run.
+func (c *RunClient) Update() *RunUpdate {
+	mutation := newRunMutation(c.config, OpUpdate)
+	return &RunUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *RunClient) UpdateOne(_m *Run) *RunUpdateOne {
+	mutation := newRunMutation(c.config, OpUpdateOne, withRun(_m))
+	return &RunUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *RunClient) UpdateOneID(id uuid.UUID) *RunUpdateOne {
+	mutation := newRunMutation(c.config, OpUpdateOne, withRunID(id))
+	return &RunUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for Run.
+func (c *RunClient) Delete() *RunDelete {
+	mutation := newRunMutation(c.config, OpDelete)
+	return &RunDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *RunClient) DeleteOne(_m *Run) *RunDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *RunClient) DeleteOneID(id uuid.UUID) *RunDeleteOne {
+	builder := c.Delete().Where(run.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &RunDeleteOne{builder}
+}
+
+// Query returns a query builder for Run.
+func (c *RunClient) Query() *RunQuery {
+	return &RunQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeRun},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a Run entity by its id.
+func (c *RunClient) Get(ctx context.Context, id uuid.UUID) (*Run, error) {
+	return c.Query().Where(run.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *RunClient) GetX(ctx context.Context, id uuid.UUID) *Run {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QuerySession queries the session edge of a Run.
+func (c *RunClient) QuerySession(_m *Run) *SessionQuery {
+	query := (&SessionClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(run.Table, run.FieldID, id),
+			sqlgraph.To(session.Table, session.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, run.SessionTable, run.SessionColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *RunClient) Hooks() []Hook {
+	return c.hooks.Run
+}
+
+// Interceptors returns the client interceptors.
+func (c *RunClient) Interceptors() []Interceptor {
+	return c.inters.Run
+}
+
+func (c *RunClient) mutate(ctx context.Context, m *RunMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&RunCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&RunUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&RunUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&RunDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown Run mutation op: %q", m.Op())
+	}
+}
+
 // SessionClient is a client for the Session schema.
 type SessionClient struct {
 	config
@@ -2955,12 +3112,12 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 type (
 	hooks struct {
 		Account, Activity, AuditLog, AuthSession, Counter, JoinToken, Node, OTP,
-		Project, ProjectNode, Session, SessionEvent, Task, TrackerPR, TrackerSettings,
-		TrackerSync, User []ent.Hook
+		Project, ProjectNode, Run, Session, SessionEvent, Task, TrackerPR,
+		TrackerSettings, TrackerSync, User []ent.Hook
 	}
 	inters struct {
 		Account, Activity, AuditLog, AuthSession, Counter, JoinToken, Node, OTP,
-		Project, ProjectNode, Session, SessionEvent, Task, TrackerPR, TrackerSettings,
-		TrackerSync, User []ent.Interceptor
+		Project, ProjectNode, Run, Session, SessionEvent, Task, TrackerPR,
+		TrackerSettings, TrackerSync, User []ent.Interceptor
 	}
 )

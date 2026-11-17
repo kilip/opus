@@ -36,6 +36,9 @@ type Project func(*sql.Selector)
 // ProjectNode is the predicate function for projectnode builders.
 type ProjectNode func(*sql.Selector)
 
+// Run is the predicate function for run builders.
+type Run func(*sql.Selector)
+
 // Session is the predicate function for session builders.
 type Session func(*sql.Selector)
 
