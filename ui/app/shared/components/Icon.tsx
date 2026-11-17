@@ -19,6 +19,8 @@ const paths = {
 	clock: "M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18z M12 7v5l3 2",
 	send: "M4 12l16-8-6 16-3-7z",
 	note: "M5 4h14v16H5z M9 9h6 M9 13h6",
+	folder:
+		"M3 7v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-6l-2-2H5a2 2 0 0 0-2 2z",
 	check: "M5 12l5 5 9-10",
 	x: "M6 6l12 12 M18 6L6 18",
 	tasks: "M4 6l2 2 3-3 M12 7h8 M4 14l2 2 3-3 M12 15h8",

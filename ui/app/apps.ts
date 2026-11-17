@@ -1,4 +1,5 @@
 import { nodesApp } from "~/features/nodes/app";
+import { projectsApp } from "~/features/projects/app";
 import { tasksApp } from "~/features/tasks/app";
 import type { AppDef } from "~/shared/types";
 
@@ -8,6 +9,7 @@ import type { AppDef } from "~/shared/types";
  */
 export const apps: AppDef[] = [
 	tasksApp,
+	projectsApp,
 	nodesApp,
 	{
 		id: "agents",
