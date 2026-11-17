@@ -129,6 +129,7 @@ Opus uses passwordless (email OTP + OAuth) authentication with cookie sessions.
 | `AUTH_GOOGLE_SECRET` | `""` | Google OAuth client secret |
 | `AUTH_FACEBOOK_ID` | `""` | Facebook OAuth client ID |
 | `AUTH_FACEBOOK_SECRET` | `""` | Facebook OAuth client secret |
+| `TRACKER_POLL_INTERVAL` | `60s` | Interval between tracker sync polling cycles |
 
 ## 4. Frontend: React Router Framework Mode (`ssr: false`)
 
