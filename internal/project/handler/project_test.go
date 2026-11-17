@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -314,6 +315,12 @@ func TestHandler_PatchForbiddenFields(t *testing.T) {
 			wantError:  "PROJECT_PATCH_FORBIDDEN",
 		},
 		{
+			name:       "patch body contains repoRef",
+			body:       `{"repoRef": "owner/new-repo"}`,
+			wantStatus: http.StatusBadRequest,
+			wantError:  "PROJECT_PATCH_FORBIDDEN",
+		},
+		{
 			name:       "patch body contains empty repo_ref",
 			body:       `{"repo_ref": ""}`,
 			wantStatus: http.StatusBadRequest,
@@ -612,5 +619,98 @@ func TestHandler_SetNodePath(t *testing.T) {
 	resNullData := decode[httpx.Response[domain.ProjectNodeResponse]](t, respNull).Data
 	if resNullData.Path != nil {
 		t.Fatalf("expected path null, got %v", resNullData.Path)
+	}
+}
+
+func TestHandler_PatchTrackerLabels(t *testing.T) {
+	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared&_pragma=foreign_keys(ON)&_pragma=busy_timeout(10000)")
+	if err != nil {
+		t.Fatalf("open sqlite failed: %v", err)
+	}
+	db.SetMaxOpenConns(1)
+	drv := entsql.OpenDB(dialect.SQLite, db)
+	client := enttest.NewClient(t, enttest.WithOptions(ent.Driver(drv)))
+	t.Cleanup(func() {
+		_ = client.Close()
+	})
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	app := fiber.New(fiber.Config{
+		ErrorHandler: httpx.ErrorHandler(logger),
+	})
+	r := repo.New(client)
+	s := service.New(r, service.Config{
+		TrackerLabelValidator: func(_ context.Context, labels map[string]string) error {
+			if _, ok := labels["done"]; ok {
+				return errors.New("done cannot have a label")
+			}
+			return nil
+		},
+	})
+	handler.New(s).Register(app.Group("/api"))
+
+	respCreate := req(t, app, http.MethodPost, "/api/projects", domain.CreateProjectRequest{
+		Slug:         "tracker-labels-proj",
+		Name:         "Tracker Labels",
+		RepoProvider: "github",
+		RepoRef:      "owner/repo",
+	})
+	if respCreate.StatusCode != http.StatusCreated {
+		t.Fatalf("create failed: %d", respCreate.StatusCode)
+	}
+	p := decode[httpx.Response[domain.Project]](t, respCreate).Data
+
+	// 1. Set trackerLabels -> 200
+	respSet := req(t, app, http.MethodPatch, "/api/projects/"+p.ID, `{"trackerLabels":{"todo":"queue","blocked":"stuck"}}`)
+	if respSet.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 setting trackerLabels, got %d", respSet.StatusCode)
+	}
+	setData := decode[httpx.Response[domain.Project]](t, respSet).Data
+	if setData.TrackerLabels["todo"] != "queue" || setData.TrackerLabels["blocked"] != "stuck" {
+		t.Fatalf("unexpected trackerLabels: %v", setData.TrackerLabels)
+	}
+
+	// 2. Update trackerLabels -> 200
+	respUpd := req(t, app, http.MethodPatch, "/api/projects/"+p.ID, `{"trackerLabels":{"todo":"sprint-ready"}}`)
+	if respUpd.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 updating trackerLabels, got %d", respUpd.StatusCode)
+	}
+	updData := decode[httpx.Response[domain.Project]](t, respUpd).Data
+	if len(updData.TrackerLabels) != 1 || updData.TrackerLabels["todo"] != "sprint-ready" {
+		t.Fatalf("unexpected updated trackerLabels: %v", updData.TrackerLabels)
+	}
+
+	// 3. Invalid trackerLabels -> 400 PROJECT_INVALID_TRACKER_LABELS
+	respInvalid := req(t, app, http.MethodPatch, "/api/projects/"+p.ID, `{"trackerLabels":{"done":"completed"}}`)
+	if respInvalid.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400 on invalid trackerLabels, got %d", respInvalid.StatusCode)
+	}
+	errResp := decodeError(t, respInvalid)
+	if errResp.Error != "PROJECT_INVALID_TRACKER_LABELS" {
+		t.Fatalf("expected PROJECT_INVALID_TRACKER_LABELS, got %q", errResp.Error)
+	}
+
+	// 4. Clear with null -> 200 and omitted/empty
+	respClearNull := req(t, app, http.MethodPatch, "/api/projects/"+p.ID, `{"trackerLabels":null}`)
+	if respClearNull.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 clearing trackerLabels with null, got %d", respClearNull.StatusCode)
+	}
+	clearNullData := decode[httpx.Response[domain.Project]](t, respClearNull).Data
+	if len(clearNullData.TrackerLabels) != 0 {
+		t.Fatalf("expected empty trackerLabels after null, got %v", clearNullData.TrackerLabels)
+	}
+
+	// 5. Re-set and clear with {} -> 200 and omitted/empty
+	respReset := req(t, app, http.MethodPatch, "/api/projects/"+p.ID, `{"trackerLabels":{"review":"qa"}}`)
+	if respReset.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 re-setting trackerLabels, got %d", respReset.StatusCode)
+	}
+	respClearEmpty := req(t, app, http.MethodPatch, "/api/projects/"+p.ID, `{"trackerLabels":{}}`)
+	if respClearEmpty.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 clearing trackerLabels with {}, got %d", respClearEmpty.StatusCode)
+	}
+	clearEmptyData := decode[httpx.Response[domain.Project]](t, respClearEmpty).Data
+	if len(clearEmptyData.TrackerLabels) != 0 {
+		t.Fatalf("expected empty trackerLabels after {}, got %v", clearEmptyData.TrackerLabels)
 	}
 }

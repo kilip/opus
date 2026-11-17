@@ -11,6 +11,7 @@ import (
 	"github.com/kilip/opus/internal/node"
 	"github.com/kilip/opus/internal/platform/eventbus"
 	"github.com/kilip/opus/internal/platform/mailer"
+	"github.com/kilip/opus/internal/tracker"
 )
 
 // NewMailer creates a mailer.Mailer based on configuration.
@@ -32,27 +33,53 @@ func NewMailer(cfg Config, logger *slog.Logger) mailer.Mailer {
 	})
 }
 
-type Opus struct {
-	cfg    Config
-	fiber  *fiber.App
-	logger *slog.Logger
-	db     *ent.Client
-	bus    *eventbus.Bus
-	node   *node.Node
+// Option configures optional feature instances wired into App/Opus.
+type Option func(*options)
+
+type options struct {
+	node    *node.Node
+	tracker *tracker.Tracker
 }
 
-func New(cfg Config, fiberApp *fiber.App, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus, nodeFeatures ...*node.Node) *Opus {
-	var n *node.Node
-	if len(nodeFeatures) > 0 {
-		n = nodeFeatures[0]
+// WithNode injects a pre-configured Node feature into GetFiber and Opus.
+func WithNode(n *node.Node) Option {
+	return func(o *options) {
+		o.node = n
+	}
+}
+
+// WithTracker injects a pre-configured Tracker feature into GetFiber and Opus.
+func WithTracker(t *tracker.Tracker) Option {
+	return func(o *options) {
+		o.tracker = t
+	}
+}
+
+type Opus struct {
+	cfg     Config
+	fiber   *fiber.App
+	logger  *slog.Logger
+	db      *ent.Client
+	bus     *eventbus.Bus
+	node    *node.Node
+	tracker *tracker.Tracker
+}
+
+func New(cfg Config, fiberApp *fiber.App, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus, opts ...Option) *Opus {
+	var o options
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&o)
+		}
 	}
 	return &Opus{
-		cfg:    cfg,
-		fiber:  fiberApp,
-		logger: logger,
-		db:     db,
-		bus:    bus,
-		node:   n,
+		cfg:     cfg,
+		fiber:   fiberApp,
+		logger:  logger,
+		db:      db,
+		bus:     bus,
+		node:    o.node,
+		tracker: o.tracker,
 	}
 }
 
@@ -60,6 +87,11 @@ func (o *Opus) Serve(ctx context.Context) error {
 	if o.node != nil {
 		if err := o.node.Start(ctx); err != nil {
 			o.logger.ErrorContext(ctx, "failed to start node detector", "error", err)
+		}
+	}
+	if o.tracker != nil {
+		if err := o.tracker.Start(ctx); err != nil {
+			o.logger.ErrorContext(ctx, "failed to start tracker poller", "error", err)
 		}
 	}
 
@@ -73,6 +105,9 @@ func (o *Opus) Serve(ctx context.Context) error {
 
 	if o.node != nil {
 		o.node.Stop()
+	}
+	if o.tracker != nil {
+		o.tracker.Stop()
 	}
 
 	if o.bus != nil {

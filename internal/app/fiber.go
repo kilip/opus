@@ -22,6 +22,7 @@ import (
 	"github.com/kilip/opus/internal/platform/httpx"
 	"github.com/kilip/opus/internal/project"
 	"github.com/kilip/opus/internal/task"
+	"github.com/kilip/opus/internal/tracker"
 	"github.com/kilip/opus/ui"
 )
 
@@ -42,7 +43,13 @@ func healthCheck(c fiber.Ctx) error {
 }
 
 // GetFiber initializes HTTP server.
-func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus, nodeFeatures ...*node.Node) *fiber.App {
+func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus, opts ...Option) *fiber.App {
+	var o options
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&o)
+		}
+	}
 	app := fiber.New(fiber.Config{
 		AppName:      cfg.AppName,
 		ReadTimeout:  cfg.ReadTimeout,
@@ -119,8 +126,8 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 		authFeature.RegisterSetup(setupRoutes) // GET /status, POST /otp, POST "" (public)
 		authFeature.RegisterPublic(authRoutes) // POST /otp/request, POST /otp/verify (public)
 		var nodeFeature *node.Node
-		if len(nodeFeatures) > 0 && nodeFeatures[0] != nil {
-			nodeFeature = nodeFeatures[0]
+		if o.node != nil {
+			nodeFeature = o.node
 		} else {
 			nodeFeature = node.New(db, node.Config{BaseURL: cfg.BaseURL, Bus: bus})
 		}
@@ -130,6 +137,15 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 		nodeFeature.RegisterPublic(api)
 		api.Use(authFeature.Middleware())
 		authFeature.Register(authRoutes) // GET /me, POST /logout (protected)
+		var trackerFeature *tracker.Tracker
+		if o.tracker != nil {
+			trackerFeature = o.tracker
+		} else {
+			trackerFeature = tracker.New(db, tracker.Config{
+				PollInterval: cfg.TrackerPollInterval,
+				Logger:       logger,
+			})
+		}
 		var taskFeature *task.Task
 		projectFeature := project.New(db,
 			project.WithNodeReader(nodeFeature),
@@ -139,11 +155,13 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 				}
 				return taskFeature.CountByProject(ctx, projectID)
 			}),
+			project.WithTrackerLabelValidator(trackerFeature.ValidateProjectLabels),
 		)
 		taskFeature = task.New(db, bus, task.WithProjectChecker(projectFeature))
 		taskFeature.Register(api)
 		nodeFeature.Register(api)
 		projectFeature.Register(api)
+		trackerFeature.Register(api)
 	}
 
 	// ponytail: serves embedded SPA without custom Cache-Control headers; add immutable asset caching when CDN/traffic requires.

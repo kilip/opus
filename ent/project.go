@@ -3,6 +3,7 @@
 package ent
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/google/uuid"
 	"github.com/kilip/opus/ent/project"
+	"github.com/kilip/opus/ent/trackersync"
 )
 
 // Project is the model entity for the Project schema.
@@ -32,6 +34,8 @@ type Project struct {
 	TrackerRef string `json:"tracker_ref,omitempty"`
 	// DefaultBranch holds the value of the "default_branch" field.
 	DefaultBranch string `json:"default_branch,omitempty"`
+	// TrackerLabels holds the value of the "tracker_labels" field.
+	TrackerLabels map[string]string `json:"tracker_labels,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
@@ -48,9 +52,11 @@ type ProjectEdges struct {
 	ProjectNodes []*ProjectNode `json:"project_nodes,omitempty"`
 	// Tasks holds the value of the tasks edge.
 	Tasks []*Task `json:"tasks,omitempty"`
+	// TrackerSync holds the value of the tracker_sync edge.
+	TrackerSync *TrackerSync `json:"tracker_sync,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [3]bool
 }
 
 // ProjectNodesOrErr returns the ProjectNodes value or an error if the edge
@@ -71,11 +77,24 @@ func (e ProjectEdges) TasksOrErr() ([]*Task, error) {
 	return nil, &NotLoadedError{edge: "tasks"}
 }
 
+// TrackerSyncOrErr returns the TrackerSync value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e ProjectEdges) TrackerSyncOrErr() (*TrackerSync, error) {
+	if e.TrackerSync != nil {
+		return e.TrackerSync, nil
+	} else if e.loadedTypes[2] {
+		return nil, &NotFoundError{label: trackersync.Label}
+	}
+	return nil, &NotLoadedError{edge: "tracker_sync"}
+}
+
 // scanValues returns the types for scanning values from sql.Rows.
 func (*Project) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case project.FieldTrackerLabels:
+			values[i] = new([]byte)
 		case project.FieldSlug, project.FieldName, project.FieldRepoProvider, project.FieldRepoRef, project.FieldTrackerProvider, project.FieldTrackerRef, project.FieldDefaultBranch:
 			values[i] = new(sql.NullString)
 		case project.FieldCreatedAt, project.FieldUpdatedAt:
@@ -145,6 +164,14 @@ func (_m *Project) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.DefaultBranch = value.String
 			}
+		case project.FieldTrackerLabels:
+			if value, ok := values[i].(*[]byte); !ok {
+				return fmt.Errorf("unexpected type %T for field tracker_labels", values[i])
+			} else if value != nil && len(*value) > 0 {
+				if err := json.Unmarshal(*value, &_m.TrackerLabels); err != nil {
+					return fmt.Errorf("unmarshal field tracker_labels: %w", err)
+				}
+			}
 		case project.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field created_at", values[i])
@@ -178,6 +205,11 @@ func (_m *Project) QueryProjectNodes() *ProjectNodeQuery {
 // QueryTasks queries the "tasks" edge of the Project entity.
 func (_m *Project) QueryTasks() *TaskQuery {
 	return NewProjectClient(_m.config).QueryTasks(_m)
+}
+
+// QueryTrackerSync queries the "tracker_sync" edge of the Project entity.
+func (_m *Project) QueryTrackerSync() *TrackerSyncQuery {
+	return NewProjectClient(_m.config).QueryTrackerSync(_m)
 }
 
 // Update returns a builder for updating this Project.
@@ -223,6 +255,9 @@ func (_m *Project) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("default_branch=")
 	builder.WriteString(_m.DefaultBranch)
+	builder.WriteString(", ")
+	builder.WriteString("tracker_labels=")
+	builder.WriteString(fmt.Sprintf("%v", _m.TrackerLabels))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

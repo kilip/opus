@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"maps"
 
 	"github.com/google/uuid"
 	"github.com/kilip/opus/ent"
@@ -24,6 +25,10 @@ func toDomain(p *ent.Project) domain.Project {
 	if p == nil {
 		return domain.Project{}
 	}
+	var trackerLabels map[string]string
+	if len(p.TrackerLabels) > 0 {
+		trackerLabels = maps.Clone(p.TrackerLabels)
+	}
 	return domain.Project{
 		ID:              p.ID.String(),
 		Slug:            p.Slug,
@@ -33,6 +38,7 @@ func toDomain(p *ent.Project) domain.Project {
 		TrackerProvider: p.TrackerProvider,
 		TrackerRef:      p.TrackerRef,
 		DefaultBranch:   p.DefaultBranch,
+		TrackerLabels:   trackerLabels,
 		CreatedAt:       p.CreatedAt,
 		UpdatedAt:       p.UpdatedAt,
 	}
@@ -107,6 +113,11 @@ func (r *Ent) Update(ctx context.Context, id string, in domain.UpdateProjectRequ
 	}
 	if in.TrackerRef != nil {
 		u.SetTrackerRef(*in.TrackerRef)
+	}
+	if in.ClearTrackerLabels {
+		u.ClearTrackerLabels()
+	} else if in.TrackerLabels != nil {
+		u.SetTrackerLabels(in.TrackerLabels)
 	}
 	p, err := u.Save(ctx)
 	if err != nil {

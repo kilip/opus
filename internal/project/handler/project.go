@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 
@@ -141,6 +142,12 @@ func (h *Handler) Update(c fiber.Ctx) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return httpx.BadRequest(err)
 	}
+	if rawLabels, ok := raw["trackerLabels"]; ok {
+		if bytes.Equal(bytes.TrimSpace(rawLabels), []byte("null")) || len(req.TrackerLabels) == 0 {
+			req.ClearTrackerLabels = true
+			req.TrackerLabels = nil
+		}
+	}
 	p, err := h.svc.Update(c.Context(), c.Params("id"), req)
 	if err != nil {
 		return mapErr(err)
@@ -234,6 +241,8 @@ func mapErr(err error) error {
 		errors.Is(err, domain.ErrPatchForbidden),
 		errors.Is(err, domain.ErrInvalidPath):
 		return httpx.BadRequest(err)
+	case errors.Is(err, domain.ErrInvalidTrackerLabels):
+		return httpx.BadRequest(domain.ErrInvalidTrackerLabels)
 	case errors.Is(err, domain.ErrDuplicateSlug),
 		errors.Is(err, domain.ErrProjectHasTasks):
 		return httpx.Conflict(err)

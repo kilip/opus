@@ -24,6 +24,8 @@ import (
 	"github.com/kilip/opus/ent/projectnode"
 	"github.com/kilip/opus/ent/session"
 	"github.com/kilip/opus/ent/task"
+	"github.com/kilip/opus/ent/trackersettings"
+	"github.com/kilip/opus/ent/trackersync"
 	"github.com/kilip/opus/ent/user"
 )
 
@@ -36,18 +38,20 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeAccount     = "Account"
-	TypeActivity    = "Activity"
-	TypeAuditLog    = "AuditLog"
-	TypeCounter     = "Counter"
-	TypeJoinToken   = "JoinToken"
-	TypeNode        = "Node"
-	TypeOTP         = "OTP"
-	TypeProject     = "Project"
-	TypeProjectNode = "ProjectNode"
-	TypeSession     = "Session"
-	TypeTask        = "Task"
-	TypeUser        = "User"
+	TypeAccount         = "Account"
+	TypeActivity        = "Activity"
+	TypeAuditLog        = "AuditLog"
+	TypeCounter         = "Counter"
+	TypeJoinToken       = "JoinToken"
+	TypeNode            = "Node"
+	TypeOTP             = "OTP"
+	TypeProject         = "Project"
+	TypeProjectNode     = "ProjectNode"
+	TypeSession         = "Session"
+	TypeTask            = "Task"
+	TypeTrackerSettings = "TrackerSettings"
+	TypeTrackerSync     = "TrackerSync"
+	TypeUser            = "User"
 )
 
 // AccountMutation represents an operation that mutates the Account nodes in the graph.
@@ -4117,6 +4121,7 @@ type ProjectMutation struct {
 	tracker_provider     *string
 	tracker_ref          *string
 	default_branch       *string
+	tracker_labels       *map[string]string
 	created_at           *time.Time
 	updated_at           *time.Time
 	clearedFields        map[string]struct{}
@@ -4126,6 +4131,8 @@ type ProjectMutation struct {
 	tasks                map[uuid.UUID]struct{}
 	removedtasks         map[uuid.UUID]struct{}
 	clearedtasks         bool
+	tracker_sync         *uuid.UUID
+	clearedtracker_sync  bool
 	done                 bool
 	oldValue             func(context.Context) (*Project, error)
 	predicates           []predicate.Project
@@ -4487,6 +4494,55 @@ func (m *ProjectMutation) ResetDefaultBranch() {
 	m.default_branch = nil
 }
 
+// SetTrackerLabels sets the "tracker_labels" field.
+func (m *ProjectMutation) SetTrackerLabels(value map[string]string) {
+	m.tracker_labels = &value
+}
+
+// TrackerLabels returns the value of the "tracker_labels" field in the mutation.
+func (m *ProjectMutation) TrackerLabels() (r map[string]string, exists bool) {
+	v := m.tracker_labels
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTrackerLabels returns the old "tracker_labels" field's value of the Project entity.
+// If the Project object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *ProjectMutation) OldTrackerLabels(ctx context.Context) (v map[string]string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTrackerLabels is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTrackerLabels requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTrackerLabels: %w", err)
+	}
+	return oldValue.TrackerLabels, nil
+}
+
+// ClearTrackerLabels clears the value of the "tracker_labels" field.
+func (m *ProjectMutation) ClearTrackerLabels() {
+	m.tracker_labels = nil
+	m.clearedFields[project.FieldTrackerLabels] = struct{}{}
+}
+
+// TrackerLabelsCleared returns if the "tracker_labels" field was cleared in this mutation.
+func (m *ProjectMutation) TrackerLabelsCleared() bool {
+	_, ok := m.clearedFields[project.FieldTrackerLabels]
+	return ok
+}
+
+// ResetTrackerLabels resets all changes to the "tracker_labels" field.
+func (m *ProjectMutation) ResetTrackerLabels() {
+	m.tracker_labels = nil
+	delete(m.clearedFields, project.FieldTrackerLabels)
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *ProjectMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -4667,6 +4723,45 @@ func (m *ProjectMutation) ResetTasks() {
 	m.removedtasks = nil
 }
 
+// SetTrackerSyncID sets the "tracker_sync" edge to the TrackerSync entity by id.
+func (m *ProjectMutation) SetTrackerSyncID(id uuid.UUID) {
+	m.tracker_sync = &id
+}
+
+// ClearTrackerSync clears the "tracker_sync" edge to the TrackerSync entity.
+func (m *ProjectMutation) ClearTrackerSync() {
+	m.clearedtracker_sync = true
+}
+
+// TrackerSyncCleared reports if the "tracker_sync" edge to the TrackerSync entity was cleared.
+func (m *ProjectMutation) TrackerSyncCleared() bool {
+	return m.clearedtracker_sync
+}
+
+// TrackerSyncID returns the "tracker_sync" edge ID in the mutation.
+func (m *ProjectMutation) TrackerSyncID() (id uuid.UUID, exists bool) {
+	if m.tracker_sync != nil {
+		return *m.tracker_sync, true
+	}
+	return
+}
+
+// TrackerSyncIDs returns the "tracker_sync" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// TrackerSyncID instead. It exists only for internal usage by the builders.
+func (m *ProjectMutation) TrackerSyncIDs() (ids []uuid.UUID) {
+	if id := m.tracker_sync; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetTrackerSync resets all changes to the "tracker_sync" edge.
+func (m *ProjectMutation) ResetTrackerSync() {
+	m.tracker_sync = nil
+	m.clearedtracker_sync = false
+}
+
 // Where appends a list predicates to the ProjectMutation builder.
 func (m *ProjectMutation) Where(ps ...predicate.Project) {
 	m.predicates = append(m.predicates, ps...)
@@ -4701,7 +4796,7 @@ func (m *ProjectMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *ProjectMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 10)
 	if m.slug != nil {
 		fields = append(fields, project.FieldSlug)
 	}
@@ -4722,6 +4817,9 @@ func (m *ProjectMutation) Fields() []string {
 	}
 	if m.default_branch != nil {
 		fields = append(fields, project.FieldDefaultBranch)
+	}
+	if m.tracker_labels != nil {
+		fields = append(fields, project.FieldTrackerLabels)
 	}
 	if m.created_at != nil {
 		fields = append(fields, project.FieldCreatedAt)
@@ -4751,6 +4849,8 @@ func (m *ProjectMutation) Field(name string) (ent.Value, bool) {
 		return m.TrackerRef()
 	case project.FieldDefaultBranch:
 		return m.DefaultBranch()
+	case project.FieldTrackerLabels:
+		return m.TrackerLabels()
 	case project.FieldCreatedAt:
 		return m.CreatedAt()
 	case project.FieldUpdatedAt:
@@ -4778,6 +4878,8 @@ func (m *ProjectMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldTrackerRef(ctx)
 	case project.FieldDefaultBranch:
 		return m.OldDefaultBranch(ctx)
+	case project.FieldTrackerLabels:
+		return m.OldTrackerLabels(ctx)
 	case project.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case project.FieldUpdatedAt:
@@ -4840,6 +4942,13 @@ func (m *ProjectMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetDefaultBranch(v)
 		return nil
+	case project.FieldTrackerLabels:
+		v, ok := value.(map[string]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTrackerLabels(v)
+		return nil
 	case project.FieldCreatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -4883,7 +4992,11 @@ func (m *ProjectMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *ProjectMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(project.FieldTrackerLabels) {
+		fields = append(fields, project.FieldTrackerLabels)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -4896,6 +5009,11 @@ func (m *ProjectMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *ProjectMutation) ClearField(name string) error {
+	switch name {
+	case project.FieldTrackerLabels:
+		m.ClearTrackerLabels()
+		return nil
+	}
 	return fmt.Errorf("unknown Project nullable field %s", name)
 }
 
@@ -4924,6 +5042,9 @@ func (m *ProjectMutation) ResetField(name string) error {
 	case project.FieldDefaultBranch:
 		m.ResetDefaultBranch()
 		return nil
+	case project.FieldTrackerLabels:
+		m.ResetTrackerLabels()
+		return nil
 	case project.FieldCreatedAt:
 		m.ResetCreatedAt()
 		return nil
@@ -4936,12 +5057,15 @@ func (m *ProjectMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ProjectMutation) AddedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.project_nodes != nil {
 		edges = append(edges, project.EdgeProjectNodes)
 	}
 	if m.tasks != nil {
 		edges = append(edges, project.EdgeTasks)
+	}
+	if m.tracker_sync != nil {
+		edges = append(edges, project.EdgeTrackerSync)
 	}
 	return edges
 }
@@ -4962,13 +5086,17 @@ func (m *ProjectMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case project.EdgeTrackerSync:
+		if id := m.tracker_sync; id != nil {
+			return []ent.Value{*id}
+		}
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ProjectMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.removedproject_nodes != nil {
 		edges = append(edges, project.EdgeProjectNodes)
 	}
@@ -5000,12 +5128,15 @@ func (m *ProjectMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ProjectMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.clearedproject_nodes {
 		edges = append(edges, project.EdgeProjectNodes)
 	}
 	if m.clearedtasks {
 		edges = append(edges, project.EdgeTasks)
+	}
+	if m.clearedtracker_sync {
+		edges = append(edges, project.EdgeTrackerSync)
 	}
 	return edges
 }
@@ -5018,6 +5149,8 @@ func (m *ProjectMutation) EdgeCleared(name string) bool {
 		return m.clearedproject_nodes
 	case project.EdgeTasks:
 		return m.clearedtasks
+	case project.EdgeTrackerSync:
+		return m.clearedtracker_sync
 	}
 	return false
 }
@@ -5026,6 +5159,9 @@ func (m *ProjectMutation) EdgeCleared(name string) bool {
 // if that edge is not defined in the schema.
 func (m *ProjectMutation) ClearEdge(name string) error {
 	switch name {
+	case project.EdgeTrackerSync:
+		m.ClearTrackerSync()
+		return nil
 	}
 	return fmt.Errorf("unknown Project unique edge %s", name)
 }
@@ -5039,6 +5175,9 @@ func (m *ProjectMutation) ResetEdge(name string) error {
 		return nil
 	case project.EdgeTasks:
 		m.ResetTasks()
+		return nil
+	case project.EdgeTrackerSync:
+		m.ResetTrackerSync()
 		return nil
 	}
 	return fmt.Errorf("unknown Project edge %s", name)
@@ -7563,6 +7702,984 @@ func (m *TaskMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown Task edge %s", name)
+}
+
+// TrackerSettingsMutation represents an operation that mutates the TrackerSettings nodes in the graph.
+type TrackerSettingsMutation struct {
+	config
+	op            Op
+	typ           string
+	id            *uuid.UUID
+	status_labels *map[string]string
+	updated_at    *time.Time
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*TrackerSettings, error)
+	predicates    []predicate.TrackerSettings
+}
+
+var _ ent.Mutation = (*TrackerSettingsMutation)(nil)
+
+// trackersettingsOption allows management of the mutation configuration using functional options.
+type trackersettingsOption func(*TrackerSettingsMutation)
+
+// newTrackerSettingsMutation creates new mutation for the TrackerSettings entity.
+func newTrackerSettingsMutation(c config, op Op, opts ...trackersettingsOption) *TrackerSettingsMutation {
+	m := &TrackerSettingsMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeTrackerSettings,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withTrackerSettingsID sets the ID field of the mutation.
+func withTrackerSettingsID(id uuid.UUID) trackersettingsOption {
+	return func(m *TrackerSettingsMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *TrackerSettings
+		)
+		m.oldValue = func(ctx context.Context) (*TrackerSettings, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().TrackerSettings.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withTrackerSettings sets the old TrackerSettings of the mutation.
+func withTrackerSettings(node *TrackerSettings) trackersettingsOption {
+	return func(m *TrackerSettingsMutation) {
+		m.oldValue = func(context.Context) (*TrackerSettings, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m TrackerSettingsMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m TrackerSettingsMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of TrackerSettings entities.
+func (m *TrackerSettingsMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *TrackerSettingsMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *TrackerSettingsMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().TrackerSettings.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetStatusLabels sets the "status_labels" field.
+func (m *TrackerSettingsMutation) SetStatusLabels(value map[string]string) {
+	m.status_labels = &value
+}
+
+// StatusLabels returns the value of the "status_labels" field in the mutation.
+func (m *TrackerSettingsMutation) StatusLabels() (r map[string]string, exists bool) {
+	v := m.status_labels
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatusLabels returns the old "status_labels" field's value of the TrackerSettings entity.
+// If the TrackerSettings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TrackerSettingsMutation) OldStatusLabels(ctx context.Context) (v map[string]string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatusLabels is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatusLabels requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatusLabels: %w", err)
+	}
+	return oldValue.StatusLabels, nil
+}
+
+// ClearStatusLabels clears the value of the "status_labels" field.
+func (m *TrackerSettingsMutation) ClearStatusLabels() {
+	m.status_labels = nil
+	m.clearedFields[trackersettings.FieldStatusLabels] = struct{}{}
+}
+
+// StatusLabelsCleared returns if the "status_labels" field was cleared in this mutation.
+func (m *TrackerSettingsMutation) StatusLabelsCleared() bool {
+	_, ok := m.clearedFields[trackersettings.FieldStatusLabels]
+	return ok
+}
+
+// ResetStatusLabels resets all changes to the "status_labels" field.
+func (m *TrackerSettingsMutation) ResetStatusLabels() {
+	m.status_labels = nil
+	delete(m.clearedFields, trackersettings.FieldStatusLabels)
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *TrackerSettingsMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *TrackerSettingsMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the TrackerSettings entity.
+// If the TrackerSettings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TrackerSettingsMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *TrackerSettingsMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// Where appends a list predicates to the TrackerSettingsMutation builder.
+func (m *TrackerSettingsMutation) Where(ps ...predicate.TrackerSettings) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the TrackerSettingsMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *TrackerSettingsMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.TrackerSettings, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *TrackerSettingsMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *TrackerSettingsMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (TrackerSettings).
+func (m *TrackerSettingsMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *TrackerSettingsMutation) Fields() []string {
+	fields := make([]string, 0, 2)
+	if m.status_labels != nil {
+		fields = append(fields, trackersettings.FieldStatusLabels)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, trackersettings.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *TrackerSettingsMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case trackersettings.FieldStatusLabels:
+		return m.StatusLabels()
+	case trackersettings.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *TrackerSettingsMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case trackersettings.FieldStatusLabels:
+		return m.OldStatusLabels(ctx)
+	case trackersettings.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown TrackerSettings field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *TrackerSettingsMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case trackersettings.FieldStatusLabels:
+		v, ok := value.(map[string]string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatusLabels(v)
+		return nil
+	case trackersettings.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown TrackerSettings field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *TrackerSettingsMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *TrackerSettingsMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *TrackerSettingsMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown TrackerSettings numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *TrackerSettingsMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(trackersettings.FieldStatusLabels) {
+		fields = append(fields, trackersettings.FieldStatusLabels)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *TrackerSettingsMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *TrackerSettingsMutation) ClearField(name string) error {
+	switch name {
+	case trackersettings.FieldStatusLabels:
+		m.ClearStatusLabels()
+		return nil
+	}
+	return fmt.Errorf("unknown TrackerSettings nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *TrackerSettingsMutation) ResetField(name string) error {
+	switch name {
+	case trackersettings.FieldStatusLabels:
+		m.ResetStatusLabels()
+		return nil
+	case trackersettings.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown TrackerSettings field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *TrackerSettingsMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *TrackerSettingsMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *TrackerSettingsMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *TrackerSettingsMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *TrackerSettingsMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *TrackerSettingsMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *TrackerSettingsMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown TrackerSettings unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *TrackerSettingsMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown TrackerSettings edge %s", name)
+}
+
+// TrackerSyncMutation represents an operation that mutates the TrackerSync nodes in the graph.
+type TrackerSyncMutation struct {
+	config
+	op             Op
+	typ            string
+	id             *uuid.UUID
+	cursor         *string
+	last_sync_at   *time.Time
+	last_error     *string
+	clearedFields  map[string]struct{}
+	project        *uuid.UUID
+	clearedproject bool
+	done           bool
+	oldValue       func(context.Context) (*TrackerSync, error)
+	predicates     []predicate.TrackerSync
+}
+
+var _ ent.Mutation = (*TrackerSyncMutation)(nil)
+
+// trackersyncOption allows management of the mutation configuration using functional options.
+type trackersyncOption func(*TrackerSyncMutation)
+
+// newTrackerSyncMutation creates new mutation for the TrackerSync entity.
+func newTrackerSyncMutation(c config, op Op, opts ...trackersyncOption) *TrackerSyncMutation {
+	m := &TrackerSyncMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeTrackerSync,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withTrackerSyncID sets the ID field of the mutation.
+func withTrackerSyncID(id uuid.UUID) trackersyncOption {
+	return func(m *TrackerSyncMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *TrackerSync
+		)
+		m.oldValue = func(ctx context.Context) (*TrackerSync, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().TrackerSync.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withTrackerSync sets the old TrackerSync of the mutation.
+func withTrackerSync(node *TrackerSync) trackersyncOption {
+	return func(m *TrackerSyncMutation) {
+		m.oldValue = func(context.Context) (*TrackerSync, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m TrackerSyncMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m TrackerSyncMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of TrackerSync entities.
+func (m *TrackerSyncMutation) SetID(id uuid.UUID) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *TrackerSyncMutation) ID() (id uuid.UUID, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *TrackerSyncMutation) IDs(ctx context.Context) ([]uuid.UUID, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []uuid.UUID{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().TrackerSync.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetProjectID sets the "project_id" field.
+func (m *TrackerSyncMutation) SetProjectID(u uuid.UUID) {
+	m.project = &u
+}
+
+// ProjectID returns the value of the "project_id" field in the mutation.
+func (m *TrackerSyncMutation) ProjectID() (r uuid.UUID, exists bool) {
+	v := m.project
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldProjectID returns the old "project_id" field's value of the TrackerSync entity.
+// If the TrackerSync object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TrackerSyncMutation) OldProjectID(ctx context.Context) (v uuid.UUID, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldProjectID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldProjectID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldProjectID: %w", err)
+	}
+	return oldValue.ProjectID, nil
+}
+
+// ResetProjectID resets all changes to the "project_id" field.
+func (m *TrackerSyncMutation) ResetProjectID() {
+	m.project = nil
+}
+
+// SetCursor sets the "cursor" field.
+func (m *TrackerSyncMutation) SetCursor(s string) {
+	m.cursor = &s
+}
+
+// Cursor returns the value of the "cursor" field in the mutation.
+func (m *TrackerSyncMutation) Cursor() (r string, exists bool) {
+	v := m.cursor
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCursor returns the old "cursor" field's value of the TrackerSync entity.
+// If the TrackerSync object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TrackerSyncMutation) OldCursor(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCursor is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCursor requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCursor: %w", err)
+	}
+	return oldValue.Cursor, nil
+}
+
+// ResetCursor resets all changes to the "cursor" field.
+func (m *TrackerSyncMutation) ResetCursor() {
+	m.cursor = nil
+}
+
+// SetLastSyncAt sets the "last_sync_at" field.
+func (m *TrackerSyncMutation) SetLastSyncAt(t time.Time) {
+	m.last_sync_at = &t
+}
+
+// LastSyncAt returns the value of the "last_sync_at" field in the mutation.
+func (m *TrackerSyncMutation) LastSyncAt() (r time.Time, exists bool) {
+	v := m.last_sync_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastSyncAt returns the old "last_sync_at" field's value of the TrackerSync entity.
+// If the TrackerSync object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TrackerSyncMutation) OldLastSyncAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastSyncAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastSyncAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastSyncAt: %w", err)
+	}
+	return oldValue.LastSyncAt, nil
+}
+
+// ClearLastSyncAt clears the value of the "last_sync_at" field.
+func (m *TrackerSyncMutation) ClearLastSyncAt() {
+	m.last_sync_at = nil
+	m.clearedFields[trackersync.FieldLastSyncAt] = struct{}{}
+}
+
+// LastSyncAtCleared returns if the "last_sync_at" field was cleared in this mutation.
+func (m *TrackerSyncMutation) LastSyncAtCleared() bool {
+	_, ok := m.clearedFields[trackersync.FieldLastSyncAt]
+	return ok
+}
+
+// ResetLastSyncAt resets all changes to the "last_sync_at" field.
+func (m *TrackerSyncMutation) ResetLastSyncAt() {
+	m.last_sync_at = nil
+	delete(m.clearedFields, trackersync.FieldLastSyncAt)
+}
+
+// SetLastError sets the "last_error" field.
+func (m *TrackerSyncMutation) SetLastError(s string) {
+	m.last_error = &s
+}
+
+// LastError returns the value of the "last_error" field in the mutation.
+func (m *TrackerSyncMutation) LastError() (r string, exists bool) {
+	v := m.last_error
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastError returns the old "last_error" field's value of the TrackerSync entity.
+// If the TrackerSync object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TrackerSyncMutation) OldLastError(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastError is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastError requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastError: %w", err)
+	}
+	return oldValue.LastError, nil
+}
+
+// ResetLastError resets all changes to the "last_error" field.
+func (m *TrackerSyncMutation) ResetLastError() {
+	m.last_error = nil
+}
+
+// ClearProject clears the "project" edge to the Project entity.
+func (m *TrackerSyncMutation) ClearProject() {
+	m.clearedproject = true
+	m.clearedFields[trackersync.FieldProjectID] = struct{}{}
+}
+
+// ProjectCleared reports if the "project" edge to the Project entity was cleared.
+func (m *TrackerSyncMutation) ProjectCleared() bool {
+	return m.clearedproject
+}
+
+// ProjectIDs returns the "project" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ProjectID instead. It exists only for internal usage by the builders.
+func (m *TrackerSyncMutation) ProjectIDs() (ids []uuid.UUID) {
+	if id := m.project; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetProject resets all changes to the "project" edge.
+func (m *TrackerSyncMutation) ResetProject() {
+	m.project = nil
+	m.clearedproject = false
+}
+
+// Where appends a list predicates to the TrackerSyncMutation builder.
+func (m *TrackerSyncMutation) Where(ps ...predicate.TrackerSync) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the TrackerSyncMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *TrackerSyncMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.TrackerSync, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *TrackerSyncMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *TrackerSyncMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (TrackerSync).
+func (m *TrackerSyncMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *TrackerSyncMutation) Fields() []string {
+	fields := make([]string, 0, 4)
+	if m.project != nil {
+		fields = append(fields, trackersync.FieldProjectID)
+	}
+	if m.cursor != nil {
+		fields = append(fields, trackersync.FieldCursor)
+	}
+	if m.last_sync_at != nil {
+		fields = append(fields, trackersync.FieldLastSyncAt)
+	}
+	if m.last_error != nil {
+		fields = append(fields, trackersync.FieldLastError)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *TrackerSyncMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case trackersync.FieldProjectID:
+		return m.ProjectID()
+	case trackersync.FieldCursor:
+		return m.Cursor()
+	case trackersync.FieldLastSyncAt:
+		return m.LastSyncAt()
+	case trackersync.FieldLastError:
+		return m.LastError()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *TrackerSyncMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case trackersync.FieldProjectID:
+		return m.OldProjectID(ctx)
+	case trackersync.FieldCursor:
+		return m.OldCursor(ctx)
+	case trackersync.FieldLastSyncAt:
+		return m.OldLastSyncAt(ctx)
+	case trackersync.FieldLastError:
+		return m.OldLastError(ctx)
+	}
+	return nil, fmt.Errorf("unknown TrackerSync field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *TrackerSyncMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case trackersync.FieldProjectID:
+		v, ok := value.(uuid.UUID)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetProjectID(v)
+		return nil
+	case trackersync.FieldCursor:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCursor(v)
+		return nil
+	case trackersync.FieldLastSyncAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastSyncAt(v)
+		return nil
+	case trackersync.FieldLastError:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastError(v)
+		return nil
+	}
+	return fmt.Errorf("unknown TrackerSync field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *TrackerSyncMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *TrackerSyncMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *TrackerSyncMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown TrackerSync numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *TrackerSyncMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(trackersync.FieldLastSyncAt) {
+		fields = append(fields, trackersync.FieldLastSyncAt)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *TrackerSyncMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *TrackerSyncMutation) ClearField(name string) error {
+	switch name {
+	case trackersync.FieldLastSyncAt:
+		m.ClearLastSyncAt()
+		return nil
+	}
+	return fmt.Errorf("unknown TrackerSync nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *TrackerSyncMutation) ResetField(name string) error {
+	switch name {
+	case trackersync.FieldProjectID:
+		m.ResetProjectID()
+		return nil
+	case trackersync.FieldCursor:
+		m.ResetCursor()
+		return nil
+	case trackersync.FieldLastSyncAt:
+		m.ResetLastSyncAt()
+		return nil
+	case trackersync.FieldLastError:
+		m.ResetLastError()
+		return nil
+	}
+	return fmt.Errorf("unknown TrackerSync field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *TrackerSyncMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.project != nil {
+		edges = append(edges, trackersync.EdgeProject)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *TrackerSyncMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case trackersync.EdgeProject:
+		if id := m.project; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *TrackerSyncMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *TrackerSyncMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *TrackerSyncMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedproject {
+		edges = append(edges, trackersync.EdgeProject)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *TrackerSyncMutation) EdgeCleared(name string) bool {
+	switch name {
+	case trackersync.EdgeProject:
+		return m.clearedproject
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *TrackerSyncMutation) ClearEdge(name string) error {
+	switch name {
+	case trackersync.EdgeProject:
+		m.ClearProject()
+		return nil
+	}
+	return fmt.Errorf("unknown TrackerSync unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *TrackerSyncMutation) ResetEdge(name string) error {
+	switch name {
+	case trackersync.EdgeProject:
+		m.ResetProject()
+		return nil
+	}
+	return fmt.Errorf("unknown TrackerSync edge %s", name)
 }
 
 // UserMutation represents an operation that mutates the User nodes in the graph.

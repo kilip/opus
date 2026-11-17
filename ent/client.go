@@ -27,6 +27,8 @@ import (
 	"github.com/kilip/opus/ent/projectnode"
 	"github.com/kilip/opus/ent/session"
 	"github.com/kilip/opus/ent/task"
+	"github.com/kilip/opus/ent/trackersettings"
+	"github.com/kilip/opus/ent/trackersync"
 	"github.com/kilip/opus/ent/user"
 )
 
@@ -57,6 +59,10 @@ type Client struct {
 	Session *SessionClient
 	// Task is the client for interacting with the Task builders.
 	Task *TaskClient
+	// TrackerSettings is the client for interacting with the TrackerSettings builders.
+	TrackerSettings *TrackerSettingsClient
+	// TrackerSync is the client for interacting with the TrackerSync builders.
+	TrackerSync *TrackerSyncClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 }
@@ -81,6 +87,8 @@ func (c *Client) init() {
 	c.ProjectNode = NewProjectNodeClient(c.config)
 	c.Session = NewSessionClient(c.config)
 	c.Task = NewTaskClient(c.config)
+	c.TrackerSettings = NewTrackerSettingsClient(c.config)
+	c.TrackerSync = NewTrackerSyncClient(c.config)
 	c.User = NewUserClient(c.config)
 }
 
@@ -172,20 +180,22 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:         ctx,
-		config:      cfg,
-		Account:     NewAccountClient(cfg),
-		Activity:    NewActivityClient(cfg),
-		AuditLog:    NewAuditLogClient(cfg),
-		Counter:     NewCounterClient(cfg),
-		JoinToken:   NewJoinTokenClient(cfg),
-		Node:        NewNodeClient(cfg),
-		OTP:         NewOTPClient(cfg),
-		Project:     NewProjectClient(cfg),
-		ProjectNode: NewProjectNodeClient(cfg),
-		Session:     NewSessionClient(cfg),
-		Task:        NewTaskClient(cfg),
-		User:        NewUserClient(cfg),
+		ctx:             ctx,
+		config:          cfg,
+		Account:         NewAccountClient(cfg),
+		Activity:        NewActivityClient(cfg),
+		AuditLog:        NewAuditLogClient(cfg),
+		Counter:         NewCounterClient(cfg),
+		JoinToken:       NewJoinTokenClient(cfg),
+		Node:            NewNodeClient(cfg),
+		OTP:             NewOTPClient(cfg),
+		Project:         NewProjectClient(cfg),
+		ProjectNode:     NewProjectNodeClient(cfg),
+		Session:         NewSessionClient(cfg),
+		Task:            NewTaskClient(cfg),
+		TrackerSettings: NewTrackerSettingsClient(cfg),
+		TrackerSync:     NewTrackerSyncClient(cfg),
+		User:            NewUserClient(cfg),
 	}, nil
 }
 
@@ -203,20 +213,22 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:         ctx,
-		config:      cfg,
-		Account:     NewAccountClient(cfg),
-		Activity:    NewActivityClient(cfg),
-		AuditLog:    NewAuditLogClient(cfg),
-		Counter:     NewCounterClient(cfg),
-		JoinToken:   NewJoinTokenClient(cfg),
-		Node:        NewNodeClient(cfg),
-		OTP:         NewOTPClient(cfg),
-		Project:     NewProjectClient(cfg),
-		ProjectNode: NewProjectNodeClient(cfg),
-		Session:     NewSessionClient(cfg),
-		Task:        NewTaskClient(cfg),
-		User:        NewUserClient(cfg),
+		ctx:             ctx,
+		config:          cfg,
+		Account:         NewAccountClient(cfg),
+		Activity:        NewActivityClient(cfg),
+		AuditLog:        NewAuditLogClient(cfg),
+		Counter:         NewCounterClient(cfg),
+		JoinToken:       NewJoinTokenClient(cfg),
+		Node:            NewNodeClient(cfg),
+		OTP:             NewOTPClient(cfg),
+		Project:         NewProjectClient(cfg),
+		ProjectNode:     NewProjectNodeClient(cfg),
+		Session:         NewSessionClient(cfg),
+		Task:            NewTaskClient(cfg),
+		TrackerSettings: NewTrackerSettingsClient(cfg),
+		TrackerSync:     NewTrackerSyncClient(cfg),
+		User:            NewUserClient(cfg),
 	}, nil
 }
 
@@ -247,7 +259,8 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Account, c.Activity, c.AuditLog, c.Counter, c.JoinToken, c.Node, c.OTP,
-		c.Project, c.ProjectNode, c.Session, c.Task, c.User,
+		c.Project, c.ProjectNode, c.Session, c.Task, c.TrackerSettings, c.TrackerSync,
+		c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -258,7 +271,8 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Account, c.Activity, c.AuditLog, c.Counter, c.JoinToken, c.Node, c.OTP,
-		c.Project, c.ProjectNode, c.Session, c.Task, c.User,
+		c.Project, c.ProjectNode, c.Session, c.Task, c.TrackerSettings, c.TrackerSync,
+		c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -289,6 +303,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Session.mutate(ctx, m)
 	case *TaskMutation:
 		return c.Task.mutate(ctx, m)
+	case *TrackerSettingsMutation:
+		return c.TrackerSettings.mutate(ctx, m)
+	case *TrackerSyncMutation:
+		return c.TrackerSync.mutate(ctx, m)
 	case *UserMutation:
 		return c.User.mutate(ctx, m)
 	default:
@@ -1431,6 +1449,22 @@ func (c *ProjectClient) QueryTasks(_m *Project) *TaskQuery {
 	return query
 }
 
+// QueryTrackerSync queries the tracker_sync edge of a Project.
+func (c *ProjectClient) QueryTrackerSync(_m *Project) *TrackerSyncQuery {
+	query := (&TrackerSyncClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, id),
+			sqlgraph.To(trackersync.Table, trackersync.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, project.TrackerSyncTable, project.TrackerSyncColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *ProjectClient) Hooks() []Hook {
 	return c.hooks.Project
@@ -1935,6 +1969,288 @@ func (c *TaskClient) mutate(ctx context.Context, m *TaskMutation) (Value, error)
 	}
 }
 
+// TrackerSettingsClient is a client for the TrackerSettings schema.
+type TrackerSettingsClient struct {
+	config
+}
+
+// NewTrackerSettingsClient returns a client for the TrackerSettings from the given config.
+func NewTrackerSettingsClient(c config) *TrackerSettingsClient {
+	return &TrackerSettingsClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `trackersettings.Hooks(f(g(h())))`.
+func (c *TrackerSettingsClient) Use(hooks ...Hook) {
+	c.hooks.TrackerSettings = append(c.hooks.TrackerSettings, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `trackersettings.Intercept(f(g(h())))`.
+func (c *TrackerSettingsClient) Intercept(interceptors ...Interceptor) {
+	c.inters.TrackerSettings = append(c.inters.TrackerSettings, interceptors...)
+}
+
+// Create returns a builder for creating a TrackerSettings entity.
+func (c *TrackerSettingsClient) Create() *TrackerSettingsCreate {
+	mutation := newTrackerSettingsMutation(c.config, OpCreate)
+	return &TrackerSettingsCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of TrackerSettings entities.
+func (c *TrackerSettingsClient) CreateBulk(builders ...*TrackerSettingsCreate) *TrackerSettingsCreateBulk {
+	return &TrackerSettingsCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *TrackerSettingsClient) MapCreateBulk(slice any, setFunc func(*TrackerSettingsCreate, int)) *TrackerSettingsCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &TrackerSettingsCreateBulk{err: fmt.Errorf("calling to TrackerSettingsClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*TrackerSettingsCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &TrackerSettingsCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for TrackerSettings.
+func (c *TrackerSettingsClient) Update() *TrackerSettingsUpdate {
+	mutation := newTrackerSettingsMutation(c.config, OpUpdate)
+	return &TrackerSettingsUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *TrackerSettingsClient) UpdateOne(_m *TrackerSettings) *TrackerSettingsUpdateOne {
+	mutation := newTrackerSettingsMutation(c.config, OpUpdateOne, withTrackerSettings(_m))
+	return &TrackerSettingsUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *TrackerSettingsClient) UpdateOneID(id uuid.UUID) *TrackerSettingsUpdateOne {
+	mutation := newTrackerSettingsMutation(c.config, OpUpdateOne, withTrackerSettingsID(id))
+	return &TrackerSettingsUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for TrackerSettings.
+func (c *TrackerSettingsClient) Delete() *TrackerSettingsDelete {
+	mutation := newTrackerSettingsMutation(c.config, OpDelete)
+	return &TrackerSettingsDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *TrackerSettingsClient) DeleteOne(_m *TrackerSettings) *TrackerSettingsDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *TrackerSettingsClient) DeleteOneID(id uuid.UUID) *TrackerSettingsDeleteOne {
+	builder := c.Delete().Where(trackersettings.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &TrackerSettingsDeleteOne{builder}
+}
+
+// Query returns a query builder for TrackerSettings.
+func (c *TrackerSettingsClient) Query() *TrackerSettingsQuery {
+	return &TrackerSettingsQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeTrackerSettings},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a TrackerSettings entity by its id.
+func (c *TrackerSettingsClient) Get(ctx context.Context, id uuid.UUID) (*TrackerSettings, error) {
+	return c.Query().Where(trackersettings.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *TrackerSettingsClient) GetX(ctx context.Context, id uuid.UUID) *TrackerSettings {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *TrackerSettingsClient) Hooks() []Hook {
+	return c.hooks.TrackerSettings
+}
+
+// Interceptors returns the client interceptors.
+func (c *TrackerSettingsClient) Interceptors() []Interceptor {
+	return c.inters.TrackerSettings
+}
+
+func (c *TrackerSettingsClient) mutate(ctx context.Context, m *TrackerSettingsMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&TrackerSettingsCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&TrackerSettingsUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&TrackerSettingsUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&TrackerSettingsDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown TrackerSettings mutation op: %q", m.Op())
+	}
+}
+
+// TrackerSyncClient is a client for the TrackerSync schema.
+type TrackerSyncClient struct {
+	config
+}
+
+// NewTrackerSyncClient returns a client for the TrackerSync from the given config.
+func NewTrackerSyncClient(c config) *TrackerSyncClient {
+	return &TrackerSyncClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `trackersync.Hooks(f(g(h())))`.
+func (c *TrackerSyncClient) Use(hooks ...Hook) {
+	c.hooks.TrackerSync = append(c.hooks.TrackerSync, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `trackersync.Intercept(f(g(h())))`.
+func (c *TrackerSyncClient) Intercept(interceptors ...Interceptor) {
+	c.inters.TrackerSync = append(c.inters.TrackerSync, interceptors...)
+}
+
+// Create returns a builder for creating a TrackerSync entity.
+func (c *TrackerSyncClient) Create() *TrackerSyncCreate {
+	mutation := newTrackerSyncMutation(c.config, OpCreate)
+	return &TrackerSyncCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of TrackerSync entities.
+func (c *TrackerSyncClient) CreateBulk(builders ...*TrackerSyncCreate) *TrackerSyncCreateBulk {
+	return &TrackerSyncCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *TrackerSyncClient) MapCreateBulk(slice any, setFunc func(*TrackerSyncCreate, int)) *TrackerSyncCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &TrackerSyncCreateBulk{err: fmt.Errorf("calling to TrackerSyncClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*TrackerSyncCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &TrackerSyncCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for TrackerSync.
+func (c *TrackerSyncClient) Update() *TrackerSyncUpdate {
+	mutation := newTrackerSyncMutation(c.config, OpUpdate)
+	return &TrackerSyncUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *TrackerSyncClient) UpdateOne(_m *TrackerSync) *TrackerSyncUpdateOne {
+	mutation := newTrackerSyncMutation(c.config, OpUpdateOne, withTrackerSync(_m))
+	return &TrackerSyncUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *TrackerSyncClient) UpdateOneID(id uuid.UUID) *TrackerSyncUpdateOne {
+	mutation := newTrackerSyncMutation(c.config, OpUpdateOne, withTrackerSyncID(id))
+	return &TrackerSyncUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for TrackerSync.
+func (c *TrackerSyncClient) Delete() *TrackerSyncDelete {
+	mutation := newTrackerSyncMutation(c.config, OpDelete)
+	return &TrackerSyncDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *TrackerSyncClient) DeleteOne(_m *TrackerSync) *TrackerSyncDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *TrackerSyncClient) DeleteOneID(id uuid.UUID) *TrackerSyncDeleteOne {
+	builder := c.Delete().Where(trackersync.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &TrackerSyncDeleteOne{builder}
+}
+
+// Query returns a query builder for TrackerSync.
+func (c *TrackerSyncClient) Query() *TrackerSyncQuery {
+	return &TrackerSyncQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeTrackerSync},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a TrackerSync entity by its id.
+func (c *TrackerSyncClient) Get(ctx context.Context, id uuid.UUID) (*TrackerSync, error) {
+	return c.Query().Where(trackersync.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *TrackerSyncClient) GetX(ctx context.Context, id uuid.UUID) *TrackerSync {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryProject queries the project edge of a TrackerSync.
+func (c *TrackerSyncClient) QueryProject(_m *TrackerSync) *ProjectQuery {
+	query := (&ProjectClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(trackersync.Table, trackersync.FieldID, id),
+			sqlgraph.To(project.Table, project.FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, true, trackersync.ProjectTable, trackersync.ProjectColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *TrackerSyncClient) Hooks() []Hook {
+	return c.hooks.TrackerSync
+}
+
+// Interceptors returns the client interceptors.
+func (c *TrackerSyncClient) Interceptors() []Interceptor {
+	return c.inters.TrackerSync
+}
+
+func (c *TrackerSyncClient) mutate(ctx context.Context, m *TrackerSyncMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&TrackerSyncCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&TrackerSyncUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&TrackerSyncUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&TrackerSyncDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown TrackerSync mutation op: %q", m.Op())
+	}
+}
+
 // UserClient is a client for the User schema.
 type UserClient struct {
 	config
@@ -2120,10 +2436,11 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 type (
 	hooks struct {
 		Account, Activity, AuditLog, Counter, JoinToken, Node, OTP, Project,
-		ProjectNode, Session, Task, User []ent.Hook
+		ProjectNode, Session, Task, TrackerSettings, TrackerSync, User []ent.Hook
 	}
 	inters struct {
 		Account, Activity, AuditLog, Counter, JoinToken, Node, OTP, Project,
-		ProjectNode, Session, Task, User []ent.Interceptor
+		ProjectNode, Session, Task, TrackerSettings, TrackerSync,
+		User []ent.Interceptor
 	}
 )

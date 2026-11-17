@@ -16,6 +16,7 @@ import (
 	"github.com/kilip/opus/ent/project"
 	"github.com/kilip/opus/ent/projectnode"
 	"github.com/kilip/opus/ent/task"
+	"github.com/kilip/opus/ent/trackersync"
 )
 
 // ProjectUpdate is the builder for updating Project entities.
@@ -115,6 +116,18 @@ func (_u *ProjectUpdate) SetNillableDefaultBranch(v *string) *ProjectUpdate {
 	return _u
 }
 
+// SetTrackerLabels sets the "tracker_labels" field.
+func (_u *ProjectUpdate) SetTrackerLabels(v map[string]string) *ProjectUpdate {
+	_u.mutation.SetTrackerLabels(v)
+	return _u
+}
+
+// ClearTrackerLabels clears the value of the "tracker_labels" field.
+func (_u *ProjectUpdate) ClearTrackerLabels() *ProjectUpdate {
+	_u.mutation.ClearTrackerLabels()
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *ProjectUpdate) SetUpdatedAt(v time.Time) *ProjectUpdate {
 	_u.mutation.SetUpdatedAt(v)
@@ -149,6 +162,25 @@ func (_u *ProjectUpdate) AddTasks(v ...*Task) *ProjectUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.AddTaskIDs(ids...)
+}
+
+// SetTrackerSyncID sets the "tracker_sync" edge to the TrackerSync entity by ID.
+func (_u *ProjectUpdate) SetTrackerSyncID(id uuid.UUID) *ProjectUpdate {
+	_u.mutation.SetTrackerSyncID(id)
+	return _u
+}
+
+// SetNillableTrackerSyncID sets the "tracker_sync" edge to the TrackerSync entity by ID if the given value is not nil.
+func (_u *ProjectUpdate) SetNillableTrackerSyncID(id *uuid.UUID) *ProjectUpdate {
+	if id != nil {
+		_u = _u.SetTrackerSyncID(*id)
+	}
+	return _u
+}
+
+// SetTrackerSync sets the "tracker_sync" edge to the TrackerSync entity.
+func (_u *ProjectUpdate) SetTrackerSync(v *TrackerSync) *ProjectUpdate {
+	return _u.SetTrackerSyncID(v.ID)
 }
 
 // Mutation returns the ProjectMutation object of the builder.
@@ -196,6 +228,12 @@ func (_u *ProjectUpdate) RemoveTasks(v ...*Task) *ProjectUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveTaskIDs(ids...)
+}
+
+// ClearTrackerSync clears the "tracker_sync" edge to the TrackerSync entity.
+func (_u *ProjectUpdate) ClearTrackerSync() *ProjectUpdate {
+	_u.mutation.ClearTrackerSync()
+	return _u
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -299,6 +337,12 @@ func (_u *ProjectUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.DefaultBranch(); ok {
 		_spec.SetField(project.FieldDefaultBranch, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.TrackerLabels(); ok {
+		_spec.SetField(project.FieldTrackerLabels, field.TypeJSON, value)
+	}
+	if _u.mutation.TrackerLabelsCleared() {
+		_spec.ClearField(project.FieldTrackerLabels, field.TypeJSON)
+	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(project.FieldUpdatedAt, field.TypeTime, value)
 	}
@@ -385,6 +429,35 @@ func (_u *ProjectUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(task.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.TrackerSyncCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   project.TrackerSyncTable,
+			Columns: []string{project.TrackerSyncColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trackersync.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.TrackerSyncIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   project.TrackerSyncTable,
+			Columns: []string{project.TrackerSyncColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trackersync.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {
@@ -496,6 +569,18 @@ func (_u *ProjectUpdateOne) SetNillableDefaultBranch(v *string) *ProjectUpdateOn
 	return _u
 }
 
+// SetTrackerLabels sets the "tracker_labels" field.
+func (_u *ProjectUpdateOne) SetTrackerLabels(v map[string]string) *ProjectUpdateOne {
+	_u.mutation.SetTrackerLabels(v)
+	return _u
+}
+
+// ClearTrackerLabels clears the value of the "tracker_labels" field.
+func (_u *ProjectUpdateOne) ClearTrackerLabels() *ProjectUpdateOne {
+	_u.mutation.ClearTrackerLabels()
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *ProjectUpdateOne) SetUpdatedAt(v time.Time) *ProjectUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
@@ -530,6 +615,25 @@ func (_u *ProjectUpdateOne) AddTasks(v ...*Task) *ProjectUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.AddTaskIDs(ids...)
+}
+
+// SetTrackerSyncID sets the "tracker_sync" edge to the TrackerSync entity by ID.
+func (_u *ProjectUpdateOne) SetTrackerSyncID(id uuid.UUID) *ProjectUpdateOne {
+	_u.mutation.SetTrackerSyncID(id)
+	return _u
+}
+
+// SetNillableTrackerSyncID sets the "tracker_sync" edge to the TrackerSync entity by ID if the given value is not nil.
+func (_u *ProjectUpdateOne) SetNillableTrackerSyncID(id *uuid.UUID) *ProjectUpdateOne {
+	if id != nil {
+		_u = _u.SetTrackerSyncID(*id)
+	}
+	return _u
+}
+
+// SetTrackerSync sets the "tracker_sync" edge to the TrackerSync entity.
+func (_u *ProjectUpdateOne) SetTrackerSync(v *TrackerSync) *ProjectUpdateOne {
+	return _u.SetTrackerSyncID(v.ID)
 }
 
 // Mutation returns the ProjectMutation object of the builder.
@@ -577,6 +681,12 @@ func (_u *ProjectUpdateOne) RemoveTasks(v ...*Task) *ProjectUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveTaskIDs(ids...)
+}
+
+// ClearTrackerSync clears the "tracker_sync" edge to the TrackerSync entity.
+func (_u *ProjectUpdateOne) ClearTrackerSync() *ProjectUpdateOne {
+	_u.mutation.ClearTrackerSync()
+	return _u
 }
 
 // Where appends a list predicates to the ProjectUpdate builder.
@@ -710,6 +820,12 @@ func (_u *ProjectUpdateOne) sqlSave(ctx context.Context) (_node *Project, err er
 	if value, ok := _u.mutation.DefaultBranch(); ok {
 		_spec.SetField(project.FieldDefaultBranch, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.TrackerLabels(); ok {
+		_spec.SetField(project.FieldTrackerLabels, field.TypeJSON, value)
+	}
+	if _u.mutation.TrackerLabelsCleared() {
+		_spec.ClearField(project.FieldTrackerLabels, field.TypeJSON)
+	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(project.FieldUpdatedAt, field.TypeTime, value)
 	}
@@ -796,6 +912,35 @@ func (_u *ProjectUpdateOne) sqlSave(ctx context.Context) (_node *Project, err er
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(task.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.TrackerSyncCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   project.TrackerSyncTable,
+			Columns: []string{project.TrackerSyncColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trackersync.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.TrackerSyncIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   project.TrackerSyncTable,
+			Columns: []string{project.TrackerSyncColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trackersync.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

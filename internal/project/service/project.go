@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/kilip/opus/internal/node"
@@ -13,6 +14,9 @@ import (
 // TaskCounter returns the number of tasks associated with a project ID.
 type TaskCounter func(ctx context.Context, projectID string) (int, error)
 
+// TrackerLabelValidator validates project-level tracker status-label overrides.
+type TrackerLabelValidator func(ctx context.Context, labels map[string]string) error
+
 // NodeReader provides node query capabilities to the project service.
 type NodeReader interface {
 	List(ctx context.Context) ([]node.NodeResponse, error)
@@ -21,15 +25,17 @@ type NodeReader interface {
 
 // Config configures the Project service.
 type Config struct {
-	TaskCounter TaskCounter
-	NodeReader  NodeReader
+	TaskCounter           TaskCounter
+	NodeReader            NodeReader
+	TrackerLabelValidator TrackerLabelValidator
 }
 
 // Project owns project business logic.
 type Project struct {
-	repo        *repo.Ent
-	taskCounter TaskCounter
-	nodeReader  NodeReader
+	repo                  *repo.Ent
+	taskCounter           TaskCounter
+	nodeReader            NodeReader
+	trackerLabelValidator TrackerLabelValidator
 }
 
 // New returns a new Project service backed by Ent repo.
@@ -39,9 +45,10 @@ func New(r *repo.Ent, cfg ...Config) *Project {
 		c = cfg[0]
 	}
 	return &Project{
-		repo:        r,
-		taskCounter: c.TaskCounter,
-		nodeReader:  c.NodeReader,
+		repo:                  r,
+		taskCounter:           c.TaskCounter,
+		nodeReader:            c.NodeReader,
+		trackerLabelValidator: c.TrackerLabelValidator,
 	}
 }
 
@@ -95,6 +102,14 @@ func (s *Project) Create(ctx context.Context, req domain.CreateProjectRequest) (
 
 // Update updates fields of an existing project.
 func (s *Project) Update(ctx context.Context, id string, req domain.UpdateProjectRequest) (domain.Project, error) {
+	if req.ClearTrackerLabels || (req.TrackerLabels != nil && len(req.TrackerLabels) == 0) {
+		req.ClearTrackerLabels = true
+		req.TrackerLabels = nil
+	} else if len(req.TrackerLabels) > 0 && s.trackerLabelValidator != nil {
+		if err := s.trackerLabelValidator(ctx, req.TrackerLabels); err != nil {
+			return domain.Project{}, fmt.Errorf("%w: %w", domain.ErrInvalidTrackerLabels, err)
+		}
+	}
 	return s.repo.Update(ctx, id, req)
 }
 

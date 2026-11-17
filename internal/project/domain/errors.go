@@ -19,4 +19,6 @@ var (
 	ErrInvalidPath = errors.New("PROJECT_INVALID_PATH")
 	// ErrNodeNotFound indicates the node does not exist.
 	ErrNodeNotFound = errors.New("NODE_NOT_FOUND")
+	// ErrInvalidTrackerLabels indicates project tracker status-label overrides are invalid.
+	ErrInvalidTrackerLabels = errors.New("PROJECT_INVALID_TRACKER_LABELS")
 )

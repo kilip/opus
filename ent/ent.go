@@ -23,6 +23,8 @@ import (
 	"github.com/kilip/opus/ent/projectnode"
 	"github.com/kilip/opus/ent/session"
 	"github.com/kilip/opus/ent/task"
+	"github.com/kilip/opus/ent/trackersettings"
+	"github.com/kilip/opus/ent/trackersync"
 	"github.com/kilip/opus/ent/user"
 )
 
@@ -84,18 +86,20 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			account.Table:     account.ValidColumn,
-			activity.Table:    activity.ValidColumn,
-			auditlog.Table:    auditlog.ValidColumn,
-			counter.Table:     counter.ValidColumn,
-			jointoken.Table:   jointoken.ValidColumn,
-			node.Table:        node.ValidColumn,
-			otp.Table:         otp.ValidColumn,
-			project.Table:     project.ValidColumn,
-			projectnode.Table: projectnode.ValidColumn,
-			session.Table:     session.ValidColumn,
-			task.Table:        task.ValidColumn,
-			user.Table:        user.ValidColumn,
+			account.Table:         account.ValidColumn,
+			activity.Table:        activity.ValidColumn,
+			auditlog.Table:        auditlog.ValidColumn,
+			counter.Table:         counter.ValidColumn,
+			jointoken.Table:       jointoken.ValidColumn,
+			node.Table:            node.ValidColumn,
+			otp.Table:             otp.ValidColumn,
+			project.Table:         project.ValidColumn,
+			projectnode.Table:     projectnode.ValidColumn,
+			session.Table:         session.ValidColumn,
+			task.Table:            task.ValidColumn,
+			trackersettings.Table: trackersettings.ValidColumn,
+			trackersync.Table:     trackersync.ValidColumn,
+			user.Table:            user.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

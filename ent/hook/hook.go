@@ -141,6 +141,30 @@ func (f TaskFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error)
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.TaskMutation", m)
 }
 
+// The TrackerSettingsFunc type is an adapter to allow the use of ordinary
+// function as TrackerSettings mutator.
+type TrackerSettingsFunc func(context.Context, *ent.TrackerSettingsMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f TrackerSettingsFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.TrackerSettingsMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.TrackerSettingsMutation", m)
+}
+
+// The TrackerSyncFunc type is an adapter to allow the use of ordinary
+// function as TrackerSync mutator.
+type TrackerSyncFunc func(context.Context, *ent.TrackerSyncMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f TrackerSyncFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.TrackerSyncMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.TrackerSyncMutation", m)
+}
+
 // The UserFunc type is an adapter to allow the use of ordinary
 // function as User mutator.
 type UserFunc func(context.Context, *ent.UserMutation) (ent.Value, error)

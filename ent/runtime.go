@@ -18,6 +18,8 @@ import (
 	"github.com/kilip/opus/ent/schema"
 	"github.com/kilip/opus/ent/session"
 	"github.com/kilip/opus/ent/task"
+	"github.com/kilip/opus/ent/trackersettings"
+	"github.com/kilip/opus/ent/trackersync"
 	"github.com/kilip/opus/ent/user"
 )
 
@@ -180,11 +182,11 @@ func init() {
 	// project.DefaultBranchValidator is a validator for the "default_branch" field. It is called by the builders before save.
 	project.DefaultBranchValidator = projectDescDefaultBranch.Validators[0].(func(string) error)
 	// projectDescCreatedAt is the schema descriptor for created_at field.
-	projectDescCreatedAt := projectFields[8].Descriptor()
+	projectDescCreatedAt := projectFields[9].Descriptor()
 	// project.DefaultCreatedAt holds the default value on creation for the created_at field.
 	project.DefaultCreatedAt = projectDescCreatedAt.Default.(func() time.Time)
 	// projectDescUpdatedAt is the schema descriptor for updated_at field.
-	projectDescUpdatedAt := projectFields[9].Descriptor()
+	projectDescUpdatedAt := projectFields[10].Descriptor()
 	// project.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	project.DefaultUpdatedAt = projectDescUpdatedAt.Default.(func() time.Time)
 	// project.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
@@ -275,6 +277,32 @@ func init() {
 	taskDescID := taskFields[0].Descriptor()
 	// task.DefaultID holds the default value on creation for the id field.
 	task.DefaultID = taskDescID.Default.(func() uuid.UUID)
+	trackersettingsFields := schema.TrackerSettings{}.Fields()
+	_ = trackersettingsFields
+	// trackersettingsDescUpdatedAt is the schema descriptor for updated_at field.
+	trackersettingsDescUpdatedAt := trackersettingsFields[2].Descriptor()
+	// trackersettings.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	trackersettings.DefaultUpdatedAt = trackersettingsDescUpdatedAt.Default.(func() time.Time)
+	// trackersettings.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	trackersettings.UpdateDefaultUpdatedAt = trackersettingsDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// trackersettingsDescID is the schema descriptor for id field.
+	trackersettingsDescID := trackersettingsFields[0].Descriptor()
+	// trackersettings.DefaultID holds the default value on creation for the id field.
+	trackersettings.DefaultID = trackersettingsDescID.Default.(func() uuid.UUID)
+	trackersyncFields := schema.TrackerSync{}.Fields()
+	_ = trackersyncFields
+	// trackersyncDescCursor is the schema descriptor for cursor field.
+	trackersyncDescCursor := trackersyncFields[2].Descriptor()
+	// trackersync.DefaultCursor holds the default value on creation for the cursor field.
+	trackersync.DefaultCursor = trackersyncDescCursor.Default.(string)
+	// trackersyncDescLastError is the schema descriptor for last_error field.
+	trackersyncDescLastError := trackersyncFields[4].Descriptor()
+	// trackersync.DefaultLastError holds the default value on creation for the last_error field.
+	trackersync.DefaultLastError = trackersyncDescLastError.Default.(string)
+	// trackersyncDescID is the schema descriptor for id field.
+	trackersyncDescID := trackersyncFields[0].Descriptor()
+	// trackersync.DefaultID holds the default value on creation for the id field.
+	trackersync.DefaultID = trackersyncDescID.Default.(func() uuid.UUID)
 	userFields := schema.User{}.Fields()
 	_ = userFields
 	// userDescEmail is the schema descriptor for email field.

@@ -493,3 +493,79 @@ func TestSchema_ProjectNode_Cascade(t *testing.T) {
 		t.Fatalf("expected 0 project nodes after project deletion, got %d", count)
 	}
 }
+
+func TestSchema_TrackerSettingsAndSync(t *testing.T) {
+	ctx := context.Background()
+	db, err := sql.Open("sqlite", "file:ent_tracker?mode=memory&cache=shared&_pragma=foreign_keys(ON)")
+	if err != nil {
+		t.Fatalf("open sqlite failed: %v", err)
+	}
+	drv := entsql.OpenDB(dialect.SQLite, db)
+	client := enttest.NewClient(t, enttest.WithOptions(ent.Driver(drv)))
+	defer func() {
+		_ = client.Close()
+	}()
+
+	ts, err := client.TrackerSettings.Create().
+		SetStatusLabels(map[string]string{"todo": "queue"}).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create tracker_settings failed: %v", err)
+	}
+	if v := ts.ID.Version(); v != 7 {
+		t.Errorf("TrackerSettings ID version = %d, want 7", v)
+	}
+	if ts.StatusLabels["todo"] != "queue" {
+		t.Errorf("got status_labels %v, want todo=queue", ts.StatusLabels)
+	}
+
+	p, err := client.Project.Create().
+		SetSlug("tracker-proj").
+		SetName("Tracker Project").
+		SetRepoProvider("github").
+		SetRepoRef("org/repo").
+		SetTrackerProvider("github").
+		SetTrackerRef("org/repo").
+		SetTrackerLabels(map[string]string{"blocked": "stuck"}).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create project failed: %v", err)
+	}
+	if p.TrackerLabels["blocked"] != "stuck" {
+		t.Errorf("got project tracker_labels %v, want blocked=stuck", p.TrackerLabels)
+	}
+
+	syncRow, err := client.TrackerSync.Create().
+		SetProjectID(p.ID).
+		SetCursor("2026-11-17T00:00:00Z").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create tracker_sync failed: %v", err)
+	}
+	if v := syncRow.ID.Version(); v != 7 {
+		t.Errorf("TrackerSync ID version = %d, want 7", v)
+	}
+	if syncRow.LastSyncAt != nil {
+		t.Errorf("expected nil last_sync_at, got %v", syncRow.LastSyncAt)
+	}
+	if syncRow.LastError != "" {
+		t.Errorf("expected empty last_error, got %q", syncRow.LastError)
+	}
+
+	// Unique constraint on project_id
+	if _, err := client.TrackerSync.Create().SetProjectID(p.ID).Save(ctx); err == nil {
+		t.Fatal("expected unique constraint error on duplicate project_id")
+	}
+
+	// Cascade delete on Project deletion
+	if err := client.Project.DeleteOneID(p.ID).Exec(ctx); err != nil {
+		t.Fatalf("delete project failed: %v", err)
+	}
+	cnt, err := client.TrackerSync.Query().Count(ctx)
+	if err != nil {
+		t.Fatalf("count tracker_sync failed: %v", err)
+	}
+	if cnt != 0 {
+		t.Fatalf("expected 0 tracker_sync rows after project deletion, got %d", cnt)
+	}
+}

@@ -260,6 +260,12 @@
                     "slug": {
                         "type": "string"
                     },
+                    "trackerLabels": {
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "type": "object"
+                    },
                     "tracker_provider": {
                         "type": "string"
                     },
@@ -479,6 +485,31 @@
                     "TaskTypeDocs"
                 ]
             },
+            "domain.TrackerSettingsResponse": {
+                "properties": {
+                    "statusLabels": {
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "statusLabels"
+                ],
+                "type": "object"
+            },
+            "domain.TrackerStatusResponse": {
+                "properties": {
+                    "lastError": {
+                        "type": "string"
+                    },
+                    "lastSyncAt": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "domain.UpdateProjectNodePathRequest": {
                 "properties": {
                     "path": {
@@ -494,6 +525,12 @@
                     },
                     "name": {
                         "type": "string"
+                    },
+                    "trackerLabels": {
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "type": "object"
                     },
                     "tracker_provider": {
                         "type": "string"
@@ -539,6 +576,20 @@
                         "$ref": "#/components/schemas/domain.TaskType"
                     }
                 },
+                "type": "object"
+            },
+            "domain.UpdateTrackerSettingsRequest": {
+                "properties": {
+                    "statusLabels": {
+                        "additionalProperties": {
+                            "type": "string"
+                        },
+                        "type": "object"
+                    }
+                },
+                "required": [
+                    "statusLabels"
+                ],
                 "type": "object"
             },
             "domain.UserResponse": {
@@ -808,6 +859,34 @@
                 "properties": {
                     "data": {
                         "$ref": "#/components/schemas/domain.Task"
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
+            "httpx.Response-domain_TrackerSettingsResponse": {
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/domain.TrackerSettingsResponse"
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
+            "httpx.Response-domain_TrackerStatusResponse": {
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/domain.TrackerStatusResponse"
                     },
                     "error": {
                         "type": "string"
@@ -1953,6 +2032,69 @@
                 ]
             }
         },
+        "/projects/{id}/tracker": {
+            "get": {
+                "description": "Returns the last sync timestamp and last error for a project's tracker.",
+                "operationId": "get-project-tracker-status",
+                "parameters": [
+                    {
+                        "description": "Project ID",
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-domain_TrackerStatusResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Get project tracker status",
+                "tags": [
+                    "tracker"
+                ]
+            }
+        },
         "/setup": {
             "post": {
                 "description": "Verifies the OTP, creates the owner user and session in one transaction, sets cookie",
@@ -2471,6 +2613,91 @@
                 "summary": "Create task activity",
                 "tags": [
                     "tasks"
+                ]
+            }
+        },
+        "/tracker/settings": {
+            "get": {
+                "description": "Returns global tracker status-to-label mappings with defaults filled.",
+                "operationId": "get-tracker-settings",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-domain_TrackerSettingsResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Get tracker settings",
+                "tags": [
+                    "tracker"
+                ]
+            },
+            "put": {
+                "description": "Replaces global tracker status-to-label overrides.",
+                "operationId": "update-tracker-settings",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.UpdateTrackerSettingsRequest",
+                                "summary": "request",
+                                "description": "Update Tracker Settings Request"
+                            }
+                        }
+                    },
+                    "description": "Update Tracker Settings Request",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-domain_TrackerSettingsResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Update tracker settings",
+                "tags": [
+                    "tracker"
                 ]
             }
         }

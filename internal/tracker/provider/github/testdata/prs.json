@@ -1,0 +1,42 @@
+[
+  {
+    "number": 105,
+    "title": "feat(api): tracker skeleton",
+    "state": "OPEN",
+    "isDraft": true,
+    "reviewDecision": "REVIEW_REQUIRED",
+    "statusCheckRollup": [
+      {
+        "__typename": "CheckRun",
+        "name": "test",
+        "status": "COMPLETED",
+        "conclusion": "SUCCESS"
+      },
+      {
+        "__typename": "StatusContext",
+        "context": "ci/lint",
+        "state": "PENDING"
+      }
+    ],
+    "closingIssuesReferences": [
+      {
+        "id": "I_kwDO104",
+        "number": 104,
+        "url": "https://github.com/kilip/opus/issues/104"
+      }
+    ],
+    "updatedAt": "2026-11-17T02:00:00Z",
+    "url": "https://github.com/kilip/opus/pull/105"
+  },
+  {
+    "number": 101,
+    "title": "feat(api): project node mappings",
+    "state": "MERGED",
+    "isDraft": false,
+    "reviewDecision": "APPROVED",
+    "statusCheckRollup": [],
+    "closingIssuesReferences": [],
+    "updatedAt": "2026-11-15T10:15:30Z",
+    "url": "https://github.com/kilip/opus/pull/101"
+  }
+]

@@ -412,7 +412,7 @@ func TestGetFiber_NodeControlChannel(t *testing.T) {
 		eventCh <- env
 	})
 
-	fiberApp := app.GetFiber(cfg, logger, client, eventbus.New(), nodeFeature)
+	fiberApp := app.GetFiber(cfg, logger, client, eventbus.New(), app.WithNode(nodeFeature))
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -644,4 +644,135 @@ func TestGetFiber_ProjectDeleteGuardWithTasks(t *testing.T) {
 	if respDelP2.StatusCode != http.StatusNoContent {
 		t.Fatalf("expected 204 No Content for project without tasks, got %d", respDelP2.StatusCode)
 	}
+}
+
+func TestGetFiber_TrackerAuthAndProjectLabelValidation(t *testing.T) {
+	ctx := context.Background()
+	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared&_pragma=foreign_keys(ON)&_pragma=busy_timeout(10000)")
+	if err != nil {
+		t.Fatalf("open sqlite failed: %v", err)
+	}
+	db.SetMaxOpenConns(1)
+	drv := entsql.OpenDB(dialect.SQLite, db)
+	client := enttest.NewClient(t, enttest.WithOptions(ent.Driver(drv)))
+	t.Cleanup(func() {
+		_ = client.Close()
+	})
+
+	cfg := app.Config{
+		AppName:       "test-opus",
+		BaseURL:       "http://localhost:7880",
+		SessionSecret: "secret-needs-to-be-32-bytes-long-ok",
+	}
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	fiberApp := app.GetFiber(cfg, logger, client, eventbus.New())
+
+	// 1. Tracker endpoints reject unauthenticated requests with 401
+	for _, tc := range []struct {
+		method string
+		path   string
+	}{
+		{http.MethodGet, "/api/tracker/settings"},
+		{http.MethodPut, "/api/tracker/settings"},
+		{http.MethodGet, "/api/projects/01933a3c-1b77-7000-8000-000000000000/tracker"},
+	} {
+		req := httptest.NewRequest(tc.method, tc.path, nil)
+		req.Header.Set("Origin", "http://localhost:7880")
+		resp, err := fiberApp.Test(req)
+		if err != nil {
+			t.Fatalf("%s %s: %v", tc.method, tc.path, err)
+		}
+		_ = resp.Body.Close()
+		if resp.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("expected 401 for unauthenticated %s %s, got %d", tc.method, tc.path, resp.StatusCode)
+		}
+	}
+
+	// Create authenticated session
+	u, err := client.User.Create().SetEmail("tracker@example.com").Save(ctx)
+	if err != nil {
+		t.Fatalf("create user: %v", err)
+	}
+	token := "valid-session-token-tracker-1234567890"
+	mac := hmac.New(sha256.New, []byte(cfg.SessionSecret))
+	mac.Write([]byte(token))
+	tokenHash := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
+	if _, err := client.Session.Create().
+		SetUserID(u.ID).
+		SetTokenHash(tokenHash).
+		SetExpiresAt(time.Now().Add(time.Hour)).
+		Save(ctx); err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+
+	authReq := func(method, path string, body any) *http.Request {
+		var r io.Reader
+		if body != nil {
+			b, _ := json.Marshal(body)
+			r = bytes.NewReader(b)
+		}
+		req := httptest.NewRequest(method, path, r)
+		req.Header.Set("Cookie", "opus_session="+token)
+		req.Header.Set("Origin", "http://localhost:7880")
+		if body != nil {
+			req.Header.Set("Content-Type", "application/json")
+		}
+		return req
+	}
+
+	// 2. Create a project and validate PATCH trackerLabels through wired tracker validator
+	respCreate, err := fiberApp.Test(authReq(http.MethodPost, "/api/projects", project.CreateProjectRequest{
+		Slug:         "wired-tracker",
+		Name:         "Wired Tracker",
+		RepoProvider: "github",
+		RepoRef:      "org/wired-tracker",
+	}))
+	if err != nil || respCreate.StatusCode != http.StatusCreated {
+		t.Fatalf("create project failed: %v (code %d)", err, respCreate.StatusCode)
+	}
+	var created struct {
+		Data struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	_ = json.NewDecoder(respCreate.Body).Decode(&created)
+	_ = respCreate.Body.Close()
+
+	// Invalid trackerLabels ("done") returns 400 PROJECT_INVALID_TRACKER_LABELS
+	respBadPatch, err := fiberApp.Test(authReq(http.MethodPatch, "/api/projects/"+created.Data.ID, map[string]any{
+		"trackerLabels": map[string]string{"done": "finished"},
+	}))
+	if err != nil {
+		t.Fatalf("patch project failed: %v", err)
+	}
+	if respBadPatch.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400 on invalid trackerLabels, got %d", respBadPatch.StatusCode)
+	}
+	badBody := parseResponseBody(t, respBadPatch)
+	if badBody.Error != "PROJECT_INVALID_TRACKER_LABELS" {
+		t.Fatalf("expected PROJECT_INVALID_TRACKER_LABELS, got %q", badBody.Error)
+	}
+
+	// Valid trackerLabels succeeds -> 200
+	respGoodPatch, err := fiberApp.Test(authReq(http.MethodPatch, "/api/projects/"+created.Data.ID, map[string]any{
+		"trackerLabels": map[string]string{"todo": "queue"},
+	}))
+	if err != nil || respGoodPatch.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 on valid trackerLabels, got %d (err: %v)", respGoodPatch.StatusCode, err)
+	}
+	_ = respGoodPatch.Body.Close()
+
+	// GET /api/projects/:id/tracker -> 200
+	respStatus, err := fiberApp.Test(authReq(http.MethodGet, "/api/projects/"+created.Data.ID+"/tracker", nil))
+	if err != nil || respStatus.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 on GET /tracker, got %d (err: %v)", respStatus.StatusCode, err)
+	}
+	_ = respStatus.Body.Close()
+
+	// GET /api/tracker/settings -> 200
+	respSettings, err := fiberApp.Test(authReq(http.MethodGet, "/api/tracker/settings", nil))
+	if err != nil || respSettings.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 on GET /tracker/settings, got %d (err: %v)", respSettings.StatusCode, err)
+	}
+	_ = respSettings.Body.Close()
 }

@@ -92,4 +92,16 @@ func TestGetConfig_AppEnvPrefix(t *testing.T) {
 	if cfg.SMTPFrom != "noreply@example.com" {
 		t.Errorf("expected SMTPFrom %q, got %q", "noreply@example.com", cfg.SMTPFrom)
 	}
+	if cfg.TrackerPollInterval != 60*time.Second {
+		t.Errorf("expected default TrackerPollInterval 60s, got %v", cfg.TrackerPollInterval)
+	}
+
+	t.Setenv("TRACKER_POLL_INTERVAL", "15s")
+	cfgOverride, err := GetConfig(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error on override: %v", err)
+	}
+	if cfgOverride.TrackerPollInterval != 15*time.Second {
+		t.Errorf("expected overridden TrackerPollInterval 15s, got %v", cfgOverride.TrackerPollInterval)
+	}
 }

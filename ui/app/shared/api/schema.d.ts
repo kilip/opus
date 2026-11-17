@@ -396,6 +396,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{id}/tracker": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get project tracker status
+         * @description Returns the last sync timestamp and last error for a project's tracker.
+         */
+        get: operations["get-project-tracker-status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/setup": {
         parameters: {
             query?: never;
@@ -528,6 +548,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tracker/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get tracker settings
+         * @description Returns global tracker status-to-label mappings with defaults filled.
+         */
+        get: operations["get-tracker-settings"];
+        /**
+         * Update tracker settings
+         * @description Replaces global tracker status-to-label overrides.
+         */
+        put: operations["update-tracker-settings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -613,6 +657,9 @@ export interface components {
             repo_provider?: string;
             repo_ref?: string;
             slug?: string;
+            trackerLabels?: {
+                [key: string]: string;
+            };
             tracker_provider?: string;
             tracker_ref?: string;
             updated_at?: string;
@@ -668,12 +715,24 @@ export interface components {
         "domain.TaskStatus": "backlog" | "todo" | "in-progress" | "review" | "blocked" | "done";
         /** @enum {string} */
         "domain.TaskType": "feat" | "bug" | "chore" | "refactor" | "docs";
+        "domain.TrackerSettingsResponse": {
+            statusLabels: {
+                [key: string]: string;
+            };
+        };
+        "domain.TrackerStatusResponse": {
+            lastError?: string;
+            lastSyncAt?: string;
+        };
         "domain.UpdateProjectNodePathRequest": {
             path?: string;
         };
         "domain.UpdateProjectRequest": {
             default_branch?: string;
             name?: string;
+            trackerLabels?: {
+                [key: string]: string;
+            };
             tracker_provider?: string;
             tracker_ref?: string;
         };
@@ -688,6 +747,11 @@ export interface components {
             status?: components["schemas"]["domain.TaskStatus"];
             title?: string;
             type?: components["schemas"]["domain.TaskType"];
+        };
+        "domain.UpdateTrackerSettingsRequest": {
+            statusLabels: {
+                [key: string]: string;
+            };
         };
         "domain.UserResponse": {
             /** @description Email is the authenticated user's email address. */
@@ -776,6 +840,16 @@ export interface components {
         };
         "httpx.Response-domain_Task": {
             data?: components["schemas"]["domain.Task"];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Response-domain_TrackerSettingsResponse": {
+            data?: components["schemas"]["domain.TrackerSettingsResponse"];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Response-domain_TrackerStatusResponse": {
+            data?: components["schemas"]["domain.TrackerStatusResponse"];
             error?: string;
             meta?: components["schemas"]["httpx.Meta"];
         };
@@ -1709,6 +1783,56 @@ export interface operations {
             };
         };
     };
+    "get-project-tracker-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-domain_TrackerStatusResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
     setupComplete: {
         parameters: {
             query?: never;
@@ -2100,6 +2224,78 @@ export interface operations {
             };
             /** @description Not Found */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "get-tracker-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-domain_TrackerSettingsResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "update-tracker-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Update Tracker Settings Request */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["domain.UpdateTrackerSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-domain_TrackerSettingsResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
                 headers: {
                     [name: string]: unknown;
                 };

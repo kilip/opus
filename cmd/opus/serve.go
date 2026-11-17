@@ -4,6 +4,7 @@ import (
 	"github.com/kilip/opus/internal/app"
 	"github.com/kilip/opus/internal/node"
 	"github.com/kilip/opus/internal/platform/eventbus"
+	"github.com/kilip/opus/internal/tracker"
 	"github.com/spf13/cobra"
 )
 
@@ -27,8 +28,12 @@ func newServeCmd() *cobra.Command {
 			}
 			bus := eventbus.New(eventbus.WithLogger(logger))
 			nodeFeature := node.New(db, node.Config{BaseURL: cfg.BaseURL, Bus: bus})
-			fiberApp := app.GetFiber(cfg, logger, db, bus, nodeFeature)
-			return app.New(cfg, fiberApp, logger, db, bus, nodeFeature).Serve(ctx)
+			trackerFeature := tracker.New(db, tracker.Config{
+				PollInterval: cfg.TrackerPollInterval,
+				Logger:       logger,
+			})
+			fiberApp := app.GetFiber(cfg, logger, db, bus, app.WithNode(nodeFeature), app.WithTracker(trackerFeature))
+			return app.New(cfg, fiberApp, logger, db, bus, app.WithNode(nodeFeature), app.WithTracker(trackerFeature)).Serve(ctx)
 		},
 	}
 }

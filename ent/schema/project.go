@@ -37,6 +37,8 @@ func (Project) Fields() []ent.Field {
 		field.String("default_branch").
 			NotEmpty().
 			Default("main"),
+		field.JSON("tracker_labels", map[string]string{}).
+			Optional(),
 		field.Time("created_at").
 			Default(time.Now).
 			Immutable(),
@@ -54,5 +56,10 @@ func (Project) Edges() []ent.Edge {
 				entsql.OnDelete(entsql.Cascade),
 			),
 		edge.To("tasks", Task.Type),
+		edge.To("tracker_sync", TrackerSync.Type).
+			Unique().
+			Annotations(
+				entsql.OnDelete(entsql.Cascade),
+			),
 	}
 }

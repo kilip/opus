@@ -1,0 +1,35 @@
+[
+  {
+    "number": 104,
+    "title": "tracker: add feature skeleton, sync state and gh runner",
+    "body": "Add tracker feature skeleton with Ent schemas and gh CLI runner.",
+    "state": "OPEN",
+    "stateReason": "",
+    "labels": [
+      {
+        "id": "LA_kwDO1234",
+        "name": "status:in-progress",
+        "description": "Currently active",
+        "color": "fbca04"
+      },
+      {
+        "id": "LA_kwDO5678",
+        "name": "feat",
+        "description": "New feature",
+        "color": "0e8a16"
+      }
+    ],
+    "updatedAt": "2026-11-17T01:30:00Z",
+    "url": "https://github.com/kilip/opus/issues/104"
+  },
+  {
+    "number": 99,
+    "title": "fix: stale node detection",
+    "body": "",
+    "state": "CLOSED",
+    "stateReason": "COMPLETED",
+    "labels": [],
+    "updatedAt": "2026-11-16T18:45:12Z",
+    "url": "https://github.com/kilip/opus/issues/99"
+  }
+]

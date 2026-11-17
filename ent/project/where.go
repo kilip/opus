@@ -556,6 +556,16 @@ func DefaultBranchContainsFold(v string) predicate.Project {
 	return predicate.Project(sql.FieldContainsFold(FieldDefaultBranch, v))
 }
 
+// TrackerLabelsIsNil applies the IsNil predicate on the "tracker_labels" field.
+func TrackerLabelsIsNil() predicate.Project {
+	return predicate.Project(sql.FieldIsNull(FieldTrackerLabels))
+}
+
+// TrackerLabelsNotNil applies the NotNil predicate on the "tracker_labels" field.
+func TrackerLabelsNotNil() predicate.Project {
+	return predicate.Project(sql.FieldNotNull(FieldTrackerLabels))
+}
+
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.
 func CreatedAtEQ(v time.Time) predicate.Project {
 	return predicate.Project(sql.FieldEQ(FieldCreatedAt, v))
@@ -674,6 +684,29 @@ func HasTasks() predicate.Project {
 func HasTasksWith(preds ...predicate.Task) predicate.Project {
 	return predicate.Project(func(s *sql.Selector) {
 		step := newTasksStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasTrackerSync applies the HasEdge predicate on the "tracker_sync" edge.
+func HasTrackerSync() predicate.Project {
+	return predicate.Project(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2O, false, TrackerSyncTable, TrackerSyncColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasTrackerSyncWith applies the HasEdge predicate on the "tracker_sync" edge with a given conditions (other predicates).
+func HasTrackerSyncWith(preds ...predicate.TrackerSync) predicate.Project {
+	return predicate.Project(func(s *sql.Selector) {
+		step := newTrackerSyncStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

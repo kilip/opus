@@ -40,6 +40,7 @@ type Config struct {
 	GoogleClientSecret     string        `env:"AUTH_GOOGLE_SECRET, default="`
 	FacebookClientID       string        `env:"AUTH_FACEBOOK_ID, default="`
 	FacebookClientSecret   string        `env:"AUTH_FACEBOOK_SECRET, default="`
+	TrackerPollInterval    time.Duration `env:"TRACKER_POLL_INTERVAL, default=60s"`
 }
 
 func loadEnvFile(path string) {

@@ -29,6 +29,8 @@ const (
 	FieldTrackerRef = "tracker_ref"
 	// FieldDefaultBranch holds the string denoting the default_branch field in the database.
 	FieldDefaultBranch = "default_branch"
+	// FieldTrackerLabels holds the string denoting the tracker_labels field in the database.
+	FieldTrackerLabels = "tracker_labels"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -37,6 +39,8 @@ const (
 	EdgeProjectNodes = "project_nodes"
 	// EdgeTasks holds the string denoting the tasks edge name in mutations.
 	EdgeTasks = "tasks"
+	// EdgeTrackerSync holds the string denoting the tracker_sync edge name in mutations.
+	EdgeTrackerSync = "tracker_sync"
 	// Table holds the table name of the project in the database.
 	Table = "projects"
 	// ProjectNodesTable is the table that holds the project_nodes relation/edge.
@@ -53,6 +57,13 @@ const (
 	TasksInverseTable = "tasks"
 	// TasksColumn is the table column denoting the tasks relation/edge.
 	TasksColumn = "project_id"
+	// TrackerSyncTable is the table that holds the tracker_sync relation/edge.
+	TrackerSyncTable = "tracker_syncs"
+	// TrackerSyncInverseTable is the table name for the TrackerSync entity.
+	// It exists in this package in order to avoid circular dependency with the "trackersync" package.
+	TrackerSyncInverseTable = "tracker_syncs"
+	// TrackerSyncColumn is the table column denoting the tracker_sync relation/edge.
+	TrackerSyncColumn = "project_id"
 )
 
 // Columns holds all SQL columns for project fields.
@@ -65,6 +76,7 @@ var Columns = []string{
 	FieldTrackerProvider,
 	FieldTrackerRef,
 	FieldDefaultBranch,
+	FieldTrackerLabels,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 }
@@ -186,6 +198,13 @@ func ByTasks(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newTasksStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByTrackerSyncField orders the results by tracker_sync field.
+func ByTrackerSyncField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newTrackerSyncStep(), sql.OrderByField(field, opts...))
+	}
+}
 func newProjectNodesStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -198,5 +217,12 @@ func newTasksStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(TasksInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, TasksTable, TasksColumn),
+	)
+}
+func newTrackerSyncStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(TrackerSyncInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2O, false, TrackerSyncTable, TrackerSyncColumn),
 	)
 }

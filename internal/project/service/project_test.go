@@ -578,3 +578,95 @@ func TestService_ProjectNode_CascadeDelete(t *testing.T) {
 		t.Fatalf("expected 0 project nodes after node delete, got %d (err: %v)", count, err)
 	}
 }
+
+func TestService_UpdateTrackerLabels(t *testing.T) {
+	client := setupTestClient(t)
+	ctx := context.Background()
+	r := repo.New(client)
+	validatorErr := errors.New("collision with global label")
+	svc := service.New(r, service.Config{
+		TrackerLabelValidator: func(_ context.Context, labels map[string]string) error {
+			if labels["todo"] == "invalid" {
+				return validatorErr
+			}
+			return nil
+		},
+	})
+
+	p, err := svc.Create(ctx, domain.CreateProjectRequest{
+		Slug:         "labels-proj",
+		Name:         "Labels Project",
+		RepoProvider: "github",
+		RepoRef:      "owner/labels",
+	})
+	if err != nil {
+		t.Fatalf("create failed: %v", err)
+	}
+
+	// 1. Set trackerLabels
+	updated, err := svc.Update(ctx, p.ID, domain.UpdateProjectRequest{
+		TrackerLabels: map[string]string{"todo": "queue", "blocked": "stuck"},
+	})
+	if err != nil {
+		t.Fatalf("set trackerLabels failed: %v", err)
+	}
+	if updated.TrackerLabels["todo"] != "queue" || updated.TrackerLabels["blocked"] != "stuck" {
+		t.Fatalf("unexpected trackerLabels: %v", updated.TrackerLabels)
+	}
+
+	// 2. Update trackerLabels
+	updated, err = svc.Update(ctx, p.ID, domain.UpdateProjectRequest{
+		TrackerLabels: map[string]string{"todo": "next-up"},
+	})
+	if err != nil {
+		t.Fatalf("update trackerLabels failed: %v", err)
+	}
+	if len(updated.TrackerLabels) != 1 || updated.TrackerLabels["todo"] != "next-up" {
+		t.Fatalf("expected replaced trackerLabels {todo: next-up}, got %v", updated.TrackerLabels)
+	}
+
+	// 3. Invalid trackerLabels rejected by validator
+	_, err = svc.Update(ctx, p.ID, domain.UpdateProjectRequest{
+		TrackerLabels: map[string]string{"todo": "invalid"},
+	})
+	if !errors.Is(err, domain.ErrInvalidTrackerLabels) {
+		t.Fatalf("expected ErrInvalidTrackerLabels, got %v", err)
+	}
+
+	// Existing trackerLabels preserved after rejected update
+	fetched, err := svc.Get(ctx, p.ID)
+	if err != nil {
+		t.Fatalf("get failed: %v", err)
+	}
+	if fetched.TrackerLabels["todo"] != "next-up" {
+		t.Fatalf("expected existing trackerLabels preserved, got %v", fetched.TrackerLabels)
+	}
+
+	// 4. Clear with empty map {}
+	cleared, err := svc.Update(ctx, p.ID, domain.UpdateProjectRequest{
+		TrackerLabels: map[string]string{},
+	})
+	if err != nil {
+		t.Fatalf("clear trackerLabels with empty map failed: %v", err)
+	}
+	if len(cleared.TrackerLabels) != 0 {
+		t.Fatalf("expected cleared trackerLabels, got %v", cleared.TrackerLabels)
+	}
+
+	// 5. Re-set then clear with ClearTrackerLabels flag (null in JSON)
+	_, err = svc.Update(ctx, p.ID, domain.UpdateProjectRequest{
+		TrackerLabels: map[string]string{"review": "qa"},
+	})
+	if err != nil {
+		t.Fatalf("re-set trackerLabels failed: %v", err)
+	}
+	clearedNull, err := svc.Update(ctx, p.ID, domain.UpdateProjectRequest{
+		ClearTrackerLabels: true,
+	})
+	if err != nil {
+		t.Fatalf("clear trackerLabels with flag failed: %v", err)
+	}
+	if len(clearedNull.TrackerLabels) != 0 {
+		t.Fatalf("expected cleared trackerLabels, got %v", clearedNull.TrackerLabels)
+	}
+}

@@ -34,6 +34,10 @@ type Tx struct {
 	Session *SessionClient
 	// Task is the client for interacting with the Task builders.
 	Task *TaskClient
+	// TrackerSettings is the client for interacting with the TrackerSettings builders.
+	TrackerSettings *TrackerSettingsClient
+	// TrackerSync is the client for interacting with the TrackerSync builders.
+	TrackerSync *TrackerSyncClient
 	// User is the client for interacting with the User builders.
 	User *UserClient
 
@@ -178,6 +182,8 @@ func (tx *Tx) init() {
 	tx.ProjectNode = NewProjectNodeClient(tx.config)
 	tx.Session = NewSessionClient(tx.config)
 	tx.Task = NewTaskClient(tx.config)
+	tx.TrackerSettings = NewTrackerSettingsClient(tx.config)
+	tx.TrackerSync = NewTrackerSyncClient(tx.config)
 	tx.User = NewUserClient(tx.config)
 }
 

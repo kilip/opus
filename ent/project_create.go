@@ -14,6 +14,7 @@ import (
 	"github.com/kilip/opus/ent/project"
 	"github.com/kilip/opus/ent/projectnode"
 	"github.com/kilip/opus/ent/task"
+	"github.com/kilip/opus/ent/trackersync"
 )
 
 // ProjectCreate is the builder for creating a Project entity.
@@ -70,6 +71,12 @@ func (_c *ProjectCreate) SetNillableDefaultBranch(v *string) *ProjectCreate {
 	if v != nil {
 		_c.SetDefaultBranch(*v)
 	}
+	return _c
+}
+
+// SetTrackerLabels sets the "tracker_labels" field.
+func (_c *ProjectCreate) SetTrackerLabels(v map[string]string) *ProjectCreate {
+	_c.mutation.SetTrackerLabels(v)
 	return _c
 }
 
@@ -143,6 +150,25 @@ func (_c *ProjectCreate) AddTasks(v ...*Task) *ProjectCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddTaskIDs(ids...)
+}
+
+// SetTrackerSyncID sets the "tracker_sync" edge to the TrackerSync entity by ID.
+func (_c *ProjectCreate) SetTrackerSyncID(id uuid.UUID) *ProjectCreate {
+	_c.mutation.SetTrackerSyncID(id)
+	return _c
+}
+
+// SetNillableTrackerSyncID sets the "tracker_sync" edge to the TrackerSync entity by ID if the given value is not nil.
+func (_c *ProjectCreate) SetNillableTrackerSyncID(id *uuid.UUID) *ProjectCreate {
+	if id != nil {
+		_c = _c.SetTrackerSyncID(*id)
+	}
+	return _c
+}
+
+// SetTrackerSync sets the "tracker_sync" edge to the TrackerSync entity.
+func (_c *ProjectCreate) SetTrackerSync(v *TrackerSync) *ProjectCreate {
+	return _c.SetTrackerSyncID(v.ID)
 }
 
 // Mutation returns the ProjectMutation object of the builder.
@@ -325,6 +351,10 @@ func (_c *ProjectCreate) createSpec() (*Project, *sqlgraph.CreateSpec) {
 		_spec.SetField(project.FieldDefaultBranch, field.TypeString, value)
 		_node.DefaultBranch = value
 	}
+	if value, ok := _c.mutation.TrackerLabels(); ok {
+		_spec.SetField(project.FieldTrackerLabels, field.TypeJSON, value)
+		_node.TrackerLabels = value
+	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(project.FieldCreatedAt, field.TypeTime, value)
 		_node.CreatedAt = value
@@ -358,6 +388,22 @@ func (_c *ProjectCreate) createSpec() (*Project, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(task.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.TrackerSyncIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2O,
+			Inverse: false,
+			Table:   project.TrackerSyncTable,
+			Columns: []string{project.TrackerSyncColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(trackersync.FieldID, field.TypeUUID),
 			},
 		}
 		for _, k := range nodes {

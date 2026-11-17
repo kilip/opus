@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net"
 	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -23,6 +24,7 @@ import (
 	"github.com/kilip/opus/internal/app"
 	"github.com/kilip/opus/internal/node"
 	"github.com/kilip/opus/internal/platform/eventbus"
+	"github.com/kilip/opus/internal/tracker"
 	_ "modernc.org/sqlite"
 )
 
@@ -394,7 +396,7 @@ func TestOpus_Serve_ShutdownSequence_WithNode(t *testing.T) {
 		},
 	})
 
-	fiberApp := app.GetFiber(cfg, logger, client, bus, nodeFeature)
+	fiberApp := app.GetFiber(cfg, logger, client, bus, app.WithNode(nodeFeature))
 
 	httpListening := make(chan struct{})
 	fiberApp.Hooks().OnListen(func(fiber.ListenData) error {
@@ -432,7 +434,7 @@ func TestOpus_Serve_ShutdownSequence_WithNode(t *testing.T) {
 		t.Fatal("timed out waiting for subscriber to receive event")
 	}
 
-	opusApp := app.New(cfg, fiberApp, logger, client, bus, nodeFeature)
+	opusApp := app.New(cfg, fiberApp, logger, client, bus, app.WithNode(nodeFeature))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	serveDone := make(chan error, 1)
@@ -486,5 +488,121 @@ func TestOpus_Serve_ShutdownSequence_WithNode(t *testing.T) {
 	expectedOrder := []string{"http.Shutdown", "detector.Stop", "bus.Close", "db.Close"}
 	if !reflect.DeepEqual(order, expectedOrder) {
 		t.Fatalf("expected shutdown order %v, got %v", expectedOrder, order)
+	}
+}
+
+func TestOpus_Serve_ShutdownSequence_WithTracker(t *testing.T) {
+	var (
+		orderMu sync.Mutex
+		order   []string
+	)
+	record := func(action string) {
+		orderMu.Lock()
+		order = append(order, action)
+		orderMu.Unlock()
+	}
+
+	var trackerFeature *tracker.Tracker
+
+	sqlDB, err := sql.Open("sqlite", "file:opus_shutdown_tracker_test?mode=memory&cache=shared&_pragma=foreign_keys(ON)")
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	baseDrv := entsql.OpenDB(dialect.SQLite, sqlDB)
+	trackingDrv := &shutdownTrackingDriver{
+		Driver: baseDrv,
+		onClose: func() {
+			if trackerFeature != nil && trackerFeature.Running() {
+				t.Error("tracker poller was still running when db.Close was called")
+			}
+			record("db.Close")
+		},
+	}
+	client := enttest.NewClient(t, enttest.WithOptions(ent.Driver(trackingDrv)))
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	bus := eventbus.New(eventbus.WithLogger(logger))
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	port := strconv.Itoa(ln.Addr().(*net.TCPAddr).Port)
+	_ = ln.Close()
+
+	cfg := app.Config{
+		Host:            "127.0.0.1",
+		Port:            port,
+		ShutdownTimeout: 2 * time.Second,
+	}
+
+	trackerFeature = tracker.New(client, tracker.Config{
+		PollInterval: 10 * time.Millisecond,
+		Logger:       logger,
+		Runner: func(_ context.Context, _ ...string) ([]byte, error) {
+			return []byte("[]"), nil
+		},
+		OnStop: func() {
+			record("tracker.Stop")
+		},
+	})
+
+	fiberApp := app.GetFiber(cfg, logger, client, bus, app.WithTracker(trackerFeature))
+
+	httpListening := make(chan struct{})
+	fiberApp.Hooks().OnListen(func(fiber.ListenData) error {
+		close(httpListening)
+		return nil
+	})
+	fiberApp.Hooks().OnPostShutdown(func(error) error {
+		record("http.Shutdown")
+		return nil
+	})
+
+	opusApp := app.New(cfg, fiberApp, logger, client, bus, app.WithTracker(trackerFeature))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	serveDone := make(chan error, 1)
+	go func() {
+		serveDone <- opusApp.Serve(ctx)
+	}()
+
+	select {
+	case <-httpListening:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for HTTP to listen")
+	}
+
+	if !trackerFeature.Running() {
+		t.Fatal("expected tracker poller to be running while server is listening")
+	}
+
+	cancel()
+
+	select {
+	case err := <-serveDone:
+		if err != nil {
+			t.Fatalf("unexpected Serve error: %v", err)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("timed out waiting for Serve to return")
+	}
+
+	if trackerFeature.Running() {
+		t.Fatal("expected tracker poller to be stopped after Serve returned")
+	}
+
+	orderMu.Lock()
+	expectedOrder := []string{"http.Shutdown", "tracker.Stop", "db.Close"}
+	gotOrder := append([]string(nil), order...)
+	orderMu.Unlock()
+	if !reflect.DeepEqual(gotOrder, expectedOrder) {
+		t.Fatalf("expected shutdown order %v, got %v", expectedOrder, gotOrder)
+	}
+
+	buf := make([]byte, 1<<20)
+	n := runtime.Stack(buf, true)
+	if strings.Contains(string(buf[:n]), "tracker/service.(*Poller)") {
+		t.Fatalf("goroutine leak: tracker poller goroutine still active after Serve returned:\n%s", buf[:n])
 	}
 }
