@@ -64,6 +64,9 @@ func (Task) Fields() []ent.Field {
 		field.Time("updated_at").
 			Default(time.Now).
 			UpdateDefault(time.Now),
+		field.Time("synced_at").
+			Optional().
+			Nillable(),
 	}
 }
 

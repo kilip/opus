@@ -246,6 +246,12 @@ func (r *Ent) Import(ctx context.Context, in CreateInput) (ImportResult, error) 
 		}
 		statusChanged = true
 	}
+	if in.SyncedAt != nil {
+		u.SetSyncedAt(*in.SyncedAt)
+		if existing.SyncedAt == nil || !existing.UpdatedAt.After(*existing.SyncedAt) {
+			u.SetUpdatedAt(*in.SyncedAt)
+		}
+	}
 
 	updated, err := u.Save(ctx)
 	if err != nil {
@@ -338,6 +344,10 @@ func createInTx(ctx context.Context, tx *ent.Tx, in CreateInput) (domain.Task, e
 	if in.Assignee != nil {
 		taskCreate.SetAssigneeID(in.Assignee.ID)
 		taskCreate.SetAssigneeName(in.Assignee.Name)
+	}
+	if in.SyncedAt != nil {
+		taskCreate.SetSyncedAt(*in.SyncedAt)
+		taskCreate.SetUpdatedAt(*in.SyncedAt)
 	}
 
 	t, err := taskCreate.Save(ctx)
@@ -628,6 +638,7 @@ func toDomainTask(t *ent.Task) domain.Task {
 		Labels:       t.Labels,
 		CreatedAt:    t.CreatedAt,
 		UpdatedAt:    t.UpdatedAt,
+		SyncedAt:     t.SyncedAt,
 	}
 	if t.ExternalID != nil {
 		res.ExternalID = *t.ExternalID

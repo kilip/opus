@@ -242,6 +242,7 @@ var (
 		{Name: "labels", Type: field.TypeJSON},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "synced_at", Type: field.TypeTime, Nullable: true},
 		{Name: "project_id", Type: field.TypeUUID},
 	}
 	// TasksTable holds the schema information for the "tasks" table.
@@ -252,7 +253,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "tasks_projects_tasks",
-				Columns:    []*schema.Column{TasksColumns[17]},
+				Columns:    []*schema.Column{TasksColumns[18]},
 				RefColumns: []*schema.Column{ProjectsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},

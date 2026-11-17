@@ -50,6 +50,8 @@ const (
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
+	// FieldSyncedAt holds the string denoting the synced_at field in the database.
+	FieldSyncedAt = "synced_at"
 	// EdgeProject holds the string denoting the project edge name in mutations.
 	EdgeProject = "project"
 	// EdgeActivities holds the string denoting the activities edge name in mutations.
@@ -92,6 +94,7 @@ var Columns = []string{
 	FieldLabels,
 	FieldCreatedAt,
 	FieldUpdatedAt,
+	FieldSyncedAt,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -257,6 +260,11 @@ func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 // ByUpdatedAt orders the results by the updated_at field.
 func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
+}
+
+// BySyncedAt orders the results by the synced_at field.
+func BySyncedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSyncedAt, opts...).ToFunc()
 }
 
 // ByProjectField orders the results by project field.

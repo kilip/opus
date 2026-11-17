@@ -391,6 +391,9 @@
                     "status": {
                         "$ref": "#/components/schemas/domain.TaskStatus"
                     },
+                    "syncedAt": {
+                        "type": "string"
+                    },
                     "title": {
                         "type": "string"
                     },

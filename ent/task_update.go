@@ -264,6 +264,26 @@ func (_u *TaskUpdate) SetUpdatedAt(v time.Time) *TaskUpdate {
 	return _u
 }
 
+// SetSyncedAt sets the "synced_at" field.
+func (_u *TaskUpdate) SetSyncedAt(v time.Time) *TaskUpdate {
+	_u.mutation.SetSyncedAt(v)
+	return _u
+}
+
+// SetNillableSyncedAt sets the "synced_at" field if the given value is not nil.
+func (_u *TaskUpdate) SetNillableSyncedAt(v *time.Time) *TaskUpdate {
+	if v != nil {
+		_u.SetSyncedAt(*v)
+	}
+	return _u
+}
+
+// ClearSyncedAt clears the value of the "synced_at" field.
+func (_u *TaskUpdate) ClearSyncedAt() *TaskUpdate {
+	_u.mutation.ClearSyncedAt()
+	return _u
+}
+
 // SetProject sets the "project" edge to the Project entity.
 func (_u *TaskUpdate) SetProject(v *Project) *TaskUpdate {
 	return _u.SetProjectID(v.ID)
@@ -460,6 +480,12 @@ func (_u *TaskUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(task.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.SyncedAt(); ok {
+		_spec.SetField(task.FieldSyncedAt, field.TypeTime, value)
+	}
+	if _u.mutation.SyncedAtCleared() {
+		_spec.ClearField(task.FieldSyncedAt, field.TypeTime)
 	}
 	if _u.mutation.ProjectCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -787,6 +813,26 @@ func (_u *TaskUpdateOne) SetUpdatedAt(v time.Time) *TaskUpdateOne {
 	return _u
 }
 
+// SetSyncedAt sets the "synced_at" field.
+func (_u *TaskUpdateOne) SetSyncedAt(v time.Time) *TaskUpdateOne {
+	_u.mutation.SetSyncedAt(v)
+	return _u
+}
+
+// SetNillableSyncedAt sets the "synced_at" field if the given value is not nil.
+func (_u *TaskUpdateOne) SetNillableSyncedAt(v *time.Time) *TaskUpdateOne {
+	if v != nil {
+		_u.SetSyncedAt(*v)
+	}
+	return _u
+}
+
+// ClearSyncedAt clears the value of the "synced_at" field.
+func (_u *TaskUpdateOne) ClearSyncedAt() *TaskUpdateOne {
+	_u.mutation.ClearSyncedAt()
+	return _u
+}
+
 // SetProject sets the "project" edge to the Project entity.
 func (_u *TaskUpdateOne) SetProject(v *Project) *TaskUpdateOne {
 	return _u.SetProjectID(v.ID)
@@ -1013,6 +1059,12 @@ func (_u *TaskUpdateOne) sqlSave(ctx context.Context) (_node *Task, err error) {
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(task.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.SyncedAt(); ok {
+		_spec.SetField(task.FieldSyncedAt, field.TypeTime, value)
+	}
+	if _u.mutation.SyncedAtCleared() {
+		_spec.ClearField(task.FieldSyncedAt, field.TypeTime)
 	}
 	if _u.mutation.ProjectCleared() {
 		edge := &sqlgraph.EdgeSpec{

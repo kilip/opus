@@ -94,10 +94,11 @@ type Task struct {
 	Type         TaskType     `json:"type" validate:"required"`
 	Assignee     *Assignee    `json:"assignee,omitempty"`
 	// DueDate is calendar date (YYYY-MM-DD).
-	DueDate   string    `json:"dueDate,omitempty" format:"date"`
-	Labels    []string  `json:"labels" validate:"required"`
-	CreatedAt time.Time `json:"createdAt" validate:"required"`
-	UpdatedAt time.Time `json:"updatedAt" validate:"required"`
+	DueDate   string     `json:"dueDate,omitempty" format:"date"`
+	Labels    []string   `json:"labels" validate:"required"`
+	CreatedAt time.Time  `json:"createdAt" validate:"required"`
+	UpdatedAt time.Time  `json:"updatedAt" validate:"required"`
+	SyncedAt  *time.Time `json:"syncedAt,omitempty"`
 }
 
 // TaskFilter specifies criteria for listing tasks.

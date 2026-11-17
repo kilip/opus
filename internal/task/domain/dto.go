@@ -1,5 +1,7 @@
 package domain
 
+import "time"
+
 // CreateTaskRequest is payload for creating task.
 type CreateTaskRequest struct {
 	ProjectID   string        `json:"projectId" validate:"required"`
@@ -46,4 +48,5 @@ type ImportTaskRequest struct {
 	Type         TaskType     `json:"type,omitempty"`
 	Priority     TaskPriority `json:"priority,omitempty"`
 	Status       TaskStatus   `json:"status,omitempty"`
+	SyncedAt     *time.Time   `json:"syncedAt,omitempty"`
 }

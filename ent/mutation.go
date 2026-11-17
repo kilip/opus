@@ -6316,6 +6316,7 @@ type TaskMutation struct {
 	appendlabels      []string
 	created_at        *time.Time
 	updated_at        *time.Time
+	synced_at         *time.Time
 	clearedFields     map[string]struct{}
 	project           *uuid.UUID
 	clearedproject    bool
@@ -7097,6 +7098,55 @@ func (m *TaskMutation) ResetUpdatedAt() {
 	m.updated_at = nil
 }
 
+// SetSyncedAt sets the "synced_at" field.
+func (m *TaskMutation) SetSyncedAt(t time.Time) {
+	m.synced_at = &t
+}
+
+// SyncedAt returns the value of the "synced_at" field in the mutation.
+func (m *TaskMutation) SyncedAt() (r time.Time, exists bool) {
+	v := m.synced_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSyncedAt returns the old "synced_at" field's value of the Task entity.
+// If the Task object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TaskMutation) OldSyncedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSyncedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSyncedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSyncedAt: %w", err)
+	}
+	return oldValue.SyncedAt, nil
+}
+
+// ClearSyncedAt clears the value of the "synced_at" field.
+func (m *TaskMutation) ClearSyncedAt() {
+	m.synced_at = nil
+	m.clearedFields[task.FieldSyncedAt] = struct{}{}
+}
+
+// SyncedAtCleared returns if the "synced_at" field was cleared in this mutation.
+func (m *TaskMutation) SyncedAtCleared() bool {
+	_, ok := m.clearedFields[task.FieldSyncedAt]
+	return ok
+}
+
+// ResetSyncedAt resets all changes to the "synced_at" field.
+func (m *TaskMutation) ResetSyncedAt() {
+	m.synced_at = nil
+	delete(m.clearedFields, task.FieldSyncedAt)
+}
+
 // ClearProject clears the "project" edge to the Project entity.
 func (m *TaskMutation) ClearProject() {
 	m.clearedproject = true
@@ -7212,7 +7262,7 @@ func (m *TaskMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *TaskMutation) Fields() []string {
-	fields := make([]string, 0, 17)
+	fields := make([]string, 0, 18)
 	if m.project != nil {
 		fields = append(fields, task.FieldProjectID)
 	}
@@ -7264,6 +7314,9 @@ func (m *TaskMutation) Fields() []string {
 	if m.updated_at != nil {
 		fields = append(fields, task.FieldUpdatedAt)
 	}
+	if m.synced_at != nil {
+		fields = append(fields, task.FieldSyncedAt)
+	}
 	return fields
 }
 
@@ -7306,6 +7359,8 @@ func (m *TaskMutation) Field(name string) (ent.Value, bool) {
 		return m.CreatedAt()
 	case task.FieldUpdatedAt:
 		return m.UpdatedAt()
+	case task.FieldSyncedAt:
+		return m.SyncedAt()
 	}
 	return nil, false
 }
@@ -7349,6 +7404,8 @@ func (m *TaskMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldCreatedAt(ctx)
 	case task.FieldUpdatedAt:
 		return m.OldUpdatedAt(ctx)
+	case task.FieldSyncedAt:
+		return m.OldSyncedAt(ctx)
 	}
 	return nil, fmt.Errorf("unknown Task field %s", name)
 }
@@ -7477,6 +7534,13 @@ func (m *TaskMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetUpdatedAt(v)
 		return nil
+	case task.FieldSyncedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSyncedAt(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Task field %s", name)
 }
@@ -7516,6 +7580,9 @@ func (m *TaskMutation) ClearedFields() []string {
 	if m.FieldCleared(task.FieldAssigneeName) {
 		fields = append(fields, task.FieldAssigneeName)
 	}
+	if m.FieldCleared(task.FieldSyncedAt) {
+		fields = append(fields, task.FieldSyncedAt)
+	}
 	return fields
 }
 
@@ -7538,6 +7605,9 @@ func (m *TaskMutation) ClearField(name string) error {
 		return nil
 	case task.FieldAssigneeName:
 		m.ClearAssigneeName()
+		return nil
+	case task.FieldSyncedAt:
+		m.ClearSyncedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Task nullable field %s", name)
@@ -7597,6 +7667,9 @@ func (m *TaskMutation) ResetField(name string) error {
 		return nil
 	case task.FieldUpdatedAt:
 		m.ResetUpdatedAt()
+		return nil
+	case task.FieldSyncedAt:
+		m.ResetSyncedAt()
 		return nil
 	}
 	return fmt.Errorf("unknown Task field %s", name)

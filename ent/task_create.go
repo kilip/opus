@@ -229,6 +229,20 @@ func (_c *TaskCreate) SetNillableUpdatedAt(v *time.Time) *TaskCreate {
 	return _c
 }
 
+// SetSyncedAt sets the "synced_at" field.
+func (_c *TaskCreate) SetSyncedAt(v time.Time) *TaskCreate {
+	_c.mutation.SetSyncedAt(v)
+	return _c
+}
+
+// SetNillableSyncedAt sets the "synced_at" field if the given value is not nil.
+func (_c *TaskCreate) SetNillableSyncedAt(v *time.Time) *TaskCreate {
+	if v != nil {
+		_c.SetSyncedAt(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *TaskCreate) SetID(v uuid.UUID) *TaskCreate {
 	_c.mutation.SetID(v)
@@ -523,6 +537,10 @@ func (_c *TaskCreate) createSpec() (*Task, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(task.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
+	}
+	if value, ok := _c.mutation.SyncedAt(); ok {
+		_spec.SetField(task.FieldSyncedAt, field.TypeTime, value)
+		_node.SyncedAt = &value
 	}
 	if nodes := _c.mutation.ProjectIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

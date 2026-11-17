@@ -131,6 +131,11 @@ func UpdatedAt(v time.Time) predicate.Task {
 	return predicate.Task(sql.FieldEQ(FieldUpdatedAt, v))
 }
 
+// SyncedAt applies equality check predicate on the "synced_at" field. It's identical to SyncedAtEQ.
+func SyncedAt(v time.Time) predicate.Task {
+	return predicate.Task(sql.FieldEQ(FieldSyncedAt, v))
+}
+
 // ProjectIDEQ applies the EQ predicate on the "project_id" field.
 func ProjectIDEQ(v uuid.UUID) predicate.Task {
 	return predicate.Task(sql.FieldEQ(FieldProjectID, v))
@@ -1059,6 +1064,56 @@ func UpdatedAtLT(v time.Time) predicate.Task {
 // UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
 func UpdatedAtLTE(v time.Time) predicate.Task {
 	return predicate.Task(sql.FieldLTE(FieldUpdatedAt, v))
+}
+
+// SyncedAtEQ applies the EQ predicate on the "synced_at" field.
+func SyncedAtEQ(v time.Time) predicate.Task {
+	return predicate.Task(sql.FieldEQ(FieldSyncedAt, v))
+}
+
+// SyncedAtNEQ applies the NEQ predicate on the "synced_at" field.
+func SyncedAtNEQ(v time.Time) predicate.Task {
+	return predicate.Task(sql.FieldNEQ(FieldSyncedAt, v))
+}
+
+// SyncedAtIn applies the In predicate on the "synced_at" field.
+func SyncedAtIn(vs ...time.Time) predicate.Task {
+	return predicate.Task(sql.FieldIn(FieldSyncedAt, vs...))
+}
+
+// SyncedAtNotIn applies the NotIn predicate on the "synced_at" field.
+func SyncedAtNotIn(vs ...time.Time) predicate.Task {
+	return predicate.Task(sql.FieldNotIn(FieldSyncedAt, vs...))
+}
+
+// SyncedAtGT applies the GT predicate on the "synced_at" field.
+func SyncedAtGT(v time.Time) predicate.Task {
+	return predicate.Task(sql.FieldGT(FieldSyncedAt, v))
+}
+
+// SyncedAtGTE applies the GTE predicate on the "synced_at" field.
+func SyncedAtGTE(v time.Time) predicate.Task {
+	return predicate.Task(sql.FieldGTE(FieldSyncedAt, v))
+}
+
+// SyncedAtLT applies the LT predicate on the "synced_at" field.
+func SyncedAtLT(v time.Time) predicate.Task {
+	return predicate.Task(sql.FieldLT(FieldSyncedAt, v))
+}
+
+// SyncedAtLTE applies the LTE predicate on the "synced_at" field.
+func SyncedAtLTE(v time.Time) predicate.Task {
+	return predicate.Task(sql.FieldLTE(FieldSyncedAt, v))
+}
+
+// SyncedAtIsNil applies the IsNil predicate on the "synced_at" field.
+func SyncedAtIsNil() predicate.Task {
+	return predicate.Task(sql.FieldIsNull(FieldSyncedAt))
+}
+
+// SyncedAtNotNil applies the NotNil predicate on the "synced_at" field.
+func SyncedAtNotNil() predicate.Task {
+	return predicate.Task(sql.FieldNotNull(FieldSyncedAt))
 }
 
 // HasProject applies the HasEdge predicate on the "project" edge.

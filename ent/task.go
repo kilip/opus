@@ -54,6 +54,8 @@ type Task struct {
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
 	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	// SyncedAt holds the value of the "synced_at" field.
+	SyncedAt *time.Time `json:"synced_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the TaskQuery when eager-loading is set.
 	Edges        TaskEdges `json:"edges"`
@@ -100,7 +102,7 @@ func (*Task) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case task.FieldKey, task.FieldSource, task.FieldExternalID, task.FieldExternalURL, task.FieldTitle, task.FieldDescription, task.FieldStatus, task.FieldSourceStatus, task.FieldPriority, task.FieldType, task.FieldAssigneeID, task.FieldAssigneeName, task.FieldDueDate:
 			values[i] = new(sql.NullString)
-		case task.FieldCreatedAt, task.FieldUpdatedAt:
+		case task.FieldCreatedAt, task.FieldUpdatedAt, task.FieldSyncedAt:
 			values[i] = new(sql.NullTime)
 		case task.FieldID, task.FieldProjectID:
 			values[i] = new(uuid.UUID)
@@ -232,6 +234,13 @@ func (_m *Task) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.UpdatedAt = value.Time
 			}
+		case task.FieldSyncedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field synced_at", values[i])
+			} else if value.Valid {
+				_m.SyncedAt = new(time.Time)
+				*_m.SyncedAt = value.Time
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -334,6 +343,11 @@ func (_m *Task) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("updated_at=")
 	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	if v := _m.SyncedAt; v != nil {
+		builder.WriteString("synced_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteByte(')')
 	return builder.String()
 }

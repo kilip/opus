@@ -1,6 +1,10 @@
 package repo
 
-import "github.com/kilip/opus/internal/task/domain"
+import (
+	"time"
+
+	"github.com/kilip/opus/internal/task/domain"
+)
 
 type CreateInput struct {
 	ProjectID    string
@@ -17,6 +21,7 @@ type CreateInput struct {
 	Assignee     *domain.Assignee
 	DueDate      string
 	Labels       []string
+	SyncedAt     *time.Time
 }
 
 // ImportResult holds the upserted task and whether the operation created, modified, or transitioned it.

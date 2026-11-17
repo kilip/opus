@@ -145,6 +145,7 @@ func (s *Task) Import(ctx context.Context, req domain.ImportTaskRequest) (domain
 		Priority:     priorityPtr,
 		Type:         typePtr,
 		Labels:       req.Labels,
+		SyncedAt:     req.SyncedAt,
 	})
 	if err != nil {
 		return domain.Task{}, err

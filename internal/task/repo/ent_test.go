@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
@@ -533,6 +534,7 @@ func TestEntRepo_ImportFindAndLabels(t *testing.T) {
 	}
 
 	// Import without key allocates OP-1
+	syncAt1 := time.Date(2026, 11, 17, 1, 0, 0, 0, time.UTC)
 	st := domain.StatusInProgress
 	prio := domain.TaskPriorityP2
 	tp := domain.TaskTypeBug
@@ -548,6 +550,7 @@ func TestEntRepo_ImportFindAndLabels(t *testing.T) {
 		Priority:     &prio,
 		Type:         &tp,
 		Labels:       []string{"bug"},
+		SyncedAt:     &syncAt1,
 	}
 	res1, err := r.Import(ctx, in)
 	if err != nil {
@@ -556,6 +559,12 @@ func TestEntRepo_ImportFindAndLabels(t *testing.T) {
 	if !res1.Created || !res1.Changed || res1.Task.Key != "OP-1" {
 		t.Fatalf("unexpected first import result: %+v", res1)
 	}
+	if res1.Task.SyncedAt == nil || !res1.Task.SyncedAt.Equal(syncAt1) {
+		t.Fatalf("expected SyncedAt=%v, got %v", syncAt1, res1.Task.SyncedAt)
+	}
+	if !res1.Task.UpdatedAt.Equal(syncAt1) {
+		t.Fatalf("expected UpdatedAt=%v, got %v", syncAt1, res1.Task.UpdatedAt)
+	}
 
 	// FindByExternal finds it
 	found, err := r.FindByExternal(ctx, domain.TaskSourceGitHub, "gh-99")
@@ -563,7 +572,9 @@ func TestEntRepo_ImportFindAndLabels(t *testing.T) {
 		t.Fatalf("FindByExternal = %+v, err=%v", found, err)
 	}
 
-	// Second Import with identical input does NO write (Changed=false, UpdatedAt identical)
+	// Second Import with identical fields and only a newer SyncedAt does NO write (Changed=false, UpdatedAt/SyncedAt unchanged)
+	syncAt2 := syncAt1.Add(5 * time.Minute)
+	in.SyncedAt = &syncAt2
 	res2, err := r.Import(ctx, in)
 	if err != nil {
 		t.Fatalf("second import failed: %v", err)
@@ -573,6 +584,9 @@ func TestEntRepo_ImportFindAndLabels(t *testing.T) {
 	}
 	if !res2.Task.UpdatedAt.Equal(res1.Task.UpdatedAt) {
 		t.Fatalf("expected UpdatedAt unchanged on no-op import: %v vs %v", res2.Task.UpdatedAt, res1.Task.UpdatedAt)
+	}
+	if res2.Task.SyncedAt == nil || !res2.Task.SyncedAt.Equal(syncAt1) {
+		t.Fatalf("expected SyncedAt unchanged (%v) on no-op import, got %v", syncAt1, res2.Task.SyncedAt)
 	}
 
 	// Label helpers
