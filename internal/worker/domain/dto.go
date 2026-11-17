@@ -26,19 +26,30 @@ type (
 	HelloPayload = node.HelloPayload
 )
 
+// Policy defines the execution, tool, and question constraints for a run.
+type Policy struct {
+	WorktreeRoot      string   `json:"worktreeRoot"`
+	AllowedSubagents  []string `json:"allowedSubagents,omitempty"`
+	AllowedMCPTools   []string `json:"allowedMcpTools,omitempty"`
+	QuestionAutoReply string   `json:"questionAutoReply,omitempty"`
+	MaxQuestions      int      `json:"maxQuestions"`
+	AllowMerge        bool     `json:"allowMerge"`
+}
+
 // StartRun is the command payload for starting a run on a worker.
 type StartRun struct {
-	Type          string `json:"type,omitempty"`
-	RunID         string `json:"runId"`
-	TaskID        string `json:"taskId,omitempty"`
-	TaskKey       string `json:"taskKey,omitempty"`
-	ProjectID     string `json:"projectId,omitempty"`
-	ProjectSlug   string `json:"projectSlug,omitempty"`
-	RepoURL       string `json:"repoUrl,omitempty"`
-	DefaultBranch string `json:"defaultBranch,omitempty"`
-	MappedPath    string `json:"mappedPath,omitempty"`
-	Branch        string `json:"branch,omitempty"`
-	Prompt        string `json:"prompt,omitempty"`
+	Type          string  `json:"type,omitempty"`
+	RunID         string  `json:"runId"`
+	TaskID        string  `json:"taskId,omitempty"`
+	TaskKey       string  `json:"taskKey,omitempty"`
+	ProjectID     string  `json:"projectId,omitempty"`
+	ProjectSlug   string  `json:"projectSlug,omitempty"`
+	RepoURL       string  `json:"repoUrl,omitempty"`
+	DefaultBranch string  `json:"defaultBranch,omitempty"`
+	MappedPath    string  `json:"mappedPath,omitempty"`
+	Branch        string  `json:"branch,omitempty"`
+	Prompt        string  `json:"prompt,omitempty"`
+	Policy        *Policy `json:"policy,omitempty"`
 }
 
 // CancelRun is the command payload for cancelling an active run on a worker.

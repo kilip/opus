@@ -34,6 +34,7 @@ const (
 
 // Re-exported payload types and envelope constructors from domain.
 type (
+	Policy       = domain.Policy
 	StartRun     = domain.StartRun
 	CancelRun    = domain.CancelRun
 	Event        = domain.Event
