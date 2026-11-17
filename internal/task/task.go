@@ -14,33 +14,69 @@ import (
 	"github.com/kilip/opus/internal/task/service"
 )
 
-// Event type constants re-exported from domain.
+// Event, status, source, priority, type, and activity kind constants re-exported from domain.
 const (
 	EventReceived      = domain.EventReceived
 	EventStatusChanged = domain.EventStatusChanged
 
-	StatusBacklog    = domain.TaskStatusBacklog
-	StatusTodo       = domain.TaskStatusTodo
-	StatusInProgress = domain.TaskStatusInProgress
-	StatusReview     = domain.TaskStatusReview
-	StatusDone       = domain.TaskStatusDone
+	StatusBacklog    = domain.StatusBacklog
+	StatusTodo       = domain.StatusTodo
+	StatusInProgress = domain.StatusInProgress
+	StatusReview     = domain.StatusReview
+	StatusBlocked    = domain.StatusBlocked
+	StatusDone       = domain.StatusDone
+
+	SourceGitHub = domain.TaskSourceGitHub
+	SourceLinear = domain.TaskSourceLinear
+	SourceSentry = domain.TaskSourceSentry
+	SourceAgent  = domain.TaskSourceAgent
+	SourceManual = domain.TaskSourceManual
+
+	PriorityP0 = domain.TaskPriorityP0
+	PriorityP1 = domain.TaskPriorityP1
+	PriorityP2 = domain.TaskPriorityP2
+	PriorityP3 = domain.TaskPriorityP3
+
+	TypeFeat     = domain.TaskTypeFeat
+	TypeBug      = domain.TaskTypeBug
+	TypeChore    = domain.TaskTypeChore
+	TypeRefactor = domain.TaskTypeRefactor
+	TypeDocs     = domain.TaskTypeDocs
+
+	ActivityKindStatus  = domain.ActivityKindStatus
+	ActivityKindComment = domain.ActivityKindComment
+	ActivityKindAssign  = domain.ActivityKindAssign
+	ActivityKindCommit  = domain.ActivityKindCommit
+	ActivityKindReview  = domain.ActivityKindReview
 )
 
 // Sentinel errors re-exported from domain.
 var (
-	ErrTaskNotFound      = domain.ErrTaskNotFound
-	ErrTaskTitleEmpty    = domain.ErrTaskTitleEmpty
-	ErrActivityBodyEmpty = domain.ErrActivityBodyEmpty
-	ErrProjectIDRequired = domain.ErrProjectIDRequired
-	ErrInvalidProjectID  = domain.ErrInvalidProjectID
-	ErrProjectNotFound   = domain.ErrProjectNotFound
-	ErrPatchForbidden    = domain.ErrPatchForbidden
+	ErrTaskNotFound       = domain.ErrTaskNotFound
+	ErrTaskTitleEmpty     = domain.ErrTaskTitleEmpty
+	ErrActivityBodyEmpty  = domain.ErrActivityBodyEmpty
+	ErrProjectIDRequired  = domain.ErrProjectIDRequired
+	ErrInvalidProjectID   = domain.ErrInvalidProjectID
+	ErrProjectNotFound    = domain.ErrProjectNotFound
+	ErrPatchForbidden     = domain.ErrPatchForbidden
+	ErrInvalidStatus      = domain.ErrInvalidStatus
+	ErrExternalIDRequired = domain.ErrExternalIDRequired
+	ErrSourceRequired     = domain.ErrSourceRequired
+	ErrAuthorForbidden    = domain.ErrAuthorForbidden
 )
 
 // Re-exported domain types.
 type (
+	Record                   = domain.Task
 	TaskStatus               = domain.TaskStatus
 	Status                   = domain.TaskStatus
+	TaskSource               = domain.TaskSource
+	TaskPriority             = domain.TaskPriority
+	TaskType                 = domain.TaskType
+	ActivityKind             = domain.ActivityKind
+	Activity                 = domain.Activity
+	Assignee                 = domain.Assignee
+	ImportTaskRequest        = domain.ImportTaskRequest
 	TaskReceivedPayload      = domain.TaskReceivedPayload
 	TaskStatusChangedPayload = domain.TaskStatusChangedPayload
 	ProjectChecker           = service.ProjectChecker
@@ -92,4 +128,39 @@ func (t *Task) Register(r fiber.Router) {
 // CountByProject returns the number of tasks associated with a project ID.
 func (t *Task) CountByProject(ctx context.Context, projectID string) (int, error) {
 	return t.svc.CountByProject(ctx, projectID)
+}
+
+// Get returns a task by Opus identifier, or ErrTaskNotFound.
+func (t *Task) Get(ctx context.Context, id string) (Record, error) {
+	return t.svc.Get(ctx, id)
+}
+
+// Import upserts a task by (source, externalId) for sibling features.
+func (t *Task) Import(ctx context.Context, req ImportTaskRequest) (Record, error) {
+	return t.svc.Import(ctx, req)
+}
+
+// FindByExternal returns the task matching (source, externalId), or ErrTaskNotFound.
+func (t *Task) FindByExternal(ctx context.Context, source TaskSource, externalID string) (*Record, error) {
+	return t.svc.FindByExternal(ctx, source, externalID)
+}
+
+// AddLabel adds a label to task id without publishing events.
+func (t *Task) AddLabel(ctx context.Context, id, label string) error {
+	return t.svc.AddLabel(ctx, id, label)
+}
+
+// RemoveLabel removes a label from task id without publishing events.
+func (t *Task) RemoveLabel(ctx context.Context, id, label string) error {
+	return t.svc.RemoveLabel(ctx, id, label)
+}
+
+// SetLabels replaces all labels on task id without publishing events.
+func (t *Task) SetLabels(ctx context.Context, id string, labels []string) error {
+	return t.svc.SetLabels(ctx, id, labels)
+}
+
+// AddActivity appends an activity entry with optional author to task id.
+func (t *Task) AddActivity(ctx context.Context, id string, kind ActivityKind, author, body string) (Activity, error) {
+	return t.svc.AddActivity(ctx, id, kind, author, body)
 }

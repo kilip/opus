@@ -180,6 +180,14 @@ func (h *Handler) ListActivity(c fiber.Ctx) error {
 //	@Failure		500		{object}	httpx.ErrorResponse
 //	@Router			/tasks/{id}/activity [post]
 func (h *Handler) CreateActivity(c fiber.Ctx) error {
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(c.Body(), &raw); err != nil {
+		return httpx.BadRequest(err)
+	}
+	if _, ok := raw["author"]; ok {
+		return httpx.BadRequest(domain.ErrAuthorForbidden)
+	}
+
 	var req domain.CreateActivityRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return httpx.BadRequest(err)
@@ -200,7 +208,9 @@ func mapErr(err error) error {
 		errors.Is(err, domain.ErrActivityBodyEmpty),
 		errors.Is(err, domain.ErrProjectIDRequired),
 		errors.Is(err, domain.ErrInvalidProjectID),
-		errors.Is(err, domain.ErrPatchForbidden):
+		errors.Is(err, domain.ErrPatchForbidden),
+		errors.Is(err, domain.ErrInvalidStatus),
+		errors.Is(err, domain.ErrAuthorForbidden):
 		return httpx.BadRequest(err)
 	default:
 		return err

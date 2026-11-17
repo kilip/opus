@@ -35,7 +35,7 @@ type Task struct {
 	// Description holds the value of the "description" field.
 	Description string `json:"description,omitempty"`
 	// Status holds the value of the "status" field.
-	Status string `json:"status,omitempty"`
+	Status task.Status `json:"status,omitempty"`
 	// SourceStatus holds the value of the "source_status" field.
 	SourceStatus string `json:"source_status,omitempty"`
 	// Priority holds the value of the "priority" field.
@@ -172,7 +172,7 @@ func (_m *Task) assignValues(columns []string, values []any) error {
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field status", values[i])
 			} else if value.Valid {
-				_m.Status = value.String
+				_m.Status = task.Status(value.String)
 			}
 		case task.FieldSourceStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -302,7 +302,7 @@ func (_m *Task) String() string {
 	builder.WriteString(_m.Description)
 	builder.WriteString(", ")
 	builder.WriteString("status=")
-	builder.WriteString(_m.Status)
+	builder.WriteString(fmt.Sprintf("%v", _m.Status))
 	builder.WriteString(", ")
 	builder.WriteString("source_status=")
 	builder.WriteString(_m.SourceStatus)

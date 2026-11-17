@@ -142,7 +142,7 @@ func TestTaskEvents_EmittedAndOrder(t *testing.T) {
 		t.Fatalf("create task: %v", err)
 	}
 
-	nextStatus := domain.TaskStatusInProgress
+	nextStatus := domain.StatusInProgress
 	updated, err := svc.Update(ctx, created.ID, domain.UpdateTaskRequest{
 		Status: &nextStatus,
 	})
@@ -192,7 +192,7 @@ func TestTaskEvents_EmittedAndOrder(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decode payload 1: %v", err)
 	}
-	if p1.ID != created.ID || p1.ProjectID != created.ProjectID || p1.From != domain.TaskStatusTodo || p1.To != nextStatus {
+	if p1.ID != created.ID || p1.ProjectID != created.ProjectID || p1.From != domain.StatusTodo || p1.To != nextStatus {
 		t.Fatalf("unexpected task.status_changed payload: %+v", p1)
 	}
 }
@@ -225,7 +225,7 @@ func TestTaskEvents_NoEventOnSameStatusUpdate(t *testing.T) {
 	}
 
 	// Update with same status
-	sameStatus := domain.TaskStatusTodo
+	sameStatus := domain.StatusTodo
 	_, err = svc.Update(ctx, created.ID, domain.UpdateTaskRequest{
 		Status: &sameStatus,
 	})
@@ -284,7 +284,7 @@ func TestTaskEvents_NoEventOnFailedWrite(t *testing.T) {
 	}
 
 	// Update non-existent task fails
-	nextStatus := domain.TaskStatusDone
+	nextStatus := domain.StatusDone
 	_, err = svc.Update(ctx, "nonexistent-task", domain.UpdateTaskRequest{Status: &nextStatus})
 	if err == nil {
 		t.Fatal("expected error on nonexistent update")
@@ -328,7 +328,7 @@ func TestTaskEvents_CreatedAsDone(t *testing.T) {
 
 	svc, ctx, projectID := newService(t, bus)
 
-	doneStatus := domain.TaskStatusDone
+	doneStatus := domain.StatusDone
 	created, err := svc.Create(ctx, domain.CreateTaskRequest{
 		ProjectID: projectID,
 		Title:     "Task Created As Done",
@@ -356,8 +356,8 @@ func TestTaskEvents_CreatedAsDone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("decode payload: %v", err)
 	}
-	if p.ID != created.ID || p.ProjectID != created.ProjectID || p.Status != domain.TaskStatusDone {
-		t.Fatalf("expected status %s, got %s (payload: %+v)", domain.TaskStatusDone, p.Status, p)
+	if p.ID != created.ID || p.ProjectID != created.ProjectID || p.Status != domain.StatusDone {
+		t.Fatalf("expected status %s, got %s (payload: %+v)", domain.StatusDone, p.Status, p)
 	}
 }
 
@@ -381,7 +381,7 @@ func TestTaskEvents_PublishFailureLoggedAndDoesNotFail(t *testing.T) {
 		t.Fatalf("unexpected title: %s", created.Title)
 	}
 
-	nextStatus := domain.TaskStatusReview
+	nextStatus := domain.StatusReview
 	updated, err := svc.Update(ctx, created.ID, domain.UpdateTaskRequest{
 		Status: &nextStatus,
 	})
@@ -419,7 +419,7 @@ func TestTaskEvents_ConcurrentUpdates_Race(t *testing.T) {
 
 	svc, ctx, projectID := newService(t, bus)
 
-	initialStatus := domain.TaskStatusBacklog
+	initialStatus := domain.StatusBacklog
 	created, err := svc.Create(ctx, domain.CreateTaskRequest{
 		ProjectID: projectID,
 		Title:     "Concurrent Task",
@@ -431,10 +431,11 @@ func TestTaskEvents_ConcurrentUpdates_Race(t *testing.T) {
 
 	// Run concurrent updates on the created task
 	stages := []domain.TaskStatus{
-		domain.TaskStatusTodo,
-		domain.TaskStatusInProgress,
-		domain.TaskStatusReview,
-		domain.TaskStatusDone,
+		domain.StatusTodo,
+		domain.StatusInProgress,
+		domain.StatusReview,
+		domain.StatusBlocked,
+		domain.StatusDone,
 	}
 
 	const goroutines = 20
@@ -484,4 +485,133 @@ func TestTaskEvents_ConcurrentUpdates_Race(t *testing.T) {
 
 func domainPtr[T any](v T) *T {
 	return &v
+}
+
+func TestImport_ValidationEventsAndLabels(t *testing.T) {
+	bus := eventbus.New()
+	var (
+		mu     sync.Mutex
+		events []eventbus.Event
+	)
+	if err := bus.Subscribe("test-import", func(ctx context.Context, e eventbus.Event) error {
+		mu.Lock()
+		events = append(events, e)
+		mu.Unlock()
+		return nil
+	}); err != nil {
+		t.Fatalf("subscribe: %v", err)
+	}
+
+	svc, ctx, projectID := newService(t, bus)
+
+	// Invalid status on Create and Update
+	badStatus := domain.TaskStatus("unknown")
+	if _, err := svc.Create(ctx, domain.CreateTaskRequest{
+		ProjectID: projectID,
+		Title:     "Bad status",
+		Status:    &badStatus,
+	}); !errors.Is(err, domain.ErrInvalidStatus) {
+		t.Fatalf("Create bad status = %v, want ErrInvalidStatus", err)
+	}
+	if _, err := svc.Update(ctx, "missing", domain.UpdateTaskRequest{
+		Status: &badStatus,
+	}); !errors.Is(err, domain.ErrInvalidStatus) {
+		t.Fatalf("Update bad status = %v, want ErrInvalidStatus", err)
+	}
+
+	// Import validation
+	if _, err := svc.Import(ctx, domain.ImportTaskRequest{
+		ProjectID:  projectID,
+		ExternalID: "1",
+		Title:      "No source",
+	}); !errors.Is(err, domain.ErrSourceRequired) {
+		t.Fatalf("Import no source = %v, want ErrSourceRequired", err)
+	}
+	if _, err := svc.Import(ctx, domain.ImportTaskRequest{
+		ProjectID: projectID,
+		Source:    domain.TaskSourceGitHub,
+		Title:     "No ext id",
+	}); !errors.Is(err, domain.ErrExternalIDRequired) {
+		t.Fatalf("Import no ext id = %v, want ErrExternalIDRequired", err)
+	}
+	if _, err := svc.Import(ctx, domain.ImportTaskRequest{
+		ProjectID:  projectID,
+		Source:     domain.TaskSourceGitHub,
+		ExternalID: "1",
+		Title:      "Bad status",
+		Status:     badStatus,
+	}); !errors.Is(err, domain.ErrInvalidStatus) {
+		t.Fatalf("Import bad status = %v, want ErrInvalidStatus", err)
+	}
+
+	// 1. Create via Import -> emits task.received
+	req := domain.ImportTaskRequest{
+		ProjectID:    projectID,
+		Source:       domain.TaskSourceGitHub,
+		ExternalID:   "42",
+		ExternalURL:  "https://github.com/org/repo/issues/42",
+		SourceStatus: "open",
+		Title:        "Imported issue",
+		Description:  "Body",
+		Labels:       []string{"bug"},
+		Type:         domain.TaskTypeBug,
+		Priority:     domain.TaskPriorityP2,
+		Status:       domain.StatusTodo,
+	}
+	tsk, err := svc.Import(ctx, req)
+	if err != nil {
+		t.Fatalf("Import create failed: %v", err)
+	}
+
+	// 2. Identical Import -> no event
+	if _, err := svc.Import(ctx, req); err != nil {
+		t.Fatalf("Import identical failed: %v", err)
+	}
+
+	// 3. Title-only Import update -> no status_changed event
+	req.Title = "Imported issue v2"
+	if _, err := svc.Import(ctx, req); err != nil {
+		t.Fatalf("Import title update failed: %v", err)
+	}
+
+	// 4. Status change to blocked -> emits task.status_changed
+	req.Status = domain.StatusBlocked
+	if _, err := svc.Import(ctx, req); err != nil {
+		t.Fatalf("Import status update failed: %v", err)
+	}
+
+	// 5. Label operations -> emit NO events
+	if err := svc.AddLabel(ctx, tsk.ID, "triage"); err != nil {
+		t.Fatalf("AddLabel failed: %v", err)
+	}
+	if err := svc.RemoveLabel(ctx, tsk.ID, "bug"); err != nil {
+		t.Fatalf("RemoveLabel failed: %v", err)
+	}
+	if err := svc.SetLabels(ctx, tsk.ID, []string{"blocked"}); err != nil {
+		t.Fatalf("SetLabels failed: %v", err)
+	}
+
+	if err := bus.Close(context.Background()); err != nil {
+		t.Fatalf("close bus: %v", err)
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	if len(events) != 2 {
+		t.Fatalf("expected 2 events (received + status_changed), got %d: %+v", len(events), events)
+	}
+	if events[0].Type != domain.EventReceived {
+		t.Fatalf("event[0] = %s, want %s", events[0].Type, domain.EventReceived)
+	}
+	if events[1].Type != domain.EventStatusChanged {
+		t.Fatalf("event[1] = %s, want %s", events[1].Type, domain.EventStatusChanged)
+	}
+	p1, err := eventbus.Decode[domain.TaskStatusChangedPayload](events[1])
+	if err != nil {
+		t.Fatalf("decode status_changed: %v", err)
+	}
+	if p1.ProjectID != projectID || p1.From != domain.StatusTodo || p1.To != domain.StatusBlocked {
+		t.Fatalf("unexpected status_changed payload: %+v", p1)
+	}
 }

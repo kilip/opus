@@ -17,12 +17,23 @@ const (
 type TaskStatus string
 
 const (
-	TaskStatusBacklog    TaskStatus = "backlog"
-	TaskStatusTodo       TaskStatus = "todo"
-	TaskStatusInProgress TaskStatus = "in-progress"
-	TaskStatusReview     TaskStatus = "review"
-	TaskStatusDone       TaskStatus = "done"
+	StatusBacklog    TaskStatus = "backlog"
+	StatusTodo       TaskStatus = "todo"
+	StatusInProgress TaskStatus = "in-progress"
+	StatusReview     TaskStatus = "review"
+	StatusBlocked    TaskStatus = "blocked"
+	StatusDone       TaskStatus = "done"
 )
+
+// IsValid reports whether s is a recognised task status.
+func (s TaskStatus) IsValid() bool {
+	switch s {
+	case StatusBacklog, StatusTodo, StatusInProgress, StatusReview, StatusBlocked, StatusDone:
+		return true
+	default:
+		return false
+	}
+}
 
 // TaskPriority is normalised priority, lowest first.
 type TaskPriority string

@@ -6166,7 +6166,7 @@ type TaskMutation struct {
 	external_url      *string
 	title             *string
 	description       *string
-	status            *string
+	status            *task.Status
 	source_status     *string
 	priority          *string
 	_type             *string
@@ -6558,12 +6558,12 @@ func (m *TaskMutation) ResetDescription() {
 }
 
 // SetStatus sets the "status" field.
-func (m *TaskMutation) SetStatus(s string) {
-	m.status = &s
+func (m *TaskMutation) SetStatus(t task.Status) {
+	m.status = &t
 }
 
 // Status returns the value of the "status" field in the mutation.
-func (m *TaskMutation) Status() (r string, exists bool) {
+func (m *TaskMutation) Status() (r task.Status, exists bool) {
 	v := m.status
 	if v == nil {
 		return
@@ -6574,7 +6574,7 @@ func (m *TaskMutation) Status() (r string, exists bool) {
 // OldStatus returns the old "status" field's value of the Task entity.
 // If the Task object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *TaskMutation) OldStatus(ctx context.Context) (v string, err error) {
+func (m *TaskMutation) OldStatus(ctx context.Context) (v task.Status, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
 	}
@@ -7269,7 +7269,7 @@ func (m *TaskMutation) SetField(name string, value ent.Value) error {
 		m.SetDescription(v)
 		return nil
 	case task.FieldStatus:
-		v, ok := value.(string)
+		v, ok := value.(task.Status)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}

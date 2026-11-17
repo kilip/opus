@@ -449,15 +449,17 @@
                     "todo",
                     "in-progress",
                     "review",
+                    "blocked",
                     "done"
                 ],
                 "type": "string",
                 "x-enum-varnames": [
-                    "TaskStatusBacklog",
-                    "TaskStatusTodo",
-                    "TaskStatusInProgress",
-                    "TaskStatusReview",
-                    "TaskStatusDone"
+                    "StatusBacklog",
+                    "StatusTodo",
+                    "StatusInProgress",
+                    "StatusReview",
+                    "StatusBlocked",
+                    "StatusDone"
                 ]
             },
             "domain.TaskType": {

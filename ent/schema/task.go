@@ -37,8 +37,8 @@ func (Task) Fields() []ent.Field {
 			NotEmpty(),
 		field.String("description").
 			Default(""),
-		field.String("status").
-			NotEmpty().
+		field.Enum("status").
+			Values("backlog", "todo", "in-progress", "review", "blocked", "done").
 			Default("todo"),
 		field.String("source_status").
 			Default(""),

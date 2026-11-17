@@ -262,7 +262,7 @@ func TestCreateTask(t *testing.T) {
 
 	// 201 Created on valid task
 	title := "New test task"
-	status := domain.TaskStatusTodo
+	status := domain.StatusTodo
 	resp2 := req(t, app, http.MethodPost, "/api/tasks", domain.CreateTaskRequest{
 		ProjectID: pID,
 		Title:     title,
@@ -281,6 +281,36 @@ func TestCreateTask(t *testing.T) {
 	if created.Data.Title != title {
 		t.Fatalf("expected title %s, got %s", title, created.Data.Title)
 	}
+
+	// 400 Bad Request on invalid status
+	badStatus := domain.TaskStatus("bogus")
+	respBadStatus := req(t, app, http.MethodPost, "/api/tasks", domain.CreateTaskRequest{
+		ProjectID: pID,
+		Title:     "Bad status task",
+		Status:    &badStatus,
+	})
+	if respBadStatus.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected status 400 for invalid status, got %d", respBadStatus.StatusCode)
+	}
+	errBadStatus := decode[httpx.ErrorResponse](t, respBadStatus)
+	if errBadStatus.Error != "TASK_INVALID_STATUS" {
+		t.Fatalf("expected TASK_INVALID_STATUS, got %s", errBadStatus.Error)
+	}
+
+	// 201 Created with blocked status
+	blockedStatus := domain.StatusBlocked
+	respBlocked := req(t, app, http.MethodPost, "/api/tasks", domain.CreateTaskRequest{
+		ProjectID: pID,
+		Title:     "Blocked task",
+		Status:    &blockedStatus,
+	})
+	if respBlocked.StatusCode != http.StatusCreated {
+		t.Fatalf("expected status 201 for blocked status, got %d", respBlocked.StatusCode)
+	}
+	createdBlocked := decode[httpx.Response[domain.Task]](t, respBlocked)
+	if createdBlocked.Data.Status != domain.StatusBlocked {
+		t.Fatalf("expected status %s, got %s", domain.StatusBlocked, createdBlocked.Data.Status)
+	}
 }
 
 func TestUpdateTask(t *testing.T) {
@@ -288,7 +318,7 @@ func TestUpdateTask(t *testing.T) {
 	pID := createTestProject(t, client)
 
 	// Create task first
-	initStatus := domain.TaskStatusTodo
+	initStatus := domain.StatusTodo
 	respCreate := req(t, app, http.MethodPost, "/api/tasks", domain.CreateTaskRequest{
 		ProjectID: pID,
 		Title:     "Task for update",
@@ -325,7 +355,7 @@ func TestUpdateTask(t *testing.T) {
 	}
 
 	// 200 on stage update + appends activity
-	newStatus := domain.TaskStatusInProgress
+	newStatus := domain.StatusInProgress
 	resp2 := req(t, app, http.MethodPatch, "/api/tasks/"+created.Data.ID, domain.UpdateTaskRequest{
 		Status: &newStatus,
 	})
@@ -337,14 +367,35 @@ func TestUpdateTask(t *testing.T) {
 		t.Fatalf("expected status %s, got %s", newStatus, updated.Data.Status)
 	}
 
-	// Verify activity list has stage transition appended
+	// Transition to blocked + invalid status 400
+	blockedStatus := domain.StatusBlocked
+	respBlocked := req(t, app, http.MethodPatch, "/api/tasks/"+created.Data.ID, domain.UpdateTaskRequest{
+		Status: &blockedStatus,
+	})
+	if respBlocked.StatusCode != http.StatusOK {
+		t.Fatalf("expected status 200 for blocked transition, got %d", respBlocked.StatusCode)
+	}
+	updatedBlocked := decode[httpx.Response[domain.Task]](t, respBlocked)
+	if updatedBlocked.Data.Status != domain.StatusBlocked {
+		t.Fatalf("expected status %s, got %s", domain.StatusBlocked, updatedBlocked.Data.Status)
+	}
+
+	badStatus := domain.TaskStatus("nope")
+	respBad := req(t, app, http.MethodPatch, "/api/tasks/"+created.Data.ID, domain.UpdateTaskRequest{
+		Status: &badStatus,
+	})
+	if respBad.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected status 400 for invalid status update, got %d", respBad.StatusCode)
+	}
+
+	// Verify activity list has stage transitions appended
 	resp3 := req(t, app, http.MethodGet, "/api/tasks/"+created.Data.ID+"/activity", nil)
 	if resp3.StatusCode != http.StatusOK {
 		t.Fatalf("expected status 200, got %d", resp3.StatusCode)
 	}
 	actEnvelope := decode[httpx.Response[[]domain.Activity]](t, resp3)
-	if len(actEnvelope.Data) != 2 {
-		t.Fatalf("expected 2 activities after stage update, got %d", len(actEnvelope.Data))
+	if len(actEnvelope.Data) != 3 {
+		t.Fatalf("expected 3 activities after stage updates, got %d", len(actEnvelope.Data))
 	}
 	lastAct := actEnvelope.Data[1]
 	if lastAct.Kind != domain.ActivityKindStatus {
@@ -353,6 +404,9 @@ func TestUpdateTask(t *testing.T) {
 	expectedBody := "moved stage todo → in-progress"
 	if lastAct.Body != expectedBody {
 		t.Fatalf("expected body %q, got %q", expectedBody, lastAct.Body)
+	}
+	if actEnvelope.Data[2].Body != "moved stage in-progress → blocked" {
+		t.Fatalf("expected body %q, got %q", "moved stage in-progress → blocked", actEnvelope.Data[2].Body)
 	}
 }
 
@@ -418,6 +472,19 @@ func TestCreateTaskActivity(t *testing.T) {
 	})
 	if resp2.StatusCode != http.StatusNotFound {
 		t.Fatalf("expected status 404, got %d", resp2.StatusCode)
+	}
+
+	// 400 when author is supplied in HTTP request body (AC4)
+	respAuthor := req(t, app, http.MethodPost, "/api/tasks/"+createdTask.Data.ID+"/activity", map[string]any{
+		"body":   "Spoofed comment",
+		"author": "spoofed-user",
+	})
+	if respAuthor.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected status 400 when author supplied over HTTP, got %d", respAuthor.StatusCode)
+	}
+	errAuthorResp := decode[httpx.ErrorResponse](t, respAuthor)
+	if errAuthorResp.Error != "TASK_ACTIVITY_AUTHOR_FORBIDDEN" {
+		t.Fatalf("expected error TASK_ACTIVITY_AUTHOR_FORBIDDEN, got %s", errAuthorResp.Error)
 	}
 
 	// 201 on valid activity

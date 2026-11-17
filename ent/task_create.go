@@ -98,13 +98,13 @@ func (_c *TaskCreate) SetNillableDescription(v *string) *TaskCreate {
 }
 
 // SetStatus sets the "status" field.
-func (_c *TaskCreate) SetStatus(v string) *TaskCreate {
+func (_c *TaskCreate) SetStatus(v task.Status) *TaskCreate {
 	_c.mutation.SetStatus(v)
 	return _c
 }
 
 // SetNillableStatus sets the "status" field if the given value is not nil.
-func (_c *TaskCreate) SetNillableStatus(v *string) *TaskCreate {
+func (_c *TaskCreate) SetNillableStatus(v *task.Status) *TaskCreate {
 	if v != nil {
 		_c.SetStatus(*v)
 	}
@@ -485,7 +485,7 @@ func (_c *TaskCreate) createSpec() (*Task, *sqlgraph.CreateSpec) {
 		_node.Description = value
 	}
 	if value, ok := _c.mutation.Status(); ok {
-		_spec.SetField(task.FieldStatus, field.TypeString, value)
+		_spec.SetField(task.FieldStatus, field.TypeEnum, value)
 		_node.Status = value
 	}
 	if value, ok := _c.mutation.SourceStatus(); ok {

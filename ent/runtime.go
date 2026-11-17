@@ -237,12 +237,6 @@ func init() {
 	taskDescDescription := taskFields[7].Descriptor()
 	// task.DefaultDescription holds the default value on creation for the description field.
 	task.DefaultDescription = taskDescDescription.Default.(string)
-	// taskDescStatus is the schema descriptor for status field.
-	taskDescStatus := taskFields[8].Descriptor()
-	// task.DefaultStatus holds the default value on creation for the status field.
-	task.DefaultStatus = taskDescStatus.Default.(string)
-	// task.StatusValidator is a validator for the "status" field. It is called by the builders before save.
-	task.StatusValidator = taskDescStatus.Validators[0].(func(string) error)
 	// taskDescSourceStatus is the schema descriptor for source_status field.
 	taskDescSourceStatus := taskFields[9].Descriptor()
 	// task.DefaultSourceStatus holds the default value on creation for the source_status field.

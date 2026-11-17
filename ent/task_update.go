@@ -137,13 +137,13 @@ func (_u *TaskUpdate) SetNillableDescription(v *string) *TaskUpdate {
 }
 
 // SetStatus sets the "status" field.
-func (_u *TaskUpdate) SetStatus(v string) *TaskUpdate {
+func (_u *TaskUpdate) SetStatus(v task.Status) *TaskUpdate {
 	_u.mutation.SetStatus(v)
 	return _u
 }
 
 // SetNillableStatus sets the "status" field if the given value is not nil.
-func (_u *TaskUpdate) SetNillableStatus(v *string) *TaskUpdate {
+func (_u *TaskUpdate) SetNillableStatus(v *task.Status) *TaskUpdate {
 	if v != nil {
 		_u.SetStatus(*v)
 	}
@@ -424,7 +424,7 @@ func (_u *TaskUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 		_spec.SetField(task.FieldDescription, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Status(); ok {
-		_spec.SetField(task.FieldStatus, field.TypeString, value)
+		_spec.SetField(task.FieldStatus, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.SourceStatus(); ok {
 		_spec.SetField(task.FieldSourceStatus, field.TypeString, value)
@@ -660,13 +660,13 @@ func (_u *TaskUpdateOne) SetNillableDescription(v *string) *TaskUpdateOne {
 }
 
 // SetStatus sets the "status" field.
-func (_u *TaskUpdateOne) SetStatus(v string) *TaskUpdateOne {
+func (_u *TaskUpdateOne) SetStatus(v task.Status) *TaskUpdateOne {
 	_u.mutation.SetStatus(v)
 	return _u
 }
 
 // SetNillableStatus sets the "status" field if the given value is not nil.
-func (_u *TaskUpdateOne) SetNillableStatus(v *string) *TaskUpdateOne {
+func (_u *TaskUpdateOne) SetNillableStatus(v *task.Status) *TaskUpdateOne {
 	if v != nil {
 		_u.SetStatus(*v)
 	}
@@ -977,7 +977,7 @@ func (_u *TaskUpdateOne) sqlSave(ctx context.Context) (_node *Task, err error) {
 		_spec.SetField(task.FieldDescription, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Status(); ok {
-		_spec.SetField(task.FieldStatus, field.TypeString, value)
+		_spec.SetField(task.FieldStatus, field.TypeEnum, value)
 	}
 	if value, ok := _u.mutation.SourceStatus(); ok {
 		_spec.SetField(task.FieldSourceStatus, field.TypeString, value)

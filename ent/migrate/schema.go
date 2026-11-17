@@ -231,7 +231,7 @@ var (
 		{Name: "external_url", Type: field.TypeString, Default: ""},
 		{Name: "title", Type: field.TypeString},
 		{Name: "description", Type: field.TypeString, Default: ""},
-		{Name: "status", Type: field.TypeString, Default: "todo"},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"backlog", "todo", "in-progress", "review", "blocked", "done"}, Default: "todo"},
 		{Name: "source_status", Type: field.TypeString, Default: ""},
 		{Name: "priority", Type: field.TypeString, Default: "1"},
 		{Name: "type", Type: field.TypeString, Default: "feat"},

@@ -132,8 +132,8 @@ func TestEntRepo_ContractParity(t *testing.T) {
 		t.Fatalf("create failed: %v", err)
 	}
 
-	if tsk.Status != domain.TaskStatusTodo {
-		t.Errorf("status = %q, want %q", tsk.Status, domain.TaskStatusTodo)
+	if tsk.Status != domain.StatusTodo {
+		t.Errorf("status = %q, want %q", tsk.Status, domain.StatusTodo)
 	}
 	if tsk.Priority != domain.TaskPriorityP1 {
 		t.Errorf("priority = %q, want %q", tsk.Priority, domain.TaskPriorityP1)
@@ -179,7 +179,7 @@ func TestEntRepo_ContractParity(t *testing.T) {
 	}
 
 	// 2. Update status and check UpdateResult
-	newStatus := domain.TaskStatusInProgress
+	newStatus := domain.StatusInProgress
 	upRes, err := r.Update(ctx, tsk.ID, repo.UpdateInput{
 		Status: &newStatus,
 	})
@@ -189,11 +189,23 @@ func TestEntRepo_ContractParity(t *testing.T) {
 	if !upRes.StatusChanged {
 		t.Errorf("expected StatusChanged = true")
 	}
-	if upRes.PrevStatus != domain.TaskStatusTodo {
-		t.Errorf("PrevStatus = %q, want %q", upRes.PrevStatus, domain.TaskStatusTodo)
+	if upRes.PrevStatus != domain.StatusTodo {
+		t.Errorf("PrevStatus = %q, want %q", upRes.PrevStatus, domain.StatusTodo)
 	}
-	if upRes.Task.Status != domain.TaskStatusInProgress {
-		t.Errorf("Task.Status = %q, want %q", upRes.Task.Status, domain.TaskStatusInProgress)
+	if upRes.Task.Status != domain.StatusInProgress {
+		t.Errorf("Task.Status = %q, want %q", upRes.Task.Status, domain.StatusInProgress)
+	}
+
+	// Transition to blocked
+	blockedStatus := domain.StatusBlocked
+	upRes, err = r.Update(ctx, tsk.ID, repo.UpdateInput{
+		Status: &blockedStatus,
+	})
+	if err != nil {
+		t.Fatalf("update blocked status failed: %v", err)
+	}
+	if !upRes.StatusChanged || upRes.PrevStatus != domain.StatusInProgress || upRes.Task.Status != domain.StatusBlocked {
+		t.Errorf("unexpected blocked transition result: %+v", upRes)
 	}
 
 	// 3. Assign and unassign
@@ -218,15 +230,15 @@ func TestEntRepo_ContractParity(t *testing.T) {
 		t.Errorf("expected assignee to be nil after clear, got %v", upRes.Task.Assignee)
 	}
 
-	// 4. AddActivity
-	addedAct, err := r.AddActivity(ctx, tsk.ID, domain.ActivityKindComment, "ignored", "A custom comment")
+	// 4. AddActivity with empty author stores NULL; non-empty author is persisted
+	addedAct, err := r.AddActivity(ctx, tsk.ID, domain.ActivityKindComment, "", "A custom comment")
 	if err != nil {
 		t.Fatalf("add activity failed: %v", err)
 	}
 	if addedAct.Body != "A custom comment" {
 		t.Errorf("added act body = %q, want 'A custom comment'", addedAct.Body)
 	}
-	// Verify added activity also stored author as NULL in Ent
+	// Verify empty author stored as NULL in Ent
 	addedUID, err := uuid.Parse(addedAct.ID)
 	if err != nil {
 		t.Fatalf("parse added act ID failed: %v", err)
@@ -237,6 +249,14 @@ func TestEntRepo_ContractParity(t *testing.T) {
 	}
 	if entAddedAct.Author != nil {
 		t.Errorf("expected added activity Author to be NULL (nil), got %v", *entAddedAct.Author)
+	}
+
+	authoredAct, err := r.AddActivity(ctx, tsk.ID, domain.ActivityKindComment, "sync-bot", "Authored comment")
+	if err != nil {
+		t.Fatalf("add authored activity failed: %v", err)
+	}
+	if authoredAct.Author != "sync-bot" {
+		t.Errorf("authored act author = %q, want 'sync-bot'", authoredAct.Author)
 	}
 }
 
@@ -498,5 +518,86 @@ func TestEntRepo_CountAndFilterByProject(t *testing.T) {
 	}
 	if len(allTasks) != 3 {
 		t.Fatalf("expected 3 total tasks, got %d", len(allTasks))
+	}
+}
+
+func TestEntRepo_ImportFindAndLabels(t *testing.T) {
+	client := setupTestClient(t)
+	r := repo.New(client)
+	ctx := context.Background()
+	p := createTestProject(t, client)
+
+	// FindByExternal on missing returns ErrTaskNotFound
+	if _, err := r.FindByExternal(ctx, domain.TaskSourceGitHub, "gh-99"); err != domain.ErrTaskNotFound {
+		t.Fatalf("expected ErrTaskNotFound, got %v", err)
+	}
+
+	// Import without key allocates OP-1
+	st := domain.StatusInProgress
+	prio := domain.TaskPriorityP2
+	tp := domain.TaskTypeBug
+	in := repo.CreateInput{
+		ProjectID:    p.ID.String(),
+		Source:       domain.TaskSourceGitHub,
+		ExternalID:   "gh-99",
+		ExternalURL:  "https://github.com/org/repo/issues/99",
+		SourceStatus: "open",
+		Title:        "Imported Bug",
+		Description:  "Fix bug",
+		Status:       &st,
+		Priority:     &prio,
+		Type:         &tp,
+		Labels:       []string{"bug"},
+	}
+	res1, err := r.Import(ctx, in)
+	if err != nil {
+		t.Fatalf("first import failed: %v", err)
+	}
+	if !res1.Created || !res1.Changed || res1.Task.Key != "OP-1" {
+		t.Fatalf("unexpected first import result: %+v", res1)
+	}
+
+	// FindByExternal finds it
+	found, err := r.FindByExternal(ctx, domain.TaskSourceGitHub, "gh-99")
+	if err != nil || found.ID != res1.Task.ID {
+		t.Fatalf("FindByExternal = %+v, err=%v", found, err)
+	}
+
+	// Second Import with identical input does NO write (Changed=false, UpdatedAt identical)
+	res2, err := r.Import(ctx, in)
+	if err != nil {
+		t.Fatalf("second import failed: %v", err)
+	}
+	if res2.Created || res2.Changed || res2.StatusChanged {
+		t.Fatalf("expected no-op on identical import, got %+v", res2)
+	}
+	if !res2.Task.UpdatedAt.Equal(res1.Task.UpdatedAt) {
+		t.Fatalf("expected UpdatedAt unchanged on no-op import: %v vs %v", res2.Task.UpdatedAt, res1.Task.UpdatedAt)
+	}
+
+	// Label helpers
+	if err := r.AddLabel(ctx, res1.Task.ID, "urgent"); err != nil {
+		t.Fatalf("AddLabel failed: %v", err)
+	}
+	if err := r.AddLabel(ctx, res1.Task.ID, "urgent"); err != nil {
+		t.Fatalf("duplicate AddLabel failed: %v", err)
+	}
+	got, _ := r.Get(ctx, res1.Task.ID)
+	if len(got.Labels) != 2 || got.Labels[0] != "bug" || got.Labels[1] != "urgent" {
+		t.Fatalf("unexpected labels after AddLabel: %v", got.Labels)
+	}
+	if err := r.RemoveLabel(ctx, res1.Task.ID, "bug"); err != nil {
+		t.Fatalf("RemoveLabel failed: %v", err)
+	}
+	got, _ = r.Get(ctx, res1.Task.ID)
+	if len(got.Labels) != 1 || got.Labels[0] != "urgent" {
+		t.Fatalf("unexpected labels after RemoveLabel: %v", got.Labels)
+	}
+	if err := r.SetLabels(ctx, res1.Task.ID, []string{"triage", "backend"}); err != nil {
+		t.Fatalf("SetLabels failed: %v", err)
+	}
+	got, _ = r.Get(ctx, res1.Task.ID)
+	if len(got.Labels) != 2 || got.Labels[0] != "triage" || got.Labels[1] != "backend" {
+		t.Fatalf("unexpected labels after SetLabels: %v", got.Labels)
 	}
 }

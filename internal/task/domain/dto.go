@@ -31,3 +31,19 @@ type CreateActivityRequest struct {
 	Kind *ActivityKind `json:"kind,omitempty"`
 	Body string        `json:"body" validate:"required"`
 }
+
+// ImportTaskRequest is payload for upserting an external task via the task facade.
+type ImportTaskRequest struct {
+	ProjectID    string       `json:"projectId"`
+	Title        string       `json:"title"`
+	Description  string       `json:"description,omitempty"`
+	Source       TaskSource   `json:"source"`
+	ExternalID   string       `json:"externalId"`
+	ExternalURL  string       `json:"externalUrl,omitempty"`
+	SourceStatus string       `json:"sourceStatus,omitempty"`
+	Key          string       `json:"key,omitempty"`
+	Labels       []string     `json:"labels,omitempty"`
+	Type         TaskType     `json:"type,omitempty"`
+	Priority     TaskPriority `json:"priority,omitempty"`
+	Status       TaskStatus   `json:"status,omitempty"`
+}

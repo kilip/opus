@@ -3,6 +3,7 @@
 package task
 
 import (
+	"fmt"
 	"time"
 
 	"entgo.io/ent/dialect/sql"
@@ -116,10 +117,6 @@ var (
 	TitleValidator func(string) error
 	// DefaultDescription holds the default value on creation for the "description" field.
 	DefaultDescription string
-	// DefaultStatus holds the default value on creation for the "status" field.
-	DefaultStatus string
-	// StatusValidator is a validator for the "status" field. It is called by the builders before save.
-	StatusValidator func(string) error
 	// DefaultSourceStatus holds the default value on creation for the "source_status" field.
 	DefaultSourceStatus string
 	// DefaultPriority holds the default value on creation for the "priority" field.
@@ -143,6 +140,36 @@ var (
 	// DefaultID holds the default value on creation for the "id" field.
 	DefaultID func() uuid.UUID
 )
+
+// Status defines the type for the "status" enum field.
+type Status string
+
+// StatusTodo is the default value of the Status enum.
+const DefaultStatus = StatusTodo
+
+// Status values.
+const (
+	StatusBacklog    Status = "backlog"
+	StatusTodo       Status = "todo"
+	StatusInProgress Status = "in-progress"
+	StatusReview     Status = "review"
+	StatusBlocked    Status = "blocked"
+	StatusDone       Status = "done"
+)
+
+func (s Status) String() string {
+	return string(s)
+}
+
+// StatusValidator is a validator for the "status" field enum values. It is called by the builders before save.
+func StatusValidator(s Status) error {
+	switch s {
+	case StatusBacklog, StatusTodo, StatusInProgress, StatusReview, StatusBlocked, StatusDone:
+		return nil
+	default:
+		return fmt.Errorf("task: invalid enum value for status field: %q", s)
+	}
+}
 
 // OrderOption defines the ordering options for the Task queries.
 type OrderOption func(*sql.Selector)
