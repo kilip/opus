@@ -28,13 +28,17 @@ type (
 
 // StartRun is the command payload for starting a run on a worker.
 type StartRun struct {
-	Type      string `json:"type,omitempty"`
-	RunID     string `json:"runId"`
-	TaskID    string `json:"taskId,omitempty"`
-	ProjectID string `json:"projectId,omitempty"`
-	RepoURL   string `json:"repoUrl,omitempty"`
-	Branch    string `json:"branch,omitempty"`
-	Prompt    string `json:"prompt,omitempty"`
+	Type          string `json:"type,omitempty"`
+	RunID         string `json:"runId"`
+	TaskID        string `json:"taskId,omitempty"`
+	TaskKey       string `json:"taskKey,omitempty"`
+	ProjectID     string `json:"projectId,omitempty"`
+	ProjectSlug   string `json:"projectSlug,omitempty"`
+	RepoURL       string `json:"repoUrl,omitempty"`
+	DefaultBranch string `json:"defaultBranch,omitempty"`
+	MappedPath    string `json:"mappedPath,omitempty"`
+	Branch        string `json:"branch,omitempty"`
+	Prompt        string `json:"prompt,omitempty"`
 }
 
 // CancelRun is the command payload for cancelling an active run on a worker.
