@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
 )
 
@@ -24,8 +25,17 @@ const (
 	FieldLastSeenAt = "last_seen_at"
 	// FieldCredentialHash holds the string denoting the credential_hash field in the database.
 	FieldCredentialHash = "credential_hash"
+	// EdgeProjectNodes holds the string denoting the project_nodes edge name in mutations.
+	EdgeProjectNodes = "project_nodes"
 	// Table holds the table name of the node in the database.
 	Table = "nodes"
+	// ProjectNodesTable is the table that holds the project_nodes relation/edge.
+	ProjectNodesTable = "project_nodes"
+	// ProjectNodesInverseTable is the table name for the ProjectNode entity.
+	// It exists in this package in order to avoid circular dependency with the "projectnode" package.
+	ProjectNodesInverseTable = "project_nodes"
+	// ProjectNodesColumn is the table column denoting the project_nodes relation/edge.
+	ProjectNodesColumn = "node_id"
 )
 
 // Columns holds all SQL columns for node fields.
@@ -132,4 +142,25 @@ func ByLastSeenAt(opts ...sql.OrderTermOption) OrderOption {
 // ByCredentialHash orders the results by the credential_hash field.
 func ByCredentialHash(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCredentialHash, opts...).ToFunc()
+}
+
+// ByProjectNodesCount orders the results by project_nodes count.
+func ByProjectNodesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newProjectNodesStep(), opts...)
+	}
+}
+
+// ByProjectNodes orders the results by project_nodes terms.
+func ByProjectNodes(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newProjectNodesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+func newProjectNodesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ProjectNodesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ProjectNodesTable, ProjectNodesColumn),
+	)
 }

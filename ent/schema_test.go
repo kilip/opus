@@ -377,3 +377,106 @@ func TestSchema_UUIDv7(t *testing.T) {
 		t.Errorf("Counter ID version = %d, want 7", v)
 	}
 }
+
+func TestSchema_ProjectNode_Cascade(t *testing.T) {
+	ctx := context.Background()
+	db, err := sql.Open("sqlite", "file:ent_pn_cascade?mode=memory&cache=shared&_pragma=foreign_keys(ON)")
+	if err != nil {
+		t.Fatalf("open sqlite failed: %v", err)
+	}
+	drv := entsql.OpenDB(dialect.SQLite, db)
+	client := enttest.NewClient(t, enttest.WithOptions(ent.Driver(drv)))
+	defer func() {
+		_ = client.Close()
+	}()
+
+	p, err := client.Project.Create().
+		SetSlug("test-project").
+		SetName("Test Project").
+		SetRepoProvider("github").
+		SetRepoRef("org/test-project").
+		SetTrackerProvider("github").
+		SetTrackerRef("org/test-project").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create project failed: %v", err)
+	}
+
+	n1, err := client.Node.Create().
+		SetName("worker-1").
+		SetRole("worker").
+		SetStatus("online").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create node 1 failed: %v", err)
+	}
+
+	n2, err := client.Node.Create().
+		SetName("worker-2").
+		SetRole("worker").
+		SetStatus("online").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create node 2 failed: %v", err)
+	}
+
+	// 1. Create mapping for (p, n1)
+	path1 := "/var/repo/p1"
+	pn1, err := client.ProjectNode.Create().
+		SetProjectID(p.ID).
+		SetNodeID(n1.ID).
+		SetPath(path1).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create project_node failed: %v", err)
+	}
+	if pn1.Path == nil || *pn1.Path != path1 {
+		t.Errorf("got path %v, want %q", pn1.Path, path1)
+	}
+
+	// 2. Uniqueness constraint on (project_id, node_id)
+	_, err = client.ProjectNode.Create().
+		SetProjectID(p.ID).
+		SetNodeID(n1.ID).
+		SetPath("/duplicate").
+		Save(ctx)
+	if err == nil {
+		t.Fatal("expected error on duplicate (project_id, node_id), got nil")
+	}
+
+	// 3. Cascade delete on Node deletion
+	if err := client.Node.DeleteOneID(n1.ID).Exec(ctx); err != nil {
+		t.Fatalf("delete node n1 failed: %v", err)
+	}
+	count, err := client.ProjectNode.Query().Count(ctx)
+	if err != nil {
+		t.Fatalf("count project nodes failed: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("expected 0 project nodes after node deletion, got %d", count)
+	}
+
+	// 4. Create mapping for (p, n2)
+	pn2, err := client.ProjectNode.Create().
+		SetProjectID(p.ID).
+		SetNodeID(n2.ID).
+		Save(ctx) // nullable path
+	if err != nil {
+		t.Fatalf("create project_node 2 failed: %v", err)
+	}
+	if pn2.Path != nil {
+		t.Errorf("expected nil path, got %v", pn2.Path)
+	}
+
+	// 5. Cascade delete on Project deletion
+	if err := client.Project.DeleteOneID(p.ID).Exec(ctx); err != nil {
+		t.Fatalf("delete project p failed: %v", err)
+	}
+	count, err = client.ProjectNode.Query().Count(ctx)
+	if err != nil {
+		t.Fatalf("count project nodes failed: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("expected 0 project nodes after project deletion, got %d", count)
+	}
+}

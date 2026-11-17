@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 	"github.com/kilip/opus/ent/project"
+	"github.com/kilip/opus/ent/projectnode"
 )
 
 // ProjectCreate is the builder for creating a Project entity.
@@ -111,6 +112,21 @@ func (_c *ProjectCreate) SetNillableID(v *uuid.UUID) *ProjectCreate {
 		_c.SetID(*v)
 	}
 	return _c
+}
+
+// AddProjectNodeIDs adds the "project_nodes" edge to the ProjectNode entity by IDs.
+func (_c *ProjectCreate) AddProjectNodeIDs(ids ...uuid.UUID) *ProjectCreate {
+	_c.mutation.AddProjectNodeIDs(ids...)
+	return _c
+}
+
+// AddProjectNodes adds the "project_nodes" edges to the ProjectNode entity.
+func (_c *ProjectCreate) AddProjectNodes(v ...*ProjectNode) *ProjectCreate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddProjectNodeIDs(ids...)
 }
 
 // Mutation returns the ProjectMutation object of the builder.
@@ -300,6 +316,22 @@ func (_c *ProjectCreate) createSpec() (*Project, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(project.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
+	}
+	if nodes := _c.mutation.ProjectNodesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   project.ProjectNodesTable,
+			Columns: []string{project.ProjectNodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(projectnode.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
 }

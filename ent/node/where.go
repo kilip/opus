@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
 	"github.com/kilip/opus/ent/predicate"
 )
@@ -298,6 +299,29 @@ func CredentialHashEqualFold(v string) predicate.Node {
 // CredentialHashContainsFold applies the ContainsFold predicate on the "credential_hash" field.
 func CredentialHashContainsFold(v string) predicate.Node {
 	return predicate.Node(sql.FieldContainsFold(FieldCredentialHash, v))
+}
+
+// HasProjectNodes applies the HasEdge predicate on the "project_nodes" edge.
+func HasProjectNodes() predicate.Node {
+	return predicate.Node(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, ProjectNodesTable, ProjectNodesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasProjectNodesWith applies the HasEdge predicate on the "project_nodes" edge with a given conditions (other predicates).
+func HasProjectNodesWith(preds ...predicate.ProjectNode) predicate.Node {
+	return predicate.Node(func(s *sql.Selector) {
+		step := newProjectNodesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
 }
 
 // And groups predicates with the AND operator between them.

@@ -4,6 +4,8 @@ import (
 	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/dialect/entsql"
+	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 	"github.com/google/uuid"
 )
@@ -46,5 +48,10 @@ func (Project) Fields() []ent.Field {
 
 // Edges of the Project.
 func (Project) Edges() []ent.Edge {
-	return nil
+	return []ent.Edge{
+		edge.To("project_nodes", ProjectNode.Type).
+			Annotations(
+				entsql.OnDelete(entsql.Cascade),
+			),
+	}
 }

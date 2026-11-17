@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
 	"github.com/kilip/opus/ent/predicate"
 )
@@ -633,6 +634,29 @@ func UpdatedAtLT(v time.Time) predicate.Project {
 // UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
 func UpdatedAtLTE(v time.Time) predicate.Project {
 	return predicate.Project(sql.FieldLTE(FieldUpdatedAt, v))
+}
+
+// HasProjectNodes applies the HasEdge predicate on the "project_nodes" edge.
+func HasProjectNodes() predicate.Project {
+	return predicate.Project(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, ProjectNodesTable, ProjectNodesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasProjectNodesWith applies the HasEdge predicate on the "project_nodes" edge with a given conditions (other predicates).
+func HasProjectNodesWith(preds ...predicate.ProjectNode) predicate.Project {
+	return predicate.Project(func(s *sql.Selector) {
+		step := newProjectNodesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
 }
 
 // And groups predicates with the AND operator between them.

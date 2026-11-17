@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
 	"github.com/kilip/opus/internal/platform/httpx"
 	"github.com/kilip/opus/internal/project/domain"
 	"github.com/kilip/opus/internal/project/service"
@@ -15,6 +16,8 @@ var (
 	_ = (*domain.Project)(nil)
 	_ = (*domain.CreateProjectRequest)(nil)
 	_ = (*domain.UpdateProjectRequest)(nil)
+	_ = (*domain.ProjectNodeResponse)(nil)
+	_ = (*domain.UpdateProjectNodePathRequest)(nil)
 )
 
 // Handler serves project endpoints.
@@ -35,6 +38,8 @@ func (h *Handler) Register(r fiber.Router) {
 	g.Get("/:id", h.Get)
 	g.Patch("/:id", h.Update)
 	g.Delete("/:id", h.Delete)
+	g.Get("/:id/nodes", h.ListNodeMappings)
+	g.Put("/:id/nodes/:nodeId", h.SetNodePath)
 }
 
 // List godoc
@@ -162,14 +167,72 @@ func (h *Handler) Delete(c fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
+// ListNodeMappings godoc
+//
+//	@Summary		List project node mappings
+//	@Description	Returns node path mappings for all known nodes for the project.
+//	@ID				list-project-node-mappings
+//	@Tags			projects
+//	@Produce		json
+//	@Param			id	path		string	true	"Project ID"
+//	@Success		200	{object}	httpx.Response[[]domain.ProjectNodeResponse]
+//	@Failure		400	{object}	httpx.ErrorResponse
+//	@Failure		404	{object}	httpx.ErrorResponse
+//	@Failure		500	{object}	httpx.ErrorResponse
+//	@Router			/projects/{id}/nodes [get]
+func (h *Handler) ListNodeMappings(c fiber.Ctx) error {
+	id := c.Params("id")
+	if _, err := uuid.Parse(id); err != nil {
+		return httpx.BadRequest(err)
+	}
+	mappings, err := h.svc.ListNodeMappings(c.Context(), id)
+	if err != nil {
+		return mapErr(err)
+	}
+	total := len(mappings)
+	return httpx.List(c, mappings, &httpx.Meta{Total: &total})
+}
+
+// SetNodePath godoc
+//
+//	@Summary		Set project node path mapping
+//	@Description	Upserts a path mapping for a node in the project.
+//	@ID				set-project-node-path
+//	@Tags			projects
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string								true	"Project ID"
+//	@Param			nodeId	path		string								true	"Node ID"
+//	@Param			request	body		domain.UpdateProjectNodePathRequest	true	"Node Path Request"
+//	@Success		200		{object}	httpx.Response[domain.ProjectNodeResponse]
+//	@Failure		400		{object}	httpx.ErrorResponse
+//	@Failure		404		{object}	httpx.ErrorResponse
+//	@Failure		500		{object}	httpx.ErrorResponse
+//	@Router			/projects/{id}/nodes/{nodeId} [put]
+func (h *Handler) SetNodePath(c fiber.Ctx) error {
+	var req domain.UpdateProjectNodePathRequest
+	if len(c.Body()) > 0 {
+		if err := c.Bind().Body(&req); err != nil {
+			return httpx.BadRequest(err)
+		}
+	}
+	resp, err := h.svc.SetNodePath(c.Context(), c.Params("id"), c.Params("nodeId"), req.Path)
+	if err != nil {
+		return mapErr(err)
+	}
+	return httpx.OK(c, resp)
+}
+
 // mapErr maps domain sentinel errors to httpx status errors.
 func mapErr(err error) error {
 	switch {
-	case errors.Is(err, domain.ErrProjectNotFound):
+	case errors.Is(err, domain.ErrProjectNotFound),
+		errors.Is(err, domain.ErrNodeNotFound):
 		return httpx.NotFound(err)
 	case errors.Is(err, domain.ErrInvalidSlug),
 		errors.Is(err, domain.ErrInvalidRepo),
-		errors.Is(err, domain.ErrPatchForbidden):
+		errors.Is(err, domain.ErrPatchForbidden),
+		errors.Is(err, domain.ErrInvalidPath):
 		return httpx.BadRequest(err)
 	case errors.Is(err, domain.ErrDuplicateSlug),
 		errors.Is(err, domain.ErrProjectHasTasks):

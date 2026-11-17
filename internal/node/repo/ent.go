@@ -99,6 +99,23 @@ func (r *Ent) List(ctx context.Context) ([]domain.Node, error) {
 	return out, nil
 }
 
+// Get returns a single node by id, or domain.ErrNodeNotFound if not found or id is malformed.
+func (r *Ent) Get(ctx context.Context, id string) (*domain.Node, error) {
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		return nil, domain.ErrNodeNotFound
+	}
+
+	n, err := r.client.Node.Get(ctx, uid)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, domain.ErrNodeNotFound
+		}
+		return nil, err
+	}
+	return toDomain(n), nil
+}
+
 // Delete deletes a worker node by id.
 // Returns ErrNodeNotFound if the node does not exist or id is malformed,
 // and ErrMasterDeleteForbidden if the node has role master.

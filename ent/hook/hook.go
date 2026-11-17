@@ -105,6 +105,18 @@ func (f ProjectFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, err
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ProjectMutation", m)
 }
 
+// The ProjectNodeFunc type is an adapter to allow the use of ordinary
+// function as ProjectNode mutator.
+type ProjectNodeFunc func(context.Context, *ent.ProjectNodeMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ProjectNodeFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ProjectNodeMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ProjectNodeMutation", m)
+}
+
 // The SessionFunc type is an adapter to allow the use of ordinary
 // function as Session mutator.
 type SessionFunc func(context.Context, *ent.SessionMutation) (ent.Value, error)

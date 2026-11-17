@@ -2,7 +2,10 @@ package service
 
 import (
 	"context"
+	"errors"
+	"strings"
 
+	"github.com/kilip/opus/internal/node"
 	"github.com/kilip/opus/internal/project/domain"
 	"github.com/kilip/opus/internal/project/repo"
 )
@@ -10,15 +13,23 @@ import (
 // TaskCounter returns the number of tasks associated with a project ID.
 type TaskCounter func(ctx context.Context, projectID string) (int, error)
 
+// NodeReader provides node query capabilities to the project service.
+type NodeReader interface {
+	List(ctx context.Context) ([]node.NodeResponse, error)
+	Get(ctx context.Context, id string) (node.NodeResponse, error)
+}
+
 // Config configures the Project service.
 type Config struct {
 	TaskCounter TaskCounter
+	NodeReader  NodeReader
 }
 
 // Project owns project business logic.
 type Project struct {
 	repo        *repo.Ent
 	taskCounter TaskCounter
+	nodeReader  NodeReader
 }
 
 // New returns a new Project service backed by Ent repo.
@@ -30,6 +41,7 @@ func New(r *repo.Ent, cfg ...Config) *Project {
 	return &Project{
 		repo:        r,
 		taskCounter: c.TaskCounter,
+		nodeReader:  c.NodeReader,
 	}
 }
 
@@ -104,4 +116,77 @@ func (s *Project) Delete(ctx context.Context, id string) error {
 	}
 
 	return s.repo.Delete(ctx, id)
+}
+
+// ListNodeMappings returns all nodes with their path mapping for the project.
+// If a node has no mapping, its path is nil.
+func (s *Project) ListNodeMappings(ctx context.Context, projectID string) ([]domain.ProjectNodeResponse, error) {
+	if _, err := s.repo.Get(ctx, projectID); err != nil {
+		return nil, err
+	}
+	if s.nodeReader == nil {
+		return []domain.ProjectNodeResponse{}, nil
+	}
+	nodes, err := s.nodeReader.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	mappings, err := s.repo.ListNodeMappings(ctx, projectID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.ProjectNodeResponse, len(nodes))
+	for i, n := range nodes {
+		var p *string
+		if path, ok := mappings[n.ID]; ok {
+			p = path
+		}
+		out[i] = domain.ProjectNodeResponse{
+			NodeID:     n.ID,
+			NodeName:   n.Name,
+			NodeRole:   string(n.Role),
+			NodeStatus: string(n.Status),
+			Path:       p,
+		}
+	}
+	return out, nil
+}
+
+// SetNodePath upserts the path mapping for a project and node.
+// A null or empty path clears the mapping to NULL.
+// A non-empty path must start with "/".
+func (s *Project) SetNodePath(ctx context.Context, projectID, nodeID string, path *string) (domain.ProjectNodeResponse, error) {
+	if _, err := s.repo.Get(ctx, projectID); err != nil {
+		return domain.ProjectNodeResponse{}, err
+	}
+	if s.nodeReader == nil {
+		return domain.ProjectNodeResponse{}, domain.ErrNodeNotFound
+	}
+	n, err := s.nodeReader.Get(ctx, nodeID)
+	if err != nil {
+		if errors.Is(err, node.ErrNodeNotFound) {
+			return domain.ProjectNodeResponse{}, domain.ErrNodeNotFound
+		}
+		return domain.ProjectNodeResponse{}, err
+	}
+
+	var normalizedPath *string
+	if path != nil && *path != "" {
+		if !strings.HasPrefix(*path, "/") {
+			return domain.ProjectNodeResponse{}, domain.ErrInvalidPath
+		}
+		normalizedPath = path
+	}
+
+	if err := s.repo.SetNodePath(ctx, projectID, nodeID, normalizedPath); err != nil {
+		return domain.ProjectNodeResponse{}, err
+	}
+
+	return domain.ProjectNodeResponse{
+		NodeID:     n.ID,
+		NodeName:   n.Name,
+		NodeRole:   string(n.Role),
+		NodeStatus: string(n.Status),
+		Path:       normalizedPath,
+	}, nil
 }

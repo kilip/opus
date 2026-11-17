@@ -356,6 +356,46 @@ export interface paths {
         patch: operations["update-project"];
         trace?: never;
     };
+    "/projects/{id}/nodes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List project node mappings
+         * @description Returns node path mappings for all known nodes for the project.
+         */
+        get: operations["list-project-node-mappings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{id}/nodes/{nodeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set project node path mapping
+         * @description Upserts a path mapping for a node in the project.
+         */
+        put: operations["set-project-node-path"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/setup": {
         parameters: {
             query?: never;
@@ -576,6 +616,13 @@ export interface components {
             tracker_ref?: string;
             updated_at?: string;
         };
+        "domain.ProjectNodeResponse": {
+            nodeId?: string;
+            nodeName?: string;
+            nodeRole?: string;
+            nodeStatus?: string;
+            path?: string;
+        };
         "domain.ProviderItem": {
             label?: string;
             name?: string;
@@ -619,6 +666,9 @@ export interface components {
         "domain.TaskStatus": "backlog" | "todo" | "in-progress" | "review" | "done";
         /** @enum {string} */
         "domain.TaskType": "feat" | "bug" | "chore" | "refactor" | "docs";
+        "domain.UpdateProjectNodePathRequest": {
+            path?: string;
+        };
         "domain.UpdateProjectRequest": {
             default_branch?: string;
             name?: string;
@@ -677,6 +727,11 @@ export interface components {
             error?: string;
             meta?: components["schemas"]["httpx.Meta"];
         };
+        "httpx.Response-array_domain_ProjectNodeResponse": {
+            data?: components["schemas"]["domain.ProjectNodeResponse"][];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
         "httpx.Response-array_domain_ProviderItem": {
             data?: components["schemas"]["domain.ProviderItem"][];
             error?: string;
@@ -704,6 +759,11 @@ export interface components {
         };
         "httpx.Response-domain_Project": {
             data?: components["schemas"]["domain.Project"];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Response-domain_ProjectNodeResponse": {
+            data?: components["schemas"]["domain.ProjectNodeResponse"];
             error?: string;
             meta?: components["schemas"]["httpx.Meta"];
         };
@@ -1509,6 +1569,113 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["httpx.Response-domain_Project"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "list-project-node-mappings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-array_domain_ProjectNodeResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "set-project-node-path": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Project ID */
+                id: string;
+                /** @description Node ID */
+                nodeId: string;
+            };
+            cookie?: never;
+        };
+        /** @description Node Path Request */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["domain.UpdateProjectNodePathRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-domain_ProjectNodeResponse"];
                 };
             };
             /** @description Bad Request */

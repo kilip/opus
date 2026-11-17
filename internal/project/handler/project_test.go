@@ -16,6 +16,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/kilip/opus/ent"
 	"github.com/kilip/opus/ent/enttest"
+	"github.com/kilip/opus/internal/node"
 	"github.com/kilip/opus/internal/platform/httpx"
 	"github.com/kilip/opus/internal/project/domain"
 	"github.com/kilip/opus/internal/project/handler"
@@ -47,7 +48,8 @@ func setupApp(t *testing.T, tc ...service.TaskCounter) (*fiber.App, *ent.Client)
 		taskCounter = tc[0]
 	}
 	r := repo.New(client)
-	s := service.New(r, service.Config{TaskCounter: taskCounter})
+	nodeSvc := node.New(client, node.Config{})
+	s := service.New(r, service.Config{TaskCounter: taskCounter, NodeReader: nodeSvc})
 	h := handler.New(s)
 	h.Register(app.Group("/api"))
 	return app, client
@@ -419,5 +421,196 @@ func TestHandler_DeleteRefusalWithTasks(t *testing.T) {
 	respDeleteOk := req(t, app, http.MethodDelete, "/api/projects/"+p.ID, nil)
 	if respDeleteOk.StatusCode != http.StatusNoContent {
 		t.Fatalf("expected 204 No Content, got %d", respDeleteOk.StatusCode)
+	}
+}
+
+func TestHandler_ListNodeMappings(t *testing.T) {
+	app, client := setupApp(t)
+	ctx := context.Background()
+
+	// 1. Invalid UUID returns 400
+	respBad := req(t, app, http.MethodGet, "/api/projects/not-a-uuid/nodes", nil)
+	if respBad.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400 Bad Request, got %d", respBad.StatusCode)
+	}
+
+	// 2. Non-existent UUID returns 404
+	respNotFound := req(t, app, http.MethodGet, "/api/projects/00000000-0000-0000-0000-000000000000/nodes", nil)
+	if respNotFound.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected 404 Not Found, got %d", respNotFound.StatusCode)
+	}
+
+	// 3. Create project and 2 nodes
+	p, err := client.Project.Create().
+		SetSlug("test-nodes-p").
+		SetName("Test Nodes Project").
+		SetRepoProvider("github").
+		SetRepoRef("owner/repo").
+		SetTrackerProvider("github").
+		SetTrackerRef("owner/repo").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+
+	n1, err := client.Node.Create().
+		SetName("node-1").
+		SetRole("master").
+		SetStatus("online").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create node 1: %v", err)
+	}
+
+	n2, err := client.Node.Create().
+		SetName("node-2").
+		SetRole("worker").
+		SetStatus("offline").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create node 2: %v", err)
+	}
+
+	// 4. GET before mapping: all nodes have path: null
+	respList := req(t, app, http.MethodGet, "/api/projects/"+p.ID.String()+"/nodes", nil)
+	if respList.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d", respList.StatusCode)
+	}
+	list := decode[httpx.Response[[]domain.ProjectNodeResponse]](t, respList).Data
+	if len(list) != 2 {
+		t.Fatalf("expected 2 nodes, got %d", len(list))
+	}
+	for _, item := range list {
+		if item.Path != nil {
+			t.Errorf("expected path null for unmapped node %s, got %v", item.NodeID, *item.Path)
+		}
+	}
+
+	// 5. Set mapping for n1
+	path1 := "/var/repo/p"
+	putBody := domain.UpdateProjectNodePathRequest{Path: &path1}
+	respPut := req(t, app, http.MethodPut, "/api/projects/"+p.ID.String()+"/nodes/"+n1.ID.String(), putBody)
+	if respPut.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 OK on PUT, got %d", respPut.StatusCode)
+	}
+
+	// 6. GET after mapping: n1 has path: "/var/repo/p", n2 has path: null
+	respList2 := req(t, app, http.MethodGet, "/api/projects/"+p.ID.String()+"/nodes", nil)
+	if respList2.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d", respList2.StatusCode)
+	}
+	list2 := decode[httpx.Response[[]domain.ProjectNodeResponse]](t, respList2).Data
+	for _, item := range list2 {
+		if item.NodeID == n1.ID.String() {
+			if item.Path == nil || *item.Path != path1 {
+				t.Errorf("expected path %q, got %v", path1, item.Path)
+			}
+			if item.NodeRole != "master" {
+				t.Errorf("expected nodeRole master, got %q", item.NodeRole)
+			}
+		}
+		if item.NodeID == n2.ID.String() {
+			if item.Path != nil {
+				t.Errorf("expected path null for n2, got %v", item.Path)
+			}
+		}
+	}
+}
+
+func TestHandler_SetNodePath(t *testing.T) {
+	app, client := setupApp(t)
+	ctx := context.Background()
+
+	p, err := client.Project.Create().
+		SetSlug("set-node-path-p").
+		SetName("Set Node Path Project").
+		SetRepoProvider("github").
+		SetRepoRef("owner/repo").
+		SetTrackerProvider("github").
+		SetTrackerRef("owner/repo").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+
+	n, err := client.Node.Create().
+		SetName("worker-set").
+		SetRole("worker").
+		SetStatus("online").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create node: %v", err)
+	}
+
+	// 1. Unknown project returns 404
+	validPath := "/opt/opus"
+	respProj404 := req(t, app, http.MethodPut, "/api/projects/00000000-0000-0000-0000-000000000000/nodes/"+n.ID.String(), domain.UpdateProjectNodePathRequest{Path: &validPath})
+	if respProj404.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected 404 for unknown project, got %d", respProj404.StatusCode)
+	}
+
+	// 2. Unknown node returns 404
+	respNode404 := req(t, app, http.MethodPut, "/api/projects/"+p.ID.String()+"/nodes/00000000-0000-0000-0000-000000000000", domain.UpdateProjectNodePathRequest{Path: &validPath})
+	if respNode404.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected 404 for unknown node, got %d", respNode404.StatusCode)
+	}
+
+	// 3. Non-absolute path returns 400
+	relPath := "relative/path"
+	respRel := req(t, app, http.MethodPut, "/api/projects/"+p.ID.String()+"/nodes/"+n.ID.String(), domain.UpdateProjectNodePathRequest{Path: &relPath})
+	if respRel.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400 for relative path, got %d", respRel.StatusCode)
+	}
+	errResp := decodeError(t, respRel)
+	if errResp.Error != "PROJECT_INVALID_PATH" {
+		t.Fatalf("expected PROJECT_INVALID_PATH, got %q", errResp.Error)
+	}
+
+	// 4. Valid absolute path upserts mapping -> 200
+	respOk := req(t, app, http.MethodPut, "/api/projects/"+p.ID.String()+"/nodes/"+n.ID.String(), domain.UpdateProjectNodePathRequest{Path: &validPath})
+	if respOk.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d", respOk.StatusCode)
+	}
+	resData := decode[httpx.Response[domain.ProjectNodeResponse]](t, respOk).Data
+	if resData.Path == nil || *resData.Path != validPath {
+		t.Fatalf("expected path %q, got %v", validPath, resData.Path)
+	}
+	if resData.NodeID != n.ID.String() {
+		t.Errorf("expected NodeID %q, got %q", n.ID.String(), resData.NodeID)
+	}
+	if resData.NodeName != "worker-set" {
+		t.Errorf("expected NodeName worker-set, got %q", resData.NodeName)
+	}
+
+	// 5. Update to empty string clears mapping to null -> 200
+	emptyPath := ""
+	respEmpty := req(t, app, http.MethodPut, "/api/projects/"+p.ID.String()+"/nodes/"+n.ID.String(), domain.UpdateProjectNodePathRequest{Path: &emptyPath})
+	if respEmpty.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 OK on empty string, got %d", respEmpty.StatusCode)
+	}
+	resEmptyData := decode[httpx.Response[domain.ProjectNodeResponse]](t, respEmpty).Data
+	if resEmptyData.Path != nil {
+		t.Fatalf("expected path null, got %v", resEmptyData.Path)
+	}
+
+	// 6. Update to new path -> 200
+	newPath := "/new/custom/path"
+	respNew := req(t, app, http.MethodPut, "/api/projects/"+p.ID.String()+"/nodes/"+n.ID.String(), domain.UpdateProjectNodePathRequest{Path: &newPath})
+	if respNew.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 OK, got %d", respNew.StatusCode)
+	}
+	resNewData := decode[httpx.Response[domain.ProjectNodeResponse]](t, respNew).Data
+	if resNewData.Path == nil || *resNewData.Path != newPath {
+		t.Fatalf("expected path %q, got %v", newPath, resNewData.Path)
+	}
+
+	// 7. Update to null clears mapping to null -> 200
+	respNull := req(t, app, http.MethodPut, "/api/projects/"+p.ID.String()+"/nodes/"+n.ID.String(), domain.UpdateProjectNodePathRequest{Path: nil})
+	if respNull.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 OK on null, got %d", respNull.StatusCode)
+	}
+	resNullData := decode[httpx.Response[domain.ProjectNodeResponse]](t, respNull).Data
+	if resNullData.Path != nil {
+		t.Fatalf("expected path null, got %v", resNullData.Path)
 	}
 }

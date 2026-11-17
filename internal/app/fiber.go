@@ -132,7 +132,7 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 		authFeature.Register(authRoutes) // GET /me, POST /logout (protected)
 		task.New(db, bus).Register(api)
 		nodeFeature.Register(api)
-		project.New(db).Register(api)
+		project.New(db, project.WithNodeReader(nodeFeature)).Register(api)
 	}
 
 	// ponytail: serves embedded SPA without custom Cache-Control headers; add immutable asset caching when CDN/traffic requires.

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"entgo.io/ent/dialect/sql"
+	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/google/uuid"
 )
 
@@ -32,8 +33,17 @@ const (
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
+	// EdgeProjectNodes holds the string denoting the project_nodes edge name in mutations.
+	EdgeProjectNodes = "project_nodes"
 	// Table holds the table name of the project in the database.
 	Table = "projects"
+	// ProjectNodesTable is the table that holds the project_nodes relation/edge.
+	ProjectNodesTable = "project_nodes"
+	// ProjectNodesInverseTable is the table name for the ProjectNode entity.
+	// It exists in this package in order to avoid circular dependency with the "projectnode" package.
+	ProjectNodesInverseTable = "project_nodes"
+	// ProjectNodesColumn is the table column denoting the project_nodes relation/edge.
+	ProjectNodesColumn = "project_id"
 )
 
 // Columns holds all SQL columns for project fields.
@@ -138,4 +148,25 @@ func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
 // ByUpdatedAt orders the results by the updated_at field.
 func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
+}
+
+// ByProjectNodesCount orders the results by project_nodes count.
+func ByProjectNodesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newProjectNodesStep(), opts...)
+	}
+}
+
+// ByProjectNodes orders the results by project_nodes terms.
+func ByProjectNodes(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newProjectNodesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+func newProjectNodesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ProjectNodesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ProjectNodesTable, ProjectNodesColumn),
+	)
 }

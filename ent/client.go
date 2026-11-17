@@ -24,6 +24,7 @@ import (
 	"github.com/kilip/opus/ent/node"
 	"github.com/kilip/opus/ent/otp"
 	"github.com/kilip/opus/ent/project"
+	"github.com/kilip/opus/ent/projectnode"
 	"github.com/kilip/opus/ent/session"
 	"github.com/kilip/opus/ent/task"
 	"github.com/kilip/opus/ent/user"
@@ -50,6 +51,8 @@ type Client struct {
 	OTP *OTPClient
 	// Project is the client for interacting with the Project builders.
 	Project *ProjectClient
+	// ProjectNode is the client for interacting with the ProjectNode builders.
+	ProjectNode *ProjectNodeClient
 	// Session is the client for interacting with the Session builders.
 	Session *SessionClient
 	// Task is the client for interacting with the Task builders.
@@ -75,6 +78,7 @@ func (c *Client) init() {
 	c.Node = NewNodeClient(c.config)
 	c.OTP = NewOTPClient(c.config)
 	c.Project = NewProjectClient(c.config)
+	c.ProjectNode = NewProjectNodeClient(c.config)
 	c.Session = NewSessionClient(c.config)
 	c.Task = NewTaskClient(c.config)
 	c.User = NewUserClient(c.config)
@@ -168,19 +172,20 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:       ctx,
-		config:    cfg,
-		Account:   NewAccountClient(cfg),
-		Activity:  NewActivityClient(cfg),
-		AuditLog:  NewAuditLogClient(cfg),
-		Counter:   NewCounterClient(cfg),
-		JoinToken: NewJoinTokenClient(cfg),
-		Node:      NewNodeClient(cfg),
-		OTP:       NewOTPClient(cfg),
-		Project:   NewProjectClient(cfg),
-		Session:   NewSessionClient(cfg),
-		Task:      NewTaskClient(cfg),
-		User:      NewUserClient(cfg),
+		ctx:         ctx,
+		config:      cfg,
+		Account:     NewAccountClient(cfg),
+		Activity:    NewActivityClient(cfg),
+		AuditLog:    NewAuditLogClient(cfg),
+		Counter:     NewCounterClient(cfg),
+		JoinToken:   NewJoinTokenClient(cfg),
+		Node:        NewNodeClient(cfg),
+		OTP:         NewOTPClient(cfg),
+		Project:     NewProjectClient(cfg),
+		ProjectNode: NewProjectNodeClient(cfg),
+		Session:     NewSessionClient(cfg),
+		Task:        NewTaskClient(cfg),
+		User:        NewUserClient(cfg),
 	}, nil
 }
 
@@ -198,19 +203,20 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:       ctx,
-		config:    cfg,
-		Account:   NewAccountClient(cfg),
-		Activity:  NewActivityClient(cfg),
-		AuditLog:  NewAuditLogClient(cfg),
-		Counter:   NewCounterClient(cfg),
-		JoinToken: NewJoinTokenClient(cfg),
-		Node:      NewNodeClient(cfg),
-		OTP:       NewOTPClient(cfg),
-		Project:   NewProjectClient(cfg),
-		Session:   NewSessionClient(cfg),
-		Task:      NewTaskClient(cfg),
-		User:      NewUserClient(cfg),
+		ctx:         ctx,
+		config:      cfg,
+		Account:     NewAccountClient(cfg),
+		Activity:    NewActivityClient(cfg),
+		AuditLog:    NewAuditLogClient(cfg),
+		Counter:     NewCounterClient(cfg),
+		JoinToken:   NewJoinTokenClient(cfg),
+		Node:        NewNodeClient(cfg),
+		OTP:         NewOTPClient(cfg),
+		Project:     NewProjectClient(cfg),
+		ProjectNode: NewProjectNodeClient(cfg),
+		Session:     NewSessionClient(cfg),
+		Task:        NewTaskClient(cfg),
+		User:        NewUserClient(cfg),
 	}, nil
 }
 
@@ -241,7 +247,7 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.Account, c.Activity, c.AuditLog, c.Counter, c.JoinToken, c.Node, c.OTP,
-		c.Project, c.Session, c.Task, c.User,
+		c.Project, c.ProjectNode, c.Session, c.Task, c.User,
 	} {
 		n.Use(hooks...)
 	}
@@ -252,7 +258,7 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.Account, c.Activity, c.AuditLog, c.Counter, c.JoinToken, c.Node, c.OTP,
-		c.Project, c.Session, c.Task, c.User,
+		c.Project, c.ProjectNode, c.Session, c.Task, c.User,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -277,6 +283,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.OTP.mutate(ctx, m)
 	case *ProjectMutation:
 		return c.Project.mutate(ctx, m)
+	case *ProjectNodeMutation:
+		return c.ProjectNode.mutate(ctx, m)
 	case *SessionMutation:
 		return c.Session.mutate(ctx, m)
 	case *TaskMutation:
@@ -1109,6 +1117,22 @@ func (c *NodeClient) GetX(ctx context.Context, id uuid.UUID) *Node {
 	return obj
 }
 
+// QueryProjectNodes queries the project_nodes edge of a Node.
+func (c *NodeClient) QueryProjectNodes(_m *Node) *ProjectNodeQuery {
+	query := (&ProjectNodeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(node.Table, node.FieldID, id),
+			sqlgraph.To(projectnode.Table, projectnode.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, node.ProjectNodesTable, node.ProjectNodesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *NodeClient) Hooks() []Hook {
 	return c.hooks.Node
@@ -1375,6 +1399,22 @@ func (c *ProjectClient) GetX(ctx context.Context, id uuid.UUID) *Project {
 	return obj
 }
 
+// QueryProjectNodes queries the project_nodes edge of a Project.
+func (c *ProjectClient) QueryProjectNodes(_m *Project) *ProjectNodeQuery {
+	query := (&ProjectNodeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(project.Table, project.FieldID, id),
+			sqlgraph.To(projectnode.Table, projectnode.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, project.ProjectNodesTable, project.ProjectNodesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *ProjectClient) Hooks() []Hook {
 	return c.hooks.Project
@@ -1397,6 +1437,171 @@ func (c *ProjectClient) mutate(ctx context.Context, m *ProjectMutation) (Value, 
 		return (&ProjectDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Project mutation op: %q", m.Op())
+	}
+}
+
+// ProjectNodeClient is a client for the ProjectNode schema.
+type ProjectNodeClient struct {
+	config
+}
+
+// NewProjectNodeClient returns a client for the ProjectNode from the given config.
+func NewProjectNodeClient(c config) *ProjectNodeClient {
+	return &ProjectNodeClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `projectnode.Hooks(f(g(h())))`.
+func (c *ProjectNodeClient) Use(hooks ...Hook) {
+	c.hooks.ProjectNode = append(c.hooks.ProjectNode, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `projectnode.Intercept(f(g(h())))`.
+func (c *ProjectNodeClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ProjectNode = append(c.inters.ProjectNode, interceptors...)
+}
+
+// Create returns a builder for creating a ProjectNode entity.
+func (c *ProjectNodeClient) Create() *ProjectNodeCreate {
+	mutation := newProjectNodeMutation(c.config, OpCreate)
+	return &ProjectNodeCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ProjectNode entities.
+func (c *ProjectNodeClient) CreateBulk(builders ...*ProjectNodeCreate) *ProjectNodeCreateBulk {
+	return &ProjectNodeCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ProjectNodeClient) MapCreateBulk(slice any, setFunc func(*ProjectNodeCreate, int)) *ProjectNodeCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ProjectNodeCreateBulk{err: fmt.Errorf("calling to ProjectNodeClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ProjectNodeCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ProjectNodeCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ProjectNode.
+func (c *ProjectNodeClient) Update() *ProjectNodeUpdate {
+	mutation := newProjectNodeMutation(c.config, OpUpdate)
+	return &ProjectNodeUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ProjectNodeClient) UpdateOne(_m *ProjectNode) *ProjectNodeUpdateOne {
+	mutation := newProjectNodeMutation(c.config, OpUpdateOne, withProjectNode(_m))
+	return &ProjectNodeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ProjectNodeClient) UpdateOneID(id uuid.UUID) *ProjectNodeUpdateOne {
+	mutation := newProjectNodeMutation(c.config, OpUpdateOne, withProjectNodeID(id))
+	return &ProjectNodeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ProjectNode.
+func (c *ProjectNodeClient) Delete() *ProjectNodeDelete {
+	mutation := newProjectNodeMutation(c.config, OpDelete)
+	return &ProjectNodeDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ProjectNodeClient) DeleteOne(_m *ProjectNode) *ProjectNodeDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ProjectNodeClient) DeleteOneID(id uuid.UUID) *ProjectNodeDeleteOne {
+	builder := c.Delete().Where(projectnode.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ProjectNodeDeleteOne{builder}
+}
+
+// Query returns a query builder for ProjectNode.
+func (c *ProjectNodeClient) Query() *ProjectNodeQuery {
+	return &ProjectNodeQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeProjectNode},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ProjectNode entity by its id.
+func (c *ProjectNodeClient) Get(ctx context.Context, id uuid.UUID) (*ProjectNode, error) {
+	return c.Query().Where(projectnode.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ProjectNodeClient) GetX(ctx context.Context, id uuid.UUID) *ProjectNode {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryProject queries the project edge of a ProjectNode.
+func (c *ProjectNodeClient) QueryProject(_m *ProjectNode) *ProjectQuery {
+	query := (&ProjectClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(projectnode.Table, projectnode.FieldID, id),
+			sqlgraph.To(project.Table, project.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, projectnode.ProjectTable, projectnode.ProjectColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryNode queries the node edge of a ProjectNode.
+func (c *ProjectNodeClient) QueryNode(_m *ProjectNode) *NodeQuery {
+	query := (&NodeClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(projectnode.Table, projectnode.FieldID, id),
+			sqlgraph.To(node.Table, node.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, projectnode.NodeTable, projectnode.NodeColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ProjectNodeClient) Hooks() []Hook {
+	return c.hooks.ProjectNode
+}
+
+// Interceptors returns the client interceptors.
+func (c *ProjectNodeClient) Interceptors() []Interceptor {
+	return c.inters.ProjectNode
+}
+
+func (c *ProjectNodeClient) mutate(ctx context.Context, m *ProjectNodeMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ProjectNodeCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ProjectNodeUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ProjectNodeUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ProjectNodeDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ProjectNode mutation op: %q", m.Op())
 	}
 }
 
@@ -1882,11 +2087,11 @@ func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error)
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		Account, Activity, AuditLog, Counter, JoinToken, Node, OTP, Project, Session,
-		Task, User []ent.Hook
+		Account, Activity, AuditLog, Counter, JoinToken, Node, OTP, Project,
+		ProjectNode, Session, Task, User []ent.Hook
 	}
 	inters struct {
-		Account, Activity, AuditLog, Counter, JoinToken, Node, OTP, Project, Session,
-		Task, User []ent.Interceptor
+		Account, Activity, AuditLog, Counter, JoinToken, Node, OTP, Project,
+		ProjectNode, Session, Task, User []ent.Interceptor
 	}
 )

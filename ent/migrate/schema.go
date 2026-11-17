@@ -166,6 +166,40 @@ var (
 		Columns:    ProjectsColumns,
 		PrimaryKey: []*schema.Column{ProjectsColumns[0]},
 	}
+	// ProjectNodesColumns holds the columns for the "project_nodes" table.
+	ProjectNodesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "path", Type: field.TypeString, Nullable: true},
+		{Name: "node_id", Type: field.TypeUUID},
+		{Name: "project_id", Type: field.TypeUUID},
+	}
+	// ProjectNodesTable holds the schema information for the "project_nodes" table.
+	ProjectNodesTable = &schema.Table{
+		Name:       "project_nodes",
+		Columns:    ProjectNodesColumns,
+		PrimaryKey: []*schema.Column{ProjectNodesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "project_nodes_nodes_project_nodes",
+				Columns:    []*schema.Column{ProjectNodesColumns[2]},
+				RefColumns: []*schema.Column{NodesColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "project_nodes_projects_project_nodes",
+				Columns:    []*schema.Column{ProjectNodesColumns[3]},
+				RefColumns: []*schema.Column{ProjectsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "projectnode_project_id_node_id",
+				Unique:  true,
+				Columns: []*schema.Column{ProjectNodesColumns[3], ProjectNodesColumns[2]},
+			},
+		},
+	}
 	// SessionsColumns holds the columns for the "sessions" table.
 	SessionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -243,6 +277,7 @@ var (
 		NodesTable,
 		OtPsTable,
 		ProjectsTable,
+		ProjectNodesTable,
 		SessionsTable,
 		TasksTable,
 		UsersTable,
@@ -253,5 +288,7 @@ func init() {
 	AccountsTable.ForeignKeys[0].RefTable = UsersTable
 	ActivitiesTable.ForeignKeys[0].RefTable = TasksTable
 	AuditLogsTable.ForeignKeys[0].RefTable = UsersTable
+	ProjectNodesTable.ForeignKeys[0].RefTable = NodesTable
+	ProjectNodesTable.ForeignKeys[1].RefTable = ProjectsTable
 	SessionsTable.ForeignKeys[0].RefTable = UsersTable
 }

@@ -19,13 +19,18 @@ var (
 	ErrInvalidRepo     = domain.ErrInvalidRepo
 	ErrPatchForbidden  = domain.ErrPatchForbidden
 	ErrProjectHasTasks = domain.ErrProjectHasTasks
+	ErrInvalidPath     = domain.ErrInvalidPath
+	ErrNodeNotFound    = domain.ErrNodeNotFound
 )
 
 // Re-exported domain types.
 type (
-	CreateProjectRequest = domain.CreateProjectRequest
-	UpdateProjectRequest = domain.UpdateProjectRequest
-	TaskCounter          = service.TaskCounter
+	CreateProjectRequest         = domain.CreateProjectRequest
+	UpdateProjectRequest         = domain.UpdateProjectRequest
+	ProjectNodeResponse          = domain.ProjectNodeResponse
+	UpdateProjectNodePathRequest = domain.UpdateProjectNodePathRequest
+	TaskCounter                  = service.TaskCounter
+	NodeReader                   = service.NodeReader
 )
 
 // Option configures the Project feature.
@@ -33,12 +38,20 @@ type Option func(*options)
 
 type options struct {
 	taskCounter service.TaskCounter
+	nodeReader  service.NodeReader
 }
 
 // WithTaskCounter configures the TaskCounter hook for project deletion guard.
 func WithTaskCounter(tc service.TaskCounter) Option {
 	return func(o *options) {
 		o.taskCounter = tc
+	}
+}
+
+// WithNodeReader configures the NodeReader for project node path mapping.
+func WithNodeReader(nr service.NodeReader) Option {
+	return func(o *options) {
+		o.nodeReader = nr
 	}
 }
 
@@ -57,6 +70,7 @@ func New(client *ent.Client, opts ...Option) *Project {
 	r := repo.New(client)
 	svc := service.New(r, service.Config{
 		TaskCounter: o.taskCounter,
+		NodeReader:  o.nodeReader,
 	})
 	return &Project{
 		handler: handler.New(svc),

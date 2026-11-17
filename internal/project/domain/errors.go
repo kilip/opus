@@ -15,4 +15,8 @@ var (
 	ErrPatchForbidden = errors.New("PROJECT_PATCH_FORBIDDEN")
 	// ErrProjectHasTasks indicates the project cannot be deleted because it has associated tasks.
 	ErrProjectHasTasks = errors.New("PROJECT_HAS_TASKS")
+	// ErrInvalidPath indicates the project node path is not an absolute path.
+	ErrInvalidPath = errors.New("PROJECT_INVALID_PATH")
+	// ErrNodeNotFound indicates the node does not exist.
+	ErrNodeNotFound = errors.New("NODE_NOT_FOUND")
 )

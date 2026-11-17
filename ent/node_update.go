@@ -11,8 +11,10 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
+	"github.com/google/uuid"
 	"github.com/kilip/opus/ent/node"
 	"github.com/kilip/opus/ent/predicate"
+	"github.com/kilip/opus/ent/projectnode"
 )
 
 // NodeUpdate is the builder for updating Node entities.
@@ -110,9 +112,45 @@ func (_u *NodeUpdate) ClearCredentialHash() *NodeUpdate {
 	return _u
 }
 
+// AddProjectNodeIDs adds the "project_nodes" edge to the ProjectNode entity by IDs.
+func (_u *NodeUpdate) AddProjectNodeIDs(ids ...uuid.UUID) *NodeUpdate {
+	_u.mutation.AddProjectNodeIDs(ids...)
+	return _u
+}
+
+// AddProjectNodes adds the "project_nodes" edges to the ProjectNode entity.
+func (_u *NodeUpdate) AddProjectNodes(v ...*ProjectNode) *NodeUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddProjectNodeIDs(ids...)
+}
+
 // Mutation returns the NodeMutation object of the builder.
 func (_u *NodeUpdate) Mutation() *NodeMutation {
 	return _u.mutation
+}
+
+// ClearProjectNodes clears all "project_nodes" edges to the ProjectNode entity.
+func (_u *NodeUpdate) ClearProjectNodes() *NodeUpdate {
+	_u.mutation.ClearProjectNodes()
+	return _u
+}
+
+// RemoveProjectNodeIDs removes the "project_nodes" edge to ProjectNode entities by IDs.
+func (_u *NodeUpdate) RemoveProjectNodeIDs(ids ...uuid.UUID) *NodeUpdate {
+	_u.mutation.RemoveProjectNodeIDs(ids...)
+	return _u
+}
+
+// RemoveProjectNodes removes "project_nodes" edges to ProjectNode entities.
+func (_u *NodeUpdate) RemoveProjectNodes(v ...*ProjectNode) *NodeUpdate {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveProjectNodeIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -194,6 +232,51 @@ func (_u *NodeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.CredentialHashCleared() {
 		_spec.ClearField(node.FieldCredentialHash, field.TypeString)
+	}
+	if _u.mutation.ProjectNodesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   node.ProjectNodesTable,
+			Columns: []string{node.ProjectNodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(projectnode.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedProjectNodesIDs(); len(nodes) > 0 && !_u.mutation.ProjectNodesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   node.ProjectNodesTable,
+			Columns: []string{node.ProjectNodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(projectnode.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ProjectNodesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   node.ProjectNodesTable,
+			Columns: []string{node.ProjectNodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(projectnode.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -297,9 +380,45 @@ func (_u *NodeUpdateOne) ClearCredentialHash() *NodeUpdateOne {
 	return _u
 }
 
+// AddProjectNodeIDs adds the "project_nodes" edge to the ProjectNode entity by IDs.
+func (_u *NodeUpdateOne) AddProjectNodeIDs(ids ...uuid.UUID) *NodeUpdateOne {
+	_u.mutation.AddProjectNodeIDs(ids...)
+	return _u
+}
+
+// AddProjectNodes adds the "project_nodes" edges to the ProjectNode entity.
+func (_u *NodeUpdateOne) AddProjectNodes(v ...*ProjectNode) *NodeUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddProjectNodeIDs(ids...)
+}
+
 // Mutation returns the NodeMutation object of the builder.
 func (_u *NodeUpdateOne) Mutation() *NodeMutation {
 	return _u.mutation
+}
+
+// ClearProjectNodes clears all "project_nodes" edges to the ProjectNode entity.
+func (_u *NodeUpdateOne) ClearProjectNodes() *NodeUpdateOne {
+	_u.mutation.ClearProjectNodes()
+	return _u
+}
+
+// RemoveProjectNodeIDs removes the "project_nodes" edge to ProjectNode entities by IDs.
+func (_u *NodeUpdateOne) RemoveProjectNodeIDs(ids ...uuid.UUID) *NodeUpdateOne {
+	_u.mutation.RemoveProjectNodeIDs(ids...)
+	return _u
+}
+
+// RemoveProjectNodes removes "project_nodes" edges to ProjectNode entities.
+func (_u *NodeUpdateOne) RemoveProjectNodes(v ...*ProjectNode) *NodeUpdateOne {
+	ids := make([]uuid.UUID, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveProjectNodeIDs(ids...)
 }
 
 // Where appends a list predicates to the NodeUpdate builder.
@@ -411,6 +530,51 @@ func (_u *NodeUpdateOne) sqlSave(ctx context.Context) (_node *Node, err error) {
 	}
 	if _u.mutation.CredentialHashCleared() {
 		_spec.ClearField(node.FieldCredentialHash, field.TypeString)
+	}
+	if _u.mutation.ProjectNodesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   node.ProjectNodesTable,
+			Columns: []string{node.ProjectNodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(projectnode.FieldID, field.TypeUUID),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedProjectNodesIDs(); len(nodes) > 0 && !_u.mutation.ProjectNodesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   node.ProjectNodesTable,
+			Columns: []string{node.ProjectNodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(projectnode.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ProjectNodesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   node.ProjectNodesTable,
+			Columns: []string{node.ProjectNodesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(projectnode.FieldID, field.TypeUUID),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	_node = &Node{config: _u.config}
 	_spec.Assign = _node.assignValues

@@ -28,6 +28,8 @@ type Tx struct {
 	OTP *OTPClient
 	// Project is the client for interacting with the Project builders.
 	Project *ProjectClient
+	// ProjectNode is the client for interacting with the ProjectNode builders.
+	ProjectNode *ProjectNodeClient
 	// Session is the client for interacting with the Session builders.
 	Session *SessionClient
 	// Task is the client for interacting with the Task builders.
@@ -173,6 +175,7 @@ func (tx *Tx) init() {
 	tx.Node = NewNodeClient(tx.config)
 	tx.OTP = NewOTPClient(tx.config)
 	tx.Project = NewProjectClient(tx.config)
+	tx.ProjectNode = NewProjectNodeClient(tx.config)
 	tx.Session = NewSessionClient(tx.config)
 	tx.Task = NewTaskClient(tx.config)
 	tx.User = NewUserClient(tx.config)

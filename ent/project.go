@@ -35,8 +35,29 @@ type Project struct {
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
-	UpdatedAt    time.Time `json:"updated_at,omitempty"`
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
+	// Edges holds the relations/edges for other nodes in the graph.
+	// The values are being populated by the ProjectQuery when eager-loading is set.
+	Edges        ProjectEdges `json:"edges"`
 	selectValues sql.SelectValues
+}
+
+// ProjectEdges holds the relations/edges for other nodes in the graph.
+type ProjectEdges struct {
+	// ProjectNodes holds the value of the project_nodes edge.
+	ProjectNodes []*ProjectNode `json:"project_nodes,omitempty"`
+	// loadedTypes holds the information for reporting if a
+	// type was loaded (or requested) in eager-loading or not.
+	loadedTypes [1]bool
+}
+
+// ProjectNodesOrErr returns the ProjectNodes value or an error if the edge
+// was not loaded in eager-loading.
+func (e ProjectEdges) ProjectNodesOrErr() ([]*ProjectNode, error) {
+	if e.loadedTypes[0] {
+		return e.ProjectNodes, nil
+	}
+	return nil, &NotLoadedError{edge: "project_nodes"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -136,6 +157,11 @@ func (_m *Project) assignValues(columns []string, values []any) error {
 // This includes values selected through modifiers, order, etc.
 func (_m *Project) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
+}
+
+// QueryProjectNodes queries the "project_nodes" edge of the Project entity.
+func (_m *Project) QueryProjectNodes() *ProjectNodeQuery {
+	return NewProjectClient(_m.config).QueryProjectNodes(_m)
 }
 
 // Update returns a builder for updating this Project.

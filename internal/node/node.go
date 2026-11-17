@@ -167,6 +167,16 @@ func (n *Node) Bootstrap(ctx context.Context) error {
 	return nil
 }
 
+// List returns every registered node as NodeResponse DTOs.
+func (n *Node) List(ctx context.Context) ([]domain.NodeResponse, error) {
+	return n.svc.List(ctx)
+}
+
+// Get returns a single node by id as a NodeResponse DTO, or ErrNodeNotFound.
+func (n *Node) Get(ctx context.Context, id string) (domain.NodeResponse, error) {
+	return n.svc.Get(ctx, id)
+}
+
 // GenerateJoinToken creates a new join token.
 func (n *Node) GenerateJoinToken(ctx context.Context) (domain.JoinTokenResponse, error) {
 	return n.svc.GenerateJoinToken(ctx)

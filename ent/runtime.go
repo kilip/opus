@@ -14,6 +14,7 @@ import (
 	"github.com/kilip/opus/ent/node"
 	"github.com/kilip/opus/ent/otp"
 	"github.com/kilip/opus/ent/project"
+	"github.com/kilip/opus/ent/projectnode"
 	"github.com/kilip/opus/ent/schema"
 	"github.com/kilip/opus/ent/session"
 	"github.com/kilip/opus/ent/task"
@@ -192,6 +193,12 @@ func init() {
 	projectDescID := projectFields[0].Descriptor()
 	// project.DefaultID holds the default value on creation for the id field.
 	project.DefaultID = projectDescID.Default.(func() uuid.UUID)
+	projectnodeFields := schema.ProjectNode{}.Fields()
+	_ = projectnodeFields
+	// projectnodeDescID is the schema descriptor for id field.
+	projectnodeDescID := projectnodeFields[0].Descriptor()
+	// projectnode.DefaultID holds the default value on creation for the id field.
+	projectnode.DefaultID = projectnodeDescID.Default.(func() uuid.UUID)
 	sessionFields := schema.Session{}.Fields()
 	_ = sessionFields
 	// sessionDescTokenHash is the schema descriptor for token_hash field.

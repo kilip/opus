@@ -30,6 +30,9 @@ type OTP func(*sql.Selector)
 // Project is the predicate function for project builders.
 type Project func(*sql.Selector)
 
+// ProjectNode is the predicate function for projectnode builders.
+type ProjectNode func(*sql.Selector)
+
 // Session is the predicate function for session builders.
 type Session func(*sql.Selector)
 

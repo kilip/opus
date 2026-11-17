@@ -926,3 +926,43 @@ func TestNodeService_Delete(t *testing.T) {
 		t.Fatalf("expected worker to be deleted from DB, got %v", err)
 	}
 }
+
+func TestNodeService_Get(t *testing.T) {
+	ctx := context.Background()
+	client := setupTestClient(t)
+	r := repo.New(client)
+	svc := service.New(r, service.Config{})
+
+	// 1. Get existing node
+	n, err := client.Node.Create().
+		SetName("worker-get-test").
+		SetRole(entnode.RoleWorker).
+		SetStatus(entnode.StatusOnline).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create node: %v", err)
+	}
+
+	got, err := svc.Get(ctx, n.ID.String())
+	if err != nil {
+		t.Fatalf("svc.Get failed: %v", err)
+	}
+	if got.ID != n.ID.String() {
+		t.Errorf("got ID %q, want %q", got.ID, n.ID.String())
+	}
+	if got.Name != n.Name {
+		t.Errorf("got Name %q, want %q", got.Name, n.Name)
+	}
+
+	// 2. Get non-existent UUID returns ErrNodeNotFound
+	_, err = svc.Get(ctx, "00000000-0000-0000-0000-000000000000")
+	if !errors.Is(err, domain.ErrNodeNotFound) {
+		t.Fatalf("expected ErrNodeNotFound, got %v", err)
+	}
+
+	// 3. Get invalid UUID string returns ErrNodeNotFound
+	_, err = svc.Get(ctx, "not-a-valid-uuid")
+	if !errors.Is(err, domain.ErrNodeNotFound) {
+		t.Fatalf("expected ErrNodeNotFound for invalid uuid, got %v", err)
+	}
+}

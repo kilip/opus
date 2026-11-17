@@ -18,6 +18,13 @@ func OpenDB(ctx context.Context, databaseURL string) (*ent.Client, error) {
 	switch {
 	case strings.HasPrefix(databaseURL, "file:"), strings.HasPrefix(databaseURL, "sqlite:"):
 		dsn := strings.TrimPrefix(databaseURL, "sqlite:")
+		if !strings.Contains(dsn, "foreign_keys") && !strings.Contains(dsn, "_fk") {
+			if strings.Contains(dsn, "?") {
+				dsn += "&_pragma=foreign_keys(ON)"
+			} else {
+				dsn += "?_pragma=foreign_keys(ON)"
+			}
+		}
 		db, err := sql.Open("sqlite", dsn)
 		if err != nil {
 			return nil, fmt.Errorf("open sqlite db: %w", err)

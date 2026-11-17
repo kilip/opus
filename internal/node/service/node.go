@@ -88,6 +88,21 @@ func (s *Node) List(ctx context.Context) ([]domain.NodeResponse, error) {
 	return out, nil
 }
 
+// Get returns a single node by id as a NodeResponse DTO, or domain.ErrNodeNotFound.
+func (s *Node) Get(ctx context.Context, id string) (domain.NodeResponse, error) {
+	n, err := s.repo.Get(ctx, id)
+	if err != nil {
+		return domain.NodeResponse{}, err
+	}
+	return domain.NodeResponse{
+		ID:         n.ID,
+		Name:       n.Name,
+		Role:       n.Role,
+		Status:     n.Status,
+		LastSeenAt: n.LastSeenAt,
+	}, nil
+}
+
 // GenerateJoinToken creates a 32-byte cryptographically secure join token,
 // stores its SHA-256 hash in the database, and returns the join URL and expiration.
 func (s *Node) GenerateJoinToken(ctx context.Context) (domain.JoinTokenResponse, error) {

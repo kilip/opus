@@ -11,6 +11,7 @@ import (
 	entsql "entgo.io/ent/dialect/sql"
 	"github.com/kilip/opus/ent"
 	"github.com/kilip/opus/ent/enttest"
+	"github.com/kilip/opus/internal/node"
 	"github.com/kilip/opus/internal/project/domain"
 	"github.com/kilip/opus/internal/project/repo"
 	"github.com/kilip/opus/internal/project/service"
@@ -308,5 +309,272 @@ func TestService_GetAndUpdate(t *testing.T) {
 	// Slug is unchanged
 	if updated.Slug != "update-test" {
 		t.Errorf("expected slug to remain unchanged, got %q", updated.Slug)
+	}
+}
+
+func TestService_ListNodeMappings(t *testing.T) {
+	client := setupTestClient(t)
+	ctx := context.Background()
+	r := repo.New(client)
+	nodeSvc := node.New(client, node.Config{})
+	svc := service.New(r, service.Config{NodeReader: nodeSvc})
+
+	// 1. Unknown project returns ErrProjectNotFound
+	_, err := svc.ListNodeMappings(ctx, "00000000-0000-0000-0000-000000000000")
+	if !errors.Is(err, domain.ErrProjectNotFound) {
+		t.Fatalf("expected ErrProjectNotFound, got %v", err)
+	}
+
+	// 2. Create project and nodes
+	p, err := svc.Create(ctx, domain.CreateProjectRequest{
+		Slug:         "list-nodes-proj",
+		Name:         "List Nodes Proj",
+		RepoProvider: "github",
+		RepoRef:      "org/list-nodes-proj",
+	})
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+
+	n1, err := client.Node.Create().
+		SetName("worker-1").
+		SetRole("worker").
+		SetStatus("online").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create node 1: %v", err)
+	}
+
+	n2, err := client.Node.Create().
+		SetName("worker-2").
+		SetRole("worker").
+		SetStatus("offline").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create node 2: %v", err)
+	}
+
+	// Before any mapping is set, all nodes appear with path: nil
+	mappings, err := svc.ListNodeMappings(ctx, p.ID)
+	if err != nil {
+		t.Fatalf("ListNodeMappings: %v", err)
+	}
+	if len(mappings) != 2 {
+		t.Fatalf("expected 2 mappings, got %d", len(mappings))
+	}
+	for _, m := range mappings {
+		if m.Path != nil {
+			t.Errorf("expected nil path for unmapped node %s, got %v", m.NodeID, *m.Path)
+		}
+	}
+
+	// Set path for n1
+	path1 := "/var/repo/p"
+	_, err = svc.SetNodePath(ctx, p.ID, n1.ID.String(), &path1)
+	if err != nil {
+		t.Fatalf("SetNodePath: %v", err)
+	}
+
+	// Check mappings again
+	mappings, err = svc.ListNodeMappings(ctx, p.ID)
+	if err != nil {
+		t.Fatalf("ListNodeMappings: %v", err)
+	}
+	var foundN1, foundN2 bool
+	for _, m := range mappings {
+		if m.NodeID == n1.ID.String() {
+			foundN1 = true
+			if m.Path == nil || *m.Path != path1 {
+				t.Errorf("n1 path = %v, want %q", m.Path, path1)
+			}
+			if m.NodeName != "worker-1" {
+				t.Errorf("n1 name = %q, want worker-1", m.NodeName)
+			}
+		}
+		if m.NodeID == n2.ID.String() {
+			foundN2 = true
+			if m.Path != nil {
+				t.Errorf("n2 path = %v, want nil", m.Path)
+			}
+		}
+	}
+	if !foundN1 || !foundN2 {
+		t.Errorf("expected to find both n1 (%v) and n2 (%v)", foundN1, foundN2)
+	}
+}
+
+func TestService_SetNodePath(t *testing.T) {
+	client := setupTestClient(t)
+	ctx := context.Background()
+	r := repo.New(client)
+	nodeSvc := node.New(client, node.Config{})
+	svc := service.New(r, service.Config{NodeReader: nodeSvc})
+
+	p, err := svc.Create(ctx, domain.CreateProjectRequest{
+		Slug:         "set-path-proj",
+		Name:         "Set Path Proj",
+		RepoProvider: "github",
+		RepoRef:      "org/set-path-proj",
+	})
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+
+	n, err := client.Node.Create().
+		SetName("worker-set-path").
+		SetRole("worker").
+		SetStatus("online").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create node: %v", err)
+	}
+
+	// 1. Unknown project returns ErrProjectNotFound
+	p1 := "/some/path"
+	_, err = svc.SetNodePath(ctx, "00000000-0000-0000-0000-000000000000", n.ID.String(), &p1)
+	if !errors.Is(err, domain.ErrProjectNotFound) {
+		t.Fatalf("expected ErrProjectNotFound, got %v", err)
+	}
+
+	// 2. Unknown node returns ErrNodeNotFound
+	_, err = svc.SetNodePath(ctx, p.ID, "00000000-0000-0000-0000-000000000000", &p1)
+	if !errors.Is(err, domain.ErrNodeNotFound) {
+		t.Fatalf("expected ErrNodeNotFound, got %v", err)
+	}
+
+	// 3. Relative path returns ErrInvalidPath
+	relPath := "relative/path"
+	_, err = svc.SetNodePath(ctx, p.ID, n.ID.String(), &relPath)
+	if !errors.Is(err, domain.ErrInvalidPath) {
+		t.Fatalf("expected ErrInvalidPath, got %v", err)
+	}
+
+	// 4. Valid absolute path upserts mapping
+	absPath := "/var/repo/p"
+	resp, err := svc.SetNodePath(ctx, p.ID, n.ID.String(), &absPath)
+	if err != nil {
+		t.Fatalf("SetNodePath failed: %v", err)
+	}
+	if resp.Path == nil || *resp.Path != absPath {
+		t.Errorf("got path %v, want %q", resp.Path, absPath)
+	}
+	if resp.NodeID != n.ID.String() {
+		t.Errorf("got NodeID %q, want %q", resp.NodeID, n.ID.String())
+	}
+
+	// 5. Upsert with new path updates existing mapping
+	newPath := "/new/absolute/path"
+	resp, err = svc.SetNodePath(ctx, p.ID, n.ID.String(), &newPath)
+	if err != nil {
+		t.Fatalf("SetNodePath update failed: %v", err)
+	}
+	if resp.Path == nil || *resp.Path != newPath {
+		t.Errorf("got path %v, want %q", resp.Path, newPath)
+	}
+
+	// 6. Clear with empty string sets path to NULL (nil)
+	emptyPath := ""
+	resp, err = svc.SetNodePath(ctx, p.ID, n.ID.String(), &emptyPath)
+	if err != nil {
+		t.Fatalf("SetNodePath clear with empty failed: %v", err)
+	}
+	if resp.Path != nil {
+		t.Errorf("expected nil path after empty string, got %v", resp.Path)
+	}
+
+	// 7. Clear with nil sets path to NULL (nil)
+	absPath2 := "/another/path"
+	_, err = svc.SetNodePath(ctx, p.ID, n.ID.String(), &absPath2)
+	if err != nil {
+		t.Fatalf("SetNodePath re-set failed: %v", err)
+	}
+	resp, err = svc.SetNodePath(ctx, p.ID, n.ID.String(), nil)
+	if err != nil {
+		t.Fatalf("SetNodePath clear with nil failed: %v", err)
+	}
+	if resp.Path != nil {
+		t.Errorf("expected nil path after nil, got %v", resp.Path)
+	}
+}
+
+func TestService_ProjectNode_CascadeDelete(t *testing.T) {
+	client := setupTestClient(t)
+	ctx := context.Background()
+	r := repo.New(client)
+	nodeSvc := node.New(client, node.Config{})
+	svc := service.New(r, service.Config{NodeReader: nodeSvc})
+
+	// Case A: Deleting project via service removes ProjectNode rows
+	p1, err := svc.Create(ctx, domain.CreateProjectRequest{
+		Slug:         "cascade-p1",
+		Name:         "Cascade P1",
+		RepoProvider: "github",
+		RepoRef:      "org/cascade-p1",
+	})
+	if err != nil {
+		t.Fatalf("create p1: %v", err)
+	}
+	n1, err := client.Node.Create().
+		SetName("worker-cascade-1").
+		SetRole("worker").
+		SetStatus("online").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create n1: %v", err)
+	}
+	path1 := "/path/one"
+	_, err = svc.SetNodePath(ctx, p1.ID, n1.ID.String(), &path1)
+	if err != nil {
+		t.Fatalf("SetNodePath p1-n1: %v", err)
+	}
+
+	count, err := client.ProjectNode.Query().Count(ctx)
+	if err != nil || count != 1 {
+		t.Fatalf("expected 1 project node, got %d (err: %v)", count, err)
+	}
+
+	if err := svc.Delete(ctx, p1.ID); err != nil {
+		t.Fatalf("delete project p1: %v", err)
+	}
+	count, err = client.ProjectNode.Query().Count(ctx)
+	if err != nil || count != 0 {
+		t.Fatalf("expected 0 project nodes after project delete, got %d (err: %v)", count, err)
+	}
+
+	// Case B: Deleting node via node service removes ProjectNode rows
+	p2, err := svc.Create(ctx, domain.CreateProjectRequest{
+		Slug:         "cascade-p2",
+		Name:         "Cascade P2",
+		RepoProvider: "github",
+		RepoRef:      "org/cascade-p2",
+	})
+	if err != nil {
+		t.Fatalf("create p2: %v", err)
+	}
+	n2, err := client.Node.Create().
+		SetName("worker-cascade-2").
+		SetRole("worker").
+		SetStatus("online").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create n2: %v", err)
+	}
+	path2 := "/path/two"
+	_, err = svc.SetNodePath(ctx, p2.ID, n2.ID.String(), &path2)
+	if err != nil {
+		t.Fatalf("SetNodePath p2-n2: %v", err)
+	}
+
+	count, err = client.ProjectNode.Query().Count(ctx)
+	if err != nil || count != 1 {
+		t.Fatalf("expected 1 project node, got %d (err: %v)", count, err)
+	}
+
+	if err := nodeSvc.Delete(ctx, n2.ID.String()); err != nil {
+		t.Fatalf("delete node n2: %v", err)
+	}
+	count, err = client.ProjectNode.Query().Count(ctx)
+	if err != nil || count != 0 {
+		t.Fatalf("expected 0 project nodes after node delete, got %d (err: %v)", count, err)
 	}
 }

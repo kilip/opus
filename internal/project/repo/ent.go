@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/kilip/opus/ent"
 	entproject "github.com/kilip/opus/ent/project"
+	entprojectnode "github.com/kilip/opus/ent/projectnode"
 	"github.com/kilip/opus/internal/project/domain"
 )
 
@@ -134,4 +135,65 @@ func (r *Ent) Delete(ctx context.Context, id string) error {
 		return err
 	}
 	return nil
+}
+
+// ListNodeMappings returns a map of nodeID -> path for all mapped nodes of projectID.
+func (r *Ent) ListNodeMappings(ctx context.Context, projectID string) (map[string]*string, error) {
+	uid, err := uuid.Parse(projectID)
+	if err != nil {
+		return nil, domain.ErrProjectNotFound
+	}
+	pns, err := r.client.ProjectNode.Query().
+		Where(entprojectnode.ProjectIDEQ(uid)).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]*string, len(pns))
+	for _, pn := range pns {
+		out[pn.NodeID.String()] = pn.Path
+	}
+	return out, nil
+}
+
+// SetNodePath upserts the path mapping for a project and node.
+// If path is nil, path is cleared to NULL.
+func (r *Ent) SetNodePath(ctx context.Context, projectID, nodeID string, path *string) error {
+	pUID, err := uuid.Parse(projectID)
+	if err != nil {
+		return domain.ErrProjectNotFound
+	}
+	nUID, err := uuid.Parse(nodeID)
+	if err != nil {
+		return domain.ErrNodeNotFound
+	}
+
+	pn, err := r.client.ProjectNode.Query().
+		Where(
+			entprojectnode.ProjectIDEQ(pUID),
+			entprojectnode.NodeIDEQ(nUID),
+		).
+		Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			b := r.client.ProjectNode.Create().
+				SetProjectID(pUID).
+				SetNodeID(nUID)
+			if path != nil {
+				b.SetPath(*path)
+			}
+			_, err = b.Save(ctx)
+			return err
+		}
+		return err
+	}
+
+	u := r.client.ProjectNode.UpdateOne(pn)
+	if path != nil {
+		u.SetPath(*path)
+	} else {
+		u.ClearPath()
+	}
+	_, err = u.Save(ctx)
+	return err
 }

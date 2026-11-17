@@ -34,3 +34,17 @@ type UpdateProjectRequest struct {
 	TrackerRef      *string `json:"tracker_ref,omitempty"`
 	DefaultBranch   *string `json:"default_branch,omitempty"`
 }
+
+// ProjectNodeResponse represents a project's node path mapping.
+type ProjectNodeResponse struct {
+	NodeID     string  `json:"nodeId"`
+	NodeName   string  `json:"nodeName"`
+	NodeRole   string  `json:"nodeRole"`
+	NodeStatus string  `json:"nodeStatus"`
+	Path       *string `json:"path"`
+}
+
+// UpdateProjectNodePathRequest is the payload for updating a project node path mapping.
+type UpdateProjectNodePathRequest struct {
+	Path *string `json:"path"`
+}

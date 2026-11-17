@@ -268,6 +268,26 @@
                 },
                 "type": "object"
             },
+            "domain.ProjectNodeResponse": {
+                "properties": {
+                    "nodeId": {
+                        "type": "string"
+                    },
+                    "nodeName": {
+                        "type": "string"
+                    },
+                    "nodeRole": {
+                        "type": "string"
+                    },
+                    "nodeStatus": {
+                        "type": "string"
+                    },
+                    "path": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "domain.ProviderItem": {
                 "properties": {
                     "label": {
@@ -449,6 +469,14 @@
                     "TaskTypeDocs"
                 ]
             },
+            "domain.UpdateProjectNodePathRequest": {
+                "properties": {
+                    "path": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "domain.UpdateProjectRequest": {
                 "properties": {
                     "default_branch": {
@@ -628,6 +656,24 @@
                 },
                 "type": "object"
             },
+            "httpx.Response-array_domain_ProjectNodeResponse": {
+                "properties": {
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/domain.ProjectNodeResponse"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
             "httpx.Response-array_domain_ProviderItem": {
                 "properties": {
                     "data": {
@@ -710,6 +756,20 @@
                 "properties": {
                     "data": {
                         "$ref": "#/components/schemas/domain.Project"
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
+            "httpx.Response-domain_ProjectNodeResponse": {
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/domain.ProjectNodeResponse"
                     },
                     "error": {
                         "type": "string"
@@ -1730,6 +1790,154 @@
                     }
                 },
                 "summary": "Update project",
+                "tags": [
+                    "projects"
+                ]
+            }
+        },
+        "/projects/{id}/nodes": {
+            "get": {
+                "description": "Returns node path mappings for all known nodes for the project.",
+                "operationId": "list-project-node-mappings",
+                "parameters": [
+                    {
+                        "description": "Project ID",
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-array_domain_ProjectNodeResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "List project node mappings",
+                "tags": [
+                    "projects"
+                ]
+            }
+        },
+        "/projects/{id}/nodes/{nodeId}": {
+            "put": {
+                "description": "Upserts a path mapping for a node in the project.",
+                "operationId": "set-project-node-path",
+                "parameters": [
+                    {
+                        "description": "Project ID",
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Node ID",
+                        "in": "path",
+                        "name": "nodeId",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.UpdateProjectNodePathRequest",
+                                "summary": "request",
+                                "description": "Node Path Request"
+                            }
+                        }
+                    },
+                    "description": "Node Path Request",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-domain_ProjectNodeResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Set project node path mapping",
                 "tags": [
                     "projects"
                 ]
