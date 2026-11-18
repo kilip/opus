@@ -7,6 +7,8 @@ export const AUTH_ERRORS: Record<string, string> = {
   OTP_EXPIRED: "The verification code has expired. Please request a new one.",
   TOO_MANY_ATTEMPTS: "Too many attempts. Please try again later.",
   SETUP_CLOSED: "Setup has already been completed.",
+  SETUP_TOKEN_INVALID:
+    "Invalid setup token. Check your server logs for the setup token.",
   ACCOUNT_NOT_ALLOWED: "Your account is not authorized to sign in.",
   SETUP_REQUIRED: "Initial setup is required before signing in.",
   PROVIDER_NOT_FOUND: "The requested authentication provider was not found.",

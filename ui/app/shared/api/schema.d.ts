@@ -894,6 +894,7 @@ export interface components {
         "domain.SessionStatus": "queued" | "running" | "completed" | "failed" | "cancelled";
         "domain.SetupStatusResponse": {
             needs_setup?: boolean;
+            requiresToken?: boolean;
         };
         /** @enum {string} */
         "domain.Status": "online" | "offline";
@@ -2528,7 +2529,10 @@ export interface operations {
     setupComplete: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description First-run setup token */
+                "X-Setup-Token"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2566,8 +2570,26 @@ export interface operations {
                     "application/json": components["schemas"]["httpx.ErrorResponse"];
                 };
             };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Too Many Requests */
+            429: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -2580,7 +2602,10 @@ export interface operations {
     setupRequestOTP: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description First-run setup token */
+                "X-Setup-Token"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -2602,6 +2627,15 @@ export interface operations {
             };
             /** @description Bad Request */
             400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

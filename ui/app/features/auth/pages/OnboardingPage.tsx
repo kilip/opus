@@ -17,11 +17,13 @@ export const meta = () => [{ title: "Welcome · Opus" }];
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
+  const setupTokenId = useId();
   const emailId = useId();
   const codeId = useId();
   const codeInputRef = useRef<HTMLInputElement>(null);
 
   const [step, setStep] = useState<1 | 2>(1);
+  const [setupToken, setSetupToken] = useState("");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -61,16 +63,22 @@ export default function OnboardingPage() {
     return <Navigate to="/login" replace />;
   }
 
+  const requiresToken = setupStatus?.requiresToken ?? false;
+
   const handleRequestOTP = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     const cleanEmail = email.trim();
-    if (!cleanEmail) {
+    const cleanToken = setupToken.trim();
+    if (!cleanEmail || (requiresToken && !cleanToken)) {
       return;
     }
 
     try {
-      await requestSetupOTP.mutateAsync({ email: cleanEmail });
+      await requestSetupOTP.mutateAsync({
+        email: cleanEmail,
+        setupToken: cleanToken || undefined,
+      });
       setCooldown(OTP_RESEND_COOLDOWN_SECONDS);
       setStep(2);
     } catch (err) {
@@ -98,7 +106,10 @@ export default function OnboardingPage() {
     if (cooldown > 0 || isPending) return;
     setError(null);
     try {
-      await requestSetupOTP.mutateAsync({ email: email.trim() });
+      await requestSetupOTP.mutateAsync({
+        email: email.trim(),
+        setupToken: setupToken.trim() || undefined,
+      });
       setCooldown(OTP_RESEND_COOLDOWN_SECONDS);
     } catch (err) {
       if (
@@ -133,6 +144,7 @@ export default function OnboardingPage() {
       await completeSetup.mutateAsync({
         email: email.trim(),
         code: cleanCode,
+        setupToken: setupToken.trim() || undefined,
       });
       navigate("/tasks", { replace: true });
     } catch (err) {
@@ -182,6 +194,28 @@ export default function OnboardingPage() {
 
         {step === 1 ? (
           <>
+            {requiresToken && (
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor={setupTokenId}
+                  className="font-medium text-muted"
+                >
+                  Setup token
+                </label>
+                <input
+                  id={setupTokenId}
+                  type="password"
+                  required
+                  autoComplete="off"
+                  className="field"
+                  placeholder="Paste token from server logs"
+                  value={setupToken}
+                  onChange={(e) => setSetupToken(e.target.value)}
+                  disabled={isPending}
+                />
+              </div>
+            )}
+
             <div className="flex flex-col gap-1.5">
               <label htmlFor={emailId} className="font-medium text-muted">
                 Owner email
@@ -203,7 +237,11 @@ export default function OnboardingPage() {
               variant="primary"
               type="submit"
               className="h-10"
-              disabled={isPending || !email.trim()}
+              disabled={
+                isPending ||
+                !email.trim() ||
+                (requiresToken && !setupToken.trim())
+              }
             >
               {isPending ? "Sending code..." : "Continue"}
             </Button>

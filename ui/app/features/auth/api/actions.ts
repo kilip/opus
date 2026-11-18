@@ -54,10 +54,14 @@ export function useVerifyOTP() {
 
 export function useRequestSetupOTP() {
   return useMutation({
-    mutationFn: async (req: OTPRequestBody): Promise<string> =>
+    mutationFn: async ({
+      setupToken,
+      ...req
+    }: OTPRequestBody & { setupToken?: string }): Promise<string> =>
       handleOtpRequest(
         api.POST("/setup/otp", {
           body: req,
+          headers: setupToken ? { "X-Setup-Token": setupToken } : undefined,
           parseAs: "text" as never,
         }),
       ),
@@ -67,10 +71,14 @@ export function useRequestSetupOTP() {
 export function useCompleteSetup() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (req: OTPVerifyBody): Promise<User> =>
+    mutationFn: async ({
+      setupToken,
+      ...req
+    }: OTPVerifyBody & { setupToken?: string }): Promise<User> =>
       unwrap(
         api.POST("/setup", {
           body: req,
+          headers: setupToken ? { "X-Setup-Token": setupToken } : undefined,
         }),
         AUTH_ERRORS,
       ),
