@@ -147,6 +147,9 @@ func (p *Poller) SyncOnce(ctx context.Context) {
 			ghProjects = append(ghProjects, proj)
 		}
 	}
+	if len(ghProjects) == 0 {
+		return
+	}
 
 	if err := github.CheckAuth(ctx, p.runner); err != nil {
 		if ctx.Err() != nil {

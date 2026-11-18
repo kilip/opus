@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"os/exec"
 	"runtime"
 	"strings"
 	"sync"
@@ -190,6 +191,18 @@ func TestPoller_AuthRecoveryAndPerProjectIsolation(t *testing.T) {
 func TestPoller_StartStop_StartupCycleAndNoGoroutineLeak(t *testing.T) {
 	client, db := setupTrackerClient(t)
 	r := repo.New(client)
+	ctx := context.Background()
+
+	if _, err := client.Project.Create().
+		SetSlug("gh-proj").
+		SetName("GH Project").
+		SetRepoProvider("github").
+		SetRepoRef("org/gh-proj").
+		SetTrackerProvider("github").
+		SetTrackerRef("org/gh-proj").
+		Save(ctx); err != nil {
+		t.Fatalf("create gh project: %v", err)
+	}
 
 	runtime.GC()
 	baseline := runtime.NumGoroutine()
@@ -214,7 +227,6 @@ func TestPoller_StartStop_StartupCycleAndNoGoroutineLeak(t *testing.T) {
 		},
 	})
 
-	ctx := context.Background()
 	if err := poller.Start(ctx); err != nil {
 		t.Fatalf("Start failed: %v", err)
 	}
@@ -264,5 +276,56 @@ func TestPoller_StartStop_StartupCycleAndNoGoroutineLeak(t *testing.T) {
 	}
 	if got := runtime.NumGoroutine(); got > baseline {
 		t.Fatalf("goroutine leak: baseline=%d final=%d", baseline, got)
+	}
+}
+
+func TestPoller_SkipsAuthCheckWhenNoGitHubProjects(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		seedNonGH bool
+	}{
+		{name: "no projects"},
+		{name: "only non-github project", seedNonGH: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			client, _ := setupTrackerClient(t)
+			r := repo.New(client)
+			ctx := context.Background()
+
+			if tc.seedNonGH {
+				_, err := client.Project.Create().
+					SetSlug("jira-proj").
+					SetName("Jira Project").
+					SetRepoProvider("github").
+					SetRepoRef("org/jira-proj").
+					SetTrackerProvider("jira").
+					SetTrackerRef("JIRA-1").
+					Save(ctx)
+				if err != nil {
+					t.Fatalf("create non-gh project: %v", err)
+				}
+			}
+
+			var runnerCalls atomic.Int32
+			var logBuf bytes.Buffer
+			logger := slog.New(slog.NewTextHandler(&logBuf, nil))
+
+			poller := service.NewPoller(r, service.PollerConfig{
+				Logger: logger,
+				Runner: func(_ context.Context, _ ...string) ([]byte, error) {
+					runnerCalls.Add(1)
+					return nil, exec.ErrNotFound
+				},
+			})
+
+			poller.SyncOnce(ctx)
+
+			if runnerCalls.Load() != 0 {
+				t.Fatalf("expected 0 runner calls when no github projects exist, got %d", runnerCalls.Load())
+			}
+			if strings.Contains(logBuf.String(), "github auth status failed") {
+				t.Fatalf("expected no auth failure log, got %q", logBuf.String())
+			}
+		})
 	}
 }
