@@ -105,7 +105,12 @@ func (s *Service) Run(ctx context.Context, cfg ReconcilerConfig) error {
 	}
 
 	if s.bus != nil {
-		err := s.bus.Subscribe("run-reconciler", func(_ context.Context, _ eventbus.Event) error {
+		err := s.bus.Subscribe("run-reconciler", func(subCtx context.Context, e eventbus.Event) error {
+			if e.Type == task.EventStatusChanged && cfg.Stages.Worker != nil {
+				if err := s.HandleTaskStatusChanged(subCtx, cfg.Stages, e); err != nil {
+					logger.ErrorContext(subCtx, "handle task status changed failed", slog.Any("error", err))
+				}
+			}
 			signal()
 			return nil
 		}, task.EventReceived, task.EventStatusChanged)
@@ -129,16 +134,10 @@ func (s *Service) Run(ctx context.Context, cfg ReconcilerConfig) error {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
-			if err := s.RecoverActiveRuns(ctx, cfg.Stages); err != nil && ctx.Err() == nil {
-				logger.ErrorContext(ctx, "startup run recovery failed", slog.Any("error", err))
-			}
 			if err := s.ReconcileOnce(ctx, cfg); err != nil && ctx.Err() == nil {
 				logger.ErrorContext(ctx, "periodic reconcile scan failed", slog.Any("error", err))
 			}
 		case <-trigger:
-			if err := s.RecoverActiveRuns(ctx, cfg.Stages); err != nil && ctx.Err() == nil {
-				logger.ErrorContext(ctx, "startup run recovery failed", slog.Any("error", err))
-			}
 			if err := s.ReconcileOnce(ctx, cfg); err != nil && ctx.Err() == nil {
 				logger.ErrorContext(ctx, "event-triggered reconcile scan failed", slog.Any("error", err))
 			}
@@ -185,13 +184,24 @@ func (s *Service) reconcileTask(ctx context.Context, cfg ReconcilerConfig, t tas
 		return nil
 	}
 
-	_, err = s.Create(ctx, domain.CreateInput{
+	created, err := s.Create(ctx, domain.CreateInput{
 		TaskID:    taskID,
 		ProjectID: projectID,
 		NodeID:    &selected.NodeID,
 		Mode:      domain.ModeVibe,
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	if cfg.Stages.Worker != nil {
+		if _, err := s.Claim(ctx, cfg.Stages, created.ID); err != nil {
+			return err
+		}
+		if _, err := s.PrepareAndStartSession(ctx, cfg.Stages, created.ID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Service) isBlocked(ctx context.Context, tasks *task.Task, description string) bool {
