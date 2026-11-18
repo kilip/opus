@@ -38,17 +38,20 @@ type Config struct {
 	Now func() time.Time
 	// Registry holds configured OAuth2 identity providers.
 	Registry *provider.Registry
+	// SetupToken is the optional first-run token required for /api/setup*.
+	SetupToken string
 }
 
 // Auth owns OTP, session and setup business rules.
 type Auth struct {
-	sessions repo.Repo
-	otps     repo.OTPRepo
-	mailer   mailer.Mailer
-	registry *provider.Registry
-	secret   string
-	ttl      time.Duration
-	now      func() time.Time
+	sessions   repo.Repo
+	otps       repo.OTPRepo
+	mailer     mailer.Mailer
+	registry   *provider.Registry
+	secret     string
+	setupToken string
+	ttl        time.Duration
+	now        func() time.Time
 }
 
 // New returns an Auth service.
@@ -62,14 +65,28 @@ func New(sessions repo.Repo, otps repo.OTPRepo, m mailer.Mailer, cfg Config) *Au
 		now = time.Now
 	}
 	return &Auth{
-		sessions: sessions,
-		otps:     otps,
-		mailer:   m,
-		registry: cfg.Registry,
-		secret:   cfg.Secret,
-		ttl:      ttl,
-		now:      now,
+		sessions:   sessions,
+		otps:       otps,
+		mailer:     m,
+		registry:   cfg.Registry,
+		secret:     cfg.Secret,
+		setupToken: cfg.SetupToken,
+		ttl:        ttl,
+		now:        now,
 	}
+}
+
+// SetSetupToken sets the active first-run setup token.
+func (s *Auth) SetSetupToken(token string) {
+	s.setupToken = token
+}
+
+// ValidateSetupToken checks candidate against the active setup token in constant time.
+func (s *Auth) ValidateSetupToken(candidate string) bool {
+	if s.setupToken == "" || len(candidate) != len(s.setupToken) {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(s.setupToken), []byte(candidate)) == 1
 }
 
 // Session resolves a raw session token to a live session.
@@ -114,9 +131,14 @@ func (s *Auth) NeedsSetup(ctx context.Context) (bool, error) {
 func (s *Auth) RequestOTP(ctx context.Context, email string) error {
 	user, err := s.otps.FindUserByEmail(ctx, email)
 	if err != nil || user == nil {
+		// ponytail: in-process async send; move to an outbox when a queue exists
+		go func() {
+			_, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+			cancel()
+		}()
 		return nil
 	}
-	return s.issueOTP(ctx, email, "Your OTP code")
+	return s.issueOTPAsync(ctx, email, "Your OTP code")
 }
 
 // VerifyOTP checks code for email, consumes the OTP and opens a session.
@@ -127,31 +149,35 @@ func (s *Auth) VerifyOTP(ctx context.Context, email, code string, meta domain.Au
 		s.recordAudit(ctx, nil, domain.AuditEventOTPFailed, meta)
 		return nil, "", domain.ErrInvalidOTP
 	}
-
-	// lockout before checking code
-	if otp.Attempts >= domain.MaxOTPAttempts {
-		_ = s.otps.DeleteByEmail(ctx, email)
-		s.recordAudit(ctx, nil, domain.AuditEventOTPFailed, meta)
-		return nil, "", domain.ErrTooManyAttempts
-	}
 	if s.now().After(otp.ExpiresAt) {
 		s.recordAudit(ctx, nil, domain.AuditEventOTPFailed, meta)
 		return nil, "", domain.ErrOTPExpired
 	}
+
+	attempts, ok, err := s.otps.ReserveAttempt(ctx, otp.ID, domain.MaxOTPAttempts)
+	if err != nil {
+		return nil, "", err
+	}
+	if !ok {
+		s.recordAudit(ctx, nil, domain.AuditEventOTPFailed, meta)
+		return nil, "", domain.ErrTooManyAttempts
+	}
+
 	if !s.codeMatches(otp.CodeHash, code) {
-		attempts, _ := s.otps.IncrementAttempts(ctx, otp.ID)
-		if attempts >= domain.MaxOTPAttempts {
-			_ = s.otps.DeleteByEmail(ctx, email)
-		}
 		s.recordAudit(ctx, nil, domain.AuditEventOTPFailed, meta)
 		if attempts >= domain.MaxOTPAttempts {
+			_ = s.otps.DeleteByEmail(ctx, email)
 			return nil, "", domain.ErrTooManyAttempts
 		}
 		return nil, "", domain.ErrInvalidOTP
 	}
 
-	// single-use: delete OTP before creating session
-	_ = s.otps.DeleteByEmail(ctx, email)
+	// single-use: atomically consume OTP before creating session
+	consumed, err := s.otps.ConsumeOTP(ctx, otp.ID)
+	if err != nil || !consumed {
+		s.recordAudit(ctx, nil, domain.AuditEventOTPFailed, meta)
+		return nil, "", domain.ErrInvalidOTP
+	}
 
 	user, err := s.otps.FindUserByEmail(ctx, email)
 	if err != nil || user == nil {
@@ -180,9 +206,6 @@ func (s *Auth) RequestSetupOTP(ctx context.Context, email string) error {
 
 // CompleteSetup verifies the setup code, creates the owner and opens a session.
 // Returns the owner and the raw session token for the caller to deliver.
-//
-// ponytail: unlike VerifyOTP there is no attempt counter here; add lockout
-// before exposing setup to the internet.
 func (s *Auth) CompleteSetup(ctx context.Context, email, code string, meta domain.AuditMeta) (*domain.User, string, error) {
 	if err := s.requireOpenSetup(ctx); err != nil {
 		return nil, "", err
@@ -197,11 +220,30 @@ func (s *Auth) CompleteSetup(ctx context.Context, email, code string, meta domai
 		s.recordAudit(ctx, nil, domain.AuditEventOTPFailed, meta)
 		return nil, "", domain.ErrOTPExpired
 	}
+
+	attempts, ok, err := s.otps.ReserveAttempt(ctx, otp.ID, domain.MaxOTPAttempts)
+	if err != nil {
+		return nil, "", err
+	}
+	if !ok {
+		s.recordAudit(ctx, nil, domain.AuditEventOTPFailed, meta)
+		return nil, "", domain.ErrTooManyAttempts
+	}
+
 	if !s.codeMatches(otp.CodeHash, code) {
+		s.recordAudit(ctx, nil, domain.AuditEventOTPFailed, meta)
+		if attempts >= domain.MaxOTPAttempts {
+			_ = s.otps.DeleteByEmail(ctx, email)
+			return nil, "", domain.ErrTooManyAttempts
+		}
+		return nil, "", domain.ErrInvalidOTP
+	}
+
+	consumed, err := s.otps.ConsumeOTP(ctx, otp.ID)
+	if err != nil || !consumed {
 		s.recordAudit(ctx, nil, domain.AuditEventOTPFailed, meta)
 		return nil, "", domain.ErrInvalidOTP
 	}
-	_ = s.otps.DeleteByEmail(ctx, email)
 
 	raw, hash, err := s.newToken()
 	if err != nil {
@@ -242,6 +284,24 @@ func (s *Auth) issueOTP(ctx context.Context, email, subject string) error {
 	}
 	_ = s.mailer.Send(ctx, email, subject,
 		fmt.Sprintf("Your one-time code is: %s (valid for %d minutes)", code, int(otpTTL.Minutes())))
+	return nil
+}
+
+func (s *Auth) issueOTPAsync(ctx context.Context, email, subject string) error {
+	code, err := generateOTPCode()
+	if err != nil {
+		return err
+	}
+	if _, err := s.otps.CreateOTP(ctx, email, s.hash(code), s.now().Add(otpTTL)); err != nil {
+		return err
+	}
+	// ponytail: in-process async send; move to an outbox when a queue exists
+	body := fmt.Sprintf("Your one-time code is: %s (valid for %d minutes)", code, int(otpTTL.Minutes()))
+	go func() {
+		sendCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+		defer cancel()
+		_ = s.mailer.Send(sendCtx, email, subject, body)
+	}()
 	return nil
 }
 

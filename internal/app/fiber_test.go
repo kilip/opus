@@ -61,7 +61,10 @@ func TestGetFiber_CSRFProtection(t *testing.T) {
 		TrustedOrigins: []string{"http://localhost:5173"},
 	}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	fiberApp := app.GetFiber(cfg, logger, nil, eventbus.New())
+	fiberApp, err := app.GetFiber(cfg, logger, nil, eventbus.New())
+	if err != nil {
+		t.Fatalf("GetFiber: %v", err)
+	}
 	fiberApp.Post("/api/test-csrf", func(c fiber.Ctx) error {
 		return c.SendStatus(http.StatusCreated)
 	})
@@ -182,7 +185,10 @@ func TestGetFiber_TasksRequiresAuth(t *testing.T) {
 		SessionSecret: "secret-needs-to-be-32-bytes-long-ok",
 	}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	fiberApp := app.GetFiber(cfg, logger, client, eventbus.New())
+	fiberApp, err := app.GetFiber(cfg, logger, client, eventbus.New())
+	if err != nil {
+		t.Fatalf("GetFiber: %v", err)
+	}
 
 	// 1. Health check is public (200)
 	reqHealth := httptest.NewRequest("GET", "/api/health", nil)
@@ -244,7 +250,10 @@ func TestGetFiber_NodesRequiresAuthAndPersistsMaster(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	// 1. First app startup
-	fiberApp1 := app.GetFiber(cfg, logger, client, eventbus.New())
+	fiberApp1, err := app.GetFiber(cfg, logger, client, eventbus.New())
+	if err != nil {
+		t.Fatalf("GetFiber: %v", err)
+	}
 
 	// Unauthenticated GET /api/nodes returns 401
 	reqNodes := httptest.NewRequest("GET", "/api/nodes", nil)
@@ -300,7 +309,9 @@ func TestGetFiber_NodesRequiresAuthAndPersistsMaster(t *testing.T) {
 	m1 := masters1[0]
 
 	// 2. Second app startup (simulating restart)
-	_ = app.GetFiber(cfg, logger, client, eventbus.New())
+	if _, err := app.GetFiber(cfg, logger, client, eventbus.New()); err != nil {
+		t.Fatalf("GetFiber: %v", err)
+	}
 
 	masters2, err := client.Node.Query().Where(entnode.RoleEQ(entnode.RoleMaster)).All(ctx)
 	if err != nil {
@@ -334,7 +345,10 @@ func TestGetFiber_NodeJoinWithoutAuth(t *testing.T) {
 		SessionSecret: "secret-needs-to-be-32-bytes-long-ok",
 	}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	fiberApp := app.GetFiber(cfg, logger, client, eventbus.New())
+	fiberApp, err := app.GetFiber(cfg, logger, client, eventbus.New())
+	if err != nil {
+		t.Fatalf("GetFiber: %v", err)
+	}
 
 	// Create a join token directly in DB
 	ctx := context.Background()
@@ -412,7 +426,10 @@ func TestGetFiber_NodeControlChannel(t *testing.T) {
 		eventCh <- env
 	})
 
-	fiberApp := app.GetFiber(cfg, logger, client, eventbus.New(), app.WithNode(nodeFeature))
+	fiberApp, err := app.GetFiber(cfg, logger, client, eventbus.New(), app.WithNode(nodeFeature))
+	if err != nil {
+		t.Fatalf("GetFiber: %v", err)
+	}
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -534,7 +551,10 @@ func TestGetFiber_ProjectDeleteGuardWithTasks(t *testing.T) {
 		SessionSecret: "secret-needs-to-be-32-bytes-long-ok",
 	}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	fiberApp := app.GetFiber(cfg, logger, client, eventbus.New())
+	fiberApp, err := app.GetFiber(cfg, logger, client, eventbus.New())
+	if err != nil {
+		t.Fatalf("GetFiber: %v", err)
+	}
 
 	// Create user & session
 	u, err := client.User.Create().
@@ -665,7 +685,10 @@ func TestGetFiber_TrackerAuthAndProjectLabelValidation(t *testing.T) {
 		SessionSecret: "secret-needs-to-be-32-bytes-long-ok",
 	}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	fiberApp := app.GetFiber(cfg, logger, client, eventbus.New())
+	fiberApp, err := app.GetFiber(cfg, logger, client, eventbus.New())
+	if err != nil {
+		t.Fatalf("GetFiber: %v", err)
+	}
 
 	// 1. Tracker endpoints reject unauthenticated requests with 401
 	for _, tc := range []struct {
@@ -775,4 +798,61 @@ func TestGetFiber_TrackerAuthAndProjectLabelValidation(t *testing.T) {
 		t.Fatalf("expected 200 on GET /tracker/settings, got %d (err: %v)", respSettings.StatusCode, err)
 	}
 	_ = respSettings.Body.Close()
+}
+
+func TestGetFiber_TrustedProxies(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	// Empty APP_TRUSTED_PROXIES -> ignores X-Forwarded-For.
+	appUntrusted, err := app.GetFiber(app.Config{AppName: "opus"}, logger, nil, eventbus.New())
+	if err != nil {
+		t.Fatalf("GetFiber untrusted: %v", err)
+	}
+	appUntrusted.Get("/api/test-ip", func(c fiber.Ctx) error { return c.SendString(c.IP()) })
+
+	req1 := httptest.NewRequest(http.MethodGet, "/api/test-ip", nil)
+	req1.Header.Set("X-Forwarded-For", "203.0.113.9")
+	resp1, _ := appUntrusted.Test(req1)
+	b1, _ := io.ReadAll(resp1.Body)
+	_ = resp1.Body.Close()
+	if string(b1) == "203.0.113.9" {
+		t.Fatalf("expected untrusted proxy to ignore X-Forwarded-For, got %q", string(b1))
+	}
+
+	// Configured APP_TRUSTED_PROXIES -> trusts X-Forwarded-For from listed proxy.
+	appTrusted, err := app.GetFiber(app.Config{
+		AppName:        "opus",
+		TrustedProxies: []string{"0.0.0.0/0"},
+	}, logger, nil, eventbus.New())
+	if err != nil {
+		t.Fatalf("GetFiber trusted: %v", err)
+	}
+	appTrusted.Get("/api/test-ip", func(c fiber.Ctx) error { return c.SendString(c.IP()) })
+
+	req2 := httptest.NewRequest(http.MethodGet, "/api/test-ip", nil)
+	req2.Header.Set("X-Forwarded-For", "203.0.113.9")
+	resp2, _ := appTrusted.Test(req2)
+	b2, _ := io.ReadAll(resp2.Body)
+	_ = resp2.Body.Close()
+	if string(b2) != "203.0.113.9" {
+		t.Fatalf("expected trusted proxy to return X-Forwarded-For 203.0.113.9, got %q", string(b2))
+	}
+}
+
+func TestGetFiber_ShortAuthSecretErrors(t *testing.T) {
+	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared&_pragma=foreign_keys(ON)")
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	db.SetMaxOpenConns(1)
+	client := enttest.NewClient(t, enttest.WithOptions(ent.Driver(entsql.OpenDB(dialect.SQLite, db))))
+	t.Cleanup(func() { _ = client.Close() })
+
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	if _, err := app.GetFiber(app.Config{
+		AppName:       "opus",
+		SessionSecret: "short",
+	}, logger, client, eventbus.New()); err == nil {
+		t.Fatal("expected GetFiber to fail on short AUTH_SECRET")
+	}
 }

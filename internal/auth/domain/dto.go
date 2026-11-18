@@ -29,7 +29,8 @@ type OTPVerifyBody struct {
 
 // SetupStatusResponse is the response body for GET /setup/status.
 type SetupStatusResponse struct {
-	NeedsSetup bool `json:"needs_setup"`
+	NeedsSetup    bool `json:"needs_setup"`
+	RequiresToken bool `json:"requiresToken"`
 }
 
 // ProviderItem describes an enabled OAuth identity provider.

@@ -19,8 +19,10 @@ type OTPRepo interface {
 	FindByEmail(ctx context.Context, email string) (*domain.OTP, error)
 	// DeleteByEmail removes the OTP for email (single-use on verify).
 	DeleteByEmail(ctx context.Context, email string) error
-	// IncrementAttempts adds 1 to attempts; returns updated attempts count.
-	IncrementAttempts(ctx context.Context, id uuid.UUID) (int, error)
+	// ReserveAttempt atomically increments attempts if attempts < max and returns the new count.
+	ReserveAttempt(ctx context.Context, id uuid.UUID, max int) (attempts int, ok bool, err error)
+	// ConsumeOTP atomically deletes the OTP by id and returns true iff this caller deleted it.
+	ConsumeOTP(ctx context.Context, id uuid.UUID) (bool, error)
 	// FindUserByEmail returns a domain.User if owner email matches.
 	FindUserByEmail(ctx context.Context, email string) (*domain.User, error)
 }
@@ -63,12 +65,30 @@ func (r *EntOTPRepo) DeleteByEmail(ctx context.Context, email string) error {
 	return err
 }
 
-func (r *EntOTPRepo) IncrementAttempts(ctx context.Context, id uuid.UUID) (int, error) {
-	o, err := r.db.OTP.UpdateOneID(id).AddAttempts(1).Save(ctx)
+func (r *EntOTPRepo) ReserveAttempt(ctx context.Context, id uuid.UUID, max int) (int, bool, error) {
+	n, err := r.db.OTP.Update().
+		Where(entOTP.IDEQ(id), entOTP.AttemptsLT(max)).
+		AddAttempts(1).
+		Save(ctx)
 	if err != nil {
-		return 0, err
+		return 0, false, err
 	}
-	return o.Attempts, nil
+	if n == 0 {
+		return max, false, nil
+	}
+	o, err := r.db.OTP.Get(ctx, id)
+	if err != nil {
+		return max, false, nil
+	}
+	return o.Attempts, true, nil
+}
+
+func (r *EntOTPRepo) ConsumeOTP(ctx context.Context, id uuid.UUID) (bool, error) {
+	n, err := r.db.OTP.Delete().Where(entOTP.IDEQ(id)).Exec(ctx)
+	if err != nil {
+		return false, err
+	}
+	return n == 1, nil
 }
 
 func (r *EntOTPRepo) FindUserByEmail(ctx context.Context, email string) (*domain.User, error) {

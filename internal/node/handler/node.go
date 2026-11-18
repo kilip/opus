@@ -26,21 +26,6 @@ type RateLimitConfig struct {
 	Disabled      bool
 }
 
-// clientIP extracts the client IP address from proxy headers or connection.
-// ponytail: direct proxy header check; configure Fiber TrustProxy when behind strict edge proxy
-func clientIP(c fiber.Ctx) string {
-	if ip := c.Get(fiber.HeaderXForwardedFor); ip != "" {
-		if comma := strings.Index(ip, ","); comma != -1 {
-			return strings.TrimSpace(ip[:comma])
-		}
-		return strings.TrimSpace(ip)
-	}
-	if ip := c.Get("X-Real-IP"); ip != "" {
-		return strings.TrimSpace(ip)
-	}
-	return c.IP()
-}
-
 func newJoinLimiter(cfg RateLimitConfig) fiber.Handler {
 	if cfg.Disabled {
 		return func(c fiber.Ctx) error { return c.Next() }
@@ -58,7 +43,7 @@ func newJoinLimiter(cfg RateLimitConfig) fiber.Handler {
 		Max:        maxRequests,
 		Expiration: window,
 		KeyGenerator: func(c fiber.Ctx) string {
-			return clientIP(c)
+			return c.IP()
 		},
 		LimitReached: func(c fiber.Ctx) error {
 			return httpx.NewError(fiber.StatusTooManyRequests, domain.ErrRateLimited)

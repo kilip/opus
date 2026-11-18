@@ -146,7 +146,7 @@ func buildServer(
 		},
 	})
 
-	fiberApp := app.GetFiber(cfg, logger, db, bus,
+	fiberApp, err := app.GetFiber(cfg, logger, db, bus,
 		app.WithNode(nodeFeature),
 		app.WithProject(projectFeature),
 		app.WithRun(runFeature),
@@ -154,6 +154,9 @@ func buildServer(
 		app.WithTask(taskFeature),
 		app.WithTracker(trackerFeature),
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	inProc := worker.NewInProcess()
 	masterWorker := worker.New(worker.Config{

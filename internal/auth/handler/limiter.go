@@ -4,7 +4,6 @@ package handler
 
 import (
 	"encoding/json"
-	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -29,24 +28,9 @@ type RateLimitConfig struct {
 	Disabled         bool
 }
 
-// clientIP extracts the client IP address from proxy headers or connection.
-// ponytail: direct proxy header check; configure Fiber TrustProxy when behind strict edge proxy
-func clientIP(c fiber.Ctx) string {
-	if ip := c.Get(fiber.HeaderXForwardedFor); ip != "" {
-		if comma := strings.Index(ip, ","); comma != -1 {
-			return strings.TrimSpace(ip[:comma])
-		}
-		return strings.TrimSpace(ip)
-	}
-	if ip := c.Get("X-Real-IP"); ip != "" {
-		return strings.TrimSpace(ip)
-	}
-	return c.IP()
-}
-
 func clientAuditMeta(c fiber.Ctx) domain.AuditMeta {
 	return domain.AuditMeta{
-		IP:        clientIP(c),
+		IP:        c.IP(),
 		UserAgent: c.Get(fiber.HeaderUserAgent),
 	}
 }
@@ -68,7 +52,7 @@ func newIPLimiter(cfg RateLimitConfig) fiber.Handler {
 		Max:        maxRequests,
 		Expiration: window,
 		KeyGenerator: func(c fiber.Ctx) string {
-			return clientIP(c)
+			return c.IP()
 		},
 		LimitReached: func(c fiber.Ctx) error {
 			return httpx.NewError(fiber.StatusTooManyRequests, domain.ErrRateLimited)
@@ -80,9 +64,16 @@ func extractNormalizedEmail(c fiber.Ctx) string {
 	if v, ok := c.Locals(limiterEmailKey).(string); ok {
 		return v
 	}
+	raw := c.Body()
+	if len(raw) > 4096 {
+		return ""
+	}
 	var body domain.OTPRequestBody
-	if err := json.Unmarshal(c.Body(), &body); err == nil && body.Email != "" {
+	if err := json.Unmarshal(raw, &body); err == nil && body.Email != "" {
 		norm := user.NormalizeEmail(body.Email)
+		if len(norm) > 254 {
+			return ""
+		}
 		c.Locals(limiterEmailKey, norm)
 		return norm
 	}

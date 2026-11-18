@@ -52,7 +52,7 @@ func (h *Handler) Register(r fiber.Router) {
 // RegisterPublic mounts public routes (before auth middleware).
 func (h *Handler) RegisterPublic(r fiber.Router) {
 	r.Post("/otp/request", h.ipLimiter, h.emailLimiter, h.requestOTP)
-	r.Post("/otp/verify", h.verifyOTP)
+	r.Post("/otp/verify", h.ipLimiter, h.verifyOTP)
 	r.Get("/providers", h.listProviders)
 	r.Get("/oauth/:provider", h.oauthAuthorize)
 	r.Get("/oauth/:provider/callback", h.oauthCallback)
@@ -62,7 +62,7 @@ func (h *Handler) RegisterPublic(r fiber.Router) {
 func (h *Handler) RegisterSetup(r fiber.Router) {
 	r.Get("/status", h.setupStatus)
 	r.Post("/otp", h.ipLimiter, h.emailLimiter, h.setupRequestOTP)
-	r.Post("", h.setupComplete)
+	r.Post("", h.ipLimiter, h.setupComplete)
 }
 
 // me godoc
@@ -115,6 +115,8 @@ func mapErr(err error) error {
 		return httpx.Unauthorized()
 	case errors.Is(err, domain.ErrInvalidOTP), errors.Is(err, domain.ErrOTPExpired):
 		return httpx.NewError(fiber.StatusUnauthorized, err)
+	case errors.Is(err, domain.ErrSetupTokenInvalid):
+		return httpx.NewError(fiber.StatusForbidden, err)
 	case errors.Is(err, domain.ErrTooManyAttempts), errors.Is(err, domain.ErrRateLimited):
 		return httpx.NewError(fiber.StatusTooManyRequests, err)
 	case errors.Is(err, domain.ErrSetupClosed), errors.Is(err, domain.ErrAccountAlreadyLinked):

@@ -13,6 +13,9 @@ var ErrUnauthorized = errors.New("UNAUTHORIZED")
 // ErrSetupClosed indicates initial owner setup is already complete.
 var ErrSetupClosed = errors.New("SETUP_CLOSED")
 
+// ErrSetupTokenInvalid indicates a missing or invalid X-Setup-Token during initial setup.
+var ErrSetupTokenInvalid = errors.New("SETUP_TOKEN_INVALID")
+
 // ErrProviderNotFound indicates an unknown or unconfigured OAuth provider.
 var ErrProviderNotFound = errors.New("PROVIDER_NOT_FOUND")
 

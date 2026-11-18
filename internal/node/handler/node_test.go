@@ -461,7 +461,17 @@ func TestJoin_Errors(t *testing.T) {
 
 // AC4: The 11th request within a minute from one IP returns 429; covered by a test.
 func TestJoin_RateLimit(t *testing.T) {
-	app, _ := setupApp(t)
+	_, client, hub := setupAppWithHub(t)
+	app := fiber.New(fiber.Config{
+		TrustProxy: true,
+		TrustProxyConfig: fiber.TrustProxyConfig{
+			Proxies: []string{"0.0.0.0/0"},
+		},
+		ProxyHeader:  fiber.HeaderXForwardedFor,
+		ErrorHandler: httpx.ErrorHandler(slog.New(slog.NewTextHandler(io.Discard, nil))),
+	})
+	svc := service.New(repo.New(client), service.Config{BaseURL: "http://localhost:7880", Hub: hub})
+	handler.New(svc, hub).RegisterPublic(app.Group("/api"))
 	ip := "192.168.1.100"
 
 	// 10 requests should not be rate limited

@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -68,14 +69,27 @@ func (f *fakeOTPRepo) DeleteByEmail(_ context.Context, email string) error {
 	return nil
 }
 
-func (f *fakeOTPRepo) IncrementAttempts(_ context.Context, id uuid.UUID) (int, error) {
+func (f *fakeOTPRepo) ReserveAttempt(_ context.Context, id uuid.UUID, max int) (int, bool, error) {
 	for _, o := range f.otps {
 		if o.ID == id {
+			if o.Attempts >= max {
+				return max, false, nil
+			}
 			o.Attempts++
-			return o.Attempts, nil
+			return o.Attempts, true, nil
 		}
 	}
-	return 0, fmt.Errorf("not found")
+	return 0, false, fmt.Errorf("not found")
+}
+
+func (f *fakeOTPRepo) ConsumeOTP(_ context.Context, id uuid.UUID) (bool, error) {
+	for email, o := range f.otps {
+		if o.ID == id {
+			delete(f.otps, email)
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func (f *fakeOTPRepo) FindUserByEmail(_ context.Context, email string) (*domain.User, error) {
@@ -91,11 +105,35 @@ var _ repo.OTPRepo = (*fakeOTPRepo)(nil)
 // --- fakeMailer ---
 
 type fakeMailer struct {
+	mu   sync.Mutex
 	sent []string
 }
 
 func (m *fakeMailer) Send(_ context.Context, to, _, _ string) error {
+	m.mu.Lock()
 	m.sent = append(m.sent, to)
+	m.mu.Unlock()
+	return nil
+}
+
+func (m *fakeMailer) snapshot() []string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := make([]string, len(m.sent))
+	copy(out, m.sent)
+	return out
+}
+
+func (m *fakeMailer) waitSent(t *testing.T, n int) []string {
+	t.Helper()
+	deadline := time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if s := m.snapshot(); len(s) >= n {
+			return s
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	t.Fatalf("timed out waiting for %d sent emails, got %v", n, m.snapshot())
 	return nil
 }
 
@@ -167,8 +205,9 @@ func TestRequestOTP_KnownEmail_Returns202AndSendsMail(t *testing.T) {
 	if resp.StatusCode != http.StatusAccepted {
 		t.Fatalf("want 202, got %d", resp.StatusCode)
 	}
-	if len(m.sent) != 1 || m.sent[0] != "owner@example.com" {
-		t.Fatalf("want mail sent to owner@example.com, got %v", m.sent)
+	sent := m.waitSent(t, 1)
+	if len(sent) != 1 || sent[0] != "owner@example.com" {
+		t.Fatalf("want mail sent to owner@example.com, got %v", sent)
 	}
 	if _, ok := otpRepo.otps["owner@example.com"]; !ok {
 		t.Fatal("OTP should be stored")
@@ -398,6 +437,7 @@ func postJSONFromIP(t *testing.T, app *fiber.App, path string, body any, ip stri
 	t.Helper()
 	req := httptest.NewRequest(http.MethodPost, path, jsonBody(body))
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Setup-Token", testSetupToken)
 	if ip != "" {
 		req.Header.Set("X-Forwarded-For", ip)
 		req.RemoteAddr = ip + ":12345"
@@ -435,10 +475,18 @@ func setupAppWithRateLimit(t *testing.T, rl handler.RateLimitConfig) *fiber.App 
 	svc := service.New(sessRepo, otpRepo, &fakeMailer{}, service.Config{
 		Secret:     testSecret,
 		SessionTTL: 24 * time.Hour,
+		SetupToken: testSetupToken,
 	})
 	cc := handler.CookieConfig{Secure: false, MaxAge: 86400}
 	h := handler.New(svc, cc, rl)
-	app := fiber.New(fiber.Config{ErrorHandler: httpx.ErrorHandler(newDiscardLogger())})
+	app := fiber.New(fiber.Config{
+		TrustProxy: true,
+		TrustProxyConfig: fiber.TrustProxyConfig{
+			Proxies: []string{"0.0.0.0/0"},
+		},
+		ProxyHeader:  fiber.HeaderXForwardedFor,
+		ErrorHandler: httpx.ErrorHandler(newDiscardLogger()),
+	})
 	h.RegisterPublic(app.Group("/auth"))
 	h.RegisterSetup(app.Group("/setup"))
 	return app

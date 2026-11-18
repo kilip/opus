@@ -183,19 +183,48 @@ func (f *fakeSetupOTPRepo) FindUserByEmail(_ context.Context, _ string) (*domain
 	return nil, nil
 }
 
-func (f *fakeSetupOTPRepo) IncrementAttempts(_ context.Context, _ uuid.UUID) (int, error) {
-	return 0, nil
+func (f *fakeSetupOTPRepo) ReserveAttempt(_ context.Context, id uuid.UUID, max int) (int, bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, o := range f.otps {
+		if o.ID == id {
+			if o.Attempts >= max {
+				return max, false, nil
+			}
+			o.Attempts++
+			return o.Attempts, true, nil
+		}
+	}
+	return 0, false, nil
+}
+
+func (f *fakeSetupOTPRepo) ConsumeOTP(_ context.Context, id uuid.UUID) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for email, o := range f.otps {
+		if o.ID == id {
+			delete(f.otps, email)
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 var _ repo.OTPRepo = (*fakeSetupOTPRepo)(nil)
 
 // --- helpers ---
 
+const testSetupToken = "test-setup-token"
+
 func newSetupApp(r *fakeSetupRepo, otpR *fakeSetupOTPRepo) *fiber.App {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	app := fiber.New(fiber.Config{ErrorHandler: httpx.ErrorHandler(logger)})
 	cc := handler.CookieConfig{Secure: false, MaxAge: 86400}
-	h := handler.New(service.New(r, otpR, &fakeMailer{}, service.Config{Secret: testSecret, SessionTTL: 24 * time.Hour}), cc)
+	h := handler.New(service.New(r, otpR, &fakeMailer{}, service.Config{
+		Secret:     testSecret,
+		SessionTTL: 24 * time.Hour,
+		SetupToken: testSetupToken,
+	}), cc)
 	h.RegisterSetup(app.Group("/setup"))
 	return app
 }
@@ -204,6 +233,7 @@ func doJSON(t *testing.T, app *fiber.App, method, path string, body io.Reader) *
 	t.Helper()
 	req := httptest.NewRequest(method, path, body)
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Setup-Token", testSetupToken)
 	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatalf("%s %s: %v", method, path, err)

@@ -249,7 +249,10 @@ func TestOpus_Serve_ShutdownSequence(t *testing.T) {
 		ShutdownTimeout: 2 * time.Second,
 	}
 
-	fiberApp := app.GetFiber(cfg, logger, client, bus)
+	fiberApp, err := app.GetFiber(cfg, logger, client, bus)
+	if err != nil {
+		t.Fatalf("GetFiber: %v", err)
+	}
 
 	httpListening := make(chan struct{})
 	fiberApp.Hooks().OnListen(func(fiber.ListenData) error {
@@ -398,7 +401,10 @@ func TestOpus_Serve_ShutdownSequence_WithNode(t *testing.T) {
 		},
 	})
 
-	fiberApp := app.GetFiber(cfg, logger, client, bus, app.WithNode(nodeFeature))
+	fiberApp, err := app.GetFiber(cfg, logger, client, bus, app.WithNode(nodeFeature))
+	if err != nil {
+		t.Fatalf("GetFiber: %v", err)
+	}
 
 	httpListening := make(chan struct{})
 	fiberApp.Hooks().OnListen(func(fiber.ListenData) error {
@@ -549,7 +555,10 @@ func TestOpus_Serve_ShutdownSequence_WithTracker(t *testing.T) {
 		},
 	})
 
-	fiberApp := app.GetFiber(cfg, logger, client, bus, app.WithTracker(trackerFeature))
+	fiberApp, err := app.GetFiber(cfg, logger, client, bus, app.WithTracker(trackerFeature))
+	if err != nil {
+		t.Fatalf("GetFiber: %v", err)
+	}
 
 	httpListening := make(chan struct{})
 	fiberApp.Hooks().OnListen(func(fiber.ListenData) error {

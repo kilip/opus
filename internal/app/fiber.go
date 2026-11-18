@@ -46,21 +46,29 @@ func healthCheck(c fiber.Ctx) error {
 }
 
 // GetFiber initializes HTTP server.
-func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus, opts ...Option) *fiber.App {
+func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus, opts ...Option) (*fiber.App, error) {
 	var o options
 	for _, opt := range opts {
 		if opt != nil {
 			opt(&o)
 		}
 	}
-	app := fiber.New(fiber.Config{
+	fiberCfg := fiber.Config{
 		AppName:      cfg.AppName,
 		ReadTimeout:  cfg.ReadTimeout,
 		WriteTimeout: cfg.WriteTimeout,
 		IdleTimeout:  cfg.IdleTimeout,
 		BodyLimit:    cfg.BodyLimit,
 		ErrorHandler: httpx.ErrorHandler(logger),
-	})
+	}
+	if len(cfg.TrustedProxies) > 0 {
+		fiberCfg.TrustProxy = true
+		fiberCfg.TrustProxyConfig = fiber.TrustProxyConfig{
+			Proxies: cfg.TrustedProxies,
+		}
+		fiberCfg.ProxyHeader = fiber.HeaderXForwardedFor
+	}
+	app := fiber.New(fiberCfg)
 
 	app.Use(requestid.New())
 	app.Use(recover.New())
@@ -124,12 +132,18 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 			FacebookClientID:     cfg.FacebookClientID,
 			FacebookClientSecret: cfg.FacebookClientSecret,
 		})
-		authFeature := auth.NewWithMailer(db, auth.AuthConfig{
+		authFeature, err := auth.NewWithMailer(db, auth.AuthConfig{
 			BaseURL:       cfg.BaseURL,
+			AppHome:       cfg.AppHome,
 			SessionSecret: cfg.SessionSecret,
 			SessionTTL:    cfg.SessionTTL,
+			SetupToken:    cfg.AuthSetupToken,
+			CookieSecure:  cfg.AuthCookieSecure,
 			Registry:      reg,
 		}, NewMailer(cfg, logger))
+		if err != nil {
+			return nil, err
+		}
 		authRoutes := api.Group("/auth")
 		setupRoutes := api.Group("/setup")
 		authFeature.RegisterSetup(setupRoutes) // GET /status, POST /otp, POST "" (public)
@@ -244,5 +258,5 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 		}))
 	}
 
-	return app
+	return app, nil
 }

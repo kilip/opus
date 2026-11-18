@@ -521,6 +521,9 @@
                 "properties": {
                     "needs_setup": {
                         "type": "boolean"
+                    },
+                    "requiresToken": {
+                        "type": "boolean"
                     }
                 },
                 "type": "object"
@@ -3024,6 +3027,16 @@
             "post": {
                 "description": "Verifies the OTP, creates the owner user and session in one transaction, sets cookie",
                 "operationId": "setupComplete",
+                "parameters": [
+                    {
+                        "description": "First-run setup token",
+                        "in": "header",
+                        "name": "X-Setup-Token",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -3068,6 +3081,16 @@
                         },
                         "description": "Unauthorized"
                     },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
+                    },
                     "409": {
                         "content": {
                             "application/json": {
@@ -3077,6 +3100,16 @@
                             }
                         },
                         "description": "Conflict"
+                    },
+                    "429": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Too Many Requests"
                     }
                 },
                 "summary": "Setup: complete owner creation",
@@ -3089,6 +3122,16 @@
             "post": {
                 "description": "Sends a one-time code to the given email for initial owner setup",
                 "operationId": "setupRequestOTP",
+                "parameters": [
+                    {
+                        "description": "First-run setup token",
+                        "in": "header",
+                        "name": "X-Setup-Token",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
                 "requestBody": {
                     "content": {
                         "application/json": {
@@ -3122,6 +3165,16 @@
                             }
                         },
                         "description": "Bad Request"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Forbidden"
                     },
                     "409": {
                         "content": {

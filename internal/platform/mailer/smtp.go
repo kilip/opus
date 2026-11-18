@@ -93,9 +93,11 @@ func (m *smtpMailer) Send(ctx context.Context, to, subject, body string) error {
 		err  error
 	)
 
+	const smtpTimeout = 10 * time.Second
+
 	dialFunc := m.cfg.DialContext
 	if dialFunc == nil {
-		netDialer := &net.Dialer{Timeout: 30 * time.Second}
+		netDialer := &net.Dialer{Timeout: smtpTimeout}
 		dialFunc = netDialer.DialContext
 	}
 
@@ -113,7 +115,7 @@ func (m *smtpMailer) Send(ctx context.Context, to, subject, body string) error {
 			conn = tlsConn
 		} else {
 			tlsDialer := &tls.Dialer{
-				NetDialer: &net.Dialer{Timeout: 30 * time.Second},
+				NetDialer: &net.Dialer{Timeout: smtpTimeout},
 				Config:    tlsConfig,
 			}
 			conn, err = tlsDialer.DialContext(ctx, "tcp", addr)
@@ -121,6 +123,7 @@ func (m *smtpMailer) Send(ctx context.Context, to, subject, body string) error {
 				return fmt.Errorf("smtp dial tls: %w", err)
 			}
 		}
+		_ = conn.SetDeadline(time.Now().Add(smtpTimeout))
 		c, err = smtp.NewClient(conn, m.cfg.Host)
 		if err != nil {
 			_ = conn.Close()
@@ -131,6 +134,7 @@ func (m *smtpMailer) Send(ctx context.Context, to, subject, body string) error {
 		if err != nil {
 			return fmt.Errorf("smtp dial: %w", err)
 		}
+		_ = conn.SetDeadline(time.Now().Add(smtpTimeout))
 		c, err = smtp.NewClient(conn, m.cfg.Host)
 		if err != nil {
 			_ = conn.Close()

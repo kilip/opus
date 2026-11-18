@@ -24,8 +24,11 @@ type Config struct {
 	DatabaseURL            string        `env:"APP_DATABASE_URL, default=file:opus.db?_pragma=foreign_keys(ON)&_pragma=busy_timeout(5000)"`
 	BaseURL                string        `env:"APP_BASE_URL, default=http://localhost:7880"`
 	TrustedOrigins         []string      `env:"APP_TRUSTED_ORIGINS"`
+	TrustedProxies         []string      `env:"APP_TRUSTED_PROXIES"`
 	SessionSecret          string        `env:"AUTH_SECRET, default="`
 	SessionTTL             time.Duration `env:"AUTH_SESSION_TTL, default=720h"`
+	AuthSetupToken         string        `env:"AUTH_SETUP_TOKEN, default="`
+	AuthCookieSecure       string        `env:"AUTH_COOKIE_SECURE, default=auto"`
 	AppVersion             string        `env:"APP_VERSION"`
 	SentryDSN              string        `env:"APP_SENTRY_DSN, default="`
 	SentryEnvironment      string        `env:"APP_SENTRY_ENVIRONMENT, default=development"`
