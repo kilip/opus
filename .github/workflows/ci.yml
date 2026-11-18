@@ -105,3 +105,132 @@ jobs:
         run: |
           helm lint charts --strict
           helm template opus charts > /dev/null
+
+  install-scripts:
+    name: Install Scripts (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Lint install.sh
+        if: matrix.os == 'ubuntu-latest'
+        run: shellcheck scripts/install.sh
+
+      - name: Test install.sh (Unix)
+        if: matrix.os != 'windows-latest'
+        run: |
+          set -euo pipefail
+          case "$(uname -s)" in
+            Linux) os="linux" ;;
+            Darwin) os="darwin" ;;
+          esac
+          case "$(uname -m)" in
+            x86_64|amd64) arch="amd64" ;;
+            aarch64|arm64) arch="arm64" ;;
+          esac
+
+          FIXTURE=$(mktemp -d)
+          BIN_DIR=$(mktemp -d)
+          trap 'rm -rf "$FIXTURE" "$BIN_DIR"' EXIT
+
+          cat <<'EOF' > "$FIXTURE/opus"
+          #!/usr/bin/env bash
+          echo "opus version 0.0.0-test"
+          EOF
+          chmod 755 "$FIXTURE/opus"
+
+          ARCHIVE="opus_0.0.0-test_${os}_${arch}.tar.gz"
+          tar -C "$FIXTURE" -czf "$FIXTURE/$ARCHIVE" opus
+          if command -v sha256sum >/dev/null 2>&1; then
+            (cd "$FIXTURE" && sha256sum "$ARCHIVE" > checksums.txt)
+          else
+            (cd "$FIXTURE" && shasum -a 256 "$ARCHIVE" > checksums.txt)
+          fi
+
+          # Direct run + non-PATH export hint
+          OUT=$(OPUS_VERSION=0.0.0-test OPUS_DOWNLOAD_BASE="file://$FIXTURE" OPUS_INSTALL_DIR="$BIN_DIR" bash scripts/install.sh)
+          echo "$OUT" | grep -qF "0.0.0-test"
+          echo "$OUT" | grep -qF "export PATH=\"$BIN_DIR:\$PATH\""
+
+          # Piped run + upgrade (run twice)
+          cat scripts/install.sh | OPUS_VERSION=0.0.0-test OPUS_DOWNLOAD_BASE="file://$FIXTURE" OPUS_INSTALL_DIR="$BIN_DIR" bash
+
+          # Tampered archive must fail without overwriting binary
+          rm -f "$BIN_DIR/opus"
+          echo "tampered" >> "$FIXTURE/$ARCHIVE"
+          if OPUS_VERSION=0.0.0-test OPUS_DOWNLOAD_BASE="file://$FIXTURE" OPUS_INSTALL_DIR="$BIN_DIR" bash scripts/install.sh; then
+            echo "Expected tampered archive to fail" >&2
+            exit 1
+          fi
+          [ ! -e "$BIN_DIR/opus" ]
+
+      - name: Set up Go (Windows)
+        if: matrix.os == 'windows-latest'
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Test install.ps1 (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $fixture = Join-Path $env:RUNNER_TEMP 'opus-fixture'
+          $binDir = Join-Path $env:RUNNER_TEMP 'opus-bin'
+          New-Item -ItemType Directory -Path $fixture -Force | Out-Null
+
+          $src = Join-Path $fixture 'main.go'
+          @'
+          package main
+          import "fmt"
+          func main() { fmt.Println("opus version 0.0.0-test") }
+          '@ | Set-Content -LiteralPath $src
+
+          go build -o (Join-Path $fixture 'opus.exe') $src
+          $archiveName = 'opus_0.0.0-test_windows_amd64.zip'
+          $archivePath = Join-Path $fixture $archiveName
+          Compress-Archive -LiteralPath (Join-Path $fixture 'opus.exe') -DestinationPath $archivePath -Force
+
+          $hash = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $archiveName" | Set-Content -LiteralPath (Join-Path $fixture 'checksums.txt')
+
+          $env:OPUS_VERSION = '0.0.0-test'
+          $env:OPUS_DOWNLOAD_BASE = ([Uri]$fixture).AbsoluteUri
+          $env:OPUS_INSTALL_DIR = $binDir
+
+          # Install twice (upgrade + idempotent PATH)
+          & ./scripts/install.ps1
+          & ./scripts/install.ps1
+
+          $userParts = ([Environment]::GetEnvironmentVariable('Path', 'User') -split ';') | Where-Object { $_ -eq $binDir }
+          if ($userParts.Count -ne 1) {
+            throw "Expected 1 User PATH entry for $binDir, got $($userParts.Count)"
+          }
+
+          # Tampered archive must fail
+          Remove-Item -LiteralPath (Join-Path $binDir 'opus.exe') -Force
+          Add-Content -LiteralPath $archivePath -Value 'tampered'
+          $failed = $false
+          try {
+            & ./scripts/install.ps1
+          } catch {
+            $failed = $true
+          }
+          if (-not $failed) { throw 'Expected tampered archive to fail' }
+          if (Test-Path (Join-Path $binDir 'opus.exe')) { throw 'Binary should not exist after failed checksum' }
+
+          # Unsupported architecture must fail
+          $env:PROCESSOR_ARCHITECTURE = 'ARM64'
+          $env:PROCESSOR_ARCHITEW6432 = ''
+          $archFailed = $false
+          try {
+            & ./scripts/install.ps1
+          } catch {
+            $archFailed = $true
+          }
+          if (-not $archFailed) { throw 'Expected ARM64 architecture to fail' }
