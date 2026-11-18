@@ -101,10 +101,30 @@ jobs:
       - name: Set up Helm
         uses: azure/setup-helm@v4
 
-      - name: Lint and render Helm chart
+      - name: Install kubeconform
+        run: |
+          KUBECONFORM_VERSION=v0.6.7
+          curl -fsSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-amd64.tar.gz" -o /tmp/kubeconform.tar.gz
+          tar -xzf /tmp/kubeconform.tar.gz -C /usr/local/bin kubeconform
+          rm -f /tmp/kubeconform.tar.gz
+
+      - name: Lint and validate Helm chart matrix
         run: |
           helm lint charts --strict
-          helm template opus charts > /dev/null
+          helm template opus charts | kubeconform -strict -summary -
+          for f in charts/ci/*.yaml; do
+            echo "=== Testing $f ==="
+            helm lint charts --strict -f "$f"
+            helm template opus charts -f "$f" | kubeconform -strict -summary -
+          done
+          if helm template opus charts --set replicaCount=2 >/dev/null 2>&1; then
+            echo "Expected replicaCount=2 to fail schema validation" >&2
+            exit 1
+          fi
+          if helm template opus charts --set hpa.enabled=true >/dev/null 2>&1; then
+            echo "Expected hpa.enabled=true to fail schema validation" >&2
+            exit 1
+          fi
 
   install-scripts:
     name: Install Scripts (${{ matrix.os }})
