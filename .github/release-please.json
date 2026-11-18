@@ -10,7 +10,7 @@
 		".": {
 			"package-name": "opus",
 			"skip-changelog": true,
-			"extra-files": ["charts/Chart.yaml"]
+			"extra-files": [{ "type": "generic", "path": "charts/Chart.yaml" }]
 		}
 	},
 	"changelog-sections": [
