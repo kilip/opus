@@ -48,6 +48,7 @@ var (
 	ErrInvalidNodeName        = domain.ErrInvalidNodeName
 	ErrInvalidIPAddress       = domain.ErrInvalidIPAddress
 	ErrInvalidMACAddress      = domain.ErrInvalidMACAddress
+	ErrNodeMACNotConfigured   = domain.ErrNodeMACNotConfigured
 	ErrRateLimited            = domain.ErrRateLimited
 	ErrNodeNotConnected       = domain.ErrNodeNotConnected
 	ErrNodeNotFound           = domain.ErrNodeNotFound
@@ -223,6 +224,11 @@ func (n *Node) Join(ctx context.Context, req domain.JoinNodeRequest) (domain.Joi
 // Delete removes a worker node by id.
 func (n *Node) Delete(ctx context.Context, id string) error {
 	return n.svc.Delete(ctx, id)
+}
+
+// Wake sends a Wake-on-LAN magic packet to the node's configured MAC address.
+func (n *Node) Wake(ctx context.Context, id string) error {
+	return n.svc.Wake(ctx, id)
 }
 
 // Register mounts the protected node HTTP routes on r.

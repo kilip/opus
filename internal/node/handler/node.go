@@ -110,6 +110,7 @@ func (h *Handler) Register(r fiber.Router) {
 	g.Get("/", h.List)
 	g.Post("/join-tokens", h.CreateJoinToken)
 	g.Patch("/:id", h.Update)
+	g.Post("/:id/wake", h.Wake)
 	g.Delete("/:id", h.Delete)
 }
 
@@ -210,6 +211,27 @@ func (h *Handler) Delete(c fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
+// Wake godoc
+//
+//	@Summary		Wake node
+//	@Description	Sends a Wake-on-LAN magic packet to the node's configured MAC address.
+//	@ID				wake-node
+//	@Tags			nodes
+//	@Produce		json
+//	@Param			id	path		string	true	"Node ID"
+//	@Success		204	"No Content"
+//	@Failure		400	{object}	httpx.ErrorResponse
+//	@Failure		401	{object}	httpx.ErrorResponse
+//	@Failure		404	{object}	httpx.ErrorResponse
+//	@Failure		500	{object}	httpx.ErrorResponse
+//	@Router			/nodes/{id}/wake [post]
+func (h *Handler) Wake(c fiber.Ctx) error {
+	if err := h.svc.Wake(c.Context(), c.Params("id")); err != nil {
+		return mapErr(err)
+	}
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
 // Join godoc
 //
 //	@Summary		Join node
@@ -304,7 +326,8 @@ func mapErr(err error) error {
 		return httpx.NewError(fiber.StatusForbidden, err)
 	case errors.Is(err, domain.ErrInvalidNodeName),
 		errors.Is(err, domain.ErrInvalidIPAddress),
-		errors.Is(err, domain.ErrInvalidMACAddress):
+		errors.Is(err, domain.ErrInvalidMACAddress),
+		errors.Is(err, domain.ErrNodeMACNotConfigured):
 		return httpx.BadRequest(err)
 	case errors.Is(err, domain.ErrNodeNameConflict),
 		errors.Is(err, domain.ErrMasterDeleteForbidden):

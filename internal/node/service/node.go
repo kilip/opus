@@ -24,19 +24,21 @@ const joinTokenTTL = 15 * time.Minute
 
 // Config holds service parameters for node management.
 type Config struct {
-	BaseURL string
-	Now     func() time.Time
-	Bus     *eventbus.Bus
-	Hub     *Hub
+	BaseURL    string
+	Now        func() time.Time
+	Bus        *eventbus.Bus
+	Hub        *Hub
+	WakeSender WakeSender
 }
 
 // Node owns node registry business rules.
 type Node struct {
-	repo    *repo.Ent
-	baseURL string
-	now     func() time.Time
-	bus     *eventbus.Bus
-	hub     *Hub
+	repo       *repo.Ent
+	baseURL    string
+	now        func() time.Time
+	bus        *eventbus.Bus
+	hub        *Hub
+	wakeSender WakeSender
 }
 
 // New returns Node service backed by Ent repo and configuration.
@@ -49,12 +51,17 @@ func New(r *repo.Ent, cfg Config) *Node {
 	if now == nil {
 		now = time.Now
 	}
+	wakeSender := cfg.WakeSender
+	if wakeSender == nil {
+		wakeSender = sendMagicPacketUDP
+	}
 	return &Node{
-		repo:    r,
-		baseURL: strings.TrimRight(baseURL, "/"),
-		now:     now,
-		bus:     cfg.Bus,
-		hub:     cfg.Hub,
+		repo:       r,
+		baseURL:    strings.TrimRight(baseURL, "/"),
+		now:        now,
+		bus:        cfg.Bus,
+		hub:        cfg.Hub,
+		wakeSender: wakeSender,
 	}
 }
 
@@ -226,6 +233,22 @@ func (s *Node) Delete(ctx context.Context, id string) error {
 		}
 	}
 	return nil
+}
+
+// Wake sends a Wake-on-LAN magic packet to the node's configured MAC address.
+func (s *Node) Wake(ctx context.Context, id string) error {
+	n, err := s.repo.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	if n.MACAddress == nil || *n.MACAddress == "" {
+		return domain.ErrNodeMACNotConfigured
+	}
+	pkt, err := BuildMagicPacket(*n.MACAddress)
+	if err != nil {
+		return domain.ErrNodeMACNotConfigured
+	}
+	return s.wakeSender(ctx, defaultWoLBroadcastAddr, pkt)
 }
 
 // GetMaster returns the registered master node.

@@ -17,6 +17,8 @@ var (
 	ErrInvalidIPAddress = errors.New("INVALID_IP_ADDRESS")
 	// ErrInvalidMACAddress indicates the MAC address is not a valid hardware address.
 	ErrInvalidMACAddress = errors.New("INVALID_MAC_ADDRESS")
+	// ErrNodeMACNotConfigured indicates the node has no valid MAC address configured for Wake-on-LAN.
+	ErrNodeMACNotConfigured = errors.New("NODE_MAC_NOT_CONFIGURED")
 	// ErrRateLimited indicates too many join requests were sent.
 	ErrRateLimited = errors.New("RATE_LIMITED")
 	// ErrNodeNotConnected indicates the node does not have an active connection.

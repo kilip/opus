@@ -805,3 +805,99 @@ func TestPatchNode(t *testing.T) {
 		t.Errorf("expected NODE_NAME_CONFLICT, got %s", conflictErr.Error)
 	}
 }
+
+func TestWakeNode(t *testing.T) {
+	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared&_pragma=foreign_keys(ON)&_pragma=busy_timeout(10000)")
+	if err != nil {
+		t.Fatalf("open sqlite failed: %v", err)
+	}
+	db.SetMaxOpenConns(1)
+	drv := entsql.OpenDB(dialect.SQLite, db)
+	client := enttest.NewClient(t, enttest.WithOptions(ent.Driver(drv)))
+	t.Cleanup(func() { _ = client.Close() })
+
+	var sentAddr string
+	var sentPkt []byte
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	app := fiber.New(fiber.Config{ErrorHandler: httpx.ErrorHandler(logger)})
+	r := repo.New(client)
+	hub := service.NewHub()
+	svc := service.New(r, service.Config{
+		Hub: hub,
+		WakeSender: func(_ context.Context, addr string, pkt []byte) error {
+			sentAddr = addr
+			sentPkt = append([]byte(nil), pkt...)
+			return nil
+		},
+	})
+	handler.New(svc, hub).Register(app.Group("/api"))
+
+	ctx := context.Background()
+	withMAC, err := client.Node.Create().
+		SetName("worker-wol").
+		SetRole(entnode.RoleWorker).
+		SetStatus(entnode.StatusOffline).
+		SetMACAddress("aa:bb:cc:dd:ee:ff").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create worker with mac: %v", err)
+	}
+	noMAC, err := client.Node.Create().
+		SetName("worker-nomac").
+		SetRole(entnode.RoleWorker).
+		SetStatus(entnode.StatusOffline).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create worker without mac: %v", err)
+	}
+
+	// 1. 204 No Content and packet dispatched
+	req := httptest.NewRequest(http.MethodPost, "/api/nodes/"+withMAC.ID.String()+"/wake", nil)
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("POST wake failed: %v", err)
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("expected 204, got %d", resp.StatusCode)
+	}
+	if sentAddr != "255.255.255.255:9" || len(sentPkt) != 102 {
+		t.Errorf("unexpected packet dispatch: addr=%q len=%d", sentAddr, len(sentPkt))
+	}
+
+	// 2. 400 NODE_MAC_NOT_CONFIGURED
+	reqNoMAC := httptest.NewRequest(http.MethodPost, "/api/nodes/"+noMAC.ID.String()+"/wake", nil)
+	respNoMAC, err := app.Test(reqNoMAC)
+	if err != nil {
+		t.Fatalf("POST wake no mac failed: %v", err)
+	}
+	if respNoMAC.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", respNoMAC.StatusCode)
+	}
+	var noMACErr httpx.ErrorResponse
+	if err := json.NewDecoder(respNoMAC.Body).Decode(&noMACErr); err != nil {
+		t.Fatalf("decode 400: %v", err)
+	}
+	_ = respNoMAC.Body.Close()
+	if noMACErr.Error != "NODE_MAC_NOT_CONFIGURED" {
+		t.Errorf("expected NODE_MAC_NOT_CONFIGURED, got %s", noMACErr.Error)
+	}
+
+	// 3. 404 NODE_NOT_FOUND
+	reqMissing := httptest.NewRequest(http.MethodPost, "/api/nodes/00000000-0000-0000-0000-000000000000/wake", nil)
+	respMissing, err := app.Test(reqMissing)
+	if err != nil {
+		t.Fatalf("POST wake missing failed: %v", err)
+	}
+	if respMissing.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", respMissing.StatusCode)
+	}
+	var missingErr httpx.ErrorResponse
+	if err := json.NewDecoder(respMissing.Body).Decode(&missingErr); err != nil {
+		t.Fatalf("decode 404: %v", err)
+	}
+	_ = respMissing.Body.Close()
+	if missingErr.Error != "NODE_NOT_FOUND" {
+		t.Errorf("expected NODE_NOT_FOUND, got %s", missingErr.Error)
+	}
+}
