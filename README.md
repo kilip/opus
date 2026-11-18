@@ -39,6 +39,24 @@ docker build -t opus .
 docker run -d -p 7880:7880 -v opus-data:/data opus
 ```
 
+Or pull the prebuilt multi-arch image (`linux/amd64`, `linux/arm64`):
+
+```bash
+docker run -d -p 7880:7880 -v opus-data:/data ghcr.io/kilip/opus:latest
+```
+
+To enable `gh` CLI access for vibe runs, pass `-e GH_TOKEN=<token>` (minimum fine-grained PAT scopes: **Contents** read/write, **Issues** read/write, **Pull requests** read/write, **Metadata** read):
+
+```bash
+docker run -d -p 7880:7880 -v opus-data:/data -e GH_TOKEN=<token> opus
+```
+
+To authenticate `agy` inside the running container (persisted in `/data`; automated login is planned):
+
+```bash
+docker exec -it <container> agy auth login
+```
+
 The dashboard will be available at `http://localhost:7880`.
 
 ### ☸️ Kubernetes (Helm)
