@@ -1,0 +1,11 @@
+ingress:
+  enabled: true
+  hosts:
+    - host: opus.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: opus-tls
+      hosts:
+        - opus.example.com

@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "global": { "type": "object" },
+    "nameOverride": { "type": "string" },
+    "fullnameOverride": { "type": "string" },
+    "replicaCount": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1
+    },
+    "image": { "type": "object" },
+    "port": { "type": "integer", "minimum": 1, "maximum": 65535 },
+    "config": { "type": "object" },
+    "auth": { "type": "object" },
+    "github": { "type": "object" },
+    "sentry": { "type": "object" },
+    "tracker": { "type": "object" },
+    "notify": { "type": "object" },
+    "smtp": { "type": "object" },
+    "oauth": { "type": "object" },
+    "extraEnv": { "type": "array" },
+    "extraEnvFrom": { "type": "array" },
+    "serviceAccount": { "type": "object" },
+    "service": {
+      "type": "object",
+      "properties": {
+        "type": { "type": "string" },
+        "port": { "type": "integer", "minimum": 1, "maximum": 65535 }
+      }
+    },
+    "ingress": { "type": "object" },
+    "resources": { "type": "object" },
+    "persistence": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "storageClass": { "type": "string" },
+        "size": { "type": "string", "minLength": 1 },
+        "existingClaim": { "type": "string" },
+        "annotations": { "type": "object" },
+        "accessModes": { "type": "array", "items": { "type": "string" } },
+        "mountPath": { "type": "string", "minLength": 1 }
+      }
+    },
+    "podAnnotations": { "type": "object" },
+    "podLabels": { "type": "object" },
+    "podSecurityContext": { "type": "object" },
+    "securityContext": { "type": "object" },
+    "nodeSelector": { "type": "object" },
+    "tolerations": { "type": "array" },
+    "affinity": { "type": "object" }
+  }
+}

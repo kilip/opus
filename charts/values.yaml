@@ -25,25 +25,51 @@ port: 7880
 config:
   appName: opus
   host: 0.0.0.0
+  # -- Canonical public base URL for OAuth callbacks.
+  baseUrl: ""
+  # -- Comma-separated list of allowed CORS / redirect origins.
+  trustedOrigins: ""
   logLevel: info
   readTimeout: 10s
   writeTimeout: 10s
   idleTimeout: 60s
   shutdownTimeout: 10s
   bodyLimit: 4194304
-
-# -- Base URL where the application is accessible.
-baseUrl: ""
+  # -- Session duration / time-to-live.
+  sessionTtl: 720h
 
 auth:
   # -- Name of an existing Kubernetes Secret containing sensitive credentials.
+  # When empty, the chart auto-generates <fullname>-auth with a random AUTH_SECRET
+  # (reusing any existing secret on upgrade via Helm lookup).
+  # Note: Argo CD users (which render via `helm template` without cluster lookup)
+  # must set auth.existingSecret to avoid regenerating AUTH_SECRET on every sync.
   # Expected keys:
   #   - AUTH_SECRET: Secret key used to sign session cookies
-  #   - APP_SMTP_PASSWORD: Password for SMTP authentication
-  #   - AUTH_GITHUB_SECRET: OAuth client secret for GitHub
-  #   - AUTH_GOOGLE_SECRET: OAuth client secret for Google
-  #   - AUTH_FACEBOOK_SECRET: OAuth client secret for Facebook
+  #   - APP_SMTP_PASSWORD: Password for SMTP authentication (when smtp.host is set)
+  #   - AUTH_GITHUB_SECRET: OAuth client secret for GitHub (when oauth.github.clientId is set)
+  #   - AUTH_GOOGLE_SECRET: OAuth client secret for Google (when oauth.google.clientId is set)
+  #   - AUTH_FACEBOOK_SECRET: OAuth client secret for Facebook (when oauth.facebook.clientId is set)
+  #   - NOTIFY_TELEGRAM_BOT_TOKEN: Telegram bot token (when notify.telegram.chatId is set)
   existingSecret: ""
+
+github:
+  # -- Name of an existing Kubernetes Secret containing GH_TOKEN for vibe runs.
+  # Example: kubectl create secret generic opus-github --from-literal=GH_TOKEN=<token>
+  existingSecret: ""
+
+sentry:
+  # -- Sentry DSN for error tracking.
+  dsn: ""
+
+tracker:
+  # -- Interval between tracker sync polling cycles.
+  pollInterval: 60s
+
+notify:
+  telegram:
+    # -- Telegram chat ID for run.finished and node.offline alerts.
+    chatId: ""
 
 smtp:
   # -- SMTP server hostname.
@@ -96,10 +122,16 @@ ingress:
           pathType: Prefix
   tls: []
 
-resources: {}
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
+
 persistence:
   # -- Enable persistence using Persistent Volume Claim.
-  enabled: false
+  enabled: true
   # -- Storage class of the PVC.
   storageClass: ""
   # -- Size of data volume.
@@ -114,24 +146,15 @@ persistence:
   # -- Mount path for data volume.
   mountPath: /data
 
-hpa:
-  enabled: false
-  minReplicas: 2
-  maxReplicas: 5
-  targetCPUUtilizationPercentage: 80
-
-pdb:
-  enabled: false
-  minAvailable: 1
-
 podAnnotations: {}
 podLabels: {}
 
 podSecurityContext:
   runAsNonRoot: true
-  # distroless "nonroot" user has uid/gid 65532.
+  # Nonroot user has uid/gid 65532.
   runAsUser: 65532
   runAsGroup: 65532
+  fsGroup: 65532
   seccompProfile:
     type: RuntimeDefault
 
