@@ -46,6 +46,8 @@ var (
 	ErrTokenAlreadyUsed       = domain.ErrTokenAlreadyUsed
 	ErrNodeNameConflict       = domain.ErrNodeNameConflict
 	ErrInvalidNodeName        = domain.ErrInvalidNodeName
+	ErrInvalidIPAddress       = domain.ErrInvalidIPAddress
+	ErrInvalidMACAddress      = domain.ErrInvalidMACAddress
 	ErrRateLimited            = domain.ErrRateLimited
 	ErrNodeNotConnected       = domain.ErrNodeNotConnected
 	ErrNodeNotFound           = domain.ErrNodeNotFound
@@ -62,6 +64,7 @@ type (
 	NodeRecord        = domain.Node
 	NodeEventPayload  = domain.NodeEventPayload
 	NodeResponse      = domain.NodeResponse
+	UpdateNodeRequest = domain.UpdateNodeRequest
 	JoinTokenResponse = domain.JoinTokenResponse
 	JoinNodeRequest   = domain.JoinNodeRequest
 	JoinNodeResponse  = domain.JoinNodeResponse
@@ -192,6 +195,11 @@ func (n *Node) List(ctx context.Context) ([]domain.NodeResponse, error) {
 // Get returns a single node by id as a NodeResponse DTO, or ErrNodeNotFound.
 func (n *Node) Get(ctx context.Context, id string) (domain.NodeResponse, error) {
 	return n.svc.Get(ctx, id)
+}
+
+// Update updates editable fields on a node by id.
+func (n *Node) Update(ctx context.Context, id string, req domain.UpdateNodeRequest) (domain.NodeResponse, error) {
+	return n.svc.Update(ctx, id, req)
 }
 
 // GenerateJoinToken creates a new join token.

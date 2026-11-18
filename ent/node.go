@@ -28,6 +28,12 @@ type Node struct {
 	LastSeenAt *time.Time `json:"last_seen_at,omitempty"`
 	// CredentialHash holds the value of the "credential_hash" field.
 	CredentialHash *string `json:"credential_hash,omitempty"`
+	// Hostname holds the value of the "hostname" field.
+	Hostname *string `json:"hostname,omitempty"`
+	// IPAddress holds the value of the "ip_address" field.
+	IPAddress *string `json:"ip_address,omitempty"`
+	// MACAddress holds the value of the "mac_address" field.
+	MACAddress *string `json:"mac_address,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the NodeQuery when eager-loading is set.
 	Edges        NodeEdges `json:"edges"`
@@ -57,7 +63,7 @@ func (*Node) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case node.FieldName, node.FieldRole, node.FieldStatus, node.FieldCredentialHash:
+		case node.FieldName, node.FieldRole, node.FieldStatus, node.FieldCredentialHash, node.FieldHostname, node.FieldIPAddress, node.FieldMACAddress:
 			values[i] = new(sql.NullString)
 		case node.FieldLastSeenAt:
 			values[i] = new(sql.NullTime)
@@ -116,6 +122,27 @@ func (_m *Node) assignValues(columns []string, values []any) error {
 				_m.CredentialHash = new(string)
 				*_m.CredentialHash = value.String
 			}
+		case node.FieldHostname:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field hostname", values[i])
+			} else if value.Valid {
+				_m.Hostname = new(string)
+				*_m.Hostname = value.String
+			}
+		case node.FieldIPAddress:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field ip_address", values[i])
+			} else if value.Valid {
+				_m.IPAddress = new(string)
+				*_m.IPAddress = value.String
+			}
+		case node.FieldMACAddress:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field mac_address", values[i])
+			} else if value.Valid {
+				_m.MACAddress = new(string)
+				*_m.MACAddress = value.String
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -173,6 +200,21 @@ func (_m *Node) String() string {
 	builder.WriteString(", ")
 	if v := _m.CredentialHash; v != nil {
 		builder.WriteString("credential_hash=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.Hostname; v != nil {
+		builder.WriteString("hostname=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.IPAddress; v != nil {
+		builder.WriteString("ip_address=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.MACAddress; v != nil {
+		builder.WriteString("mac_address=")
 		builder.WriteString(*v)
 	}
 	builder.WriteByte(')')

@@ -966,3 +966,127 @@ func TestNodeService_Get(t *testing.T) {
 		t.Fatalf("expected ErrNodeNotFound for invalid uuid, got %v", err)
 	}
 }
+
+func TestEnsureMaster_PreservesCustomNameAndUpdatesHostname(t *testing.T) {
+	ctx := context.Background()
+	client := setupTestClient(t)
+	r := repo.New(client)
+	svc := service.New(r, service.Config{})
+
+	if err := r.EnsureMaster(ctx, "host-a"); err != nil {
+		t.Fatalf("initial EnsureMaster: %v", err)
+	}
+
+	master, err := r.GetMaster(ctx)
+	if err != nil {
+		t.Fatalf("GetMaster: %v", err)
+	}
+	if master.Name != "host-a" {
+		t.Fatalf("expected initial name host-a, got %q", master.Name)
+	}
+	if master.Hostname == nil || *master.Hostname != "host-a" {
+		t.Fatalf("expected initial hostname host-a, got %v", master.Hostname)
+	}
+
+	customName := "primary-control"
+	if _, err := svc.Update(ctx, master.ID, domain.UpdateNodeRequest{Name: &customName}); err != nil {
+		t.Fatalf("rename master: %v", err)
+	}
+
+	// Simulate restart on host-b: hostname updates, custom name preserved.
+	if err := r.EnsureMaster(ctx, "host-b"); err != nil {
+		t.Fatalf("restart EnsureMaster: %v", err)
+	}
+
+	after, err := r.GetMaster(ctx)
+	if err != nil {
+		t.Fatalf("GetMaster after restart: %v", err)
+	}
+	if after.Name != customName {
+		t.Errorf("expected custom name %q preserved, got %q", customName, after.Name)
+	}
+	if after.Hostname == nil || *after.Hostname != "host-b" {
+		t.Errorf("expected hostname updated to host-b, got %v", after.Hostname)
+	}
+}
+
+func TestNodeService_Update(t *testing.T) {
+	ctx := context.Background()
+	client := setupTestClient(t)
+	r := repo.New(client)
+	svc := service.New(r, service.Config{})
+
+	w1, err := client.Node.Create().
+		SetName("worker-1").
+		SetRole(entnode.RoleWorker).
+		SetStatus(entnode.StatusOnline).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create w1: %v", err)
+	}
+	if _, err := client.Node.Create().
+		SetName("worker-2").
+		SetRole(entnode.RoleWorker).
+		SetStatus(entnode.StatusOffline).
+		Save(ctx); err != nil {
+		t.Fatalf("create w2: %v", err)
+	}
+
+	newName := "worker-renamed"
+	ip := "10.0.0.42"
+	mac := "AA-BB-CC-DD-EE-FF"
+	updated, err := svc.Update(ctx, w1.ID.String(), domain.UpdateNodeRequest{
+		Name:       &newName,
+		IPAddress:  &ip,
+		MACAddress: &mac,
+	})
+	if err != nil {
+		t.Fatalf("Update failed: %v", err)
+	}
+	if updated.Name != newName {
+		t.Errorf("got Name %q, want %q", updated.Name, newName)
+	}
+	if updated.IPAddress == nil || *updated.IPAddress != ip {
+		t.Errorf("got IPAddress %v, want %q", updated.IPAddress, ip)
+	}
+	if updated.MACAddress == nil || *updated.MACAddress != "aa:bb:cc:dd:ee:ff" {
+		t.Errorf("got MACAddress %v, want aa:bb:cc:dd:ee:ff", updated.MACAddress)
+	}
+
+	// Clear ipAddress and macAddress with empty string
+	empty := ""
+	cleared, err := svc.Update(ctx, w1.ID.String(), domain.UpdateNodeRequest{
+		IPAddress:  &empty,
+		MACAddress: &empty,
+	})
+	if err != nil {
+		t.Fatalf("Update clear failed: %v", err)
+	}
+	if cleared.IPAddress != nil {
+		t.Errorf("expected nil IPAddress after clear, got %q", *cleared.IPAddress)
+	}
+	if cleared.MACAddress != nil {
+		t.Errorf("expected nil MACAddress after clear, got %q", *cleared.MACAddress)
+	}
+
+	// Validation & error cases
+	badName := "bad name!"
+	if _, err := svc.Update(ctx, w1.ID.String(), domain.UpdateNodeRequest{Name: &badName}); !errors.Is(err, domain.ErrInvalidNodeName) {
+		t.Errorf("expected ErrInvalidNodeName, got %v", err)
+	}
+	badIP := "999.999.999.999"
+	if _, err := svc.Update(ctx, w1.ID.String(), domain.UpdateNodeRequest{IPAddress: &badIP}); !errors.Is(err, domain.ErrInvalidIPAddress) {
+		t.Errorf("expected ErrInvalidIPAddress, got %v", err)
+	}
+	badMAC := "not-a-mac"
+	if _, err := svc.Update(ctx, w1.ID.String(), domain.UpdateNodeRequest{MACAddress: &badMAC}); !errors.Is(err, domain.ErrInvalidMACAddress) {
+		t.Errorf("expected ErrInvalidMACAddress, got %v", err)
+	}
+	dupName := "worker-2"
+	if _, err := svc.Update(ctx, w1.ID.String(), domain.UpdateNodeRequest{Name: &dupName}); !errors.Is(err, domain.ErrNodeNameConflict) {
+		t.Errorf("expected ErrNodeNameConflict, got %v", err)
+	}
+	if _, err := svc.Update(ctx, "00000000-0000-0000-0000-000000000000", domain.UpdateNodeRequest{Name: &newName}); !errors.Is(err, domain.ErrNodeNotFound) {
+		t.Errorf("expected ErrNodeNotFound, got %v", err)
+	}
+}

@@ -3410,6 +3410,9 @@ type NodeMutation struct {
 	status               *node.Status
 	last_seen_at         *time.Time
 	credential_hash      *string
+	hostname             *string
+	ip_address           *string
+	mac_address          *string
 	clearedFields        map[string]struct{}
 	project_nodes        map[uuid.UUID]struct{}
 	removedproject_nodes map[uuid.UUID]struct{}
@@ -3729,6 +3732,153 @@ func (m *NodeMutation) ResetCredentialHash() {
 	delete(m.clearedFields, node.FieldCredentialHash)
 }
 
+// SetHostname sets the "hostname" field.
+func (m *NodeMutation) SetHostname(s string) {
+	m.hostname = &s
+}
+
+// Hostname returns the value of the "hostname" field in the mutation.
+func (m *NodeMutation) Hostname() (r string, exists bool) {
+	v := m.hostname
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldHostname returns the old "hostname" field's value of the Node entity.
+// If the Node object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NodeMutation) OldHostname(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldHostname is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldHostname requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldHostname: %w", err)
+	}
+	return oldValue.Hostname, nil
+}
+
+// ClearHostname clears the value of the "hostname" field.
+func (m *NodeMutation) ClearHostname() {
+	m.hostname = nil
+	m.clearedFields[node.FieldHostname] = struct{}{}
+}
+
+// HostnameCleared returns if the "hostname" field was cleared in this mutation.
+func (m *NodeMutation) HostnameCleared() bool {
+	_, ok := m.clearedFields[node.FieldHostname]
+	return ok
+}
+
+// ResetHostname resets all changes to the "hostname" field.
+func (m *NodeMutation) ResetHostname() {
+	m.hostname = nil
+	delete(m.clearedFields, node.FieldHostname)
+}
+
+// SetIPAddress sets the "ip_address" field.
+func (m *NodeMutation) SetIPAddress(s string) {
+	m.ip_address = &s
+}
+
+// IPAddress returns the value of the "ip_address" field in the mutation.
+func (m *NodeMutation) IPAddress() (r string, exists bool) {
+	v := m.ip_address
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIPAddress returns the old "ip_address" field's value of the Node entity.
+// If the Node object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NodeMutation) OldIPAddress(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIPAddress is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIPAddress requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIPAddress: %w", err)
+	}
+	return oldValue.IPAddress, nil
+}
+
+// ClearIPAddress clears the value of the "ip_address" field.
+func (m *NodeMutation) ClearIPAddress() {
+	m.ip_address = nil
+	m.clearedFields[node.FieldIPAddress] = struct{}{}
+}
+
+// IPAddressCleared returns if the "ip_address" field was cleared in this mutation.
+func (m *NodeMutation) IPAddressCleared() bool {
+	_, ok := m.clearedFields[node.FieldIPAddress]
+	return ok
+}
+
+// ResetIPAddress resets all changes to the "ip_address" field.
+func (m *NodeMutation) ResetIPAddress() {
+	m.ip_address = nil
+	delete(m.clearedFields, node.FieldIPAddress)
+}
+
+// SetMACAddress sets the "mac_address" field.
+func (m *NodeMutation) SetMACAddress(s string) {
+	m.mac_address = &s
+}
+
+// MACAddress returns the value of the "mac_address" field in the mutation.
+func (m *NodeMutation) MACAddress() (r string, exists bool) {
+	v := m.mac_address
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMACAddress returns the old "mac_address" field's value of the Node entity.
+// If the Node object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *NodeMutation) OldMACAddress(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMACAddress is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMACAddress requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMACAddress: %w", err)
+	}
+	return oldValue.MACAddress, nil
+}
+
+// ClearMACAddress clears the value of the "mac_address" field.
+func (m *NodeMutation) ClearMACAddress() {
+	m.mac_address = nil
+	m.clearedFields[node.FieldMACAddress] = struct{}{}
+}
+
+// MACAddressCleared returns if the "mac_address" field was cleared in this mutation.
+func (m *NodeMutation) MACAddressCleared() bool {
+	_, ok := m.clearedFields[node.FieldMACAddress]
+	return ok
+}
+
+// ResetMACAddress resets all changes to the "mac_address" field.
+func (m *NodeMutation) ResetMACAddress() {
+	m.mac_address = nil
+	delete(m.clearedFields, node.FieldMACAddress)
+}
+
 // AddProjectNodeIDs adds the "project_nodes" edge to the ProjectNode entity by ids.
 func (m *NodeMutation) AddProjectNodeIDs(ids ...uuid.UUID) {
 	if m.project_nodes == nil {
@@ -3817,7 +3967,7 @@ func (m *NodeMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *NodeMutation) Fields() []string {
-	fields := make([]string, 0, 5)
+	fields := make([]string, 0, 8)
 	if m.name != nil {
 		fields = append(fields, node.FieldName)
 	}
@@ -3832,6 +3982,15 @@ func (m *NodeMutation) Fields() []string {
 	}
 	if m.credential_hash != nil {
 		fields = append(fields, node.FieldCredentialHash)
+	}
+	if m.hostname != nil {
+		fields = append(fields, node.FieldHostname)
+	}
+	if m.ip_address != nil {
+		fields = append(fields, node.FieldIPAddress)
+	}
+	if m.mac_address != nil {
+		fields = append(fields, node.FieldMACAddress)
 	}
 	return fields
 }
@@ -3851,6 +4010,12 @@ func (m *NodeMutation) Field(name string) (ent.Value, bool) {
 		return m.LastSeenAt()
 	case node.FieldCredentialHash:
 		return m.CredentialHash()
+	case node.FieldHostname:
+		return m.Hostname()
+	case node.FieldIPAddress:
+		return m.IPAddress()
+	case node.FieldMACAddress:
+		return m.MACAddress()
 	}
 	return nil, false
 }
@@ -3870,6 +4035,12 @@ func (m *NodeMutation) OldField(ctx context.Context, name string) (ent.Value, er
 		return m.OldLastSeenAt(ctx)
 	case node.FieldCredentialHash:
 		return m.OldCredentialHash(ctx)
+	case node.FieldHostname:
+		return m.OldHostname(ctx)
+	case node.FieldIPAddress:
+		return m.OldIPAddress(ctx)
+	case node.FieldMACAddress:
+		return m.OldMACAddress(ctx)
 	}
 	return nil, fmt.Errorf("unknown Node field %s", name)
 }
@@ -3914,6 +4085,27 @@ func (m *NodeMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetCredentialHash(v)
 		return nil
+	case node.FieldHostname:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetHostname(v)
+		return nil
+	case node.FieldIPAddress:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIPAddress(v)
+		return nil
+	case node.FieldMACAddress:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMACAddress(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Node field %s", name)
 }
@@ -3950,6 +4142,15 @@ func (m *NodeMutation) ClearedFields() []string {
 	if m.FieldCleared(node.FieldCredentialHash) {
 		fields = append(fields, node.FieldCredentialHash)
 	}
+	if m.FieldCleared(node.FieldHostname) {
+		fields = append(fields, node.FieldHostname)
+	}
+	if m.FieldCleared(node.FieldIPAddress) {
+		fields = append(fields, node.FieldIPAddress)
+	}
+	if m.FieldCleared(node.FieldMACAddress) {
+		fields = append(fields, node.FieldMACAddress)
+	}
 	return fields
 }
 
@@ -3969,6 +4170,15 @@ func (m *NodeMutation) ClearField(name string) error {
 		return nil
 	case node.FieldCredentialHash:
 		m.ClearCredentialHash()
+		return nil
+	case node.FieldHostname:
+		m.ClearHostname()
+		return nil
+	case node.FieldIPAddress:
+		m.ClearIPAddress()
+		return nil
+	case node.FieldMACAddress:
+		m.ClearMACAddress()
 		return nil
 	}
 	return fmt.Errorf("unknown Node nullable field %s", name)
@@ -3992,6 +4202,15 @@ func (m *NodeMutation) ResetField(name string) error {
 		return nil
 	case node.FieldCredentialHash:
 		m.ResetCredentialHash()
+		return nil
+	case node.FieldHostname:
+		m.ResetHostname()
+		return nil
+	case node.FieldIPAddress:
+		m.ResetIPAddress()
+		return nil
+	case node.FieldMACAddress:
+		m.ResetMACAddress()
 		return nil
 	}
 	return fmt.Errorf("unknown Node field %s", name)

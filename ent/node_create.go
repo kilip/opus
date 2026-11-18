@@ -68,6 +68,48 @@ func (_c *NodeCreate) SetNillableCredentialHash(v *string) *NodeCreate {
 	return _c
 }
 
+// SetHostname sets the "hostname" field.
+func (_c *NodeCreate) SetHostname(v string) *NodeCreate {
+	_c.mutation.SetHostname(v)
+	return _c
+}
+
+// SetNillableHostname sets the "hostname" field if the given value is not nil.
+func (_c *NodeCreate) SetNillableHostname(v *string) *NodeCreate {
+	if v != nil {
+		_c.SetHostname(*v)
+	}
+	return _c
+}
+
+// SetIPAddress sets the "ip_address" field.
+func (_c *NodeCreate) SetIPAddress(v string) *NodeCreate {
+	_c.mutation.SetIPAddress(v)
+	return _c
+}
+
+// SetNillableIPAddress sets the "ip_address" field if the given value is not nil.
+func (_c *NodeCreate) SetNillableIPAddress(v *string) *NodeCreate {
+	if v != nil {
+		_c.SetIPAddress(*v)
+	}
+	return _c
+}
+
+// SetMACAddress sets the "mac_address" field.
+func (_c *NodeCreate) SetMACAddress(v string) *NodeCreate {
+	_c.mutation.SetMACAddress(v)
+	return _c
+}
+
+// SetNillableMACAddress sets the "mac_address" field if the given value is not nil.
+func (_c *NodeCreate) SetNillableMACAddress(v *string) *NodeCreate {
+	if v != nil {
+		_c.SetMACAddress(*v)
+	}
+	return _c
+}
+
 // SetID sets the "id" field.
 func (_c *NodeCreate) SetID(v uuid.UUID) *NodeCreate {
 	_c.mutation.SetID(v)
@@ -218,6 +260,18 @@ func (_c *NodeCreate) createSpec() (*Node, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.CredentialHash(); ok {
 		_spec.SetField(node.FieldCredentialHash, field.TypeString, value)
 		_node.CredentialHash = &value
+	}
+	if value, ok := _c.mutation.Hostname(); ok {
+		_spec.SetField(node.FieldHostname, field.TypeString, value)
+		_node.Hostname = &value
+	}
+	if value, ok := _c.mutation.IPAddress(); ok {
+		_spec.SetField(node.FieldIPAddress, field.TypeString, value)
+		_node.IPAddress = &value
+	}
+	if value, ok := _c.mutation.MACAddress(); ok {
+		_spec.SetField(node.FieldMACAddress, field.TypeString, value)
+		_node.MACAddress = &value
 	}
 	if nodes := _c.mutation.ProjectNodesIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

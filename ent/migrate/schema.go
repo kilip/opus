@@ -140,6 +140,9 @@ var (
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"online", "offline"}},
 		{Name: "last_seen_at", Type: field.TypeTime, Nullable: true},
 		{Name: "credential_hash", Type: field.TypeString, Nullable: true},
+		{Name: "hostname", Type: field.TypeString, Nullable: true},
+		{Name: "ip_address", Type: field.TypeString, Nullable: true},
+		{Name: "mac_address", Type: field.TypeString, Nullable: true},
 	}
 	// NodesTable holds the schema information for the "nodes" table.
 	NodesTable = &schema.Table{

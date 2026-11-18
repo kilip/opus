@@ -69,6 +69,19 @@ func (s *Node) Bootstrap(ctx context.Context) error {
 	return s.repo.ResetWorkersOffline(ctx)
 }
 
+func toNodeResponse(n domain.Node) domain.NodeResponse {
+	return domain.NodeResponse{
+		ID:         n.ID,
+		Name:       n.Name,
+		Role:       n.Role,
+		Status:     n.Status,
+		LastSeenAt: n.LastSeenAt,
+		Hostname:   n.Hostname,
+		IPAddress:  n.IPAddress,
+		MACAddress: n.MACAddress,
+	}
+}
+
 // List returns every registered node as NodeResponse DTOs.
 func (s *Node) List(ctx context.Context) ([]domain.NodeResponse, error) {
 	nodes, err := s.repo.List(ctx)
@@ -77,13 +90,7 @@ func (s *Node) List(ctx context.Context) ([]domain.NodeResponse, error) {
 	}
 	out := make([]domain.NodeResponse, len(nodes))
 	for i, n := range nodes {
-		out[i] = domain.NodeResponse{
-			ID:         n.ID,
-			Name:       n.Name,
-			Role:       n.Role,
-			Status:     n.Status,
-			LastSeenAt: n.LastSeenAt,
-		}
+		out[i] = toNodeResponse(n)
 	}
 	return out, nil
 }
@@ -94,13 +101,34 @@ func (s *Node) Get(ctx context.Context, id string) (domain.NodeResponse, error) 
 	if err != nil {
 		return domain.NodeResponse{}, err
 	}
-	return domain.NodeResponse{
-		ID:         n.ID,
-		Name:       n.Name,
-		Role:       n.Role,
-		Status:     n.Status,
-		LastSeenAt: n.LastSeenAt,
-	}, nil
+	return toNodeResponse(*n), nil
+}
+
+// Update validates and updates provided editable fields on a node.
+func (s *Node) Update(ctx context.Context, id string, req domain.UpdateNodeRequest) (domain.NodeResponse, error) {
+	if req.Name != nil {
+		if err := domain.ValidateNodeName(*req.Name); err != nil {
+			return domain.NodeResponse{}, err
+		}
+	}
+	if req.IPAddress != nil && *req.IPAddress != "" {
+		if err := domain.ValidateIPAddress(*req.IPAddress); err != nil {
+			return domain.NodeResponse{}, err
+		}
+	}
+	if req.MACAddress != nil && *req.MACAddress != "" {
+		normalized, err := domain.NormalizeMACAddress(*req.MACAddress)
+		if err != nil {
+			return domain.NodeResponse{}, err
+		}
+		req.MACAddress = &normalized
+	}
+
+	n, err := s.repo.UpdateNode(ctx, id, req)
+	if err != nil {
+		return domain.NodeResponse{}, err
+	}
+	return toNodeResponse(*n), nil
 }
 
 // GenerateJoinToken creates a 32-byte cryptographically secure join token,

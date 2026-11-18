@@ -112,6 +112,66 @@ func (_u *NodeUpdate) ClearCredentialHash() *NodeUpdate {
 	return _u
 }
 
+// SetHostname sets the "hostname" field.
+func (_u *NodeUpdate) SetHostname(v string) *NodeUpdate {
+	_u.mutation.SetHostname(v)
+	return _u
+}
+
+// SetNillableHostname sets the "hostname" field if the given value is not nil.
+func (_u *NodeUpdate) SetNillableHostname(v *string) *NodeUpdate {
+	if v != nil {
+		_u.SetHostname(*v)
+	}
+	return _u
+}
+
+// ClearHostname clears the value of the "hostname" field.
+func (_u *NodeUpdate) ClearHostname() *NodeUpdate {
+	_u.mutation.ClearHostname()
+	return _u
+}
+
+// SetIPAddress sets the "ip_address" field.
+func (_u *NodeUpdate) SetIPAddress(v string) *NodeUpdate {
+	_u.mutation.SetIPAddress(v)
+	return _u
+}
+
+// SetNillableIPAddress sets the "ip_address" field if the given value is not nil.
+func (_u *NodeUpdate) SetNillableIPAddress(v *string) *NodeUpdate {
+	if v != nil {
+		_u.SetIPAddress(*v)
+	}
+	return _u
+}
+
+// ClearIPAddress clears the value of the "ip_address" field.
+func (_u *NodeUpdate) ClearIPAddress() *NodeUpdate {
+	_u.mutation.ClearIPAddress()
+	return _u
+}
+
+// SetMACAddress sets the "mac_address" field.
+func (_u *NodeUpdate) SetMACAddress(v string) *NodeUpdate {
+	_u.mutation.SetMACAddress(v)
+	return _u
+}
+
+// SetNillableMACAddress sets the "mac_address" field if the given value is not nil.
+func (_u *NodeUpdate) SetNillableMACAddress(v *string) *NodeUpdate {
+	if v != nil {
+		_u.SetMACAddress(*v)
+	}
+	return _u
+}
+
+// ClearMACAddress clears the value of the "mac_address" field.
+func (_u *NodeUpdate) ClearMACAddress() *NodeUpdate {
+	_u.mutation.ClearMACAddress()
+	return _u
+}
+
 // AddProjectNodeIDs adds the "project_nodes" edge to the ProjectNode entity by IDs.
 func (_u *NodeUpdate) AddProjectNodeIDs(ids ...uuid.UUID) *NodeUpdate {
 	_u.mutation.AddProjectNodeIDs(ids...)
@@ -232,6 +292,24 @@ func (_u *NodeUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.CredentialHashCleared() {
 		_spec.ClearField(node.FieldCredentialHash, field.TypeString)
+	}
+	if value, ok := _u.mutation.Hostname(); ok {
+		_spec.SetField(node.FieldHostname, field.TypeString, value)
+	}
+	if _u.mutation.HostnameCleared() {
+		_spec.ClearField(node.FieldHostname, field.TypeString)
+	}
+	if value, ok := _u.mutation.IPAddress(); ok {
+		_spec.SetField(node.FieldIPAddress, field.TypeString, value)
+	}
+	if _u.mutation.IPAddressCleared() {
+		_spec.ClearField(node.FieldIPAddress, field.TypeString)
+	}
+	if value, ok := _u.mutation.MACAddress(); ok {
+		_spec.SetField(node.FieldMACAddress, field.TypeString, value)
+	}
+	if _u.mutation.MACAddressCleared() {
+		_spec.ClearField(node.FieldMACAddress, field.TypeString)
 	}
 	if _u.mutation.ProjectNodesCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -377,6 +455,66 @@ func (_u *NodeUpdateOne) SetNillableCredentialHash(v *string) *NodeUpdateOne {
 // ClearCredentialHash clears the value of the "credential_hash" field.
 func (_u *NodeUpdateOne) ClearCredentialHash() *NodeUpdateOne {
 	_u.mutation.ClearCredentialHash()
+	return _u
+}
+
+// SetHostname sets the "hostname" field.
+func (_u *NodeUpdateOne) SetHostname(v string) *NodeUpdateOne {
+	_u.mutation.SetHostname(v)
+	return _u
+}
+
+// SetNillableHostname sets the "hostname" field if the given value is not nil.
+func (_u *NodeUpdateOne) SetNillableHostname(v *string) *NodeUpdateOne {
+	if v != nil {
+		_u.SetHostname(*v)
+	}
+	return _u
+}
+
+// ClearHostname clears the value of the "hostname" field.
+func (_u *NodeUpdateOne) ClearHostname() *NodeUpdateOne {
+	_u.mutation.ClearHostname()
+	return _u
+}
+
+// SetIPAddress sets the "ip_address" field.
+func (_u *NodeUpdateOne) SetIPAddress(v string) *NodeUpdateOne {
+	_u.mutation.SetIPAddress(v)
+	return _u
+}
+
+// SetNillableIPAddress sets the "ip_address" field if the given value is not nil.
+func (_u *NodeUpdateOne) SetNillableIPAddress(v *string) *NodeUpdateOne {
+	if v != nil {
+		_u.SetIPAddress(*v)
+	}
+	return _u
+}
+
+// ClearIPAddress clears the value of the "ip_address" field.
+func (_u *NodeUpdateOne) ClearIPAddress() *NodeUpdateOne {
+	_u.mutation.ClearIPAddress()
+	return _u
+}
+
+// SetMACAddress sets the "mac_address" field.
+func (_u *NodeUpdateOne) SetMACAddress(v string) *NodeUpdateOne {
+	_u.mutation.SetMACAddress(v)
+	return _u
+}
+
+// SetNillableMACAddress sets the "mac_address" field if the given value is not nil.
+func (_u *NodeUpdateOne) SetNillableMACAddress(v *string) *NodeUpdateOne {
+	if v != nil {
+		_u.SetMACAddress(*v)
+	}
+	return _u
+}
+
+// ClearMACAddress clears the value of the "mac_address" field.
+func (_u *NodeUpdateOne) ClearMACAddress() *NodeUpdateOne {
+	_u.mutation.ClearMACAddress()
 	return _u
 }
 
@@ -530,6 +668,24 @@ func (_u *NodeUpdateOne) sqlSave(ctx context.Context) (_node *Node, err error) {
 	}
 	if _u.mutation.CredentialHashCleared() {
 		_spec.ClearField(node.FieldCredentialHash, field.TypeString)
+	}
+	if value, ok := _u.mutation.Hostname(); ok {
+		_spec.SetField(node.FieldHostname, field.TypeString, value)
+	}
+	if _u.mutation.HostnameCleared() {
+		_spec.ClearField(node.FieldHostname, field.TypeString)
+	}
+	if value, ok := _u.mutation.IPAddress(); ok {
+		_spec.SetField(node.FieldIPAddress, field.TypeString, value)
+	}
+	if _u.mutation.IPAddressCleared() {
+		_spec.ClearField(node.FieldIPAddress, field.TypeString)
+	}
+	if value, ok := _u.mutation.MACAddress(); ok {
+		_spec.SetField(node.FieldMACAddress, field.TypeString, value)
+	}
+	if _u.mutation.MACAddressCleared() {
+		_spec.ClearField(node.FieldMACAddress, field.TypeString)
 	}
 	if _u.mutation.ProjectNodesCleared() {
 		edge := &sqlgraph.EdgeSpec{

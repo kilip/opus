@@ -681,3 +681,127 @@ func TestDeleteNode_AC3_LiveControlChannelClosedAndCredentialRevoked(t *testing.
 		t.Errorf("expected error UNAUTHORIZED, got %s", errResp.Error)
 	}
 }
+
+func TestPatchNode(t *testing.T) {
+	app, client := setupApp(t)
+	ctx := context.Background()
+
+	master, err := client.Node.Create().
+		SetName("master-host").
+		SetHostname("master-host").
+		SetRole(entnode.RoleMaster).
+		SetStatus(entnode.StatusOnline).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create master: %v", err)
+	}
+	worker, err := client.Node.Create().
+		SetName("worker-1").
+		SetRole(entnode.RoleWorker).
+		SetStatus(entnode.StatusOffline).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create worker: %v", err)
+	}
+
+	patch := func(id, body string) *http.Response {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodPatch, "/api/nodes/"+id, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := app.Test(req)
+		if err != nil {
+			t.Fatalf("PATCH %s failed: %v", id, err)
+		}
+		return resp
+	}
+
+	// 1. 200 OK updating master name, IP, MAC (normalized)
+	resp := patch(master.ID.String(), `{"name":"control-plane","ipAddress":"192.168.1.10","macAddress":"AA-BB-CC-DD-EE-01"}`)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 on master patch, got %d", resp.StatusCode)
+	}
+	var okResp httpx.Response[domain.NodeResponse]
+	if err := json.NewDecoder(resp.Body).Decode(&okResp); err != nil {
+		t.Fatalf("decode 200 response: %v", err)
+	}
+	_ = resp.Body.Close()
+	if okResp.Data.Name != "control-plane" {
+		t.Errorf("expected name control-plane, got %q", okResp.Data.Name)
+	}
+	if okResp.Data.Hostname == nil || *okResp.Data.Hostname != "master-host" {
+		t.Errorf("expected hostname master-host, got %v", okResp.Data.Hostname)
+	}
+	if okResp.Data.IPAddress == nil || *okResp.Data.IPAddress != "192.168.1.10" {
+		t.Errorf("expected ipAddress 192.168.1.10, got %v", okResp.Data.IPAddress)
+	}
+	if okResp.Data.MACAddress == nil || *okResp.Data.MACAddress != "aa:bb:cc:dd:ee:01" {
+		t.Errorf("expected normalized macAddress aa:bb:cc:dd:ee:01, got %v", okResp.Data.MACAddress)
+	}
+
+	// 2. 200 OK clearing IP and MAC with ""
+	respClear := patch(master.ID.String(), `{"ipAddress":"","macAddress":""}`)
+	if respClear.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 on clear, got %d", respClear.StatusCode)
+	}
+	var clearResp httpx.Response[domain.NodeResponse]
+	if err := json.NewDecoder(respClear.Body).Decode(&clearResp); err != nil {
+		t.Fatalf("decode clear response: %v", err)
+	}
+	_ = respClear.Body.Close()
+	if clearResp.Data.IPAddress != nil || clearResp.Data.MACAddress != nil {
+		t.Errorf("expected nil ipAddress and macAddress after clear, got ip=%v mac=%v", clearResp.Data.IPAddress, clearResp.Data.MACAddress)
+	}
+
+	// 3. 400 validation errors
+	for _, tc := range []struct {
+		body string
+		want string
+	}{
+		{body: `{"name":"invalid name"}`, want: "INVALID_NODE_NAME"},
+		{body: `{"ipAddress":"not-an-ip"}`, want: "INVALID_IP_ADDRESS"},
+		{body: `{"macAddress":"not-a-mac"}`, want: "INVALID_MAC_ADDRESS"},
+	} {
+		r := patch(worker.ID.String(), tc.body)
+		if r.StatusCode != http.StatusBadRequest {
+			t.Fatalf("body %s: expected 400, got %d", tc.body, r.StatusCode)
+		}
+		var er httpx.ErrorResponse
+		if err := json.NewDecoder(r.Body).Decode(&er); err != nil {
+			t.Fatalf("decode 400: %v", err)
+		}
+		_ = r.Body.Close()
+		if er.Error != tc.want {
+			t.Errorf("body %s: expected error %s, got %s", tc.body, tc.want, er.Error)
+		}
+	}
+
+	// 4. 404 Not Found (unknown UUID & malformed UUID)
+	for _, badID := range []string{"00000000-0000-0000-0000-000000000000", "bad-uuid"} {
+		r := patch(badID, `{"name":"worker-x"}`)
+		if r.StatusCode != http.StatusNotFound {
+			t.Fatalf("id %s: expected 404, got %d", badID, r.StatusCode)
+		}
+		var er httpx.ErrorResponse
+		if err := json.NewDecoder(r.Body).Decode(&er); err != nil {
+			t.Fatalf("decode 404: %v", err)
+		}
+		_ = r.Body.Close()
+		if er.Error != "NODE_NOT_FOUND" {
+			t.Errorf("id %s: expected NODE_NOT_FOUND, got %s", badID, er.Error)
+		}
+	}
+
+	// 5. 409 Conflict on duplicate name
+	rConflict := patch(worker.ID.String(), `{"name":"control-plane"}`)
+	if rConflict.StatusCode != http.StatusConflict {
+		t.Fatalf("expected 409 on duplicate name, got %d", rConflict.StatusCode)
+	}
+	var conflictErr httpx.ErrorResponse
+	if err := json.NewDecoder(rConflict.Body).Decode(&conflictErr); err != nil {
+		t.Fatalf("decode 409: %v", err)
+	}
+	_ = rConflict.Body.Close()
+	if conflictErr.Error != "NODE_NAME_CONFLICT" {
+		t.Errorf("expected NODE_NAME_CONFLICT, got %s", conflictErr.Error)
+	}
+}

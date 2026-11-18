@@ -71,6 +71,21 @@ func CredentialHash(v string) predicate.Node {
 	return predicate.Node(sql.FieldEQ(FieldCredentialHash, v))
 }
 
+// Hostname applies equality check predicate on the "hostname" field. It's identical to HostnameEQ.
+func Hostname(v string) predicate.Node {
+	return predicate.Node(sql.FieldEQ(FieldHostname, v))
+}
+
+// IPAddress applies equality check predicate on the "ip_address" field. It's identical to IPAddressEQ.
+func IPAddress(v string) predicate.Node {
+	return predicate.Node(sql.FieldEQ(FieldIPAddress, v))
+}
+
+// MACAddress applies equality check predicate on the "mac_address" field. It's identical to MACAddressEQ.
+func MACAddress(v string) predicate.Node {
+	return predicate.Node(sql.FieldEQ(FieldMACAddress, v))
+}
+
 // NameEQ applies the EQ predicate on the "name" field.
 func NameEQ(v string) predicate.Node {
 	return predicate.Node(sql.FieldEQ(FieldName, v))
@@ -299,6 +314,231 @@ func CredentialHashEqualFold(v string) predicate.Node {
 // CredentialHashContainsFold applies the ContainsFold predicate on the "credential_hash" field.
 func CredentialHashContainsFold(v string) predicate.Node {
 	return predicate.Node(sql.FieldContainsFold(FieldCredentialHash, v))
+}
+
+// HostnameEQ applies the EQ predicate on the "hostname" field.
+func HostnameEQ(v string) predicate.Node {
+	return predicate.Node(sql.FieldEQ(FieldHostname, v))
+}
+
+// HostnameNEQ applies the NEQ predicate on the "hostname" field.
+func HostnameNEQ(v string) predicate.Node {
+	return predicate.Node(sql.FieldNEQ(FieldHostname, v))
+}
+
+// HostnameIn applies the In predicate on the "hostname" field.
+func HostnameIn(vs ...string) predicate.Node {
+	return predicate.Node(sql.FieldIn(FieldHostname, vs...))
+}
+
+// HostnameNotIn applies the NotIn predicate on the "hostname" field.
+func HostnameNotIn(vs ...string) predicate.Node {
+	return predicate.Node(sql.FieldNotIn(FieldHostname, vs...))
+}
+
+// HostnameGT applies the GT predicate on the "hostname" field.
+func HostnameGT(v string) predicate.Node {
+	return predicate.Node(sql.FieldGT(FieldHostname, v))
+}
+
+// HostnameGTE applies the GTE predicate on the "hostname" field.
+func HostnameGTE(v string) predicate.Node {
+	return predicate.Node(sql.FieldGTE(FieldHostname, v))
+}
+
+// HostnameLT applies the LT predicate on the "hostname" field.
+func HostnameLT(v string) predicate.Node {
+	return predicate.Node(sql.FieldLT(FieldHostname, v))
+}
+
+// HostnameLTE applies the LTE predicate on the "hostname" field.
+func HostnameLTE(v string) predicate.Node {
+	return predicate.Node(sql.FieldLTE(FieldHostname, v))
+}
+
+// HostnameContains applies the Contains predicate on the "hostname" field.
+func HostnameContains(v string) predicate.Node {
+	return predicate.Node(sql.FieldContains(FieldHostname, v))
+}
+
+// HostnameHasPrefix applies the HasPrefix predicate on the "hostname" field.
+func HostnameHasPrefix(v string) predicate.Node {
+	return predicate.Node(sql.FieldHasPrefix(FieldHostname, v))
+}
+
+// HostnameHasSuffix applies the HasSuffix predicate on the "hostname" field.
+func HostnameHasSuffix(v string) predicate.Node {
+	return predicate.Node(sql.FieldHasSuffix(FieldHostname, v))
+}
+
+// HostnameIsNil applies the IsNil predicate on the "hostname" field.
+func HostnameIsNil() predicate.Node {
+	return predicate.Node(sql.FieldIsNull(FieldHostname))
+}
+
+// HostnameNotNil applies the NotNil predicate on the "hostname" field.
+func HostnameNotNil() predicate.Node {
+	return predicate.Node(sql.FieldNotNull(FieldHostname))
+}
+
+// HostnameEqualFold applies the EqualFold predicate on the "hostname" field.
+func HostnameEqualFold(v string) predicate.Node {
+	return predicate.Node(sql.FieldEqualFold(FieldHostname, v))
+}
+
+// HostnameContainsFold applies the ContainsFold predicate on the "hostname" field.
+func HostnameContainsFold(v string) predicate.Node {
+	return predicate.Node(sql.FieldContainsFold(FieldHostname, v))
+}
+
+// IPAddressEQ applies the EQ predicate on the "ip_address" field.
+func IPAddressEQ(v string) predicate.Node {
+	return predicate.Node(sql.FieldEQ(FieldIPAddress, v))
+}
+
+// IPAddressNEQ applies the NEQ predicate on the "ip_address" field.
+func IPAddressNEQ(v string) predicate.Node {
+	return predicate.Node(sql.FieldNEQ(FieldIPAddress, v))
+}
+
+// IPAddressIn applies the In predicate on the "ip_address" field.
+func IPAddressIn(vs ...string) predicate.Node {
+	return predicate.Node(sql.FieldIn(FieldIPAddress, vs...))
+}
+
+// IPAddressNotIn applies the NotIn predicate on the "ip_address" field.
+func IPAddressNotIn(vs ...string) predicate.Node {
+	return predicate.Node(sql.FieldNotIn(FieldIPAddress, vs...))
+}
+
+// IPAddressGT applies the GT predicate on the "ip_address" field.
+func IPAddressGT(v string) predicate.Node {
+	return predicate.Node(sql.FieldGT(FieldIPAddress, v))
+}
+
+// IPAddressGTE applies the GTE predicate on the "ip_address" field.
+func IPAddressGTE(v string) predicate.Node {
+	return predicate.Node(sql.FieldGTE(FieldIPAddress, v))
+}
+
+// IPAddressLT applies the LT predicate on the "ip_address" field.
+func IPAddressLT(v string) predicate.Node {
+	return predicate.Node(sql.FieldLT(FieldIPAddress, v))
+}
+
+// IPAddressLTE applies the LTE predicate on the "ip_address" field.
+func IPAddressLTE(v string) predicate.Node {
+	return predicate.Node(sql.FieldLTE(FieldIPAddress, v))
+}
+
+// IPAddressContains applies the Contains predicate on the "ip_address" field.
+func IPAddressContains(v string) predicate.Node {
+	return predicate.Node(sql.FieldContains(FieldIPAddress, v))
+}
+
+// IPAddressHasPrefix applies the HasPrefix predicate on the "ip_address" field.
+func IPAddressHasPrefix(v string) predicate.Node {
+	return predicate.Node(sql.FieldHasPrefix(FieldIPAddress, v))
+}
+
+// IPAddressHasSuffix applies the HasSuffix predicate on the "ip_address" field.
+func IPAddressHasSuffix(v string) predicate.Node {
+	return predicate.Node(sql.FieldHasSuffix(FieldIPAddress, v))
+}
+
+// IPAddressIsNil applies the IsNil predicate on the "ip_address" field.
+func IPAddressIsNil() predicate.Node {
+	return predicate.Node(sql.FieldIsNull(FieldIPAddress))
+}
+
+// IPAddressNotNil applies the NotNil predicate on the "ip_address" field.
+func IPAddressNotNil() predicate.Node {
+	return predicate.Node(sql.FieldNotNull(FieldIPAddress))
+}
+
+// IPAddressEqualFold applies the EqualFold predicate on the "ip_address" field.
+func IPAddressEqualFold(v string) predicate.Node {
+	return predicate.Node(sql.FieldEqualFold(FieldIPAddress, v))
+}
+
+// IPAddressContainsFold applies the ContainsFold predicate on the "ip_address" field.
+func IPAddressContainsFold(v string) predicate.Node {
+	return predicate.Node(sql.FieldContainsFold(FieldIPAddress, v))
+}
+
+// MACAddressEQ applies the EQ predicate on the "mac_address" field.
+func MACAddressEQ(v string) predicate.Node {
+	return predicate.Node(sql.FieldEQ(FieldMACAddress, v))
+}
+
+// MACAddressNEQ applies the NEQ predicate on the "mac_address" field.
+func MACAddressNEQ(v string) predicate.Node {
+	return predicate.Node(sql.FieldNEQ(FieldMACAddress, v))
+}
+
+// MACAddressIn applies the In predicate on the "mac_address" field.
+func MACAddressIn(vs ...string) predicate.Node {
+	return predicate.Node(sql.FieldIn(FieldMACAddress, vs...))
+}
+
+// MACAddressNotIn applies the NotIn predicate on the "mac_address" field.
+func MACAddressNotIn(vs ...string) predicate.Node {
+	return predicate.Node(sql.FieldNotIn(FieldMACAddress, vs...))
+}
+
+// MACAddressGT applies the GT predicate on the "mac_address" field.
+func MACAddressGT(v string) predicate.Node {
+	return predicate.Node(sql.FieldGT(FieldMACAddress, v))
+}
+
+// MACAddressGTE applies the GTE predicate on the "mac_address" field.
+func MACAddressGTE(v string) predicate.Node {
+	return predicate.Node(sql.FieldGTE(FieldMACAddress, v))
+}
+
+// MACAddressLT applies the LT predicate on the "mac_address" field.
+func MACAddressLT(v string) predicate.Node {
+	return predicate.Node(sql.FieldLT(FieldMACAddress, v))
+}
+
+// MACAddressLTE applies the LTE predicate on the "mac_address" field.
+func MACAddressLTE(v string) predicate.Node {
+	return predicate.Node(sql.FieldLTE(FieldMACAddress, v))
+}
+
+// MACAddressContains applies the Contains predicate on the "mac_address" field.
+func MACAddressContains(v string) predicate.Node {
+	return predicate.Node(sql.FieldContains(FieldMACAddress, v))
+}
+
+// MACAddressHasPrefix applies the HasPrefix predicate on the "mac_address" field.
+func MACAddressHasPrefix(v string) predicate.Node {
+	return predicate.Node(sql.FieldHasPrefix(FieldMACAddress, v))
+}
+
+// MACAddressHasSuffix applies the HasSuffix predicate on the "mac_address" field.
+func MACAddressHasSuffix(v string) predicate.Node {
+	return predicate.Node(sql.FieldHasSuffix(FieldMACAddress, v))
+}
+
+// MACAddressIsNil applies the IsNil predicate on the "mac_address" field.
+func MACAddressIsNil() predicate.Node {
+	return predicate.Node(sql.FieldIsNull(FieldMACAddress))
+}
+
+// MACAddressNotNil applies the NotNil predicate on the "mac_address" field.
+func MACAddressNotNil() predicate.Node {
+	return predicate.Node(sql.FieldNotNull(FieldMACAddress))
+}
+
+// MACAddressEqualFold applies the EqualFold predicate on the "mac_address" field.
+func MACAddressEqualFold(v string) predicate.Node {
+	return predicate.Node(sql.FieldEqualFold(FieldMACAddress, v))
+}
+
+// MACAddressContainsFold applies the ContainsFold predicate on the "mac_address" field.
+func MACAddressContainsFold(v string) predicate.Node {
+	return predicate.Node(sql.FieldContainsFold(FieldMACAddress, v))
 }
 
 // HasProjectNodes applies the HasEdge predicate on the "project_nodes" edge.

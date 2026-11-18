@@ -25,6 +25,12 @@ const (
 	FieldLastSeenAt = "last_seen_at"
 	// FieldCredentialHash holds the string denoting the credential_hash field in the database.
 	FieldCredentialHash = "credential_hash"
+	// FieldHostname holds the string denoting the hostname field in the database.
+	FieldHostname = "hostname"
+	// FieldIPAddress holds the string denoting the ip_address field in the database.
+	FieldIPAddress = "ip_address"
+	// FieldMACAddress holds the string denoting the mac_address field in the database.
+	FieldMACAddress = "mac_address"
 	// EdgeProjectNodes holds the string denoting the project_nodes edge name in mutations.
 	EdgeProjectNodes = "project_nodes"
 	// Table holds the table name of the node in the database.
@@ -46,6 +52,9 @@ var Columns = []string{
 	FieldStatus,
 	FieldLastSeenAt,
 	FieldCredentialHash,
+	FieldHostname,
+	FieldIPAddress,
+	FieldMACAddress,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -142,6 +151,21 @@ func ByLastSeenAt(opts ...sql.OrderTermOption) OrderOption {
 // ByCredentialHash orders the results by the credential_hash field.
 func ByCredentialHash(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCredentialHash, opts...).ToFunc()
+}
+
+// ByHostname orders the results by the hostname field.
+func ByHostname(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldHostname, opts...).ToFunc()
+}
+
+// ByIPAddress orders the results by the ip_address field.
+func ByIPAddress(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldIPAddress, opts...).ToFunc()
+}
+
+// ByMACAddress orders the results by the mac_address field.
+func ByMACAddress(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMACAddress, opts...).ToFunc()
 }
 
 // ByProjectNodesCount orders the results by project_nodes count.

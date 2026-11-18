@@ -22,6 +22,9 @@ func toDomain(n *ent.Node) *domain.Node {
 		Status:         domain.Status(n.Status),
 		LastSeenAt:     n.LastSeenAt,
 		CredentialHash: n.CredentialHash,
+		Hostname:       n.Hostname,
+		IPAddress:      n.IPAddress,
+		MACAddress:     n.MACAddress,
 	}
 }
 
@@ -36,8 +39,8 @@ func New(client *ent.Client) *Ent {
 }
 
 // EnsureMaster ensures that exactly one node with role=master exists.
-// Its name is updated to hostname, status set to online, credential_hash set to NULL,
-// and any existing ID is preserved across restarts.
+// Its hostname is updated to the current OS hostname, status set to online,
+// credential_hash set to NULL, and any existing ID and custom name are preserved across restarts.
 func (r *Ent) EnsureMaster(ctx context.Context, hostname string) error {
 	masters, err := r.client.Node.Query().
 		Where(entnode.RoleEQ(entnode.RoleMaster)).
@@ -49,7 +52,7 @@ func (r *Ent) EnsureMaster(ctx context.Context, hostname string) error {
 
 	if len(masters) > 0 {
 		return r.client.Node.UpdateOne(masters[0]).
-			SetName(hostname).
+			SetHostname(hostname).
 			SetStatus(entnode.StatusOnline).
 			ClearCredentialHash().
 			Exec(ctx)
@@ -64,6 +67,7 @@ func (r *Ent) EnsureMaster(ctx context.Context, hostname string) error {
 	if byName != nil {
 		return r.client.Node.UpdateOne(byName).
 			SetRole(entnode.RoleMaster).
+			SetHostname(hostname).
 			SetStatus(entnode.StatusOnline).
 			ClearCredentialHash().
 			Exec(ctx)
@@ -71,6 +75,7 @@ func (r *Ent) EnsureMaster(ctx context.Context, hostname string) error {
 
 	return r.client.Node.Create().
 		SetName(hostname).
+		SetHostname(hostname).
 		SetRole(entnode.RoleMaster).
 		SetStatus(entnode.StatusOnline).
 		Exec(ctx)
@@ -110,6 +115,48 @@ func (r *Ent) Get(ctx context.Context, id string) (*domain.Node, error) {
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return nil, domain.ErrNodeNotFound
+		}
+		return nil, err
+	}
+	return toDomain(n), nil
+}
+
+// UpdateNode updates provided editable fields on a node by id.
+func (r *Ent) UpdateNode(ctx context.Context, id string, req domain.UpdateNodeRequest) (*domain.Node, error) {
+	if req.Name == nil && req.IPAddress == nil && req.MACAddress == nil {
+		return r.Get(ctx, id)
+	}
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		return nil, domain.ErrNodeNotFound
+	}
+
+	upd := r.client.Node.UpdateOneID(uid)
+	if req.Name != nil {
+		upd.SetName(*req.Name)
+	}
+	if req.IPAddress != nil {
+		if *req.IPAddress == "" {
+			upd.ClearIPAddress()
+		} else {
+			upd.SetIPAddress(*req.IPAddress)
+		}
+	}
+	if req.MACAddress != nil {
+		if *req.MACAddress == "" {
+			upd.ClearMACAddress()
+		} else {
+			upd.SetMACAddress(*req.MACAddress)
+		}
+	}
+
+	n, err := upd.Save(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, domain.ErrNodeNotFound
+		}
+		if ent.IsConstraintError(err) {
+			return nil, domain.ErrNodeNameConflict
 		}
 		return nil, err
 	}

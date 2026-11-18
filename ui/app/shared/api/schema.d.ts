@@ -301,7 +301,11 @@ export interface paths {
         delete: operations["delete-node"];
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * Update node
+         * @description Updates editable fields (name, ipAddress, macAddress) on a node.
+         */
+        patch: operations["update-node"];
         trace?: never;
     };
     "/projects": {
@@ -781,8 +785,11 @@ export interface components {
             url?: string;
         };
         "domain.NodeResponse": {
+            hostname?: string;
             id?: string;
+            ipAddress?: string;
             lastSeenAt?: string;
+            macAddress?: string;
             name?: string;
             role?: components["schemas"]["domain.Role"];
             status?: components["schemas"]["domain.Status"];
@@ -923,6 +930,11 @@ export interface components {
             lastError?: string;
             lastSyncAt?: string;
         };
+        "domain.UpdateNodeRequest": {
+            ipAddress?: string;
+            macAddress?: string;
+            name?: string;
+        };
         "domain.UpdateProjectNodePathRequest": {
             path?: string;
         };
@@ -1034,6 +1046,11 @@ export interface components {
         };
         "httpx.Response-domain_JoinTokenResponse": {
             data?: components["schemas"]["domain.JoinTokenResponse"];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Response-domain_NodeResponse": {
+            data?: components["schemas"]["domain.NodeResponse"];
             error?: string;
             meta?: components["schemas"]["httpx.Meta"];
         };
@@ -1636,6 +1653,79 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "update-node": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Node ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** @description Node fields to update */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["domain.UpdateNodeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-domain_NodeResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
             };
             /** @description Unauthorized */
             401: {

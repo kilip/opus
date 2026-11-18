@@ -9,6 +9,16 @@ type NodeResponse struct {
 	Role       Role       `json:"role"`
 	Status     Status     `json:"status"`
 	LastSeenAt *time.Time `json:"lastSeenAt"`
+	Hostname   *string    `json:"hostname,omitempty"`
+	IPAddress  *string    `json:"ipAddress,omitempty"`
+	MACAddress *string    `json:"macAddress,omitempty"`
+}
+
+// UpdateNodeRequest holds optional fields to update on a node.
+type UpdateNodeRequest struct {
+	Name       *string `json:"name,omitempty"`
+	IPAddress  *string `json:"ipAddress,omitempty"`
+	MACAddress *string `json:"macAddress,omitempty"`
 }
 
 // JoinTokenResponse represents the response when a node join token is created.

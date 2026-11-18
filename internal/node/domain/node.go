@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"net"
 	"regexp"
 	"time"
 )
@@ -13,6 +14,23 @@ func ValidateNodeName(name string) error {
 		return ErrInvalidNodeName
 	}
 	return nil
+}
+
+// ValidateIPAddress checks that ip is a valid IPv4 or IPv6 address.
+func ValidateIPAddress(ip string) error {
+	if net.ParseIP(ip) == nil {
+		return ErrInvalidIPAddress
+	}
+	return nil
+}
+
+// NormalizeMACAddress validates mac and returns it in lowercase colon-separated format.
+func NormalizeMACAddress(mac string) (string, error) {
+	hw, err := net.ParseMAC(mac)
+	if err != nil {
+		return "", ErrInvalidMACAddress
+	}
+	return hw.String(), nil
 }
 
 // Role defines the role of a node in the cluster.
@@ -39,4 +57,7 @@ type Node struct {
 	Status         Status
 	LastSeenAt     *time.Time
 	CredentialHash *string
+	Hostname       *string
+	IPAddress      *string
+	MACAddress     *string
 }

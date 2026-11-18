@@ -223,10 +223,19 @@
             },
             "domain.NodeResponse": {
                 "properties": {
+                    "hostname": {
+                        "type": "string"
+                    },
                     "id": {
                         "type": "string"
                     },
+                    "ipAddress": {
+                        "type": "string"
+                    },
                     "lastSeenAt": {
+                        "type": "string"
+                    },
+                    "macAddress": {
                         "type": "string"
                     },
                     "name": {
@@ -739,6 +748,20 @@
                 },
                 "type": "object"
             },
+            "domain.UpdateNodeRequest": {
+                "properties": {
+                    "ipAddress": {
+                        "type": "string"
+                    },
+                    "macAddress": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "domain.UpdateProjectNodePathRequest": {
                 "properties": {
                     "path": {
@@ -1086,6 +1109,20 @@
                 "properties": {
                     "data": {
                         "$ref": "#/components/schemas/domain.JoinTokenResponse"
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
+            "httpx.Response-domain_NodeResponse": {
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/domain.NodeResponse"
                     },
                     "error": {
                         "type": "string"
@@ -1914,6 +1951,100 @@
                     }
                 },
                 "summary": "Delete node",
+                "tags": [
+                    "nodes"
+                ]
+            },
+            "patch": {
+                "description": "Updates editable fields (name, ipAddress, macAddress) on a node.",
+                "operationId": "update-node",
+                "parameters": [
+                    {
+                        "description": "Node ID",
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.UpdateNodeRequest",
+                                "summary": "body",
+                                "description": "Node fields to update"
+                            }
+                        }
+                    },
+                    "description": "Node fields to update",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-domain_NodeResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Conflict"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Update node",
                 "tags": [
                     "nodes"
                 ]

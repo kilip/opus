@@ -13,6 +13,10 @@ var (
 	ErrNodeNameConflict = errors.New("NODE_NAME_CONFLICT")
 	// ErrInvalidNodeName indicates the node name is empty or does not meet criteria.
 	ErrInvalidNodeName = errors.New("INVALID_NODE_NAME")
+	// ErrInvalidIPAddress indicates the IP address is not a valid IPv4 or IPv6 address.
+	ErrInvalidIPAddress = errors.New("INVALID_IP_ADDRESS")
+	// ErrInvalidMACAddress indicates the MAC address is not a valid hardware address.
+	ErrInvalidMACAddress = errors.New("INVALID_MAC_ADDRESS")
 	// ErrRateLimited indicates too many join requests were sent.
 	ErrRateLimited = errors.New("RATE_LIMITED")
 	// ErrNodeNotConnected indicates the node does not have an active connection.

@@ -31,6 +31,15 @@ func (Node) Fields() []ent.Field {
 		field.String("credential_hash").
 			Optional().
 			Nillable(),
+		field.String("hostname").
+			Optional().
+			Nillable(),
+		field.String("ip_address").
+			Optional().
+			Nillable(),
+		field.String("mac_address").
+			Optional().
+			Nillable(),
 	}
 }
 

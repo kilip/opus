@@ -77,6 +77,7 @@ type Handler struct {
 // ponytail: keep domain imported for swag OpenAPI doc generation
 var (
 	_ = (*domain.NodeResponse)(nil)
+	_ = (*domain.UpdateNodeRequest)(nil)
 	_ = (*domain.JoinTokenResponse)(nil)
 	_ = (*domain.JoinNodeRequest)(nil)
 	_ = (*domain.JoinNodeResponse)(nil)
@@ -108,6 +109,7 @@ func (h *Handler) Register(r fiber.Router) {
 	g := r.Group("/nodes")
 	g.Get("/", h.List)
 	g.Post("/join-tokens", h.CreateJoinToken)
+	g.Patch("/:id", h.Update)
 	g.Delete("/:id", h.Delete)
 }
 
@@ -136,6 +138,35 @@ func (h *Handler) List(c fiber.Ctx) error {
 	}
 	total := len(nodes)
 	return httpx.List(c, nodes, &httpx.Meta{Total: &total})
+}
+
+// Update godoc
+//
+//	@Summary		Update node
+//	@Description	Updates editable fields (name, ipAddress, macAddress) on a node.
+//	@ID				update-node
+//	@Tags			nodes
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string						true	"Node ID"
+//	@Param			body	body		domain.UpdateNodeRequest	true	"Node fields to update"
+//	@Success		200		{object}	httpx.Response[domain.NodeResponse]
+//	@Failure		400		{object}	httpx.ErrorResponse
+//	@Failure		401		{object}	httpx.ErrorResponse
+//	@Failure		404		{object}	httpx.ErrorResponse
+//	@Failure		409		{object}	httpx.ErrorResponse
+//	@Failure		500		{object}	httpx.ErrorResponse
+//	@Router			/nodes/{id} [patch]
+func (h *Handler) Update(c fiber.Ctx) error {
+	var req domain.UpdateNodeRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return httpx.BadRequest(err)
+	}
+	node, err := h.svc.Update(c.Context(), c.Params("id"), req)
+	if err != nil {
+		return mapErr(err)
+	}
+	return httpx.OK(c, node)
 }
 
 // CreateJoinToken godoc
@@ -271,7 +302,9 @@ func mapErr(err error) error {
 		return httpx.NewError(fiber.StatusUnauthorized, err)
 	case errors.Is(err, domain.ErrMasterConnectForbidden):
 		return httpx.NewError(fiber.StatusForbidden, err)
-	case errors.Is(err, domain.ErrInvalidNodeName):
+	case errors.Is(err, domain.ErrInvalidNodeName),
+		errors.Is(err, domain.ErrInvalidIPAddress),
+		errors.Is(err, domain.ErrInvalidMACAddress):
 		return httpx.BadRequest(err)
 	case errors.Is(err, domain.ErrNodeNameConflict),
 		errors.Is(err, domain.ErrMasterDeleteForbidden):
