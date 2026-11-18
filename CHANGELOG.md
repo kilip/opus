@@ -2,6 +2,108 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.3.0-rc2](https://github.com/kilip/opus/compare/v0.3.0-rc1...v0.3.0-rc2) (2026-11-18)
+
+### ✨ Features
+
+- **api:** add /vibe skill and Opus MCP config to agy plugin ([ea7a2bd](https://github.com/kilip/opus/commit/ea7a2bd228cd7a6862bff7acb0cc35555f0e0d10))
+- **api:** inject Opus MCP config into agy sessions ([bfba0c1](https://github.com/kilip/opus/commit/bfba0c16905db60cf73665d2a6f62ada9e764ac2))
+- **api:** add Streamable HTTP POST /mcp endpoint ([749be79](https://github.com/kilip/opus/commit/749be792618872ccfa1183297f1204a5b58601d6))
+- **ui:** show agent tool calls and report in runs ([6c0de90](https://github.com/kilip/opus/commit/6c0de909b7af4dbd06fa1747e17c4939bf50d906))
+- **api:** add agent feature and MCP tool service ([7c34dbd](https://github.com/kilip/opus/commit/7c34dbd8e9e760a7ad816816768444b48c619b88))
+- **api:** add end-to-end vibe run smoke test ([227b5aa](https://github.com/kilip/opus/commit/227b5aa7eafd824b97cc004086ddf55c58b3753e))
+- **ui:** add dashboard overview page ([35c20cb](https://github.com/kilip/opus/commit/35c20cb939974cfee3150ad10950ce2b96b04362))
+- **ui:** add runs list and detail page ([9ec106f](https://github.com/kilip/opus/commit/9ec106f4630045c1be5e757ce03b57e54ed00512))
+- **api:** add run failure, pause, cancel, recovery, and API ([8de5141](https://github.com/kilip/opus/commit/8de51415c331a5f36b623482bc3574bc87e3da11))
+- **api:** add claim, prepare, run session, and cleanup stages ([8bc746d](https://github.com/kilip/opus/commit/8bc746df47d8ef1771c3cf9d99981272177ffda4))
+- **api:** add policy spec and enforcer for ACP ([1702a4c](https://github.com/kilip/opus/commit/1702a4ce3f8f7570f5845e749d398360e6ab6c50))
+- **api:** add run prompt builder ([2bff2ba](https://github.com/kilip/opus/commit/2bff2ba6c30b52ab32d3ebef8d0db51c1f51d293))
+- **api:** add run eligibility checks and reconciler ([81bd11b](https://github.com/kilip/opus/commit/81bd11bc458e2374a432670d4f56f901bed365c1))
+- **api:** add Telegram notifier for run and node events ([7c301ee](https://github.com/kilip/opus/commit/7c301ee3df7752e4745e0145be82e47cafefa922))
+- **api:** add Run entity, state machine, and events ([ee8157b](https://github.com/kilip/opus/commit/ee8157b394a0a22f1b61717de6330323282917dd))
+- **api:** add session records, SSE stream, and FIFO queue ([b1cfb42](https://github.com/kilip/opus/commit/b1cfb42ec5e443967612c74e014963cac09d1fca))
+- **api:** add agy ACP stdio client ([62fca50](https://github.com/kilip/opus/commit/62fca50c2737907cb42d97dfbfdc87132fb312ca))
+- **api:** add worker git clone and worktree operations ([c0ba757](https://github.com/kilip/opus/commit/c0ba75772475f30474a07c040029b83e6fdc94b0))
+- **api:** add worker runtime skeleton and capability reporting ([c3bfe81](https://github.com/kilip/opus/commit/c3bfe81519639ea5f7d15a4770d506c86ad713ba))
+- **ui:** add GitHub context to tasks and projects ([c82930a](https://github.com/kilip/opus/commit/c82930a4f26bc5444ccbe28c1fd8a669d72e4272))
+- **api:** add GitHub outbound tracker sync ([3fc9650](https://github.com/kilip/opus/commit/3fc9650e83240684d518f4996bc2d72b1505a8a3))
+- **api:** add GitHub pull request tracking ([3b4ae7a](https://github.com/kilip/opus/commit/3b4ae7acb21aeaddd7f12eda1c8cc369de75c279))
+- **api:** add cursor-based inbound GitHub issue sync ([8b089f3](https://github.com/kilip/opus/commit/8b089f3c9b3ab261cc666f1ccaef8bf246935ddd))
+- **api:** add synced_at field and import tracking to task ([503dbb5](https://github.com/kilip/opus/commit/503dbb5e771727b28b01f8cbb1f6c811c9f22240))
+- **api:** add tracker feature skeleton, sync state, and gh runner ([67a8048](https://github.com/kilip/opus/commit/67a8048632db9565ed9864e49ff9eee3af50ff6c))
+- **ui:** add blocked stage and filter to tasks feature ([6c81360](https://github.com/kilip/opus/commit/6c81360da3235537fc3aae88e5e688fda2540a94))
+- **api:** expose task service methods and add blocked status ([56f476b](https://github.com/kilip/opus/commit/56f476b3e6aa7988603fac8f28e78fdb27875c2b))
+- **ui:** add project picker and filter to tasks ([6f97e58](https://github.com/kilip/opus/commit/6f97e58836ce668a90368f15e5e05ff379aa5f11))
+- **api:** require projectId on tasks and enforce project delete guard ([85b05ec](https://github.com/kilip/opus/commit/85b05ec1a5da0f479ea286a169e719525c3bc638))
+- **ui:** add projects page ([50680cb](https://github.com/kilip/opus/commit/50680cb1c13d1adf474dc1217600fe0e01b00627))
+- **api:** add per-node path mapping to project feature ([734eea1](https://github.com/kilip/opus/commit/734eea1ce356e8b06eb1035057c18f07a7a7d9ac))
+- **api:** add project Ent schema, feature CRUD, and tests ([690a851](https://github.com/kilip/opus/commit/690a851a7ea421f20d4c9215023e72baa16234aa))
+- **ui:** add nodes page ([be9adb3](https://github.com/kilip/opus/commit/be9adb313af0b2400429b38c9d8c3f3b77b3b15f))
+- **api:** add delete node endpoint ([eacec04](https://github.com/kilip/opus/commit/eacec04eddc8609b9adb959d6135f2a035fd335b))
+- **api:** add opus join and opus worker commands ([ee6e4a3](https://github.com/kilip/opus/commit/ee6e4a3e1d440b516d5bbffca3f30f6dc455d500))
+- **api:** add worker control channel client and in-process master path ([80a9503](https://github.com/kilip/opus/commit/80a95035c79b2a388cf801a71e5d858aaf06370e))
+- **api:** add node heartbeat and offline detection ([34ccf79](https://github.com/kilip/opus/commit/34ccf798935ca53ba2b2bdcfa8942cce04f8a6f8))
+- **api:** add node control channel server and hub ([8c9f915](https://github.com/kilip/opus/commit/8c9f915a860cde1236f27c6521864d3b9517dd48))
+- **api:** add join exchange endpoint for worker nodes ([2ae62ad](https://github.com/kilip/opus/commit/2ae62ad862d918cd915f4460c8ed459eb532fa9c))
+- **api:** add node join token generation and consumption ([a7a8a53](https://github.com/kilip/opus/commit/a7a8a537676670484f1ff8a1364b92d3202da022))
+- **api:** add node registry and master self-registration ([9e03ee5](https://github.com/kilip/opus/commit/9e03ee5274464bbd8a498c3a84478840fe6aa7a7))
+
+### 📦 Dependencies
+
+- **deps:** add modelcontextprotocol go-sdk ([27ce89f](https://github.com/kilip/opus/commit/27ce89ff7fd33282ca5d12816decc06fb894421e))
+- **deps:** add gofiber contrib websocket v3 dependency ([3cd8431](https://github.com/kilip/opus/commit/3cd843145fa2a1353d8b74326734b8edaae5de89))
+
+### ♻️ Code Refactoring
+
+- **ui:** update task status in-progress in UI model and schema ([32145ee](https://github.com/kilip/opus/commit/32145ee5529f4b72b079c8e8ad631c3699a8a5c1))
+- **api:** rename task status in_progress to in-progress ([7a2aef3](https://github.com/kilip/opus/commit/7a2aef30ea338650783ef50c0e5263eaa75a777b))
+
+### 📝 Documentation
+
+- **docs:** add project docs, env example, and update AGENTS.md ([afe7bc0](https://github.com/kilip/opus/commit/afe7bc06236d7d236fae5e127c3fec28701aff9f))
+- **docs:** document internal/agent and extensions/agy boundaries ([b6a7915](https://github.com/kilip/opus/commit/b6a7915d2e1e1cd8e705f7b3d56be6938c8fbffd))
+- **docs:** update AGENTS.md and operations notes ([1be3361](https://github.com/kilip/opus/commit/1be3361e0af2839e956324e1f68c922d3c0ea88b))
+- **docs:** spike and document agy acp behavior ([b2d12a8](https://github.com/kilip/opus/commit/b2d12a8fceaa479842323714b10d9a3dd825d402))
+- **docs:** document TRACKER_POLL_INTERVAL in AGENTS.md ([f68db36](https://github.com/kilip/opus/commit/f68db36630c9929d1deb8a35f0f526ff124a36cf))
+
+### 🧪 Tests
+
+- **api:** standardize test helper env vars ([ee0cf84](https://github.com/kilip/opus/commit/ee0cf845d07ce3730cd3e427f12173eb48ceba45))
+- **api:** add end-to-end smoke test for agent MCP ([84ca256](https://github.com/kilip/opus/commit/84ca2567edd5371707ee27b71bcdbc42f07fa06c))
+
+### 👷 Continuous Integration
+
+- **tools:** sync issue status labels to github project ([0e39115](https://github.com/kilip/opus/commit/0e3911500177179894b09d0b78c9de695d1d2969))
+
+### 🔧 Tooling & Chores
+
+- **release:** v0.3.0-rc2 ([cc15ce8](https://github.com/kilip/opus/commit/cc15ce8fa863d8c66f18e4bb18db955e764177bb))
+- **release:** prepare 0.3.0-rc2 ([26b30e9](https://github.com/kilip/opus/commit/26b30e958b09cfa4e27a8e81642f447c323e0a86))
+- **ui:** format ui files with editorconfig 2-space indent ([8a68d23](https://github.com/kilip/opus/commit/8a68d23d3fe63fff891dfcec1b1c2f6549ecfe32))
+- **tools:** move biome config to repo root for editorconfig ([b8df225](https://github.com/kilip/opus/commit/b8df2259fe2fb2c85cd8f3ee35d66fb51defa037))
+- **ui:** standardize vite env vars to APP_* prefix ([5726df5](https://github.com/kilip/opus/commit/5726df590463419ce752143b58a6367a1243e7ac))
+- **tools:** enforce feature boundaries in golangci-lint ([e865559](https://github.com/kilip/opus/commit/e86555972affa9adee6971a4fd3ee5237a5b1faa))
+- **deps:** add modelcontextprotocol go-sdk ([27ce89f](https://github.com/kilip/opus/commit/27ce89ff7fd33282ca5d12816decc06fb894421e))
+- **tools:** include run handler and domain in swag init ([4bd30df](https://github.com/kilip/opus/commit/4bd30df226c4b90b55363fdd3f61784f5280526b))
+- **tools:** add session packages to swag init ([9aeb756](https://github.com/kilip/opus/commit/9aeb7561840a3b4a01b9c411640973a7198f8b2e))
+- **tools:** remove agy agents from extension ([ec1ffa4](https://github.com/kilip/opus/commit/ec1ffa489d2e9172176fc15780647f28070ba3a7))
+- **tools:** remove agy skills from extension ([dbb40e5](https://github.com/kilip/opus/commit/dbb40e528f3fbaf3d05486a390b2c4e8b86c594b))
+- **ui:** regenerate API schema types for task syncedAt ([85fd44a](https://github.com/kilip/opus/commit/85fd44a637f7abff9b2715604d237d0d10da1064))
+- **tools:** add tracker packages to api-spec ([6ae0c06](https://github.com/kilip/opus/commit/6ae0c06eca6104041de9a1a172c5cad183e40a72))
+- **tools:** add project packages to api-spec ([fb00164](https://github.com/kilip/opus/commit/fb001645a6d9b67bb2fca0de07b00e15e667965a))
+- **api:** regenerate openapi spec and ui schema ([dbb4026](https://github.com/kilip/opus/commit/dbb40261a9b18acd899f89715ae4234528f7b18b))
+- **api:** regenerate openapi spec and ui schema ([3b1d9dd](https://github.com/kilip/opus/commit/3b1d9dd2f7da6fd5ca2652aa6aaa23aecf838cb7))
+- **deps:** add gofiber contrib websocket v3 dependency ([3cd8431](https://github.com/kilip/opus/commit/3cd843145fa2a1353d8b74326734b8edaae5de89))
+- **api:** regenerate openapi spec and ui schema ([46116c2](https://github.com/kilip/opus/commit/46116c2e274da6a8c8a5f43f8218783fa95d8155))
+- **tools:** rename vibe skill to express ([3cf192d](https://github.com/kilip/opus/commit/3cf192d42a8d08eadb853134a64d9713296beaeb))
+- **ui:** regenerate openapi schema types for join tokens ([71e4770](https://github.com/kilip/opus/commit/71e47702d025061365b4dcb994eda1f5d21a461f))
+- **tools:** add node feature to swag init dirs ([7aa60f9](https://github.com/kilip/opus/commit/7aa60f96ab1a6bc8650523be51c24c1f98b948b4))
+- **tools:** use project status script in vibe and pr-manager ([3725e89](https://github.com/kilip/opus/commit/3725e89f95f6babef55e01ab264a400dc993439e))
+- **tools:** add 1-line phase progress status to vibe skill ([e285319](https://github.com/kilip/opus/commit/e2853192b8a289f66377a377ae383c7637e138de))
+- **tools:** enforce in-place checkbox sync via sed in verifier ([e229791](https://github.com/kilip/opus/commit/e2297919054063704b9a3979fd48a271b5420d36))
+- **tools:** delegate vibe notification format to telegram skill ([1d3d0a4](https://github.com/kilip/opus/commit/1d3d0a480b8ec6f20845ac2b8e96ec933f11d6dc))
+- **tools:** force IPv4 and retry Bot.initialize in send.py ([92ac947](https://github.com/kilip/opus/commit/92ac947eac04328404eec65ec774127a2677343f))
+
 ## [v0.3.0-rc1](https://github.com/kilip/opus/compare/v0.2.0...v0.3.0-rc1) (2026-11-16)
 
 ### ✨ Features
