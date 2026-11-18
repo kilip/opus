@@ -28,6 +28,9 @@ const (
 	EventRunCancelled      = domain.EventRunCancelled
 	EventRunError          = domain.EventRunError
 	EventCapabilities      = domain.EventCapabilities
+	EventSessionCompleted  = domain.EventSessionCompleted
+	EventSessionFailed     = domain.EventSessionFailed
+	EventSessionUpdate     = domain.EventSessionUpdate
 
 	ToolStatusReady           = node.ToolStatusReady
 	ToolStatusUnauthenticated = node.ToolStatusUnauthenticated
@@ -137,9 +140,14 @@ type Worker struct {
 	lastCaps domain.Capabilities
 
 	runsMu sync.Mutex
-	runs   map[string]context.CancelFunc
+	runs   map[string]activeRun
 	runCtx context.Context
 	runsWg sync.WaitGroup
+}
+
+type activeRun struct {
+	cancel    context.CancelFunc
+	sessionID string
 }
 
 // New creates a new Worker instance with the given configuration.
@@ -174,7 +182,7 @@ func New(cfg Config) *Worker {
 		probe = NewCapabilityProbe(cfg.AgyBin)
 	}
 
-	return &Worker{
+	w := &Worker{
 		cfg:               cfg,
 		logger:            logger,
 		heartbeatInterval: hbInterval,
@@ -184,8 +192,12 @@ func New(cfg Config) *Worker {
 		inProc:            cfg.InProcess,
 		homeDir:           resolveHomeDir(cfg.HomeDir),
 		probe:             probe,
-		runs:              make(map[string]context.CancelFunc),
+		runs:              make(map[string]activeRun),
 	}
+	if w.cfg.OnStartRun == nil {
+		w.cfg.OnStartRun = w.runStart
+	}
+	return w
 }
 
 func resolveHomeDir(explicit string) string {
@@ -649,15 +661,16 @@ func (w *Worker) handleStartRun(cmd domain.StartRun) {
 	if _, exists := w.runs[cmd.RunID]; exists {
 		w.runsMu.Unlock()
 		_ = w.sendWorkerEvent(baseCtx, domain.Event{
-			Type:  domain.EventRunError,
-			RunID: cmd.RunID,
-			Error: "run already active",
+			Type:      domain.EventRunError,
+			RunID:     cmd.RunID,
+			SessionID: cmd.SessionID,
+			Error:     "run already active",
 		})
 		return
 	}
 
 	runCtx, cancel := context.WithCancel(baseCtx)
-	w.runs[cmd.RunID] = cancel
+	w.runs[cmd.RunID] = activeRun{cancel: cancel, sessionID: cmd.SessionID}
 	w.runsWg.Add(1)
 	w.runsMu.Unlock()
 
@@ -676,9 +689,10 @@ func (w *Worker) handleStartRun(cmd domain.StartRun) {
 		}
 		if err := w.cfg.OnStartRun(runCtx, cmd); err != nil && runCtx.Err() == nil {
 			_ = w.sendWorkerEvent(baseCtx, domain.Event{
-				Type:  domain.EventRunError,
-				RunID: cmd.RunID,
-				Error: w.scrubSecret(err.Error()),
+				Type:      domain.EventRunError,
+				RunID:     cmd.RunID,
+				SessionID: cmd.SessionID,
+				Error:     w.scrubSecret(err.Error()),
 			})
 		}
 	}()
@@ -754,17 +768,18 @@ func (w *Worker) handleCancelRun(cmd domain.CancelRun) {
 		return
 	}
 	w.runsMu.Lock()
-	cancel, ok := w.runs[cmd.RunID]
+	entry, ok := w.runs[cmd.RunID]
 	w.runsMu.Unlock()
 	if !ok {
 		w.logger.Debug("cancel_run for unknown or finished run", "runId", cmd.RunID)
 		return
 	}
-	cancel()
+	entry.cancel()
 	_ = w.sendWorkerEvent(w.baseContext(), domain.Event{
-		Type:   domain.EventRunCancelled,
-		RunID:  cmd.RunID,
-		Reason: cmd.Reason,
+		Type:      domain.EventRunCancelled,
+		RunID:     cmd.RunID,
+		SessionID: entry.sessionID,
+		Reason:    cmd.Reason,
 	})
 }
 

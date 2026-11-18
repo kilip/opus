@@ -15,9 +15,12 @@ const (
 
 // Event type constants carried inside worker event envelope payloads.
 const (
-	EventRunCancelled = "run_cancelled"
-	EventRunError     = "run_error"
-	EventCapabilities = "capabilities_updated"
+	EventRunCancelled     = "run_cancelled"
+	EventRunError         = "run_error"
+	EventCapabilities     = "capabilities_updated"
+	EventSessionCompleted = "session_completed"
+	EventSessionFailed    = "session_failed"
+	EventSessionUpdate    = "session/update"
 )
 
 // Re-export node capability types for worker domain consumers.
@@ -72,11 +75,14 @@ type CleanupWorktree struct {
 
 // Event is the payload for worker-to-master event envelopes.
 type Event struct {
-	Type         string        `json:"type"`
-	RunID        string        `json:"runId,omitempty"`
-	Reason       string        `json:"reason,omitempty"`
-	Error        string        `json:"error,omitempty"`
-	Capabilities *Capabilities `json:"capabilities,omitempty"`
+	Type         string          `json:"type"`
+	RunID        string          `json:"runId,omitempty"`
+	SessionID    string          `json:"sessionId,omitempty"`
+	Kind         string          `json:"kind,omitempty"`
+	Payload      json.RawMessage `json:"payload,omitempty"`
+	Reason       string          `json:"reason,omitempty"`
+	Error        string          `json:"error,omitempty"`
+	Capabilities *Capabilities   `json:"capabilities,omitempty"`
 }
 
 // NewStartRunEnvelope encodes a StartRun command into a node.Envelope.
