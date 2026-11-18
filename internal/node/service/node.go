@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -181,7 +182,8 @@ func (s *Node) Join(ctx context.Context, req domain.JoinNodeRequest) (domain.Joi
 	credHash := hashToken(credential)
 	tokenHash := hashToken(req.Token)
 
-	n, err := s.repo.JoinNode(ctx, tokenHash, req.Name, credHash, s.now())
+	h, ip, mac := sanitizeNetInfo(req.Hostname, req.IPAddress, req.MACAddress)
+	n, err := s.repo.JoinNode(ctx, tokenHash, req.Name, credHash, s.now(), h, ip, mac)
 	if err != nil {
 		return domain.JoinNodeResponse{}, err
 	}
@@ -291,6 +293,36 @@ func (s *Node) DetectStale(ctx context.Context, cutoff time.Time) error {
 		}
 	}
 	return nil
+}
+
+// HandleHello parses a worker hello envelope and updates the node's hostname, IP, and MAC when valid.
+func (s *Node) HandleHello(ctx context.Context, nodeID string, env domain.Envelope) error {
+	if len(env.Payload) == 0 {
+		return nil
+	}
+	var payload domain.HelloPayload
+	if err := json.Unmarshal(env.Payload, &payload); err != nil {
+		return nil
+	}
+	h, ip, mac := sanitizeNetInfo(payload.Hostname, payload.IPAddress, payload.MACAddress)
+	return s.repo.UpdateNodeNetInfo(ctx, nodeID, h, ip, mac)
+}
+
+func sanitizeNetInfo(hostname, ipAddress, macAddress string) (string, string, string) {
+	hostname = strings.TrimSpace(hostname)
+	ipAddress = strings.TrimSpace(ipAddress)
+	macAddress = strings.TrimSpace(macAddress)
+	if ipAddress != "" && domain.ValidateIPAddress(ipAddress) != nil {
+		ipAddress = ""
+	}
+	if macAddress != "" {
+		if norm, err := domain.NormalizeMACAddress(macAddress); err == nil {
+			macAddress = norm
+		} else {
+			macAddress = ""
+		}
+	}
+	return hostname, ipAddress, macAddress
 }
 
 // hashToken returns the hex-encoded SHA-256 hash of a raw token.

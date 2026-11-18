@@ -163,6 +163,34 @@ func (r *Ent) UpdateNode(ctx context.Context, id string, req domain.UpdateNodeRe
 	return toDomain(n), nil
 }
 
+// UpdateNodeNetInfo updates non-empty network/hostname fields on a node without clearing existing values.
+func (r *Ent) UpdateNodeNetInfo(ctx context.Context, id, hostname, ipAddress, macAddress string) error {
+	if hostname == "" && ipAddress == "" && macAddress == "" {
+		return nil
+	}
+	uid, err := uuid.Parse(id)
+	if err != nil {
+		return domain.ErrNodeNotFound
+	}
+	upd := r.client.Node.UpdateOneID(uid)
+	if hostname != "" {
+		upd.SetHostname(hostname)
+	}
+	if ipAddress != "" {
+		upd.SetIPAddress(ipAddress)
+	}
+	if macAddress != "" {
+		upd.SetMACAddress(macAddress)
+	}
+	if err := upd.Exec(ctx); err != nil {
+		if ent.IsNotFound(err) {
+			return domain.ErrNodeNotFound
+		}
+		return err
+	}
+	return nil
+}
+
 // Delete deletes a worker node by id.
 // Returns ErrNodeNotFound if the node does not exist or id is malformed,
 // and ErrMasterDeleteForbidden if the node has role master.
@@ -385,7 +413,7 @@ func (r *Ent) ConsumeJoinToken(ctx context.Context, tokenHash string, now time.T
 // JoinNode atomically validates and consumes a join token, and inserts a worker node.
 // Returns ErrTokenNotFound if not found, ErrTokenAlreadyUsed if already consumed,
 // ErrTokenExpired if past its expiration time, and ErrNodeNameConflict if node name is taken.
-func (r *Ent) JoinNode(ctx context.Context, tokenHash, name, credHash string, now time.Time) (*domain.Node, error) {
+func (r *Ent) JoinNode(ctx context.Context, tokenHash, name, credHash string, now time.Time, netInfo ...string) (*domain.Node, error) {
 	tx, err := r.client.Tx(ctx)
 	if err != nil {
 		return nil, err
@@ -416,12 +444,21 @@ func (r *Ent) JoinNode(ctx context.Context, tokenHash, name, credHash string, no
 		return nil, err
 	}
 
-	n, err := tx.Node.Create().
+	create := tx.Node.Create().
 		SetName(name).
 		SetRole(entnode.RoleWorker).
 		SetStatus(entnode.StatusOffline).
-		SetCredentialHash(credHash).
-		Save(ctx)
+		SetCredentialHash(credHash)
+	if len(netInfo) > 0 && netInfo[0] != "" {
+		create.SetHostname(netInfo[0])
+	}
+	if len(netInfo) > 1 && netInfo[1] != "" {
+		create.SetIPAddress(netInfo[1])
+	}
+	if len(netInfo) > 2 && netInfo[2] != "" {
+		create.SetMACAddress(netInfo[2])
+	}
+	n, err := create.Save(ctx)
 	if err != nil {
 		if ent.IsConstraintError(err) {
 			return nil, domain.ErrNodeNameConflict

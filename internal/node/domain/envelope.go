@@ -49,6 +49,9 @@ type Capabilities struct {
 type HelloPayload struct {
 	NodeID       string       `json:"nodeId,omitempty"`
 	Capabilities Capabilities `json:"capabilities"`
+	Hostname     string       `json:"hostname,omitempty"`
+	IPAddress    string       `json:"ipAddress,omitempty"`
+	MACAddress   string       `json:"macAddress,omitempty"`
 }
 
 // Encode serializes the Envelope to JSON bytes after validating the envelope type.

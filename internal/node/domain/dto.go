@@ -29,8 +29,11 @@ type JoinTokenResponse struct {
 
 // JoinNodeRequest holds parameters for a node joining the cluster.
 type JoinNodeRequest struct {
-	Token string `json:"token"`
-	Name  string `json:"name"`
+	Token      string `json:"token"`
+	Name       string `json:"name"`
+	Hostname   string `json:"hostname,omitempty"`
+	IPAddress  string `json:"ipAddress,omitempty"`
+	MACAddress string `json:"macAddress,omitempty"`
 }
 
 // JoinNodeResponse is returned when a node successfully joins the cluster.

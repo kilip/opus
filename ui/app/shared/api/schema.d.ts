@@ -773,6 +773,9 @@ export interface components {
             type?: components["schemas"]["domain.TaskType"];
         };
         "domain.JoinNodeRequest": {
+            hostname?: string;
+            ipAddress?: string;
+            macAddress?: string;
             name?: string;
             token?: string;
         };

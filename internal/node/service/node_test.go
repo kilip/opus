@@ -1090,3 +1090,110 @@ func TestNodeService_Update(t *testing.T) {
 		t.Errorf("expected ErrNodeNotFound, got %v", err)
 	}
 }
+
+func TestJoinAndHello_PersistsAndSanitizesNetInfo(t *testing.T) {
+	ctx := context.Background()
+	client := setupTestClient(t)
+	r := repo.New(client)
+	svc := service.New(r, service.Config{})
+
+	// 1. Join with valid netinfo (MAC normalized)
+	tok1, err := svc.GenerateJoinToken(ctx)
+	if err != nil {
+		t.Fatalf("GenerateJoinToken 1: %v", err)
+	}
+	rawTok1 := tok1.URL[strings.LastIndex(tok1.URL, "/")+1:]
+	joined, err := svc.Join(ctx, domain.JoinNodeRequest{
+		Token:      rawTok1,
+		Name:       "worker-net-1",
+		Hostname:   "worker-host-1",
+		IPAddress:  "10.1.2.3",
+		MACAddress: "AA-BB-CC-DD-EE-01",
+	})
+	if err != nil {
+		t.Fatalf("Join 1: %v", err)
+	}
+
+	n1, err := svc.Get(ctx, joined.NodeID)
+	if err != nil {
+		t.Fatalf("Get 1: %v", err)
+	}
+	if n1.Hostname == nil || *n1.Hostname != "worker-host-1" {
+		t.Errorf("expected hostname worker-host-1, got %v", n1.Hostname)
+	}
+	if n1.IPAddress == nil || *n1.IPAddress != "10.1.2.3" {
+		t.Errorf("expected ipAddress 10.1.2.3, got %v", n1.IPAddress)
+	}
+	if n1.MACAddress == nil || *n1.MACAddress != "aa:bb:cc:dd:ee:01" {
+		t.Errorf("expected macAddress aa:bb:cc:dd:ee:01, got %v", n1.MACAddress)
+	}
+
+	// 2. Hello with invalid values does not fail or overwrite existing valid values
+	badPayload, _ := json.Marshal(domain.HelloPayload{
+		NodeID:     joined.NodeID,
+		Hostname:   "",
+		IPAddress:  "not-an-ip",
+		MACAddress: "not-a-mac",
+	})
+	if err := svc.HandleHello(ctx, joined.NodeID, domain.Envelope{
+		Type:    domain.EnvelopeTypeHello,
+		Payload: badPayload,
+	}); err != nil {
+		t.Fatalf("HandleHello with invalid netinfo should not error: %v", err)
+	}
+	n1AfterBad, _ := svc.Get(ctx, joined.NodeID)
+	if n1AfterBad.IPAddress == nil || *n1AfterBad.IPAddress != "10.1.2.3" {
+		t.Errorf("expected valid IPAddress preserved, got %v", n1AfterBad.IPAddress)
+	}
+	if n1AfterBad.MACAddress == nil || *n1AfterBad.MACAddress != "aa:bb:cc:dd:ee:01" {
+		t.Errorf("expected valid MACAddress preserved, got %v", n1AfterBad.MACAddress)
+	}
+
+	// 3. Hello with updated valid values updates the node record
+	goodPayload, _ := json.Marshal(domain.HelloPayload{
+		NodeID:     joined.NodeID,
+		Hostname:   "worker-host-1b",
+		IPAddress:  "10.1.2.99",
+		MACAddress: "11:22:33:44:55:66",
+	})
+	if err := svc.HandleHello(ctx, joined.NodeID, domain.Envelope{
+		Type:    domain.EnvelopeTypeHello,
+		Payload: goodPayload,
+	}); err != nil {
+		t.Fatalf("HandleHello with valid netinfo: %v", err)
+	}
+	n1AfterGood, _ := svc.Get(ctx, joined.NodeID)
+	if n1AfterGood.Hostname == nil || *n1AfterGood.Hostname != "worker-host-1b" {
+		t.Errorf("expected updated hostname worker-host-1b, got %v", n1AfterGood.Hostname)
+	}
+	if n1AfterGood.IPAddress == nil || *n1AfterGood.IPAddress != "10.1.2.99" {
+		t.Errorf("expected updated ipAddress 10.1.2.99, got %v", n1AfterGood.IPAddress)
+	}
+	if n1AfterGood.MACAddress == nil || *n1AfterGood.MACAddress != "11:22:33:44:55:66" {
+		t.Errorf("expected updated macAddress 11:22:33:44:55:66, got %v", n1AfterGood.MACAddress)
+	}
+
+	// 4. Join with invalid IP/MAC succeeds and ignores invalid fields
+	tok2, err := svc.GenerateJoinToken(ctx)
+	if err != nil {
+		t.Fatalf("GenerateJoinToken 2: %v", err)
+	}
+	rawTok2 := tok2.URL[strings.LastIndex(tok2.URL, "/")+1:]
+	joined2, err := svc.Join(ctx, domain.JoinNodeRequest{
+		Token:      rawTok2,
+		Name:       "worker-net-2",
+		Hostname:   "worker-host-2",
+		IPAddress:  "bad-ip",
+		MACAddress: "bad-mac",
+	})
+	if err != nil {
+		t.Fatalf("Join 2 with invalid netinfo should succeed: %v", err)
+	}
+	n2, _ := svc.Get(ctx, joined2.NodeID)
+	if n2.Hostname == nil || *n2.Hostname != "worker-host-2" {
+		t.Errorf("expected hostname worker-host-2, got %v", n2.Hostname)
+	}
+	if n2.IPAddress != nil || n2.MACAddress != nil {
+		t.Errorf("expected nil IP/MAC when invalid on join, got ip=%v mac=%v", n2.IPAddress, n2.MACAddress)
+	}
+}

@@ -108,8 +108,11 @@ func New(client *ent.Client, cfg Config) *Node {
 		Bus:     cfg.Bus,
 		Hub:     hub,
 	})
-	hub.OnHeartbeat(func(nodeID string, _ domain.Envelope) {
+	hub.OnHeartbeat(func(nodeID string, env domain.Envelope) {
 		_ = svc.RecordHeartbeat(context.Background(), nodeID)
+		if env.Type == domain.EnvelopeTypeHello {
+			_ = svc.HandleHello(context.Background(), nodeID, env)
+		}
 	})
 	hub.OnDisconnect(func(nodeID string) {
 		_ = svc.MarkOffline(context.Background(), nodeID)

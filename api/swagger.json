@@ -190,6 +190,15 @@
             },
             "domain.JoinNodeRequest": {
                 "properties": {
+                    "hostname": {
+                        "type": "string"
+                    },
+                    "ipAddress": {
+                        "type": "string"
+                    },
+                    "macAddress": {
+                        "type": "string"
+                    },
                     "name": {
                         "type": "string"
                     },

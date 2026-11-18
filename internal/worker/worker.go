@@ -273,9 +273,13 @@ func (w *Worker) buildHelloEnvelope(ctx context.Context) (node.Envelope, error) 
 	w.lastCaps = caps
 	w.mu.Unlock()
 
+	netInfo := DetectNetInfo(w.cfg.MasterURL)
 	raw, err := json.Marshal(domain.HelloPayload{
 		NodeID:       w.cfg.NodeID,
 		Capabilities: caps,
+		Hostname:     netInfo.Hostname,
+		IPAddress:    netInfo.IPAddress,
+		MACAddress:   netInfo.MACAddress,
 	})
 	if err != nil {
 		return node.Envelope{}, err

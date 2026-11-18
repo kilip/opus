@@ -97,10 +97,14 @@ func runJoin(ctx context.Context, rawURL, name string) error {
 		}
 	}
 
+	netInfo := worker.DetectNetInfo(masterURL)
 	joinURL := strings.TrimRight(masterURL, "/") + "/api/nodes/join"
 	joinReq := node.JoinNodeRequest{
-		Token: token,
-		Name:  name,
+		Token:      token,
+		Name:       name,
+		Hostname:   netInfo.Hostname,
+		IPAddress:  netInfo.IPAddress,
+		MACAddress: netInfo.MACAddress,
 	}
 	body, err := json.Marshal(joinReq)
 	if err != nil {
