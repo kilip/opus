@@ -6,6 +6,7 @@ import { Tag } from "~/shared/components/Tag";
 import { formatAbsoluteTime } from "~/shared/util/dates";
 import { useCancelRun } from "../api/actions";
 import { useRun } from "../api/queries";
+import { RunReportSection } from "../components/RunReportSection";
 import { RunStateBadge } from "../components/RunStateBadge";
 import { SessionLogStream } from "../components/SessionLogStream";
 import { buildStateTimeline, isActiveRunState } from "../model";
@@ -15,8 +16,12 @@ export const meta = () => [
 	{ name: "description", content: "Inspect run state timeline and logs" },
 ];
 
-export default function RunDetailPage() {
-	const { id = "" } = useParams();
+export default function RunDetailPage({
+	initialRunId,
+}: {
+	initialRunId?: string;
+} = {}) {
+	const { id = initialRunId ?? "" } = useParams();
 	const runQuery = useRun(id);
 	const cancelRun = useCancelRun();
 
@@ -142,6 +147,13 @@ export default function RunDetailPage() {
 						<p className="mt-1 text-danger-ink">{run.failureReason}</p>
 					</div>
 				)}
+			</div>
+
+			<div className="flex flex-col gap-2">
+				<h2 className="text-xs font-semibold uppercase tracking-wide text-muted">
+					Agent Report
+				</h2>
+				<RunReportSection report={run.report} />
 			</div>
 
 			<div className="flex flex-col gap-2">

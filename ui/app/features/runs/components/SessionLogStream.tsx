@@ -1,21 +1,32 @@
 import { useEffect, useState } from "react";
 
-type SessionLogEntry = {
+import { Tag } from "~/shared/components/Tag";
+import { parseToolCallPayload } from "../model";
+
+export type SessionLogEntry = {
 	seq?: number;
 	kind?: string;
 	at?: string;
 	payload?: unknown;
 };
 
-export function SessionLogStream({ sessionId }: { sessionId?: string }) {
-	const [entries, setEntries] = useState<SessionLogEntry[]>([]);
+export function SessionLogStream({
+	sessionId,
+	initialEntries,
+}: {
+	sessionId?: string;
+	initialEntries?: SessionLogEntry[];
+}) {
+	const [entries, setEntries] = useState<SessionLogEntry[]>(
+		initialEntries ?? [],
+	);
 	const [status, setStatus] = useState<"idle" | "connected" | "closed">(
 		sessionId ? "connected" : "idle",
 	);
 
 	useEffect(() => {
 		if (!sessionId) return;
-		setEntries([]);
+		setEntries(initialEntries ?? []);
 		setStatus("connected");
 
 		const es = new EventSource(`/api/sessions/${sessionId}/events`, {
@@ -39,7 +50,7 @@ export function SessionLogStream({ sessionId }: { sessionId?: string }) {
 		return () => {
 			es.close();
 		};
-	}, [sessionId]);
+	}, [sessionId, initialEntries]);
 
 	if (!sessionId) {
 		return (
@@ -60,21 +71,54 @@ export function SessionLogStream({ sessionId }: { sessionId?: string }) {
 					<p className="text-muted">Waiting for session events…</p>
 				) : (
 					<ul className="space-y-1.5">
-						{entries.map((entry, idx) => (
-							<li
-								key={entry.seq ?? idx}
-								className="rounded bg-surface-2 px-2.5 py-1.5"
-							>
-								<span className="text-muted">
-									#{entry.seq ?? idx + 1} [{entry.kind ?? "event"}]{" "}
-								</span>
-								<span className="break-all text-fg">
-									{typeof entry.payload === "string"
-										? entry.payload
-										: JSON.stringify(entry.payload ?? {})}
-								</span>
-							</li>
-						))}
+						{entries.map((entry, idx) => {
+							const toolCall =
+								entry.kind === "tool_call"
+									? parseToolCallPayload(entry.payload)
+									: null;
+							if (toolCall) {
+								const isOk = toolCall.status === "ok";
+								return (
+									<li
+										key={entry.seq ?? idx}
+										className="flex flex-wrap items-center gap-2 rounded bg-surface-2 px-2.5 py-1.5"
+									>
+										<span className="text-muted">
+											#{entry.seq ?? idx + 1} [tool_call]
+										</span>
+										<span className="font-semibold text-fg">
+											{toolCall.tool}
+										</span>
+										<Tag tone={isOk ? "success" : "danger"}>
+											{toolCall.status}
+										</Tag>
+										{toolCall.duration_ms !== undefined && (
+											<span className="text-muted">
+												{`${toolCall.duration_ms}ms`}
+											</span>
+										)}
+										{toolCall.error && (
+											<span className="text-danger-ink">{toolCall.error}</span>
+										)}
+									</li>
+								);
+							}
+							return (
+								<li
+									key={entry.seq ?? idx}
+									className="rounded bg-surface-2 px-2.5 py-1.5"
+								>
+									<span className="text-muted">
+										#{entry.seq ?? idx + 1} [{entry.kind ?? "event"}]{" "}
+									</span>
+									<span className="break-all text-fg">
+										{typeof entry.payload === "string"
+											? entry.payload
+											: JSON.stringify(entry.payload ?? {})}
+									</span>
+								</li>
+							);
+						})}
 					</ul>
 				)}
 			</div>
