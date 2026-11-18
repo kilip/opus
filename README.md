@@ -71,6 +71,16 @@ A Helm chart is included in `charts/`:
 helm install opus ./charts
 ```
 
+Or install directly from GHCR OCI:
+
+```bash
+helm install opus oci://ghcr.io/kilip/charts/opus --version <version>
+```
+
+- **Secrets (`auth.existingSecret`)**: By default the chart auto-generates `<release>-opus-auth` with `AUTH_SECRET` (reused on `helm upgrade` via `lookup`). Argo CD users (which render via `helm template`) should set `auth.existingSecret` to an existing Secret.
+- **GitHub token (`github.existingSecret`)**: Create `kubectl create secret generic opus-github --from-literal=GH_TOKEN=<token>` and pass `--set github.existingSecret=opus-github` for vibe runs.
+- **Ingress (`config.baseUrl`)**: When enabling `ingress.enabled=true`, set `config.baseUrl` (e.g. `https://opus.example.com`) for OAuth callbacks.
+
 ---
 
 ## 🚀 Quick Start
