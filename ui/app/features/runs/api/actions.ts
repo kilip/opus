@@ -6,25 +6,25 @@ import { runKeys } from "./keys";
 import type { RunItem } from "./types";
 
 export function useCancelRun() {
-	const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
 
-	return useMutation({
-		mutationFn: async ({
-			id,
-			reason,
-		}: {
-			id: string;
-			reason?: string;
-		}): Promise<RunItem> =>
-			unwrap(
-				api.POST("/runs/{id}/cancel", {
-					params: { path: { id } },
-					body: reason ? { reason } : {},
-				}),
-				RUN_ERRORS,
-			),
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: runKeys.all });
-		},
-	});
+  return useMutation({
+    mutationFn: async ({
+      id,
+      reason,
+    }: {
+      id: string;
+      reason?: string;
+    }): Promise<RunItem> =>
+      unwrap(
+        api.POST("/runs/{id}/cancel", {
+          params: { path: { id } },
+          body: reason ? { reason } : {},
+        }),
+        RUN_ERRORS,
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: runKeys.all });
+    },
+  });
 }

@@ -10,23 +10,23 @@ import type { AppDef } from "~/shared/types";
  * disabled entries are placeholders for features that do not exist yet.
  */
 export const apps: AppDef[] = [
-	dashboardApp,
-	tasksApp,
-	projectsApp,
-	nodesApp,
-	{
-		id: "agents",
-		name: "Agents",
-		path: "/agents",
-		icon: "bot",
-		enabled: false,
-	},
-	runsApp,
-	{
-		id: "settings",
-		name: "Settings",
-		path: "/settings",
-		icon: "settings",
-		enabled: false,
-	},
+  dashboardApp,
+  tasksApp,
+  projectsApp,
+  nodesApp,
+  {
+    id: "agents",
+    name: "Agents",
+    path: "/agents",
+    icon: "bot",
+    enabled: false,
+  },
+  runsApp,
+  {
+    id: "settings",
+    name: "Settings",
+    path: "/settings",
+    icon: "settings",
+    enabled: false,
+  },
 ];

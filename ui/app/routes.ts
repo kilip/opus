@@ -15,16 +15,16 @@ import { tasksRoutes } from "./features/tasks/routes";
  * To add a feature: create `features/<name>/routes.ts`, then add it below.
  */
 export default [
-	// Public routes (no application shell).
-	...authRoutes,
+  // Public routes (no application shell).
+  ...authRoutes,
 
-	// Everything inside the shell (navbar, app switcher).
-	shellRoutes([
-		...dashboardRoutes,
-		...tasksRoutes,
-		...projectsRoutes,
-		...nodesRoutes,
-		...runsRoutes,
-		...authSettingsRoutes,
-	]),
+  // Everything inside the shell (navbar, app switcher).
+  shellRoutes([
+    ...dashboardRoutes,
+    ...tasksRoutes,
+    ...projectsRoutes,
+    ...nodesRoutes,
+    ...runsRoutes,
+    ...authSettingsRoutes,
+  ]),
 ] satisfies RouteConfig;
