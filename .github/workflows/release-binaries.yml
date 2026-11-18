@@ -1,0 +1,172 @@
+# Known limitation: macOS and Windows binaries are unsigned and not notarized.
+name: Release Binaries
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        type: string
+        required: true
+        description: "Release tag to build (e.g. v0.3.0-rc2)"
+      dry_run:
+        type: boolean
+        default: true
+        description: "Upload workflow artifacts instead of attaching to GitHub Release"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-binaries-${{ github.event.release.tag_name || inputs.tag || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build (${{ matrix.os }}/${{ matrix.arch }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            ext: tar.gz
+            bin: opus
+          - os: linux
+            arch: arm64
+            ext: tar.gz
+            bin: opus
+          - os: darwin
+            arch: amd64
+            ext: tar.gz
+            bin: opus
+          - os: darwin
+            arch: arm64
+            ext: tar.gz
+            bin: opus
+          - os: windows
+            arch: amd64
+            ext: zip
+            bin: opus.exe
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name || inputs.tag }}
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Build UI bundle
+        working-directory: ui
+        run: bun install --frozen-lockfile && bun run build
+
+      - name: Build and package binary
+        env:
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          VERSION="${TAG#v}"
+          ARCHIVE="opus_${VERSION}_${{ matrix.os }}_${{ matrix.arch }}.${{ matrix.ext }}"
+          mkdir -p dist
+          CGO_ENABLED=0 GOOS="${{ matrix.os }}" GOARCH="${{ matrix.arch }}" \
+            go build -trimpath -ldflags="-s -w -X main.Version=${VERSION}" -o "dist/${{ matrix.bin }}" ./cmd/opus
+          for f in LICENSE README.md; do
+            [ -f "$f" ] && cp "$f" dist/
+          done
+          if [ "${{ matrix.ext }}" = "tar.gz" ]; then
+            tar -C dist -czf "${ARCHIVE}" .
+          else
+            (cd dist && zip -q "../${ARCHIVE}" ./*)
+          fi
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+          echo "ARCHIVE=${ARCHIVE}" >> "$GITHUB_ENV"
+
+      - name: Smoke test archive (linux/amd64)
+        if: matrix.os == 'linux' && matrix.arch == 'amd64'
+        run: |
+          TMP_DIR=$(mktemp -d)
+          SERVER_PID=""
+          cleanup() {
+            [ -n "$SERVER_PID" ] && kill "$SERVER_PID" 2>/dev/null || true
+            rm -rf "$TMP_DIR"
+          }
+          trap cleanup EXIT
+
+          tar -xzf "${ARCHIVE}" -C "$TMP_DIR"
+          OUT=$("$TMP_DIR/opus" --version)
+          echo "$OUT"
+          echo "$OUT" | grep -qF "${VERSION}"
+          if [ "${VERSION}" != "0.1.0" ] && echo "$OUT" | grep -qF "0.1.0"; then
+            echo "Unexpected default version 0.1.0" >&2
+            exit 1
+          fi
+
+          mkdir -p "$TMP_DIR/data"
+          APP_HOME="$TMP_DIR/data" \
+          APP_DATABASE_URL="file:$TMP_DIR/data/opus.db?_pragma=foreign_keys(ON)&_pragma=busy_timeout(5000)" \
+          APP_PORT=7880 \
+            "$TMP_DIR/opus" serve > "$TMP_DIR/server.log" 2>&1 &
+          SERVER_PID=$!
+
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:7880/api/health >/dev/null 2>&1; then
+              break
+            fi
+            sleep 0.5
+          done
+          curl -fsS http://127.0.0.1:7880/api/health >/dev/null
+          curl -fsS http://127.0.0.1:7880/ | grep -qiE '<!doctype|<html'
+
+      - name: Upload archive artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opus-${{ matrix.os }}-${{ matrix.arch }}
+          path: ${{ env.ARCHIVE }}
+          if-no-files-found: error
+
+  release:
+    name: Checksums & Publish
+    needs: build
+    runs-on: ubuntu-latest
+    # Known limitation: macOS and Windows binaries are unsigned and not notarized.
+    permissions:
+      contents: write
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: staging
+          merge-multiple: true
+
+      - name: Generate and verify checksums
+        run: |
+          COUNT=$(ls -1 staging/opus_* | wc -l)
+          if [ "$COUNT" -ne 5 ]; then
+            echo "Expected 5 archives, found $COUNT" >&2
+            exit 1
+          fi
+          (cd staging && sha256sum opus_* > checksums.txt && sha256sum -c checksums.txt)
+
+      - name: Upload dry-run artifacts
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-binaries-dry-run
+          path: staging/*
+          if-no-files-found: error
+
+      - name: Upload assets to GitHub Release
+        if: github.event_name == 'release' || !inputs.dry_run
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          gh release upload "$TAG" staging/opus_* staging/checksums.txt --clobber
