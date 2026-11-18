@@ -29,28 +29,6 @@ const SECTION_CONFIG: Array<{
 		match: (c) =>
 			c.type === "deps" || (c.type === "chore" && c.scope === "deps"),
 	},
-	{
-		key: "deploy",
-		title: "🚀 Deployment",
-		match: (c) => c.type === "deploy" || c.scope === "deploy",
-	},
-	{
-		key: "refactor",
-		title: "♻️ Code Refactoring",
-		match: (c) => c.type === "refactor",
-	},
-	{ key: "docs", title: "📝 Documentation", match: (c) => c.type === "docs" },
-	{ key: "test", title: "🧪 Tests", match: (c) => c.type === "test" },
-	{
-		key: "ci",
-		title: "👷 Continuous Integration",
-		match: (c) => c.type === "ci",
-	},
-	{
-		key: "tools",
-		title: "🔧 Tooling & Chores",
-		match: (c) => ["chore", "tools", "build", "style"].includes(c.type),
-	},
 ];
 
 function sh(cmd: string): string {
@@ -97,8 +75,8 @@ function getVersion(): string {
 	return "0.1.0";
 }
 
-function getCommits(prevTag: string): CommitInfo[] {
-	const range = prevTag ? `${prevTag}..HEAD` : "HEAD";
+function getCommits(prevTag: string, targetRef = "HEAD"): CommitInfo[] {
+	const range = prevTag ? `${prevTag}..${targetRef}` : targetRef;
 	const logOutput = sh(`git log ${range} --no-merges --format="%H|%s"`);
 	if (!logOutput) return [];
 
@@ -142,8 +120,14 @@ function getCommits(prevTag: string): CommitInfo[] {
 export function generateReleaseNotes(): string {
 	const version = getVersion();
 	const repoUrl = getRepoUrl();
-	const prevTag = sh("git describe --tags --abbrev=0 2>/dev/null");
-	const commits = getCommits(prevTag);
+	const currentTag = `v${version}`;
+	const hasCurrentTag =
+		sh(`git rev-parse -q --verify "refs/tags/${currentTag}"`) !== "";
+	const prevTag = hasCurrentTag
+		? sh(`git describe --tags --abbrev=0 "${currentTag}^" 2>/dev/null`)
+		: sh("git describe --tags --abbrev=0 2>/dev/null");
+	const targetRef = hasCurrentTag ? currentTag : "HEAD";
+	const commits = getCommits(prevTag, targetRef);
 
 	const date = new Date().toISOString().split("T")[0];
 	const compareUrl = prevTag
