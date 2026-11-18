@@ -12,6 +12,7 @@ permissions:
   contents: read
   packages: write
   id-token: write
+  statuses: write
 
 concurrency:
   group: build-${{ github.event_name }}-${{ github.ref }}
@@ -69,9 +70,15 @@ jobs:
         if: github.event_name != 'release'
         env:
           FLUX_WEBHOOK_URL: ${{ secrets.FLUX_WEBHOOK_URL }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           if [ -z "$FLUX_WEBHOOK_URL" ]; then exit 0; fi
           curl -sS -f -X POST "$FLUX_WEBHOOK_URL"
+          gh api "repos/${{ github.repository }}/statuses/${{ github.sha }}" \
+            -f state=pending \
+            -f context="deploy/opus-staging" \
+            -f description="Deploying ${BUILD_TS} to staging..." \
+            -f target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
   chart:
     name: Package and push Helm chart

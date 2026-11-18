@@ -5,17 +5,41 @@ on:
     types:
       - HelmRelease/opus-staging.apps
 
+permissions:
+  statuses: write
+
 jobs:
   report:
     name: Report staging deploy status
     runs-on: ubuntu-latest
     steps:
-      - name: Check Flux deploy event
+      - name: Report Flux deploy status to commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SEVERITY: ${{ github.event.client_payload.severity }}
+          REASON: ${{ github.event.client_payload.reason }}
+          MESSAGE: ${{ github.event.client_payload.message }}
         run: |
-          echo "Severity: ${{ github.event.client_payload.severity }}"
-          echo "Reason: ${{ github.event.client_payload.reason }}"
-          echo "Message: ${{ github.event.client_payload.message }}"
-          if [ "${{ github.event.client_payload.severity }}" = "error" ]; then
-            echo "::error::Staging deploy failed: ${{ github.event.client_payload.message }}"
+          echo "Severity: $SEVERITY"
+          echo "Reason: $REASON"
+          echo "Message: $MESSAGE"
+
+          SHA=$(gh api "repos/${{ github.repository }}/commits/main" -q .sha)
+          STATE="success"
+          if [ "$SEVERITY" = "error" ]; then
+            STATE="failure"
+          fi
+
+          DESC="${REASON}: ${MESSAGE}"
+          DESC="${DESC:0:140}"
+
+          gh api "repos/${{ github.repository }}/statuses/${SHA}" \
+            -f state="$STATE" \
+            -f context="deploy/opus-staging" \
+            -f description="$DESC" \
+            -f target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          if [ "$STATE" = "failure" ]; then
+            echo "::error::Staging deploy failed: $MESSAGE"
             exit 1
           fi
