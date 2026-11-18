@@ -121,6 +121,8 @@ Opus is configured via environment variables. Common settings:
 | `AUTH_SECRET` | — | Secret key for signing session cookies |
 | `NOTIFY_TELEGRAM_BOT_TOKEN` | — | Telegram bot token for alerts |
 | `NOTIFY_TELEGRAM_CHAT_ID` | — | Telegram chat ID for alerts |
+| `RUN_POLL_INTERVAL` | `30s` | Interval between run reconciler scans |
+| `RUN_STAGE_TIMEOUT` | `2h` | Timeout for an active run stage |
 
 ---
 
