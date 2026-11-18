@@ -35,6 +35,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Set build timestamp
+        run: echo "BUILD_TS=$(TZ=UTC git show -s --format=%cd --date=format-local:%Y%m%d%H%M%S)" >> "$GITHUB_ENV"
+
       - name: Docker metadata
         id: meta
         uses: docker/metadata-action@v6
@@ -44,7 +47,7 @@ jobs:
             latest=false
           tags: |
             type=raw,value=staging,enable=${{ github.event_name != 'release' }}
-            type=raw,value=staging-${{ github.run_number }},enable=${{ github.event_name != 'release' }}
+            type=raw,value=staging-${{ env.BUILD_TS }},enable=${{ github.event_name != 'release' }}
             type=sha,prefix=sha-,enable=${{ github.event_name != 'release' }}
             type=semver,pattern={{version}},enable=${{ github.event_name == 'release' }}
             type=semver,pattern={{major}}.{{minor}},enable=${{ github.event_name == 'release' }}
