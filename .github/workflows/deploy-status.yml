@@ -1,0 +1,21 @@
+name: Staging Deploy Status
+
+on:
+  repository_dispatch:
+    types:
+      - HelmRelease/opus-staging.apps
+
+jobs:
+  report:
+    name: Report staging deploy status
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Flux deploy event
+        run: |
+          echo "Severity: ${{ github.event.client_payload.severity }}"
+          echo "Reason: ${{ github.event.client_payload.reason }}"
+          echo "Message: ${{ github.event.client_payload.message }}"
+          if [ "${{ github.event.client_payload.severity }}" = "error" ]; then
+            echo "::error::Staging deploy failed: ${{ github.event.client_payload.message }}"
+            exit 1
+          fi
