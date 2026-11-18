@@ -1,5 +1,6 @@
 import { nodesApp } from "~/features/nodes/app";
 import { projectsApp } from "~/features/projects/app";
+import { runsApp } from "~/features/runs/app";
 import { tasksApp } from "~/features/tasks/app";
 import type { AppDef } from "~/shared/types";
 
@@ -18,7 +19,7 @@ export const apps: AppDef[] = [
 		icon: "bot",
 		enabled: false,
 	},
-	{ id: "runs", name: "Runs", path: "/runs", icon: "activity", enabled: false },
+	runsApp,
 	{
 		id: "settings",
 		name: "Settings",

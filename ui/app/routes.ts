@@ -3,6 +3,7 @@ import type { RouteConfig } from "@react-router/dev/routes";
 import { authRoutes, authSettingsRoutes } from "./features/auth/routes";
 import { nodesRoutes } from "./features/nodes/routes";
 import { projectsRoutes } from "./features/projects/routes";
+import { runsRoutes } from "./features/runs/routes";
 import { shellRoutes } from "./features/shell/routes";
 import { tasksRoutes } from "./features/tasks/routes";
 
@@ -21,6 +22,7 @@ export default [
 		...tasksRoutes,
 		...projectsRoutes,
 		...nodesRoutes,
+		...runsRoutes,
 		...authSettingsRoutes,
 	]),
 ] satisfies RouteConfig;
