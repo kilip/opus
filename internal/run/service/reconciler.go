@@ -20,7 +20,9 @@ const defaultPollInterval = 30 * time.Second
 type ReconcilerConfig struct {
 	Tasks        *task.Task
 	Sessions     *session.Session
+	Stages       StageConfig
 	PollInterval time.Duration
+	StageTimeout time.Duration
 	Logger       *slog.Logger
 	IsAgyReady   func(ctx context.Context, nodeID uuid.UUID) bool
 }
@@ -33,6 +35,22 @@ func (s *Service) ReconcileOnce(ctx context.Context, cfg ReconcilerConfig) error
 	logger := cfg.Logger
 	if logger == nil {
 		logger = slog.Default()
+	}
+
+	if err := s.ResumePausedRuns(ctx); err != nil && ctx.Err() == nil {
+		logger.ErrorContext(ctx, "resume paused runs failed", slog.Any("error", err))
+	}
+	if cfg.StageTimeout > 0 {
+		stageCfg := cfg.Stages
+		if stageCfg.Tasks == nil {
+			stageCfg.Tasks = cfg.Tasks
+		}
+		if stageCfg.Sessions == nil {
+			stageCfg.Sessions = cfg.Sessions
+		}
+		if err := s.EnforceStageTimeouts(ctx, stageCfg, cfg.StageTimeout); err != nil && ctx.Err() == nil {
+			logger.ErrorContext(ctx, "enforce stage timeouts failed", slog.Any("error", err))
+		}
 	}
 
 	if cfg.Sessions != nil {
@@ -96,6 +114,9 @@ func (s *Service) Run(ctx context.Context, cfg ReconcilerConfig) error {
 		}
 	}
 
+	if err := s.RecoverActiveRuns(ctx, cfg.Stages); err != nil && ctx.Err() == nil {
+		logger.ErrorContext(ctx, "startup run recovery failed", slog.Any("error", err))
+	}
 	if err := s.ReconcileOnce(ctx, cfg); err != nil && ctx.Err() == nil {
 		logger.ErrorContext(ctx, "initial reconcile scan failed", slog.Any("error", err))
 	}
@@ -108,10 +129,16 @@ func (s *Service) Run(ctx context.Context, cfg ReconcilerConfig) error {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
+			if err := s.RecoverActiveRuns(ctx, cfg.Stages); err != nil && ctx.Err() == nil {
+				logger.ErrorContext(ctx, "startup run recovery failed", slog.Any("error", err))
+			}
 			if err := s.ReconcileOnce(ctx, cfg); err != nil && ctx.Err() == nil {
 				logger.ErrorContext(ctx, "periodic reconcile scan failed", slog.Any("error", err))
 			}
 		case <-trigger:
+			if err := s.RecoverActiveRuns(ctx, cfg.Stages); err != nil && ctx.Err() == nil {
+				logger.ErrorContext(ctx, "startup run recovery failed", slog.Any("error", err))
+			}
 			if err := s.ReconcileOnce(ctx, cfg); err != nil && ctx.Err() == nil {
 				logger.ErrorContext(ctx, "event-triggered reconcile scan failed", slog.Any("error", err))
 			}

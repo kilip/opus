@@ -7,10 +7,13 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
 	"github.com/kilip/opus/ent"
 	"github.com/kilip/opus/internal/platform/eventbus"
+	"github.com/kilip/opus/internal/project"
 	"github.com/kilip/opus/internal/run/domain"
+	"github.com/kilip/opus/internal/run/handler"
 	"github.com/kilip/opus/internal/run/repo"
 	"github.com/kilip/opus/internal/run/service"
 	"github.com/kilip/opus/internal/session"
@@ -37,6 +40,7 @@ const (
 // Sentinel errors re-exported from domain.
 var (
 	ErrRunNotFound       = domain.ErrRunNotFound
+	ErrInvalidRunID      = domain.ErrInvalidRunID
 	ErrInvalidState      = domain.ErrInvalidState
 	ErrInvalidMode       = domain.ErrInvalidMode
 	ErrInvalidTransition = domain.ErrInvalidTransition
@@ -54,15 +58,22 @@ type (
 	ListFilter         = domain.ListFilter
 	RunStartedPayload  = domain.RunStartedPayload
 	RunFinishedPayload = domain.RunFinishedPayload
+	RunResponse        = domain.RunResponse
+	CancelRunRequest   = domain.CancelRunRequest
+	WorkerTransport    = service.WorkerTransport
 )
 
 // Config configures the run feature.
 type Config struct {
 	Bus          *eventbus.Bus
 	Now          func() time.Time
+	AppHome      string
 	Tasks        *task.Task
+	Projects     *project.Project
 	Sessions     *session.Session
+	Worker       WorkerTransport
 	PollInterval time.Duration
+	StageTimeout time.Duration
 	Logger       *slog.Logger
 	IsAgyReady   func(ctx context.Context, nodeID uuid.UUID) bool
 }
@@ -70,6 +81,8 @@ type Config struct {
 // Feature is the public facade for the run feature.
 type Feature struct {
 	svc        *service.Service
+	handler    *handler.Handler
+	stageCfg   service.StageConfig
 	reconciler service.ReconcilerConfig
 }
 
@@ -80,16 +93,38 @@ func New(db *ent.Client, cfg Config) *Feature {
 		Bus: cfg.Bus,
 		Now: cfg.Now,
 	})
+	stageCfg := service.StageConfig{
+		AppHome:  cfg.AppHome,
+		Tasks:    cfg.Tasks,
+		Projects: cfg.Projects,
+		Sessions: cfg.Sessions,
+		Worker:   cfg.Worker,
+		Logger:   cfg.Logger,
+	}
 	return &Feature{
-		svc: svc,
+		svc:      svc,
+		handler:  handler.New(svc, stageCfg),
+		stageCfg: stageCfg,
 		reconciler: service.ReconcilerConfig{
 			Tasks:        cfg.Tasks,
 			Sessions:     cfg.Sessions,
+			Stages:       stageCfg,
 			PollInterval: cfg.PollInterval,
+			StageTimeout: cfg.StageTimeout,
 			Logger:       cfg.Logger,
 			IsAgyReady:   cfg.IsAgyReady,
 		},
 	}
+}
+
+// Register mounts the protected run HTTP routes on r.
+func (f *Feature) Register(r fiber.Router) {
+	f.handler.Register(r)
+}
+
+// Cancel cancels an active run, stops its session, and cleans up its worktree.
+func (f *Feature) Cancel(ctx context.Context, id uuid.UUID, reason string) (Run, error) {
+	return f.svc.CancelRun(ctx, f.stageCfg, id, reason)
 }
 
 // Run starts the reconciler loop and blocks until ctx is cancelled.

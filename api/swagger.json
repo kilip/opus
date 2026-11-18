@@ -84,6 +84,14 @@
                 ],
                 "type": "object"
             },
+            "domain.CancelRunRequest": {
+                "properties": {
+                    "reason": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "domain.ChecksSummary": {
                 "enum": [
                     "passing",
@@ -346,6 +354,94 @@
                 "x-enum-varnames": [
                     "RoleMaster",
                     "RoleWorker"
+                ]
+            },
+            "domain.RunMode": {
+                "enum": [
+                    "vibe"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "ModeVibe"
+                ]
+            },
+            "domain.RunResponse": {
+                "properties": {
+                    "branch": {
+                        "type": "string"
+                    },
+                    "createdAt": {
+                        "type": "string"
+                    },
+                    "endedAt": {
+                        "type": "string"
+                    },
+                    "failureReason": {
+                        "type": "string"
+                    },
+                    "id": {
+                        "type": "string"
+                    },
+                    "mode": {
+                        "$ref": "#/components/schemas/domain.RunMode"
+                    },
+                    "nodeId": {
+                        "type": "string"
+                    },
+                    "pausedUntil": {
+                        "type": "string"
+                    },
+                    "prNumber": {
+                        "type": "integer"
+                    },
+                    "projectId": {
+                        "type": "string"
+                    },
+                    "report": {
+                        "type": "object"
+                    },
+                    "sessionId": {
+                        "type": "string"
+                    },
+                    "stageAttempts": {
+                        "type": "integer"
+                    },
+                    "startedAt": {
+                        "type": "string"
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/domain.RunState"
+                    },
+                    "taskId": {
+                        "type": "string"
+                    },
+                    "updatedAt": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
+            "domain.RunState": {
+                "enum": [
+                    "queued",
+                    "preparing",
+                    "running",
+                    "merged",
+                    "failed",
+                    "needs-info",
+                    "paused",
+                    "cancelled"
+                ],
+                "type": "string",
+                "x-enum-varnames": [
+                    "StateQueued",
+                    "StatePreparing",
+                    "StateRunning",
+                    "StateMerged",
+                    "StateFailed",
+                    "StateNeedsInfo",
+                    "StatePaused",
+                    "StateCancelled"
                 ]
             },
             "domain.SessionResponse": {
@@ -886,6 +982,24 @@
                 },
                 "type": "object"
             },
+            "httpx.Response-array_domain_RunResponse": {
+                "properties": {
+                    "data": {
+                        "items": {
+                            "$ref": "#/components/schemas/domain.RunResponse"
+                        },
+                        "type": "array",
+                        "uniqueItems": false
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
             "httpx.Response-array_domain_SessionResponse": {
                 "properties": {
                     "data": {
@@ -1000,6 +1114,20 @@
                 "properties": {
                     "data": {
                         "$ref": "#/components/schemas/domain.ProjectNodeResponse"
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
+            "httpx.Response-domain_RunResponse": {
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/domain.RunResponse"
                     },
                     "error": {
                         "type": "string"
@@ -2275,6 +2403,212 @@
                 "summary": "Get project tracker status",
                 "tags": [
                     "tracker"
+                ]
+            }
+        },
+        "/runs": {
+            "get": {
+                "description": "Returns runs filtered by optional taskId, projectId, and state.",
+                "operationId": "list-runs",
+                "parameters": [
+                    {
+                        "description": "Filter by task ID",
+                        "in": "query",
+                        "name": "taskId",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Filter by project ID",
+                        "in": "query",
+                        "name": "projectId",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "description": "Filter by run state",
+                        "in": "query",
+                        "name": "state",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-array_domain_RunResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "List runs",
+                "tags": [
+                    "runs"
+                ]
+            }
+        },
+        "/runs/{id}": {
+            "get": {
+                "description": "Returns a single run by its identifier.",
+                "operationId": "get-run",
+                "parameters": [
+                    {
+                        "description": "Run ID",
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-domain_RunResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Get a run",
+                "tags": [
+                    "runs"
+                ]
+            }
+        },
+        "/runs/{id}/cancel": {
+            "post": {
+                "description": "Cancels an active run, stops its session, cleans up its worktree, and resets the task to todo.",
+                "operationId": "cancel-run",
+                "parameters": [
+                    {
+                        "description": "Run ID",
+                        "in": "path",
+                        "name": "id",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.CancelRunRequest",
+                                "summary": "request",
+                                "description": "Optional cancellation reason"
+                            }
+                        }
+                    },
+                    "description": "Optional cancellation reason"
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-domain_RunResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Not Found"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Cancel a run",
+                "tags": [
+                    "runs"
                 ]
             }
         },

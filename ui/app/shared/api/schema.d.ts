@@ -416,6 +416,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List runs
+         * @description Returns runs filtered by optional taskId, projectId, and state.
+         */
+        get: operations["list-runs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get a run
+         * @description Returns a single run by its identifier.
+         */
+        get: operations["get-run"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/runs/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel a run
+         * @description Cancels an active run, stops its session, cleans up its worktree, and resets the task to todo.
+         */
+        post: operations["cancel-run"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/sessions": {
         parameters: {
             query?: never;
@@ -678,6 +738,9 @@ export interface components {
             id: string;
             name: string;
         };
+        "domain.CancelRunRequest": {
+            reason?: string;
+        };
         /** @enum {string} */
         "domain.ChecksSummary": "passing" | "failing" | "pending" | "none";
         "domain.CreateActivityRequest": {
@@ -761,6 +824,29 @@ export interface components {
         };
         /** @enum {string} */
         "domain.Role": "master" | "worker";
+        /** @enum {string} */
+        "domain.RunMode": "vibe";
+        "domain.RunResponse": {
+            branch?: string;
+            createdAt?: string;
+            endedAt?: string;
+            failureReason?: string;
+            id?: string;
+            mode?: components["schemas"]["domain.RunMode"];
+            nodeId?: string;
+            pausedUntil?: string;
+            prNumber?: number;
+            projectId?: string;
+            report?: Record<string, never>;
+            sessionId?: string;
+            stageAttempts?: number;
+            startedAt?: string;
+            state?: components["schemas"]["domain.RunState"];
+            taskId?: string;
+            updatedAt?: string;
+        };
+        /** @enum {string} */
+        "domain.RunState": "queued" | "preparing" | "running" | "merged" | "failed" | "needs-info" | "paused" | "cancelled";
         "domain.SessionResponse": {
             createdAt?: string;
             endedAt?: string;
@@ -916,6 +1002,11 @@ export interface components {
             error?: string;
             meta?: components["schemas"]["httpx.Meta"];
         };
+        "httpx.Response-array_domain_RunResponse": {
+            data?: components["schemas"]["domain.RunResponse"][];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
         "httpx.Response-array_domain_SessionResponse": {
             data?: components["schemas"]["domain.SessionResponse"][];
             error?: string;
@@ -953,6 +1044,11 @@ export interface components {
         };
         "httpx.Response-domain_ProjectNodeResponse": {
             data?: components["schemas"]["domain.ProjectNodeResponse"];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Response-domain_RunResponse": {
+            data?: components["schemas"]["domain.RunResponse"];
             error?: string;
             meta?: components["schemas"]["httpx.Meta"];
         };
@@ -1930,6 +2026,156 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["httpx.Response-domain_TrackerStatusResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "list-runs": {
+        parameters: {
+            query?: {
+                /** @description Filter by task ID */
+                taskId?: string;
+                /** @description Filter by project ID */
+                projectId?: string;
+                /** @description Filter by run state */
+                state?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-array_domain_RunResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "get-run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Run ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-domain_RunResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    "cancel-run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Run ID */
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** @description Optional cancellation reason */
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["domain.CancelRunRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-domain_RunResponse"];
                 };
             };
             /** @description Bad Request */

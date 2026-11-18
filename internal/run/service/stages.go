@@ -23,6 +23,7 @@ var nonAlnumRe = regexp.MustCompile(`[^a-z0-9]+`)
 // WorkerTransport abstracts worker command dispatch and worktree cleanup for run stages.
 type WorkerTransport interface {
 	SendStartRun(ctx context.Context, nodeID uuid.UUID, cmd worker.StartRun) error
+	SendCancelRun(ctx context.Context, nodeID uuid.UUID, cmd worker.CancelRun) error
 	CleanupWorktree(ctx context.Context, nodeID uuid.UUID, projectSlug, taskKey, branch, mappedPath string) error
 }
 

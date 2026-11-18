@@ -16,6 +16,7 @@ import (
 	"github.com/kilip/opus/internal/platform/eventbus"
 	"github.com/kilip/opus/internal/platform/mailer"
 	"github.com/kilip/opus/internal/project"
+	"github.com/kilip/opus/internal/run"
 	"github.com/kilip/opus/internal/session"
 	"github.com/kilip/opus/internal/task"
 	"github.com/kilip/opus/internal/tracker"
@@ -47,6 +48,7 @@ type Option func(*options)
 type options struct {
 	node    *node.Node
 	project *project.Project
+	run     *run.Feature
 	session *session.Session
 	task    *task.Task
 	tracker *tracker.Tracker
@@ -65,6 +67,13 @@ func WithNode(n *node.Node) Option {
 func WithProject(p *project.Project) Option {
 	return func(o *options) {
 		o.project = p
+	}
+}
+
+// WithRun injects a pre-configured Run feature into GetFiber and Opus.
+func WithRun(r *run.Feature) Option {
+	return func(o *options) {
+		o.run = r
 	}
 }
 
@@ -104,6 +113,7 @@ type Opus struct {
 	db      *ent.Client
 	bus     *eventbus.Bus
 	node    *node.Node
+	run     *run.Feature
 	tracker *tracker.Tracker
 	worker  *worker.Worker
 	inProc  *worker.InProcessTransport
@@ -123,6 +133,7 @@ func New(cfg Config, fiberApp *fiber.App, logger *slog.Logger, db *ent.Client, b
 		db:      db,
 		bus:     bus,
 		node:    o.node,
+		run:     o.run,
 		tracker: o.tracker,
 		worker:  o.worker,
 		inProc:  o.inProc,
@@ -151,6 +162,7 @@ func (o *Opus) Serve(ctx context.Context) error {
 	}
 
 	stopWorker := o.startMasterWorker(ctx)
+	stopRun := o.startRunReconciler(ctx)
 
 	addr := net.JoinHostPort(o.cfg.Host, o.cfg.Port)
 	o.logger.InfoContext(ctx, "starting server", "addr", addr)
@@ -160,6 +172,7 @@ func (o *Opus) Serve(ctx context.Context) error {
 		ShutdownTimeout:       o.cfg.ShutdownTimeout,
 	})
 
+	stopRun()
 	stopWorker()
 	if o.node != nil {
 		o.node.Stop()
@@ -186,6 +199,25 @@ func (o *Opus) Serve(ctx context.Context) error {
 		}
 	}
 	return err
+}
+
+func (o *Opus) startRunReconciler(ctx context.Context) func() {
+	if o.run == nil {
+		return func() {}
+	}
+	runCtx, cancel := context.WithCancel(ctx)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := o.run.Run(runCtx); err != nil && runCtx.Err() == nil {
+			o.logger.ErrorContext(runCtx, "run reconciler exited", "error", err)
+		}
+	}()
+	return func() {
+		cancel()
+		wg.Wait()
+	}
 }
 
 func (o *Opus) startMasterWorker(ctx context.Context) func() {

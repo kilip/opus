@@ -21,6 +21,7 @@ import (
 	"github.com/kilip/opus/internal/platform/eventbus"
 	"github.com/kilip/opus/internal/platform/httpx"
 	"github.com/kilip/opus/internal/project"
+	"github.com/kilip/opus/internal/run"
 	"github.com/kilip/opus/internal/session"
 	"github.com/kilip/opus/internal/task"
 	"github.com/kilip/opus/internal/tracker"
@@ -140,6 +141,7 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 		authFeature.Register(authRoutes) // GET /me, POST /logout (protected)
 		var (
 			projectFeature *project.Project
+			runFeature     *run.Feature
 			sessionFeature *session.Session
 			taskFeature    *task.Task
 			trackerFeature *tracker.Tracker
@@ -186,9 +188,22 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 				sessionFeature.HandleWorkerEvent(context.Background(), nodeID, env)
 			})
 		}
+		if o.run != nil {
+			runFeature = o.run
+		} else {
+			runFeature = run.New(db, run.Config{
+				Bus:      bus,
+				AppHome:  cfg.AppHome,
+				Tasks:    taskFeature,
+				Projects: projectFeature,
+				Sessions: sessionFeature,
+				Logger:   logger,
+			})
+		}
 		taskFeature.Register(api)
 		nodeFeature.Register(api)
 		projectFeature.Register(api)
+		runFeature.Register(api)
 		sessionFeature.Register(api)
 		trackerFeature.Register(api)
 	}

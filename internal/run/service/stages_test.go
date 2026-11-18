@@ -19,14 +19,22 @@ import (
 )
 
 type fakeWorkerTransport struct {
-	mu       sync.Mutex
-	started  []worker.StartRun
-	cleanups []string
+	mu        sync.Mutex
+	started   []worker.StartRun
+	cancelled []worker.CancelRun
+	cleanups  []string
 }
 
 func (f *fakeWorkerTransport) SendStartRun(_ context.Context, _ uuid.UUID, cmd worker.StartRun) error {
 	f.mu.Lock()
 	f.started = append(f.started, cmd)
+	f.mu.Unlock()
+	return nil
+}
+
+func (f *fakeWorkerTransport) SendCancelRun(_ context.Context, _ uuid.UUID, cmd worker.CancelRun) error {
+	f.mu.Lock()
+	f.cancelled = append(f.cancelled, cmd)
 	f.mu.Unlock()
 	return nil
 }
