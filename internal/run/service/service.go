@@ -88,7 +88,7 @@ func (s *Service) Transition(
 		return domain.Run{}, err
 	}
 
-	if to == domain.StateRunning {
+	if to == domain.StatePreparing {
 		s.publishStarted(ctx, run)
 	}
 	if domain.IsFinishedOutcome(to) {

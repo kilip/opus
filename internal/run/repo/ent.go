@@ -115,7 +115,7 @@ func (r *Ent) Transition(
 		SetState(entrun.State(to)).
 		SetUpdatedAt(now)
 
-	if to == domain.StateRunning && row.StartedAt == nil {
+	if (to == domain.StatePreparing || to == domain.StateRunning) && row.StartedAt == nil {
 		upd.SetStartedAt(now)
 	}
 	if domain.IsTerminalState(to) {
