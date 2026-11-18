@@ -1,188 +1,83 @@
 # AGENTS.md
 
-Opus is a single-binary **Modular Monolith** web dashboard for AI coding agents (Go + Fiber v3 backend, Entgo ORM, OpenAPI 3.1 contract, React Router Framework Mode SPA embedded via `ui/embed.go`).
+Opus is the **Command Center for AI-Driven Software Factory**
 
-## 1. Git & Branching Gate (Run First)
+## Tech Stack
 
-- **NEVER commit or push to `main`.**
-  - **Exception**: Pushing/merging to `main` is allowed ONLY inside an automated run session explicitly started with `/vibe <issue-number>` (`Run.mode = vibe`), as enforced by the `internal/run` and `internal/worker/policy` policy spec.
-- Before creating or editing any file, check the active branch:
+- **Backend**: Go 1.27, Fiber v3, Entgo, SQLite (`modernc.org/sqlite`), Swag v2 (OpenAPI 3.1)
+- **Frontend**: React 19, React Router 8 Framework Mode, TypeScript, Tailwind CSS v4
+- **Client Data**: TanStack Query + `openapi-fetch` (types generated from `api/swagger.json`)
+- **Tooling**: Bun, Vite 8, Biome, `golangci-lint`, `mise`
 
-  ```bash
-  git branch --show-current
-  ```
-- If on `main`, switch to an existing branch or create one before writing code:
+## Git & Commit Conventions
 
-  ```bash
-  git switch -c <type>/<slug>   # e.g. feat/task-crud, fix/api-health, docs/agents-md
-  ```
-- Push feature branches only when explicitly instructed by the user.
-- **Commit messages** are enforced by `commitlint.config.ts` and `.husky/commit-msg`:
-  - Format: `<type>(<scope>): <subject>` (header and body lines ≤ 80 chars).
-  - Required `<scope>`: `api`, `ui`, `deps`, `release`, `tools`, `deploy`, `docs`. Note that `api` covers all backend Go code (`internal/`, `ent/`, `cmd/`), e.g., `feat(api): ...`, instead of inventing a new scope.
-  - **Default to non-release types** (`chore`, `ci`, `build`, `docs`, `refactor`, `test`, `style`). NEVER use `feat`, `fix`, `perf`, or `revert` unless the change modifies shipped runtime code (`cmd/`, `internal/`, `ent/`, `ui/app/`) and MUST cut a new release version (per `.github/release-please.json`).
-  - Scope-to-type rule of thumb: `deploy` → `build`/`chore`, `release` → `ci`/`chore`, `tools` → `ci`/`chore`, `docs` → `docs`, `deps` → `chore(deps)` (only `api`/`ui` runtime changes use `feat`/`fix`/`perf`).
-  - **Multi-stage atomic commits**: NEVER bundle unrelated files or scopes into one commit (`git add -A` is forbidden across topics). Group and commit files in separate stages by `<type>(<scope>)`.
+- **Default to non-release types** (`chore`, `ci`, `build`, `docs`, `refactor`, `test`, `style`). NEVER use `feat`, `fix`, `perf`, or `revert` unless the change modifies shipped runtime code (`cmd/`, `internal/`, `ent/`, `ui/app/`) and intentionally cuts a release (per `.github/release-please.json`).
+- **Scope-to-type mapping**: `deploy` → `build`/`chore`, `release` → `ci`/`chore`, `tools` → `ci`/`chore`, `docs` → `docs`, `deps` → `chore(deps)`; only `api`/`ui` runtime changes use `feat`/`fix`/`perf`.
+- **Atomic commits**: NEVER bundle unrelated files or scopes into one commit (`git add -A` across topics is forbidden). Stage and commit each `<type>(<scope>)` group separately.
 
-## 2. Modular Monolith Architecture ("Feature" Terminology)
+## Repo Layout
 
-Domain units across both backend and frontend are called **features** (never "modules"). `vibe` is an execution mode chosen on a task (via label) and executed by `internal/run` (not a standalone `agent` feature).
+- `cmd/opus/` — CLI entrypoint & Swag root (`@BasePath /api`)
+- `ent/schema/` — Entgo unified schemas & generated client (`ent/`)
+- `extensions/agy/` — Antigravity plugin (`mcp_config.json`, `/vibe` skill, subagents)
+- `internal/app/` — HTTP server lifecycle, config, Fiber router wiring
+- `internal/platform/` — `eventbus` (pub/sub), `httpx` (`{ data, meta, error }` envelope & errors), `mailer`
+- `internal/<feature>/` — `agent`, `auth`, `node`, `notify`, `project`, `run`, `session`, `task`, `tracker`, `user`, `worker`
+- `api/swagger.json` — generated OpenAPI 3.1 spec (DO NOT EDIT)
+- `ui/embed.go` & `ui/app/` — `routes.ts`, `apps.ts`, `shared/` (`api/`, `auth/`, `util/`), `features/<feature>/`
 
-```txt
-├── cmd/opus/                     # CLI entrypoint & Swag root (@BasePath /api)
-├── ent/                          # Entgo unified schema (ent/schema/) & generated graph client
-├── extensions/agy/               # Antigravity plugin (mcp_config.json, /vibe skill, subagents)
-├── internal/
-│   ├── agent/                    # MCP agent tool feature (no repo/ subpackage; uses sibling root facades)
-│   ├── app/                      # HTTP server lifecycle, config, Fiber router wiring
-│   ├── auth/                     # Auth feature (OTP, OAuth providers, cookie sessions)
-│   ├── node/                     # Node registry, join tokens, live WebSocket hub, stale detector
-│   ├── notify/                   # External notifications (Telegram) subscribed to eventbus
-│   ├── platform/
-│   │   ├── eventbus/             # In-memory pub/sub broker for decoupled feature events
-│   │   ├── httpx/                # { data, meta, error } envelope, sentinel errors, ErrorHandler
-│   │   └── mailer/               # Email delivery abstraction (SMTP, console mailer)
-│   ├── project/                  # Project registry & per-node local path mappings
-│   ├── run/                      # Automated task execution (vibe mode), reconciler, stages, policy builder
-│   ├── session/                  # Agent session lifecycle, FIFO slot queue, ordered SSE events
-│   ├── task/                     # Task CRUD, labels, and activity timeline
-│   ├── tracker/                  # GitHub issue/PR sync poller & label/status mapping
-│   ├── user/                     # User domain & profile management
-│   ├── worker/                   # Worker daemon, git worktree manager, agy ACP provider, policy enforcer
-│   └── <feature>/                # Standard feature layout:
-│       ├── <feature>.go          # Public feature facade: New(...), Register(r fiber.Router); wiring only
-│       ├── domain/               # Entities, enums, sentinel errors (errors.go), ALL request/response DTOs (dto.go)
-│       ├── repo/                 # Storage implementation (in-memory or Ent client)
-│       ├── service/              # ALL business logic; depends on domain/ and repo/
-│       └── handler/              # Thin Fiber handlers + Swag annotations + handler tests (no DTOs, no business logic)
-├── api/
-│   └── swagger.json              # Generated OpenAPI 3.1 spec (DO NOT EDIT)
-└── ui/
-    ├── embed.go                  # //go:embed all:build/client
-    └── app/
-        ├── routes.ts             # Root route aggregator
-        ├── apps.ts               # App switcher registry
-        ├── shared/               # Cross-feature UI primitives, theme, api/client.ts, util/
-        │   ├── api/              # client.ts (api, unwrap, unwrapMeta, ApiError), errors.ts
-        │   ├── auth/             # RequireAuth route guard & session state
-        │   └── util/             # dates.ts, cross-feature pure utility functions
-        └── features/<feature>/   # UI feature
-            ├── app.ts            # App switcher entry (AppDef)
-            ├── routes.ts         # React Router route entries
-            ├── model.ts          # Feature domain constants, stages, filters, helpers
-            ├── api/
-            │   ├── keys.ts       # TanStack Query key factory
-            │   ├── types.ts      # Schema type aliases from ~/shared/api/schema
-            │   ├── errors.ts     # Feature error code -> message map
-            │   ├── queries.ts    # queryOptions + useQuery hooks (unwrap)
-            │   └── actions.ts    # useMutation hooks + cache invalidation
-            ├── components/       # Feature-scoped components
-            └── pages/            # Route page components
-```
+## Feature Boundary Rules
 
-### Feature Boundary Rules
+### Go Feature Isolation
 
-1. **Go Feature Isolation**:
-   - External packages (`internal/app` or sibling features) MUST import only the feature root package `internal/<feature>`, NEVER its subpackages (`internal/<feature>/handler`, `internal/<feature>/service`, `internal/<feature>/repo`, etc.).
-   - Backend feature layout follows `<feature>.go` facade (`New(...)` + `Register(r fiber.Router)`), `domain/` for domain models, sentinel errors, and all DTOs, `repo/` for storage implementations, `service/` for business logic, and `handler/` for HTTP endpoints.
-   - **Dependency direction**: `handler → service → repo → domain`. `<feature>.go` wires `repo`, `service`, and `handler` together inside `New(...)`.
-   - **Thin handlers**: a handler only parses/validates the request, calls `service`, and maps the result or error to the `httpx` envelope. NEVER put business logic in `handler/`, and NEVER call `repo/` from `handler/`.
-   - **Service**: owns all business rules and orchestration. It uses `domain` types only; it MUST NOT import `fiber`, `handler`, or `httpx`.
-   - **Event bus & decoupling**: features publish facts through the bus and never import each other to react to them; event types are owned by the publishing feature, defined in its `domain/` and re-exported from its root package (constants and type aliases).
-   - **MCP endpoint boundary**: MCP transport lives solely in `internal/agent/handler/mcp.go` (`POST /mcp`), mounted outside `/api` behind its own Bearer node credential or user session cookie auth (bypassing `/api` CSRF/cookie middleware and excluded from `api/swagger.json`); `internal/agent` has no `repo/` subpackage and reads/writes solely through sibling root facades.
-   - Unified HTTP response envelope `{ data, meta, error }` and status mapping are provided by `internal/platform/httpx`.
-2. **UI Feature Isolation**:
-   - Files in `ui/app/features/<feature>/` MUST NOT import from sibling `~/features/*`.
-   - Shared components, hooks, api client helpers (`unwrap`, `unwrapMeta`), base error resolvers, and utilities belong in `ui/app/shared/` (`ui/app/shared/util/`).
-   - Feature UI topology organizes data access under `api/` (`keys.ts`, `types.ts`, `errors.ts`, `queries.ts`, `actions.ts`), domain helpers/filters in `model.ts`, components in `components/`, and routes in `pages/`.
-   - Cross-feature composition happens only in `ui/app/routes.ts` and `ui/app/apps.ts`.
+Import boundaries are enforced by `depguard` in `.golangci.yml`.
 
-## 3. Backend: Fiber v3, Entgo, Swag & OpenAPI 3.1
+- **Imports & layers**: external/sibling packages import only `internal/<feature>` root; dependency direction is `handler → service → repo → domain`; `service/` uses `domain` types only (no `fiber`, `ent`, `httpx`, `handler`).
+- **Standard layout**: `<feature>.go` facade (`New(...)`, `Register(r fiber.Router)`, wiring only), `domain/` (entities, enums, `errors.go`, `dto.go`), `repo/`, `service/`, `handler/`.
+- **Thin handlers**: parse/validate request, call `service`, map result/error via `httpx`. Zero business logic in `handler/`.
+- **Event bus**: publish facts through `eventbus`; never import sibling features to react. Event types live in the publisher's `domain/` and are re-exported from its root package.
+- **MCP boundary**: `internal/agent` has no `repo/` and uses sibling root facades. MCP transport lives solely in `internal/agent/handler/mcp.go` (`POST /mcp`, mounted outside `/api` with Bearer node or session cookie auth, excluded from `api/swagger.json`).
 
-- **Fiber v3**: Register feature routes under the `/api` group in `internal/app/fiber.go` via `<feature>.Register(api)`. Use `fiber.Ctx` (v3 signature: `func(c fiber.Ctx) error`).
-- **Environment Variables**: Platform and global settings use `APP_*`, auth uses `AUTH_*`, and other features use their own uppercase feature name (e.g. `TASK_*`).
-- **Entgo (`ent/`)**: All database schemas live in `ent/schema/`. All entity IDs are UUID v7 generated via the shared `newID` helper in `ent/schema/id.go`. Share the generated `*ent.Client` across features via dependency injection in `Register` / `New`. Generated Ent code is committed and `go generate ./ent` must be re-run after schema changes.
-- **Strict DTO Boundary**:
-  - NEVER expose generated `ent` models directly in HTTP responses or Swag annotations.
-  - ALL request/response DTOs are defined in `internal/<feature>/domain/dto.go`. Handlers, services, and Swag annotations reference `domain.<Dto>`; NEVER define DTOs in `handler/`.
-- **OpenAPI 3.1 Contract Pipeline**:
-  - Every handler MUST carry Swag v2 godoc annotations (`@Summary`, `@Description`, `@ID`, `@Tags`, `@Produce`, `@Param`, `@Success`, `@Failure`, `@Router`).
-  - After changing any handler annotation or DTO, regenerate the OpenAPI 3.1 spec and TypeScript schema:
+### UI Feature Isolation
 
-    ```bash
-    mise run api
-    ```
-  - NEVER hand-edit `api/swagger.json` or `ui/app/shared/api/schema.d.ts`.
+- `ui/app/features/<feature>/` MUST NOT import sibling `~/features/*`. Cross-feature composition happens only in `ui/app/routes.ts` and `ui/app/apps.ts`.
+- Shared primitives, hooks, API helpers (`unwrap`, `unwrapMeta`, `ApiError`), error resolvers, and utilities belong in `ui/app/shared/` (`api/`, `auth/`, `util/`).
+- **Feature layout**: `app.ts` (`AppDef`), `routes.ts`, `model.ts`, `components/`, `pages/`, and `api/` (`keys.ts`, `types.ts`, `errors.ts`, `queries.ts`, `actions.ts`).
 
-### Auth
+## Backend: Fiber v3, Entgo, Swag & OpenAPI 3.1
 
-Opus uses passwordless (email OTP + OAuth) authentication with cookie sessions.
-- The provider interface lives in `internal/auth/provider/` (implements OAuth providers such as GitHub, Google, and Facebook).
-- The `RequireAuth` guard lives in `ui/app/shared/auth/` to protect authenticated UI routes.
+- **Fiber v3**: Register feature routes under `/api` in `internal/app/fiber.go` via `<feature>.Register(api)`. Use `fiber.Ctx`.
+- **Environment Variables**: Global/platform (including Sentry & UI build/dev config) use `APP_*`, auth uses `AUTH_*`, test-only helper flags use `TEST_*`, and features use `<FEATURE>_*` (`TASK_*`, `TRACKER_*`, `WORKER_*`, `NOTIFY_*`).
+- **Entgo (`ent/`)**: Schemas live in `ent/schema/` with UUID v7 IDs via `newID` (`ent/schema/id.go`). Inject `*ent.Client` via `New` / `Register`. Re-run `go generate ./ent` after schema changes and commit generated code.
+- **Strict DTO Boundary**: NEVER expose `ent` models in HTTP responses or Swag annotations. Define all DTOs in `internal/<feature>/domain/dto.go`; NEVER define DTOs in `handler/`.
+- **OpenAPI 3.1 Pipeline**: Every handler MUST carry Swag v2 annotations (`@Summary`, `@Description`, `@ID`, `@Tags`, `@Produce`, `@Param`, `@Success`, `@Failure`, `@Router`). After changing handlers or DTOs, run `mise run api` — NEVER hand-edit `api/swagger.json` or `ui/app/shared/api/schema.d.ts`.
+- **Auth**: Passwordless (email OTP + OAuth) with cookie sessions; providers in `internal/auth/provider/`, UI route guard `RequireAuth` in `ui/app/shared/auth/`.
 
-### Environment Variables
+## Frontend: React Router Framework Mode
 
-| Variable | Default | Description |
-| :--- | :--- | :--- |
-| `APP_HOME` | `""` | Opus home directory for repos, worktrees, and node config |
-| `APP_DATABASE_URL` | `file:opus.db?...` | SQLite / LibSQL database connection string |
-| `AUTH_SECRET` | `""` | Secret key used to sign session cookies (required in prod) |
-| `AUTH_SESSION_TTL` | `720h` | Session duration / time-to-live |
-| `APP_BASE_URL` | `http://localhost:7880` | Canonical public base URL for OAuth callbacks |
-| `APP_TRUSTED_ORIGINS` | `""` | Comma-separated list of allowed CORS / redirect origins |
-| `APP_SMTP_*` | — | SMTP mailer settings; falls back to console mailer if `APP_SMTP_HOST` is unset |
-| `APP_SMTP_HOST` | `""` | SMTP server host |
-| `APP_SMTP_PORT` | `587` | SMTP server port |
-| `APP_SMTP_USERNAME` | `""` | SMTP authentication username |
-| `APP_SMTP_PASSWORD` | `""` | SMTP authentication password |
-| `APP_SMTP_FROM` | `""` | Outgoing sender email address |
-| `AUTH_GITHUB_ID` | `""` | GitHub OAuth client ID |
-| `AUTH_GITHUB_SECRET` | `""` | GitHub OAuth client secret |
-| `AUTH_GOOGLE_ID` | `""` | Google OAuth client ID |
-| `AUTH_GOOGLE_SECRET` | `""` | Google OAuth client secret |
-| `AUTH_FACEBOOK_ID` | `""` | Facebook OAuth client ID |
-| `AUTH_FACEBOOK_SECRET` | `""` | Facebook OAuth client secret |
-| `TRACKER_POLL_INTERVAL` | `60s` | Interval between tracker sync polling cycles |
-| `WORKER_AGY_BIN` | `agy` | Path or binary name for the `agy` ACP CLI on worker nodes |
-| `NOTIFY_TELEGRAM_BOT_TOKEN` | `""` | Telegram Bot API token (disables notifier when empty) |
-| `NOTIFY_TELEGRAM_CHAT_ID` | `""` | Telegram chat ID for `run.finished` and `node.offline` alerts |
+- **Skill Reference**: Before changing routing, route modules, navigation, params, or rendering config, read `./ui/.agents/skills/react-router/SKILL.md` and `./ui/.agents/skills/react-router/references/framework-mode.md` (and version-matched docs in `ui/node_modules/react-router/docs/`).
+- **Routing & Data Fetching**: Register feature `routes.ts` in `ui/app/routes.ts`. Use React Router for routing, `Outlet`, `meta`, and URL state (`useParams`, `useSearchParams`), and **TanStack Query + `openapi-fetch`** (`api`, `unwrap` from `~/shared/api/client`) inside `features/<feature>/api/` for all reads/writes.
 
-## 4. Frontend: React Router Framework Mode (`ssr: false`)
-
-- **Skill Reference**: Before modifying routing, route modules, navigation, params, or rendering config, read `./ui/.agents/skills/react-router/SKILL.md` and `./ui/.agents/skills/react-router/references/framework-mode.md` (plus version-matched docs in `ui/node_modules/react-router/docs/`).
-- **SPA Framework Mode**:
-  - `ui/react-router.config.ts` sets `ssr: false`.
-  - NEVER define server-only route exports (`loader`, `action`, `headers`).
-  - Each feature defines routes in `ui/app/features/<feature>/routes.ts` using `@react-router/dev/routes` and registers them in `ui/app/routes.ts`.
-- **Data Fetching & Mutations**:
-  - Use React Router Framework Mode for routing, layouts (`Outlet`), `meta`, and URL state (`useParams`, `useSearchParams`).
-  - Use **TanStack Query + `openapi-fetch`** (`api` and `unwrap` from `~/shared/api/client`) for all API reads and writes inside `ui/app/features/<feature>/api/`:
-    - `keys.ts` — query key factory
-    - `queries.ts` — `queryOptions` + `useQuery` hooks
-    - `actions.ts` — mutations + cache invalidation
-    - `types.ts` — aliases from `~/shared/api/schema`
-
-## 5. Lazy Dev & `ponytail:` Philosophy
+## Lazy Dev & `ponytail:` Philosophy
 
 Lazy means efficient, not careless. The best code is the code never written.
 
 - **Decision Ladder** (stop at the first rung that holds):
-  1. **YAGNI**: Does this need to exist at all?
-  2. **Stdlib first**: Go/JS standard library does it? Use it.
-  3. **Native platform**: CSS over JS, DB/Ent constraint over app code, HTML form/input attributes over custom state.
-  4. **Existing dependency**: Already in `go.mod` or `package.json`? Use it; never add a new package for what a few lines can do.
-  5. **One-liner**: Can it be one clear line? Write one line.
-  6. **Minimum working code**: Fewest files, shortest working diff, deletion over addition, boring over clever.
-- **No Speculative Abstraction**: No interface with one implementation (e.g. `eventbus.Bus` is a concrete type with no interface), no factory for one product, no config knob for a constant, no `repository/` wrapper without real domain complexity. `service/` is mandatory per feature (it is the home of business logic), but keep it plain structs and functions: no service interface unless there are 2+ implementations.
-- **`ponytail:` Comments**: Mark deliberate simplifications inline with a `ponytail:` comment naming the ceiling and upgrade path:
-
+  1. **YAGNI**: Does it need to exist?
+  2. **Stdlib first**: Go/JS stdlib does it? Use it.
+  3. **Native platform**: CSS over JS, DB/Ent constraint over app code, HTML attributes over custom state.
+  4. **Existing dependency**: Already in `go.mod` or `package.json`? Use it; never add a package for a few lines.
+  5. **One-liner**: Can it be one clear line? Write it.
+  6. **Minimum working code**: Fewest files, shortest diff, deletion over addition, boring over clever.
+- **No Speculative Abstraction**: No single-implementation interface (e.g. `eventbus.Bus` is a concrete struct), no single-product factory, no config knob for a constant, no `repository/` wrapper without domain complexity. Keep `service/` as plain structs/functions unless 2+ implementations exist.
+- **`ponytail:` Comments**: Mark deliberate simplifications inline with ceiling and upgrade path:
   ```go
   // ponytail: in-memory slice filter; move to Ent predicate when tasks > 1k
   ```
-- **Never Simplify Away**: Input validation at trust boundaries, error handling that prevents data loss, security, accessibility, or explicitly requested behavior.
-- **Testing**: Leave one focused runnable check for non-trivial logic; skip tests for trivial one-liners.
+- **Never Simplify Away**: Input validation at trust boundaries, data-loss error handling, security, accessibility, or explicitly requested behavior.
+- **Testing**: One focused runnable check for non-trivial logic; skip tests for trivial one-liners.
 
-## 6. Verification Commands
+## Verification Commands
 
 Run the narrowest verification covering your change before finishing:
 
