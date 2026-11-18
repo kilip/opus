@@ -41,3 +41,9 @@ WORKER_AGY_BIN=agy opus worker
 
 - `WORKER_AGY_BIN`: Path or binary name for `agy` (defaults to `agy`).
 - `APP_HOME`: Base directory for cloned repos (`<APP_HOME>/repos/<slug>`), worktrees (`<APP_HOME>/wt/<project>/<task-key>`), and `node.json`.
+- `GH_TOKEN`: Passed through from the worker environment to `agy` subprocesses so `gh` commands can create and merge pull requests.
+
+### 4. Run Execution & Worktree Lifecycle
+
+- **`start_run`**: Verifies `agy` is installed and authenticated (`agy auth status`), clones or validates the project repository, creates an isolated git worktree at `<APP_HOME>/wt/<project>/<task-key>` on the task branch, starts `agy acp` with policy enforcement and Opus MCP injection, streams `session/update` events, and reports `session_completed` (or `run_error` / `run_cancelled`).
+- **`cleanup_worktree`**: Removes the task worktree directory and deletes the local task branch when a run finishes or is cleaned up.
