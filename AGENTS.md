@@ -5,6 +5,7 @@ Opus is a single-binary **Modular Monolith** web dashboard for AI coding agents 
 ## 1. Git & Branching Gate (Run First)
 
 - **NEVER commit or push to `main`.**
+  - **Exception**: Pushing/merging to `main` is allowed ONLY inside an automated run session explicitly started with `/vibe <issue-number>` (`Run.mode = vibe`), as enforced by the `internal/run` and `internal/worker/policy` policy spec.
 - Before creating or editing any file, check the active branch:
 
   ```bash
@@ -25,7 +26,7 @@ Opus is a single-binary **Modular Monolith** web dashboard for AI coding agents 
 
 ## 2. Modular Monolith Architecture ("Feature" Terminology)
 
-Domain units across both backend and frontend are called **features** (never "modules").
+Domain units across both backend and frontend are called **features** (never "modules"). `vibe` is an execution mode chosen on a task (via label) and executed by `internal/run` (not a standalone `agent` feature).
 
 ```txt
 ├── cmd/opus/                     # CLI entrypoint & Swag root (@BasePath /api)
@@ -33,12 +34,20 @@ Domain units across both backend and frontend are called **features** (never "mo
 ├── internal/
 │   ├── app/                      # HTTP server lifecycle, config, Fiber router wiring
 │   ├── auth/                     # Auth feature (OTP, OAuth providers, cookie sessions)
+│   ├── node/                     # Node registry, join tokens, live WebSocket hub, stale detector
+│   ├── notify/                   # External notifications (Telegram) subscribed to eventbus
 │   ├── platform/
 │   │   ├── eventbus/             # In-memory pub/sub broker for decoupled feature events
 │   │   ├── httpx/                # { data, meta, error } envelope, sentinel errors, ErrorHandler
 │   │   └── mailer/               # Email delivery abstraction (SMTP, console mailer)
+│   ├── project/                  # Project registry & per-node local path mappings
+│   ├── run/                      # Automated task execution (vibe mode), reconciler, stages, policy builder
+│   ├── session/                  # Agent session lifecycle, FIFO slot queue, ordered SSE events
+│   ├── task/                     # Task CRUD, labels, and activity timeline
+│   ├── tracker/                  # GitHub issue/PR sync poller & label/status mapping
 │   ├── user/                     # User domain & profile management
-│   └── <feature>/                # Other Go features (e.g. internal/task)
+│   ├── worker/                   # Worker daemon, git worktree manager, agy ACP provider, policy enforcer
+│   └── <feature>/                # Standard feature layout:
 │       ├── <feature>.go          # Public feature facade: New(...), Register(r fiber.Router); wiring only
 │       ├── domain/               # Entities, enums, sentinel errors (errors.go), ALL request/response DTOs (dto.go)
 │       ├── repo/                 # Storage implementation (in-memory or Ent client)
@@ -112,6 +121,7 @@ Opus uses passwordless (email OTP + OAuth) authentication with cookie sessions.
 
 | Variable | Default | Description |
 | :--- | :--- | :--- |
+| `APP_HOME` | `""` | Opus home directory for repos, worktrees, and node config |
 | `APP_DATABASE_URL` | `file:opus.db?...` | SQLite / LibSQL database connection string |
 | `AUTH_SECRET` | `""` | Secret key used to sign session cookies (required in prod) |
 | `AUTH_SESSION_TTL` | `720h` | Session duration / time-to-live |
@@ -130,6 +140,9 @@ Opus uses passwordless (email OTP + OAuth) authentication with cookie sessions.
 | `AUTH_FACEBOOK_ID` | `""` | Facebook OAuth client ID |
 | `AUTH_FACEBOOK_SECRET` | `""` | Facebook OAuth client secret |
 | `TRACKER_POLL_INTERVAL` | `60s` | Interval between tracker sync polling cycles |
+| `WORKER_AGY_BIN` | `agy` | Path or binary name for the `agy` ACP CLI on worker nodes |
+| `NOTIFY_TELEGRAM_BOT_TOKEN` | `""` | Telegram Bot API token (disables notifier when empty) |
+| `NOTIFY_TELEGRAM_CHAT_ID` | `""` | Telegram chat ID for `run.finished` and `node.offline` alerts |
 
 ## 4. Frontend: React Router Framework Mode (`ssr: false`)
 
