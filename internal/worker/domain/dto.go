@@ -8,8 +8,9 @@ import (
 
 // Command type constants carried inside command envelope payloads.
 const (
-	CommandStartRun  = "start_run"
-	CommandCancelRun = "cancel_run"
+	CommandStartRun        = "start_run"
+	CommandCancelRun       = "cancel_run"
+	CommandCleanupWorktree = "cleanup_worktree"
 )
 
 // Event type constants carried inside worker event envelope payloads.
@@ -60,6 +61,15 @@ type CancelRun struct {
 	Reason string `json:"reason,omitempty"`
 }
 
+// CleanupWorktree is the command payload for removing a task's worktree and branch on a worker.
+type CleanupWorktree struct {
+	Type        string `json:"type,omitempty"`
+	ProjectSlug string `json:"projectSlug"`
+	TaskKey     string `json:"taskKey"`
+	Branch      string `json:"branch,omitempty"`
+	MappedPath  string `json:"mappedPath,omitempty"`
+}
+
 // Event is the payload for worker-to-master event envelopes.
 type Event struct {
 	Type         string        `json:"type"`
@@ -86,6 +96,20 @@ func NewStartRunEnvelope(id string, cmd StartRun) (node.Envelope, error) {
 // NewCancelRunEnvelope encodes a CancelRun command into a node.Envelope.
 func NewCancelRunEnvelope(id string, cmd CancelRun) (node.Envelope, error) {
 	cmd.Type = CommandCancelRun
+	raw, err := json.Marshal(cmd)
+	if err != nil {
+		return node.Envelope{}, err
+	}
+	return node.Envelope{
+		Type:    node.EnvelopeTypeCommand,
+		ID:      id,
+		Payload: raw,
+	}, nil
+}
+
+// NewCleanupWorktreeEnvelope encodes a CleanupWorktree command into a node.Envelope.
+func NewCleanupWorktreeEnvelope(id string, cmd CleanupWorktree) (node.Envelope, error) {
+	cmd.Type = CommandCleanupWorktree
 	raw, err := json.Marshal(cmd)
 	if err != nil {
 		return node.Envelope{}, err

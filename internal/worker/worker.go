@@ -22,11 +22,12 @@ import (
 
 // Re-exported command and event constants from domain.
 const (
-	CommandStartRun   = domain.CommandStartRun
-	CommandCancelRun  = domain.CommandCancelRun
-	EventRunCancelled = domain.EventRunCancelled
-	EventRunError     = domain.EventRunError
-	EventCapabilities = domain.EventCapabilities
+	CommandStartRun        = domain.CommandStartRun
+	CommandCancelRun       = domain.CommandCancelRun
+	CommandCleanupWorktree = domain.CommandCleanupWorktree
+	EventRunCancelled      = domain.EventRunCancelled
+	EventRunError          = domain.EventRunError
+	EventCapabilities      = domain.EventCapabilities
 
 	ToolStatusReady           = node.ToolStatusReady
 	ToolStatusUnauthenticated = node.ToolStatusUnauthenticated
@@ -35,18 +36,20 @@ const (
 
 // Re-exported payload types and envelope constructors from domain.
 type (
-	Policy       = domain.Policy
-	StartRun     = domain.StartRun
-	CancelRun    = domain.CancelRun
-	Event        = domain.Event
-	Capabilities = domain.Capabilities
-	HelloPayload = domain.HelloPayload
-	ToolStatus   = domain.ToolStatus
+	Policy          = domain.Policy
+	StartRun        = domain.StartRun
+	CancelRun       = domain.CancelRun
+	CleanupWorktree = domain.CleanupWorktree
+	Event           = domain.Event
+	Capabilities    = domain.Capabilities
+	HelloPayload    = domain.HelloPayload
+	ToolStatus      = domain.ToolStatus
 )
 
 var (
-	NewStartRunEnvelope  = domain.NewStartRunEnvelope
-	NewCancelRunEnvelope = domain.NewCancelRunEnvelope
+	NewStartRunEnvelope        = domain.NewStartRunEnvelope
+	NewCancelRunEnvelope       = domain.NewCancelRunEnvelope
+	NewCleanupWorktreeEnvelope = domain.NewCleanupWorktreeEnvelope
 )
 
 // RunFunc is the pluggable runner callback invoked for each start_run command.
@@ -603,6 +606,22 @@ func (w *Worker) dispatchCommand(env node.Envelope) {
 			return
 		}
 		w.handleCancelRun(cmd)
+	case domain.CommandCleanupWorktree:
+		var cmd domain.CleanupWorktree
+		if err := json.Unmarshal(env.Payload, &cmd); err != nil {
+			w.logger.Warn("invalid cleanup_worktree payload", "id", env.ID, "err", err)
+			return
+		}
+		gitMgr := w.Git()
+		baseCtx := w.baseContext()
+		repoDir, err := gitMgr.EnsureRepo(baseCtx, cmd.ProjectSlug, "", cmd.MappedPath)
+		if err != nil {
+			w.logger.Warn("cleanup_worktree ensure repo failed", "slug", cmd.ProjectSlug, "err", err)
+			return
+		}
+		if err := gitMgr.CleanupWorktree(baseCtx, repoDir, cmd.ProjectSlug, cmd.TaskKey, cmd.Branch); err != nil {
+			w.logger.Warn("cleanup_worktree failed", "slug", cmd.ProjectSlug, "taskKey", cmd.TaskKey, "err", err)
+		}
 	}
 }
 

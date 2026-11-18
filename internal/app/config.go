@@ -42,6 +42,8 @@ type Config struct {
 	FacebookClientID       string        `env:"AUTH_FACEBOOK_ID, default="`
 	FacebookClientSecret   string        `env:"AUTH_FACEBOOK_SECRET, default="`
 	TrackerPollInterval    time.Duration `env:"TRACKER_POLL_INTERVAL, default=60s"`
+	RunPollInterval        time.Duration `env:"RUN_POLL_INTERVAL, default=30s"`
+	RunStageTimeout        time.Duration `env:"RUN_STAGE_TIMEOUT, default=2h"`
 	WorkerAgyBin           string        `env:"WORKER_AGY_BIN, default=agy"`
 	NotifyTelegramBotToken string        `env:"NOTIFY_TELEGRAM_BOT_TOKEN, default="`
 	NotifyTelegramChatID   string        `env:"NOTIFY_TELEGRAM_CHAT_ID, default="`

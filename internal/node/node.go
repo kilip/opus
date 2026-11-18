@@ -4,6 +4,8 @@ package node
 
 import (
 	"context"
+	"encoding/json"
+	"sync"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -97,6 +99,9 @@ type Node struct {
 	hub      *service.Hub
 	detector *service.Detector
 	handler  *handler.Handler
+
+	capsMu sync.RWMutex
+	caps   map[string]Capabilities
 }
 
 // New returns a new Node feature facade backed by Ent.
@@ -109,27 +114,51 @@ func New(client *ent.Client, cfg Config) *Node {
 		Bus:     cfg.Bus,
 		Hub:     hub,
 	})
-	hub.OnHeartbeat(func(nodeID string, env domain.Envelope) {
-		_ = svc.RecordHeartbeat(context.Background(), nodeID)
-		if env.Type == domain.EnvelopeTypeHello {
-			_ = svc.HandleHello(context.Background(), nodeID, env)
-		}
-	})
-	hub.OnDisconnect(func(nodeID string) {
-		_ = svc.MarkOffline(context.Background(), nodeID)
-	})
 	detector := service.NewDetector(svc, service.DetectorConfig{
 		Now:      cfg.Now,
 		Interval: cfg.DetectorInterval,
 		Timeout:  cfg.DetectorTimeout,
 		OnStop:   cfg.DetectorOnStop,
 	})
-	return &Node{
+	n := &Node{
 		svc:      svc,
 		hub:      hub,
 		detector: detector,
 		handler:  handler.New(svc, hub, cfg.RateLimitConfig),
+		caps:     make(map[string]Capabilities),
 	}
+	hub.OnHeartbeat(func(nodeID string, env domain.Envelope) {
+		_ = svc.RecordHeartbeat(context.Background(), nodeID)
+		if env.Type == domain.EnvelopeTypeHello {
+			_ = svc.HandleHello(context.Background(), nodeID, env)
+			var hello domain.HelloPayload
+			if len(env.Payload) > 0 && json.Unmarshal(env.Payload, &hello) == nil {
+				n.SetCapabilities(nodeID, hello.Capabilities)
+			}
+		}
+	})
+	hub.OnDisconnect(func(nodeID string) {
+		_ = svc.MarkOffline(context.Background(), nodeID)
+	})
+	return n
+}
+
+// SetCapabilities stores the latest reported tool capabilities for nodeID.
+func (n *Node) SetCapabilities(nodeID string, caps Capabilities) {
+	n.capsMu.Lock()
+	if n.caps == nil {
+		n.caps = make(map[string]Capabilities)
+	}
+	n.caps[nodeID] = caps
+	n.capsMu.Unlock()
+}
+
+// IsAgyReady reports whether nodeID last reported agy as ready.
+func (n *Node) IsAgyReady(nodeID string) bool {
+	n.capsMu.RLock()
+	caps, ok := n.caps[nodeID]
+	n.capsMu.RUnlock()
+	return ok && caps.Agy == ToolStatusReady
 }
 
 // Hub returns the node feature live connection hub.
