@@ -31,7 +31,9 @@ Domain units across both backend and frontend are called **features** (never "mo
 ```txt
 ├── cmd/opus/                     # CLI entrypoint & Swag root (@BasePath /api)
 ├── ent/                          # Entgo unified schema (ent/schema/) & generated graph client
+├── extensions/agy/               # Antigravity plugin (mcp_config.json, /vibe skill, subagents)
 ├── internal/
+│   ├── agent/                    # MCP agent tool feature (no repo/ subpackage; uses sibling root facades)
 │   ├── app/                      # HTTP server lifecycle, config, Fiber router wiring
 │   ├── auth/                     # Auth feature (OTP, OAuth providers, cookie sessions)
 │   ├── node/                     # Node registry, join tokens, live WebSocket hub, stale detector
@@ -87,6 +89,7 @@ Domain units across both backend and frontend are called **features** (never "mo
    - **Thin handlers**: a handler only parses/validates the request, calls `service`, and maps the result or error to the `httpx` envelope. NEVER put business logic in `handler/`, and NEVER call `repo/` from `handler/`.
    - **Service**: owns all business rules and orchestration. It uses `domain` types only; it MUST NOT import `fiber`, `handler`, or `httpx`.
    - **Event bus & decoupling**: features publish facts through the bus and never import each other to react to them; event types are owned by the publishing feature, defined in its `domain/` and re-exported from its root package (constants and type aliases).
+   - **MCP endpoint boundary**: MCP transport lives solely in `internal/agent/handler/mcp.go` (`POST /mcp`), mounted outside `/api` behind its own Bearer node credential or user session cookie auth (bypassing `/api` CSRF/cookie middleware and excluded from `api/swagger.json`); `internal/agent` has no `repo/` subpackage and reads/writes solely through sibling root facades.
    - Unified HTTP response envelope `{ data, meta, error }` and status mapping are provided by `internal/platform/httpx`.
 2. **UI Feature Isolation**:
    - Files in `ui/app/features/<feature>/` MUST NOT import from sibling `~/features/*`.
