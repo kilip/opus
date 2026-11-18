@@ -167,6 +167,7 @@ jobs:
         if: github.event_name == 'release' || !inputs.dry_run
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
           TAG: ${{ github.event.release.tag_name || inputs.tag }}
         run: |
           gh release upload "$TAG" staging/opus_* staging/checksums.txt --clobber
