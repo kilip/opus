@@ -15,6 +15,7 @@ import (
 	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"github.com/gofiber/fiber/v3/middleware/static"
 	"github.com/kilip/opus/ent"
+	"github.com/kilip/opus/internal/agent"
 	"github.com/kilip/opus/internal/auth"
 	"github.com/kilip/opus/internal/node"
 	"github.com/kilip/opus/internal/platform/csrf"
@@ -93,10 +94,16 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 		return err
 	})
 
-	app.Use(csrf.New(csrf.Config{
+	csrfMiddleware := csrf.New(csrf.Config{
 		BaseURL:        cfg.BaseURL,
 		TrustedOrigins: cfg.TrustedOrigins,
-	}))
+	})
+	app.Use(func(c fiber.Ctx) error {
+		if c.Path() == "/mcp" || strings.HasPrefix(c.Path(), "/mcp/") {
+			return c.Next()
+		}
+		return csrfMiddleware(c)
+	})
 
 	// ponytail: serve dynamic runtime configuration for SPA from system environment
 	app.Get("/config.js", func(c fiber.Ctx) error {
@@ -206,6 +213,15 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 		runFeature.Register(api)
 		sessionFeature.Register(api)
 		trackerFeature.Register(api)
+
+		agentFeature := agent.New(agent.Config{
+			Tasks:    taskFeature,
+			Runs:     runFeature,
+			Sessions: sessionFeature,
+			Nodes:    nodeFeature,
+			Auth:     authFeature,
+		})
+		agentFeature.Register(app)
 	}
 
 	// ponytail: serves embedded SPA without custom Cache-Control headers; add immutable asset caching when CDN/traffic requires.
@@ -213,7 +229,9 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 		app.Use(static.New("", static.Config{
 			FS: distFS,
 			Next: func(c fiber.Ctx) bool {
-				return strings.HasPrefix(c.Path(), "/api")
+				return strings.HasPrefix(c.Path(), "/api") ||
+					c.Path() == "/mcp" ||
+					strings.HasPrefix(c.Path(), "/mcp/")
 			},
 			NotFoundHandler: func(c fiber.Ctx) error {
 				index, err := fs.ReadFile(distFS, "index.html")

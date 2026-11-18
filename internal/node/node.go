@@ -59,6 +59,7 @@ var (
 type (
 	Role              = domain.Role
 	Status            = domain.Status
+	NodeRecord        = domain.Node
 	NodeEventPayload  = domain.NodeEventPayload
 	NodeResponse      = domain.NodeResponse
 	JoinTokenResponse = domain.JoinTokenResponse
@@ -221,4 +222,9 @@ func (n *Node) Register(r fiber.Router) {
 // RegisterPublic mounts unauthenticated node HTTP routes on r.
 func (n *Node) RegisterPublic(r fiber.Router) {
 	n.handler.RegisterPublic(r)
+}
+
+// AuthenticateWorker authenticates a worker node by its raw Bearer credential.
+func (n *Node) AuthenticateWorker(ctx context.Context, cred string) (*NodeRecord, error) {
+	return n.svc.AuthenticateWorker(ctx, cred)
 }

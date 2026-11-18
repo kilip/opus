@@ -8,7 +8,10 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/kilip/opus/internal/agent/domain"
+	"github.com/kilip/opus/internal/agent/handler"
 	"github.com/kilip/opus/internal/agent/service"
+	"github.com/kilip/opus/internal/auth"
+	"github.com/kilip/opus/internal/node"
 	"github.com/kilip/opus/internal/run"
 	"github.com/kilip/opus/internal/session"
 	"github.com/kilip/opus/internal/task"
@@ -70,29 +73,40 @@ type Config struct {
 	Tasks    *task.Task
 	Runs     *run.Feature
 	Sessions *session.Session
+	Nodes    *node.Node
+	Auth     *auth.Auth
 	Now      func() time.Time
 }
 
 // Agent is the public facade for the MCP agent tool feature.
 type Agent struct {
-	svc *service.Service
+	svc     *service.Service
+	handler *handler.Handler
 }
 
 // New constructs a new Agent feature facade.
 func New(cfg Config) *Agent {
+	svc := service.New(service.Config{
+		Tasks:    cfg.Tasks,
+		Runs:     cfg.Runs,
+		Sessions: cfg.Sessions,
+		Now:      cfg.Now,
+	})
 	return &Agent{
-		svc: service.New(service.Config{
-			Tasks:    cfg.Tasks,
-			Runs:     cfg.Runs,
-			Sessions: cfg.Sessions,
-			Now:      cfg.Now,
+		svc: svc,
+		handler: handler.New(handler.Config{
+			Service: svc,
+			Nodes:   cfg.Nodes,
+			Auth:    cfg.Auth,
+			Runs:    cfg.Runs,
 		}),
 	}
 }
 
-// Register mounts the agent MCP HTTP routes on r.
-// ponytail: HTTP/MCP transport wiring (POST /mcp) lands in issue #134.
-func (a *Agent) Register(_ fiber.Router) {}
+// Register mounts the agent MCP HTTP routes (POST /mcp) on r.
+func (a *Agent) Register(r fiber.Router) {
+	a.handler.Register(r)
+}
 
 // GetTask resolves a task within caller scope and returns sanitized/wrapped details.
 func (a *Agent) GetTask(ctx context.Context, caller CallerContext, in GetTaskInput) (GetTaskOutput, error) {

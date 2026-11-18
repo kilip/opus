@@ -3,6 +3,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"log/slog"
@@ -25,6 +26,9 @@ import (
 type contextKey string
 
 const userIDKey contextKey = "auth_user_id"
+
+// SessionCookie is the name of the HTTP session cookie.
+const SessionCookie = handler.SessionCookie
 
 var ErrRateLimited = domain.ErrRateLimited
 
@@ -116,6 +120,15 @@ func (a *Auth) Middleware() fiber.Handler {
 		c.Locals(string(userIDKey), sess.UserID)
 		return c.Next()
 	}
+}
+
+// ValidateSession validates a session cookie token and returns the user ID.
+func (a *Auth) ValidateSession(ctx context.Context, token string) (uuid.UUID, error) {
+	sess, err := a.svc.Session(ctx, token)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	return sess.UserID, nil
 }
 
 // UserID returns the authenticated user's UUID from the Fiber context.
