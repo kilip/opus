@@ -91,7 +91,7 @@ helm install opus oci://ghcr.io/kilip/charts/opus --version <version>
 ./opus serve
 ```
 
-Running `./opus` with no subcommand also starts the server on port `7880`.
+Running `./opus` with no subcommand also starts the server on port `7880`. On first run, Opus prints a one-time `Opus setup token` to stderr for completing owner onboarding at `/onboarding`.
 
 ### 2. Connect a Worker Node (Optional)
 
@@ -118,7 +118,10 @@ Opus is configured via environment variables. Common settings:
 | `APP_HOME` | `~/.opus` | Directory for repos, worktrees, and node config |
 | `APP_BASE_URL` | `http://localhost:7880` | Public URL for OAuth callbacks |
 | `APP_DATABASE_URL` | `file:opus.db?...` | SQLite / LibSQL database connection string |
-| `AUTH_SECRET` | — | Secret key for signing session cookies |
+| `AUTH_SECRET` | — | Secret key for signing session cookies (min 32 chars; persisted in `APP_HOME/auth_secret` if unset) |
+| `AUTH_SETUP_TOKEN` | — | First-run token for `/onboarding` (auto-generated on stderr if unset) |
+| `AUTH_COOKIE_SECURE` | `auto` | Session cookie `Secure` flag (`auto`, `true`, `false`) |
+| `APP_TRUSTED_PROXIES` | — | Comma-separated trusted proxy IPs/CIDRs for `X-Forwarded-For` |
 | `NOTIFY_TELEGRAM_BOT_TOKEN` | — | Telegram bot token for alerts |
 | `NOTIFY_TELEGRAM_CHAT_ID` | — | Telegram chat ID for alerts |
 | `RUN_POLL_INTERVAL` | `30s` | Interval between run reconciler scans |
