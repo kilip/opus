@@ -23,9 +23,9 @@ func helperConfig(t *testing.T, mode string) agy.Config {
 		t.Fatalf("os.Executable: %v", err)
 	}
 	env := append(os.Environ(),
-		"GO_WANT_HELPER_PROCESS=1",
-		"AGY_FAKE_MODE="+mode,
-		"AGY_TESTDATA_DIR="+filepath.Join("testdata"),
+		"TEST_HELPER_PROCESS=1",
+		"TEST_AGY_FAKE_MODE="+mode,
+		"TEST_AGY_TESTDATA_DIR="+filepath.Join("testdata"),
 	)
 	return agy.Config{
 		Bin:  exe,
@@ -35,11 +35,11 @@ func helperConfig(t *testing.T, mode string) agy.Config {
 }
 
 func TestHelperProcess(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+	if os.Getenv("TEST_HELPER_PROCESS") != "1" {
 		return
 	}
-	mode := os.Getenv("AGY_FAKE_MODE")
-	testdataDir := os.Getenv("AGY_TESTDATA_DIR")
+	mode := os.Getenv("TEST_AGY_FAKE_MODE")
+	testdataDir := os.Getenv("TEST_AGY_TESTDATA_DIR")
 
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)

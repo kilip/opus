@@ -13,10 +13,10 @@ import (
 )
 
 func TestHelperProcess(t *testing.T) {
-	if os.Getenv("GO_WANT_HELPER_PROCESS") != "1" {
+	if os.Getenv("TEST_HELPER_PROCESS") != "1" {
 		return
 	}
-	mode := os.Getenv("GH_HELPER_MODE")
+	mode := os.Getenv("TEST_GH_HELPER_MODE")
 	switch mode {
 	case "ok":
 		_, _ = fmt.Fprint(os.Stdout, `[{"number":1}]`)
@@ -37,8 +37,8 @@ func TestHelperProcess(t *testing.T) {
 
 func helperRunner(t *testing.T, mode string, timeout time.Duration) Runner {
 	t.Helper()
-	t.Setenv("GO_WANT_HELPER_PROCESS", "1")
-	t.Setenv("GH_HELPER_MODE", mode)
+	t.Setenv("TEST_HELPER_PROCESS", "1")
+	t.Setenv("TEST_GH_HELPER_MODE", mode)
 	exe, err := os.Executable()
 	if err != nil {
 		t.Fatalf("os.Executable: %v", err)
