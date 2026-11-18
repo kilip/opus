@@ -1,0 +1,7 @@
+{
+	"mcpServers": {
+		"opus": {
+			"url": "http://localhost:7880/mcp"
+		}
+	}
+}
