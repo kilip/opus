@@ -9,7 +9,11 @@ import { api, unwrap } from "~/shared/api/client";
 import { NODE_ERRORS } from "../api/errors";
 import { nodeKeys } from "../api/keys";
 import { nodesQueryOptions } from "../api/queries";
-import type { JoinTokenResponse, NodeItem } from "../api/types";
+import type {
+  JoinTokenResponse,
+  NodeItem,
+  UpdateNodeRequest,
+} from "../api/types";
 import { nodesApp } from "../app";
 import { nodesRoutes } from "../routes";
 import NodesPage from "./NodesPage";
@@ -20,12 +24,14 @@ function renderNodesPage({
   queryState,
   initialJoinToken,
   initialConfirmingId,
+  initialEditingNode,
 }: {
   nodes?: NodeItem[];
   url?: string;
   queryState?: { status: "error"; error: Error };
   initialJoinToken?: JoinTokenResponse | null;
   initialConfirmingId?: string | null;
+  initialEditingNode?: NodeItem | null;
 } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -57,6 +63,7 @@ function renderNodesPage({
         <NodesPage
           initialJoinToken={initialJoinToken}
           initialConfirmingId={initialConfirmingId}
+          initialEditingNode={initialEditingNode}
         />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -268,6 +275,198 @@ describe("NodesPage (AC1, AC2, AC3, AC4, AC5)", () => {
       assert.strictEqual(invalidated, true);
     } finally {
       api.DELETE = originalDelete;
+    }
+  });
+
+  it("displays hostname, ipAddress, macAddress with dash fallback and maps new error codes (AC1, AC3)", () => {
+    assert.ok(NODE_ERRORS.INVALID_NODE_NAME);
+    assert.ok(NODE_ERRORS.INVALID_IP_ADDRESS);
+    assert.ok(NODE_ERRORS.INVALID_MAC_ADDRESS);
+    assert.ok(NODE_ERRORS.NODE_MAC_NOT_CONFIGURED);
+
+    const nodes: NodeItem[] = [
+      {
+        id: "node-master",
+        name: "primary-master",
+        role: "master",
+        status: "online",
+        hostname: "opus-host.local",
+        ipAddress: "192.168.1.10",
+        macAddress: "aa:bb:cc:dd:ee:01",
+      },
+      {
+        id: "node-worker-empty",
+        name: "worker-no-net",
+        role: "worker",
+        status: "offline",
+      },
+    ];
+
+    const html = renderNodesPage({ nodes });
+    assert.match(html, /opus-host\.local/);
+    assert.match(html, /192\.168\.1\.10/);
+    assert.match(html, /aa:bb:cc:dd:ee:01/);
+    assert.match(html, />—<\/td>/);
+  });
+
+  it("renders Edit on every row, pre-fills edit modal, and submits PATCH /nodes/{id} (AC2, AC4, AC6)", async () => {
+    const masterNode: NodeItem = {
+      id: "node-master",
+      name: "control-plane",
+      role: "master",
+      status: "online",
+      hostname: "master-host",
+      ipAddress: "10.0.0.1",
+      macAddress: "11:22:33:44:55:66",
+    };
+    const workerNode: NodeItem = {
+      id: "node-worker",
+      name: "worker-1",
+      role: "worker",
+      status: "online",
+    };
+
+    const html = renderNodesPage({ nodes: [masterNode, workerNode] });
+    const editMatches = html.match(/>Edit<\/button>/g);
+    assert.strictEqual(editMatches?.length, 2);
+
+    const modalHtml = renderNodesPage({
+      nodes: [masterNode, workerNode],
+      initialEditingNode: masterNode,
+    });
+    assert.match(modalHtml, /role="dialog"/);
+    assert.match(modalHtml, /value="master-host"/);
+    assert.match(modalHtml, /value="control-plane"/);
+    assert.match(modalHtml, /value="10\.0\.0\.1"/);
+    assert.match(modalHtml, /value="11:22:33:44:55:66"/);
+
+    const originalPatch = api.PATCH;
+    let patchedId: string | undefined;
+    let patchedBody: UpdateNodeRequest | undefined;
+    try {
+      api.PATCH = (async (
+        path: string,
+        options: { params: { path: { id: string } }; body: UpdateNodeRequest },
+      ) => {
+        if (path === "/nodes/{id}") {
+          patchedId = options.params.path.id;
+          patchedBody = options.body;
+          return {
+            data: { data: { ...masterNode, ...options.body } },
+            response: new Response(JSON.stringify({}), { status: 200 }),
+          };
+        }
+        return originalPatch(path as never, options as never);
+      }) as never;
+
+      const queryClient = new QueryClient();
+      let invalidated = false;
+      queryClient.invalidateQueries = (async (options: {
+        queryKey: readonly unknown[];
+      }) => {
+        if (options.queryKey[0] === "nodes") invalidated = true;
+      }) as never;
+
+      const mutation = queryClient.getMutationCache().build(queryClient, {
+        mutationFn: async ({
+          id,
+          body,
+        }: {
+          id: string;
+          body: UpdateNodeRequest;
+        }) =>
+          unwrap<NodeItem>(
+            api.PATCH("/nodes/{id}", {
+              params: { path: { id } },
+              body,
+            }),
+            NODE_ERRORS,
+          ),
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: nodeKeys.all });
+        },
+      });
+
+      await mutation.execute({
+        id: "node-master",
+        body: { name: "renamed-master", ipAddress: "", macAddress: "" },
+      });
+
+      assert.strictEqual(patchedId, "node-master");
+      assert.deepStrictEqual(patchedBody, {
+        name: "renamed-master",
+        ipAddress: "",
+        macAddress: "",
+      });
+      assert.strictEqual(invalidated, true);
+    } finally {
+      api.PATCH = originalPatch;
+    }
+  });
+
+  it("renders Wake only on offline workers with macAddress and triggers POST /nodes/{id}/wake (AC2, AC5, AC6)", async () => {
+    const nodes: NodeItem[] = [
+      {
+        id: "master-1",
+        name: "master",
+        role: "master",
+        status: "offline",
+        macAddress: "aa:bb:cc:dd:ee:00",
+      },
+      {
+        id: "worker-online",
+        name: "worker-online",
+        role: "worker",
+        status: "online",
+        macAddress: "aa:bb:cc:dd:ee:01",
+      },
+      {
+        id: "worker-offline-nomac",
+        name: "worker-nomac",
+        role: "worker",
+        status: "offline",
+      },
+      {
+        id: "worker-offline-mac",
+        name: "worker-wakeable",
+        role: "worker",
+        status: "offline",
+        macAddress: "aa:bb:cc:dd:ee:02",
+      },
+    ];
+
+    const html = renderNodesPage({ nodes });
+    const wakeMatches = html.match(/>Wake<\/button>/g);
+    assert.strictEqual(wakeMatches?.length, 1);
+
+    const originalPost = api.POST;
+    let wokenId: string | undefined;
+    try {
+      api.POST = (async (
+        path: string,
+        options?: { params?: { path?: { id?: string } } },
+      ) => {
+        if (path === "/nodes/{id}/wake") {
+          wokenId = options?.params?.path?.id;
+          return { response: new Response(null, { status: 204 }) };
+        }
+        return originalPost(path as never, options as never);
+      }) as never;
+
+      const queryClient = new QueryClient();
+      const mutation = queryClient.getMutationCache().build(queryClient, {
+        mutationFn: async (id: string) => {
+          const { response } = await api.POST("/nodes/{id}/wake", {
+            params: { path: { id } },
+          });
+          if (!response.ok) throw new Error("Wake failed");
+        },
+      });
+
+      await mutation.execute("worker-offline-mac");
+      assert.strictEqual(wokenId, "worker-offline-mac");
+    } finally {
+      api.POST = originalPost;
     }
   });
 });

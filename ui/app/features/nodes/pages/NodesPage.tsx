@@ -1,11 +1,16 @@
-import { type ReactNode, useState } from "react";
+import { type FormEvent, type ReactNode, useState } from "react";
 
 import { Button } from "~/shared/components/Button";
 import { ControlPanel } from "~/shared/components/ControlPanel";
 import { Tag } from "~/shared/components/Tag";
-import { useCreateJoinToken, useDeleteNode } from "../api/actions";
+import {
+  useCreateJoinToken,
+  useDeleteNode,
+  useUpdateNode,
+  useWakeNode,
+} from "../api/actions";
 import { useNodes } from "../api/queries";
-import type { JoinTokenResponse } from "../api/types";
+import type { JoinTokenResponse, NodeItem } from "../api/types";
 
 export const meta = () => [
   { title: "Nodes · Opus" },
@@ -15,19 +20,31 @@ export const meta = () => [
 export type NodesPageProps = {
   initialJoinToken?: JoinTokenResponse | null;
   initialConfirmingId?: string | null;
+  initialEditingNode?: NodeItem | null;
 };
 
 export default function NodesPage({
   initialJoinToken = null,
   initialConfirmingId = null,
+  initialEditingNode = null,
 }: NodesPageProps = {}) {
   const nodesQuery = useNodes();
   const createJoinToken = useCreateJoinToken();
+  const updateNode = useUpdateNode();
+  const wakeNode = useWakeNode();
   const deleteNode = useDeleteNode();
 
   const [confirmingId, setConfirmingId] = useState<string | null>(
     initialConfirmingId,
   );
+  const [editingNode, setEditingNode] = useState<NodeItem | null>(
+    initialEditingNode,
+  );
+  const [editName, setEditName] = useState(initialEditingNode?.name ?? "");
+  const [editIP, setEditIP] = useState(initialEditingNode?.ipAddress ?? "");
+  const [editMAC, setEditMAC] = useState(initialEditingNode?.macAddress ?? "");
+  const [wakingId, setWakingId] = useState<string | null>(null);
+  const [wakeNotice, setWakeNotice] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const joinToken = createJoinToken.data ?? initialJoinToken;
@@ -35,7 +52,53 @@ export default function NodesPage({
   const total = nodes.length;
 
   const errorMessage =
-    deleteNode.error?.message ?? createJoinToken.error?.message ?? null;
+    wakeNode.error?.message ??
+    deleteNode.error?.message ??
+    createJoinToken.error?.message ??
+    null;
+
+  function openEdit(node: NodeItem) {
+    updateNode.reset();
+    setEditingNode(node);
+    setEditName(node.name ?? "");
+    setEditIP(node.ipAddress ?? "");
+    setEditMAC(node.macAddress ?? "");
+  }
+
+  function closeEdit() {
+    setEditingNode(null);
+    updateNode.reset();
+  }
+
+  function handleEditSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!editingNode?.id) return;
+    updateNode.mutate(
+      {
+        id: editingNode.id,
+        body: {
+          name: editName.trim(),
+          ipAddress: editIP.trim(),
+          macAddress: editMAC.trim(),
+        },
+      },
+      {
+        onSuccess: () => setEditingNode(null),
+      },
+    );
+  }
+
+  function handleWake(node: NodeItem) {
+    if (!node.id) return;
+    setWakeNotice(null);
+    setWakingId(node.id);
+    wakeNode.mutate(node.id, {
+      onSuccess: () => {
+        setWakeNotice(`Wake-on-LAN packet sent to ${node.name || node.id}.`);
+      },
+      onSettled: () => setWakingId(null),
+    });
+  }
 
   function handleDelete(id?: string) {
     if (!id) return;
@@ -75,11 +138,14 @@ export default function NodesPage({
     );
   } else {
     content = (
-      <div className="overflow-hidden rounded-lg border border-line bg-surface">
+      <div className="overflow-x-auto rounded-lg border border-line bg-surface">
         <table className="w-full text-left text-sm">
           <thead className="border-b border-line bg-surface-2 text-xs font-semibold uppercase tracking-wider text-muted">
             <tr>
               <th className="px-4 py-3">Node</th>
+              <th className="px-4 py-3">Hostname</th>
+              <th className="px-4 py-3">IP Address</th>
+              <th className="px-4 py-3">MAC Address</th>
               <th className="px-4 py-3">Role</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3 text-right">Actions</th>
@@ -89,6 +155,11 @@ export default function NodesPage({
             {nodes.map((node) => {
               const isMaster = node.role === "master";
               const isConfirming = confirmingId === node.id;
+              const canWake =
+                !isMaster &&
+                node.status === "offline" &&
+                Boolean(node.macAddress);
+              const isWaking = wakingId === node.id && wakeNode.isPending;
               return (
                 <tr
                   key={node.id ?? node.name}
@@ -104,6 +175,15 @@ export default function NodesPage({
                       )}
                     </div>
                   </td>
+                  <td className="px-4 py-3 font-mono text-xs text-muted">
+                    {node.hostname || "—"}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-muted">
+                    {node.ipAddress || "—"}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-muted">
+                    {node.macAddress || "—"}
+                  </td>
                   <td className="px-4 py-3">
                     <Tag tone={isMaster ? "primary" : "neutral"}>
                       {node.role ?? "worker"}
@@ -117,33 +197,50 @@ export default function NodesPage({
                     </Tag>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {!isMaster &&
-                      (isConfirming ? (
-                        <div className="inline-flex items-center gap-1.5">
-                          <Button
-                            variant="primary"
-                            className="bg-danger text-white hover:bg-danger/90"
-                            onClick={() => handleDelete(node.id)}
-                            disabled={deleteNode.isPending}
-                          >
-                            {deleteNode.isPending ? "Removing…" : "Confirm"}
-                          </Button>
-                          <Button
-                            variant="secondary"
-                            onClick={() => setConfirmingId(null)}
-                            disabled={deleteNode.isPending}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      ) : (
+                    <div className="inline-flex items-center justify-end gap-1.5">
+                      {canWake && (
                         <Button
                           variant="secondary"
-                          onClick={() => setConfirmingId(node.id ?? null)}
+                          onClick={() => handleWake(node)}
+                          disabled={isWaking}
                         >
-                          Remove
+                          {isWaking ? "Waking…" : "Wake"}
                         </Button>
-                      ))}
+                      )}
+                      <Button
+                        variant="secondary"
+                        onClick={() => openEdit(node)}
+                      >
+                        Edit
+                      </Button>
+                      {!isMaster &&
+                        (isConfirming ? (
+                          <>
+                            <Button
+                              variant="primary"
+                              className="bg-danger text-white hover:bg-danger/90"
+                              onClick={() => handleDelete(node.id)}
+                              disabled={deleteNode.isPending}
+                            >
+                              {deleteNode.isPending ? "Removing…" : "Confirm"}
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              onClick={() => setConfirmingId(null)}
+                              disabled={deleteNode.isPending}
+                            >
+                              Cancel
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            variant="secondary"
+                            onClick={() => setConfirmingId(node.id ?? null)}
+                          >
+                            Remove
+                          </Button>
+                        ))}
+                    </div>
                   </td>
                 </tr>
               );
@@ -169,7 +266,7 @@ export default function NodesPage({
         }
       />
 
-      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 p-6">
+      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-6">
         {errorMessage && (
           <div
             role="alert"
@@ -177,6 +274,12 @@ export default function NodesPage({
           >
             {errorMessage}
           </div>
+        )}
+
+        {wakeNotice && (
+          <output className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-fg">
+            {wakeNotice}
+          </output>
         )}
 
         {joinToken && (
@@ -220,6 +323,97 @@ export default function NodesPage({
 
         {content}
       </div>
+
+      {editingNode && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Edit node"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        >
+          <form
+            onSubmit={handleEditSubmit}
+            className="flex w-full max-w-md flex-col gap-4 rounded-lg border border-line bg-surface p-6 shadow-xl"
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-fg">Edit node</h2>
+              <span className="font-mono text-xs text-muted">
+                {editingNode.role ?? "worker"}
+              </span>
+            </div>
+
+            {updateNode.error && (
+              <div
+                role="alert"
+                className="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger"
+              >
+                {updateNode.error.message}
+              </div>
+            )}
+
+            <label className="flex flex-col gap-1 text-xs font-medium text-muted">
+              Hostname
+              <input
+                type="text"
+                readOnly
+                value={editingNode.hostname || "—"}
+                className="rounded-md border border-line bg-surface-2 px-3 py-2 font-mono text-sm text-muted focus:outline-none"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1 text-xs font-medium text-muted">
+              Name
+              <input
+                type="text"
+                required
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="rounded-md border border-line bg-surface-2 px-3 py-2 text-sm text-fg focus:border-primary focus:outline-none"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1 text-xs font-medium text-muted">
+              IP Address
+              <input
+                type="text"
+                placeholder="e.g. 192.168.1.10"
+                value={editIP}
+                onChange={(e) => setEditIP(e.target.value)}
+                className="rounded-md border border-line bg-surface-2 px-3 py-2 font-mono text-sm text-fg focus:border-primary focus:outline-none"
+              />
+            </label>
+
+            <label className="flex flex-col gap-1 text-xs font-medium text-muted">
+              MAC Address
+              <input
+                type="text"
+                placeholder="e.g. aa:bb:cc:dd:ee:ff"
+                value={editMAC}
+                onChange={(e) => setEditMAC(e.target.value)}
+                className="rounded-md border border-line bg-surface-2 px-3 py-2 font-mono text-sm text-fg focus:border-primary focus:outline-none"
+              />
+            </label>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={closeEdit}
+                disabled={updateNode.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={updateNode.isPending}
+              >
+                {updateNode.isPending ? "Saving…" : "Save"}
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
     </>
   );
 }
