@@ -32,6 +32,8 @@ curl -fsSL https://raw.githubusercontent.com/kilip/opus/main/scripts/install.sh 
 irm https://raw.githubusercontent.com/kilip/opus/main/scripts/install.ps1 | iex
 ```
 
+**Manual download:** Prebuilt archives (`opus_<version>_<os>_<arch>.tar.gz` / `.zip`) and `checksums.txt` are published on [GitHub Releases](https://github.com/kilip/opus/releases). Verify with `sha256sum -c checksums.txt` before extracting.
+
 ### 🐳 Docker
 
 ```bash
