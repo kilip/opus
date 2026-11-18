@@ -47,7 +47,7 @@ jobs:
             latest=false
           tags: |
             type=raw,value=staging,enable=${{ github.event_name != 'release' }}
-            type=raw,value=staging-${{ env.BUILD_TS }},enable=${{ github.event_name != 'release' }}
+            type=raw,value=${{ env.BUILD_TS }},enable=${{ github.event_name != 'release' }}
             type=sha,prefix=sha-,enable=${{ github.event_name != 'release' }}
             type=semver,pattern={{version}},enable=${{ github.event_name == 'release' }}
             type=semver,pattern={{major}}.{{minor}},enable=${{ github.event_name == 'release' }}
