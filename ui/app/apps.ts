@@ -1,3 +1,4 @@
+import { dashboardApp } from "~/features/dashboard/app";
 import { nodesApp } from "~/features/nodes/app";
 import { projectsApp } from "~/features/projects/app";
 import { runsApp } from "~/features/runs/app";
@@ -9,6 +10,7 @@ import type { AppDef } from "~/shared/types";
  * disabled entries are placeholders for features that do not exist yet.
  */
 export const apps: AppDef[] = [
+	dashboardApp,
 	tasksApp,
 	projectsApp,
 	nodesApp,

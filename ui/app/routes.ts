@@ -1,6 +1,7 @@
 import type { RouteConfig } from "@react-router/dev/routes";
 
 import { authRoutes, authSettingsRoutes } from "./features/auth/routes";
+import { dashboardRoutes } from "./features/dashboard/routes";
 import { nodesRoutes } from "./features/nodes/routes";
 import { projectsRoutes } from "./features/projects/routes";
 import { runsRoutes } from "./features/runs/routes";
@@ -19,6 +20,7 @@ export default [
 
 	// Everything inside the shell (navbar, app switcher).
 	shellRoutes([
+		...dashboardRoutes,
 		...tasksRoutes,
 		...projectsRoutes,
 		...nodesRoutes,
