@@ -64,6 +64,11 @@ func (s *Task) Get(ctx context.Context, id string) (domain.Task, error) {
 	return s.repo.Get(ctx, id)
 }
 
+// GetByKey returns task by human-readable key (e.g. OP-12), or domain.ErrTaskNotFound.
+func (s *Task) GetByKey(ctx context.Context, key string) (domain.Task, error) {
+	return s.repo.GetByKey(ctx, key)
+}
+
 // FindByExternal returns task by (source, externalID), or domain.ErrTaskNotFound.
 func (s *Task) FindByExternal(ctx context.Context, source domain.TaskSource, externalID string) (*domain.Task, error) {
 	return s.repo.FindByExternal(ctx, source, externalID)

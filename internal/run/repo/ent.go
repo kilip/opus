@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -158,6 +159,21 @@ func (r *Ent) Transition(
 		return domain.Run{}, err
 	}
 	return toDomainRun(updated), nil
+}
+
+// SetReport persists the structured report JSON on a Run, replacing any prior report.
+func (r *Ent) SetReport(ctx context.Context, id uuid.UUID, report json.RawMessage, now time.Time) (domain.Run, error) {
+	row, err := r.db.Run.UpdateOneID(id).
+		SetReport(report).
+		SetUpdatedAt(now).
+		Save(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return domain.Run{}, domain.ErrRunNotFound
+		}
+		return domain.Run{}, err
+	}
+	return toDomainRun(row), nil
 }
 
 // HasActiveRun reports whether taskID already has a non-terminal Run.

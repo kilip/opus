@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -71,6 +72,24 @@ func (r *Ent) Get(ctx context.Context, id string) (domain.Task, error) {
 		return domain.Task{}, domain.ErrTaskNotFound
 	}
 	t, err := r.client.Task.Get(ctx, uid)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return domain.Task{}, domain.ErrTaskNotFound
+		}
+		return domain.Task{}, err
+	}
+	return toDomainTask(t), nil
+}
+
+// GetByKey returns task by human-readable key (e.g. OP-12), or domain.ErrTaskNotFound.
+func (r *Ent) GetByKey(ctx context.Context, key string) (domain.Task, error) {
+	key = strings.ToUpper(strings.TrimSpace(key))
+	if key == "" {
+		return domain.Task{}, domain.ErrTaskNotFound
+	}
+	t, err := r.client.Task.Query().
+		Where(enttask.KeyEQ(key)).
+		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
 			return domain.Task{}, domain.ErrTaskNotFound

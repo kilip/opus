@@ -4,6 +4,7 @@ package run
 
 import (
 	"context"
+	"encoding/json"
 	"log/slog"
 	"time"
 
@@ -155,4 +156,9 @@ func (f *Feature) List(ctx context.Context, filter ListFilter) ([]Run, error) {
 // Transition validates and persists a state transition and emits lifecycle events.
 func (f *Feature) Transition(ctx context.Context, id uuid.UUID, to RunState, in TransitionInput) (Run, error) {
 	return f.svc.Transition(ctx, id, to, in)
+}
+
+// SetReport persists the structured report JSON on a Run.
+func (f *Feature) SetReport(ctx context.Context, id uuid.UUID, report json.RawMessage) (Run, error) {
+	return f.svc.SetReport(ctx, id, report)
 }

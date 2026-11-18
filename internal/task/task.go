@@ -137,6 +137,11 @@ func (t *Task) Get(ctx context.Context, id string) (Record, error) {
 	return t.svc.Get(ctx, id)
 }
 
+// GetByKey returns a task by human-readable key (e.g. OP-12), or ErrTaskNotFound.
+func (t *Task) GetByKey(ctx context.Context, key string) (Record, error) {
+	return t.svc.GetByKey(ctx, key)
+}
+
 // Import upserts a task by (source, externalId) for sibling features.
 func (t *Task) Import(ctx context.Context, req ImportTaskRequest) (Record, error) {
 	return t.svc.Import(ctx, req)

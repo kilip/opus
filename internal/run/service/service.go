@@ -101,6 +101,13 @@ func (s *Service) Transition(
 	return run, nil
 }
 
+// SetReport persists the structured report JSON on a Run.
+func (s *Service) SetReport(ctx context.Context, id uuid.UUID, report json.RawMessage) (domain.Run, error) {
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+	return s.repo.SetReport(ctx, id, report, s.now())
+}
+
 func (s *Service) publishStarted(ctx context.Context, run domain.Run) {
 	s.publish(ctx, domain.EventStarted, run.ID, domain.RunStartedPayload{
 		RunID:     run.ID,
