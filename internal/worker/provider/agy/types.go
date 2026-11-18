@@ -78,13 +78,21 @@ type InitializeResult struct {
 	AuthMethods       []AuthMethod   `json:"authMethods,omitempty"`
 }
 
+// MCPHeader defines an HTTP header sent to an HTTP MCP server.
+type MCPHeader struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
 // MCPServer defines a session-scoped MCP server passed to session/new or session/resume.
 type MCPServer struct {
 	Name    string            `json:"name,omitempty"`
+	Type    string            `json:"type,omitempty"`
 	Command string            `json:"command,omitempty"`
 	Args    []string          `json:"args,omitempty"`
 	Env     map[string]string `json:"env,omitempty"`
 	URL     string            `json:"url,omitempty"`
+	Headers []MCPHeader       `json:"headers,omitempty"`
 }
 
 // SystemPromptMeta configures per-session system prompt appending under _meta.antigravity.

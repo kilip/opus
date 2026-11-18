@@ -494,3 +494,78 @@ func TestProbeAuth_FakeBinary(t *testing.T) {
 		}
 	})
 }
+
+func TestClient_InjectsHTTPMCPServers(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	dir := t.TempDir()
+	capturedPath := filepath.Join(dir, "requests.jsonl")
+	bin := filepath.Join(dir, "fake-agy")
+	script := `#!/bin/sh
+while IFS= read -r line; do
+  printf '%s\n' "$line" >> "` + capturedPath + `"
+  case "$line" in
+    *'"initialize"'*)
+      printf '{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":1,"agentInfo":{"name":"fake","version":"1.0"}}}\n'
+      ;;
+    *'"session/new"'*)
+      printf '{"jsonrpc":"2.0","id":2,"result":{"sessionId":"sess-new-1"}}\n'
+      ;;
+    *'"session/resume"'*)
+      printf '{"jsonrpc":"2.0","id":3,"result":{"sessionId":"sess-new-1"}}\n'
+      ;;
+  esac
+done
+`
+	if err := os.WriteFile(bin, []byte(script), 0o755); err != nil {
+		t.Fatalf("write fake agy: %v", err)
+	}
+
+	c, err := agy.Start(ctx, agy.Config{Bin: bin})
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	defer func() { _ = c.Close() }()
+
+	if _, err := c.Initialize(ctx, agy.InitializeParams{}); err != nil {
+		t.Fatalf("Initialize: %v", err)
+	}
+
+	servers := []agy.MCPServer{
+		{
+			Name: "opus",
+			Type: "http",
+			URL:  "http://127.0.0.1:7880/mcp",
+			Headers: []agy.MCPHeader{
+				{Name: "Authorization", Value: "Bearer secret-cred"},
+				{Name: "X-Opus-Run-ID", Value: "run-1"},
+			},
+		},
+	}
+
+	if _, err := c.NewSession(ctx, agy.SessionNewParams{Cwd: dir, MCPServers: servers}); err != nil {
+		t.Fatalf("NewSession: %v", err)
+	}
+	if _, err := c.ResumeSession(ctx, agy.SessionResumeParams{SessionID: "sess-new-1", Cwd: dir, MCPServers: servers}); err != nil {
+		t.Fatalf("ResumeSession: %v", err)
+	}
+
+	raw, err := os.ReadFile(capturedPath)
+	if err != nil {
+		t.Fatalf("read captured requests: %v", err)
+	}
+	text := string(raw)
+	for _, want := range []string{
+		`"type":"http"`,
+		`"url":"http://127.0.0.1:7880/mcp"`,
+		`"name":"Authorization"`,
+		`"value":"Bearer secret-cred"`,
+		`"name":"X-Opus-Run-ID"`,
+		`"value":"run-1"`,
+	} {
+		if !strings.Contains(text, want) {
+			t.Fatalf("captured ACP requests missing %s:\n%s", want, text)
+		}
+	}
+}

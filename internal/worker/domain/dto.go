@@ -40,6 +40,7 @@ type Policy struct {
 type StartRun struct {
 	Type          string  `json:"type,omitempty"`
 	RunID         string  `json:"runId"`
+	SessionID     string  `json:"sessionId,omitempty"`
 	TaskID        string  `json:"taskId,omitempty"`
 	TaskKey       string  `json:"taskKey,omitempty"`
 	ProjectID     string  `json:"projectId,omitempty"`

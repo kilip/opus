@@ -27,6 +27,7 @@ import (
 	"github.com/kilip/opus/internal/node"
 	"github.com/kilip/opus/internal/platform/httpx"
 	"github.com/kilip/opus/internal/worker"
+	"github.com/kilip/opus/internal/worker/provider/agy"
 	_ "modernc.org/sqlite"
 )
 
@@ -928,5 +929,129 @@ func TestWorker_ReportAgyUnauthenticated_And_WorkerAgyBin(t *testing.T) {
 	cancel()
 	if err := <-done; err != nil {
 		t.Fatalf("Run returned error: %v", err)
+	}
+}
+
+func TestWorker_StartAgySession_InjectsMCPAndScrubsCredentials(t *testing.T) {
+	dir := t.TempDir()
+	capturedPath := filepath.Join(dir, "acp.jsonl")
+	fakeAgy := filepath.Join(dir, "fake-agy")
+	script := `#!/bin/sh
+while IFS= read -r line; do
+  printf '%s\n' "$line" >> "` + capturedPath + `"
+  case "$line" in
+    *'"initialize"'*)
+      printf '{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":1,"agentInfo":{"name":"fake","version":"1.0"}}}\n'
+      ;;
+    *'"session/new"'*)
+      printf '{"jsonrpc":"2.0","id":2,"result":{"sessionId":"acp-sess-1"}}\n'
+      ;;
+  esac
+done
+`
+	if err := os.WriteFile(fakeAgy, []byte(script), 0o755); err != nil {
+		t.Fatalf("write fake agy: %v", err)
+	}
+
+	const secretCred = "super-secret-worker-token"
+	var logBuf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	transport := worker.NewInProcess()
+
+	var w *worker.Worker
+	w = worker.New(worker.Config{
+		NodeID:            "node-mcp",
+		MasterURL:         "http://127.0.0.1:7880/",
+		Credential:        secretCred,
+		InProcess:         transport,
+		HeartbeatInterval: time.Hour,
+		Logger:            logger,
+		OnStartRun: func(ctx context.Context, cmd worker.StartRun) error {
+			client, err := agy.Start(ctx, agy.Config{Bin: fakeAgy})
+			if err != nil {
+				return err
+			}
+			defer func() { _ = client.Close() }()
+			if _, err := client.Initialize(ctx, agy.InitializeParams{}); err != nil {
+				return err
+			}
+			if _, err := w.StartAgySession(ctx, client, dir, cmd, "", nil); err != nil {
+				return err
+			}
+			return errors.New("simulated failure containing Bearer " + secretCred)
+		},
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- w.Run(ctx)
+	}()
+
+	// Drain initial hello.
+	select {
+	case <-transport.Events:
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for hello")
+	}
+
+	env, err := worker.NewStartRunEnvelope("cmd-1", worker.StartRun{
+		RunID:     "run-123",
+		SessionID: "sess-456",
+		ProjectID: "proj-789",
+	})
+	if err != nil {
+		t.Fatalf("NewStartRunEnvelope: %v", err)
+	}
+	if err := transport.SendCommand(ctx, env); err != nil {
+		t.Fatalf("SendCommand: %v", err)
+	}
+
+	// Wait for EventRunError from OnStartRun.
+	select {
+	case evtEnv := <-transport.Events:
+		var evt worker.Event
+		if err := json.Unmarshal(evtEnv.Payload, &evt); err != nil {
+			t.Fatalf("unmarshal event: %v", err)
+		}
+		if evt.Type != worker.EventRunError {
+			t.Fatalf("expected run_error, got %s", evt.Type)
+		}
+		if strings.Contains(evt.Error, secretCred) {
+			t.Fatalf("credential leaked into EventRunError: %q", evt.Error)
+		}
+		if !strings.Contains(evt.Error, "[REDACTED]") {
+			t.Fatalf("expected [REDACTED] in scrubbed error: %q", evt.Error)
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("timed out waiting for run_error event")
+	}
+
+	cancel()
+	if err := <-done; err != nil {
+		t.Fatalf("Run returned error: %v", err)
+	}
+
+	raw, err := os.ReadFile(capturedPath)
+	if err != nil {
+		t.Fatalf("read captured ACP requests: %v", err)
+	}
+	acpText := string(raw)
+	for _, want := range []string{
+		`"url":"http://127.0.0.1:7880/mcp"`,
+		`"value":"Bearer ` + secretCred + `"`,
+		`"name":"X-Opus-Run-ID","value":"run-123"`,
+		`"name":"X-Opus-Session-ID","value":"sess-456"`,
+		`"name":"X-Opus-Project-ID","value":"proj-789"`,
+	} {
+		if !strings.Contains(acpText, want) {
+			t.Fatalf("ACP session/new missing %s:\n%s", want, acpText)
+		}
+	}
+
+	if strings.Contains(logBuf.String(), secretCred) {
+		t.Fatalf("credential leaked into slog output:\n%s", logBuf.String())
 	}
 }

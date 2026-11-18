@@ -17,6 +17,7 @@ import (
 	"github.com/fasthttp/websocket"
 	"github.com/kilip/opus/internal/node"
 	"github.com/kilip/opus/internal/worker/domain"
+	"github.com/kilip/opus/internal/worker/provider/agy"
 )
 
 // Re-exported command and event constants from domain.
@@ -654,10 +655,75 @@ func (w *Worker) handleStartRun(cmd domain.StartRun) {
 			_ = w.sendWorkerEvent(baseCtx, domain.Event{
 				Type:  domain.EventRunError,
 				RunID: cmd.RunID,
-				Error: err.Error(),
+				Error: w.scrubSecret(err.Error()),
 			})
 		}
 	}()
+}
+
+// OpusMCPServers builds the session-scoped Opus HTTP MCP server definition
+// for an agy ACP session/new or session/resume call.
+func (w *Worker) OpusMCPServers(cmd StartRun) []agy.MCPServer {
+	base := strings.TrimRight(strings.TrimSpace(w.cfg.MasterURL), "/")
+	if base == "" {
+		return nil
+	}
+	var headers []agy.MCPHeader
+	if w.cfg.Credential != "" {
+		headers = append(headers, agy.MCPHeader{
+			Name:  "Authorization",
+			Value: "Bearer " + w.cfg.Credential,
+		})
+	}
+	if cmd.RunID != "" {
+		headers = append(headers, agy.MCPHeader{Name: "X-Opus-Run-ID", Value: cmd.RunID})
+	}
+	if cmd.SessionID != "" {
+		headers = append(headers, agy.MCPHeader{Name: "X-Opus-Session-ID", Value: cmd.SessionID})
+	}
+	if cmd.ProjectID != "" {
+		headers = append(headers, agy.MCPHeader{Name: "X-Opus-Project-ID", Value: cmd.ProjectID})
+	}
+	return []agy.MCPServer{
+		{
+			Name:    "opus",
+			Type:    "http",
+			URL:     base + "/mcp",
+			Headers: headers,
+		},
+	}
+}
+
+// StartAgySession creates or resumes an agy ACP session with Opus MCP server config injected.
+func (w *Worker) StartAgySession(
+	ctx context.Context,
+	client *agy.Client,
+	cwd string,
+	cmd StartRun,
+	resumeSessionID string,
+	meta *agy.SessionMeta,
+) (agy.SessionNewResult, error) {
+	servers := w.OpusMCPServers(cmd)
+	if resumeSessionID != "" {
+		return client.ResumeSession(ctx, agy.SessionResumeParams{
+			SessionID:  resumeSessionID,
+			Cwd:        cwd,
+			MCPServers: servers,
+		})
+	}
+	return client.NewSession(ctx, agy.SessionNewParams{
+		Cwd:        cwd,
+		MCPServers: servers,
+		Meta:       meta,
+	})
+}
+
+func (w *Worker) scrubSecret(s string) string {
+	if w.cfg.Credential == "" {
+		return s
+	}
+	s = strings.ReplaceAll(s, "Bearer "+w.cfg.Credential, "[REDACTED]")
+	return strings.ReplaceAll(s, w.cfg.Credential, "[REDACTED]")
 }
 
 func (w *Worker) handleCancelRun(cmd domain.CancelRun) {

@@ -116,6 +116,7 @@ func (s *Service) PrepareAndStartSession(ctx context.Context, cfg StageConfig, r
 
 	cmd := worker.StartRun{
 		RunID:         run.ID.String(),
+		SessionID:     sess.ID.String(),
 		TaskID:        t.ID,
 		TaskKey:       t.Key,
 		ProjectID:     proj.ID,
