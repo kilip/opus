@@ -44,6 +44,7 @@ jobs:
             latest=false
           tags: |
             type=raw,value=staging,enable=${{ github.event_name != 'release' }}
+            type=raw,value=staging-${{ github.run_number }},enable=${{ github.event_name != 'release' }}
             type=sha,prefix=sha-,enable=${{ github.event_name != 'release' }}
             type=semver,pattern={{version}},enable=${{ github.event_name == 'release' }}
             type=semver,pattern={{major}}.{{minor}},enable=${{ github.event_name == 'release' }}
@@ -67,13 +68,7 @@ jobs:
           FLUX_WEBHOOK_URL: ${{ secrets.FLUX_WEBHOOK_URL }}
         run: |
           if [ -z "$FLUX_WEBHOOK_URL" ]; then exit 0; fi
-          TOKEN=$(curl -sLS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=flux-notification-controller" | jq -r .value)
-          curl -sS -f -X POST \
-            -H "Authorization: Bearer ${TOKEN}" \
-            -H "Content-Type: application/json" \
-            -d '{"event":"push"}' \
-            "$FLUX_WEBHOOK_URL"
+          curl -sS -f -X POST "$FLUX_WEBHOOK_URL"
 
   chart:
     name: Package and push Helm chart
