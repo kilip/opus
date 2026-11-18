@@ -26,6 +26,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -36,8 +39,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set build timestamp
-        run: echo "BUILD_TS=$(TZ=UTC git show -s --format=%cd --date=format-local:%Y%m%d%H%M%S)" >> "$GITHUB_ENV"
+      - name: Set build metadata
+        run: |
+          echo "BUILD_TS=$(TZ=UTC git show -s --format=%cd --date=format-local:%Y%m%d%H%M%S)" >> "$GITHUB_ENV"
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "BUILD_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          else
+            echo "BUILD_VERSION=sha-$(git rev-parse --short HEAD)" >> "$GITHUB_ENV"
+          fi
 
       - name: Docker metadata
         id: meta
@@ -59,10 +68,12 @@ jobs:
         with:
           context: .
           file: Dockerfile
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            VERSION=${{ env.BUILD_VERSION }}
           cache-from: type=gha,scope=opus
           cache-to: type=gha,mode=max,scope=opus
 
