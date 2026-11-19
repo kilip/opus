@@ -204,3 +204,51 @@ func TestHandler_SSE_HistoryLiveAndDisconnectSafe(t *testing.T) {
 		t.Fatalf("expected seq 3 and terminal session.completed event, got:\n%s", bodyStr)
 	}
 }
+
+func TestSessionHandler_SSEKeepaliveAndShutdownClose(t *testing.T) {
+	ctx := context.Background()
+	_, svc := setupHandlerTest(t)
+	h := handler.New(svc)
+	h.SetKeepaliveInterval(20 * time.Millisecond)
+	app := fiber.New(fiber.Config{
+		ErrorHandler: httpx.ErrorHandler(slog.New(slog.NewTextHandler(io.Discard, nil))),
+	})
+	h.Register(app.Group("/api"))
+
+	sess, err := svc.Enqueue(ctx, domain.CreateInput{
+		TaskID:   uuid.New(),
+		NodeID:   uuid.New(),
+		Provider: "agy",
+	})
+	if err != nil {
+		t.Fatalf("Enqueue: %v", err)
+	}
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("net.Listen: %v", err)
+	}
+	go func() { _ = app.Listener(ln) }()
+	t.Cleanup(func() { _ = app.Shutdown() })
+
+	baseURL := "http://" + ln.Addr().String()
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"/api/sessions/"+sess.ID.String()+"/events", nil)
+	httpResp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("SSE GET: %v", err)
+	}
+	defer func() { _ = httpResp.Body.Close() }()
+
+	go func() {
+		time.Sleep(80 * time.Millisecond)
+		svc.Close()
+	}()
+
+	bodyBytes, err := io.ReadAll(httpResp.Body)
+	if err != nil {
+		t.Fatalf("ReadAll: %v", err)
+	}
+	if !strings.Contains(string(bodyBytes), ": keepalive\n\n") {
+		t.Fatalf("expected SSE keepalive comment, got:\n%s", string(bodyBytes))
+	}
+}

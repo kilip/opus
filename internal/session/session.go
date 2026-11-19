@@ -137,6 +137,11 @@ func (s *Session) LatestEventTime(ctx context.Context, sessionID uuid.UUID) (*ti
 	return s.svc.LatestEventTime(ctx, sessionID)
 }
 
+// Close closes all active SSE subscriber channels on shutdown.
+func (s *Session) Close() {
+	s.svc.Close()
+}
+
 // HandleWorkerEvent processes an incoming worker event envelope from the node hub.
 func (s *Session) HandleWorkerEvent(ctx context.Context, nodeID string, env node.Envelope) {
 	s.svc.HandleWorkerEvent(ctx, nodeID, env)

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
@@ -15,14 +16,27 @@ import (
 	"github.com/kilip/opus/internal/session/service"
 )
 
+const defaultSSEKeepaliveInterval = 15 * time.Second
+
 // Handler serves session REST and SSE endpoints.
 type Handler struct {
-	svc *service.Service
+	svc               *service.Service
+	keepaliveInterval time.Duration
 }
 
 // New creates a new session Handler.
 func New(svc *service.Service) *Handler {
-	return &Handler{svc: svc}
+	return &Handler{
+		svc:               svc,
+		keepaliveInterval: defaultSSEKeepaliveInterval,
+	}
+}
+
+// SetKeepaliveInterval overrides the SSE keepalive interval (for tests).
+func (h *Handler) SetKeepaliveInterval(d time.Duration) {
+	if d > 0 {
+		h.keepaliveInterval = d
+	}
 }
 
 // Register mounts protected session routes on r.
@@ -150,9 +164,16 @@ func (h *Handler) Events(c fiber.Ctx) error {
 	c.Set(fiber.HeaderContentType, "text/event-stream")
 	c.Set(fiber.HeaderCacheControl, "no-cache")
 	c.Set(fiber.HeaderConnection, "keep-alive")
+	if conn := c.RequestCtx().Conn(); conn != nil {
+		_ = conn.SetWriteDeadline(time.Time{})
+	}
 
 	// Subscribe before reading history so no live events are missed in the gap.
 	subCh, unsubscribe := h.svc.Subscribe(id)
+	keepalive := h.keepaliveInterval
+	if keepalive <= 0 {
+		keepalive = defaultSSEKeepaliveInterval
+	}
 
 	return c.SendStreamWriter(func(w *bufio.Writer) {
 		defer unsubscribe()
@@ -174,16 +195,32 @@ func (h *Handler) Events(c fiber.Ctx) error {
 			return
 		}
 
-		for evt := range subCh {
-			if evt.Seq <= lastSent {
-				continue
-			}
-			if err := writeSSEEvent(w, evt); err != nil {
-				return
-			}
-			lastSent = evt.Seq
-			if isTerminalEventKind(evt.Kind) {
-				return
+		ticker := time.NewTicker(keepalive)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case evt, ok := <-subCh:
+				if !ok {
+					return
+				}
+				if evt.Seq <= lastSent {
+					continue
+				}
+				if err := writeSSEEvent(w, evt); err != nil {
+					return
+				}
+				lastSent = evt.Seq
+				if isTerminalEventKind(evt.Kind) {
+					return
+				}
+			case <-ticker.C:
+				if _, err := fmt.Fprint(w, ": keepalive\n\n"); err != nil {
+					return
+				}
+				if err := w.Flush(); err != nil {
+					return
+				}
 			}
 		}
 	})

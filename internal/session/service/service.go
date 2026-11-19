@@ -36,6 +36,7 @@ type Service struct {
 
 	subsMu sync.RWMutex
 	subs   map[uuid.UUID]map[chan domain.SessionEvent]struct{}
+	closed bool
 }
 
 // New creates a new session Service.
@@ -167,6 +168,11 @@ func (s *Service) LatestEventTime(ctx context.Context, sessionID uuid.UUID) (*ti
 func (s *Service) Subscribe(sessionID uuid.UUID) (<-chan domain.SessionEvent, func()) {
 	ch := make(chan domain.SessionEvent, 64)
 	s.subsMu.Lock()
+	if s.closed {
+		s.subsMu.Unlock()
+		close(ch)
+		return ch, func() {}
+	}
 	if s.subs[sessionID] == nil {
 		s.subs[sessionID] = make(map[chan domain.SessionEvent]struct{})
 	}
@@ -187,6 +193,22 @@ func (s *Service) Subscribe(sessionID uuid.UUID) (<-chan domain.SessionEvent, fu
 		s.subsMu.Unlock()
 	}
 	return ch, unsubscribe
+}
+
+// Close closes all active SSE subscriber channels so streaming handlers exit promptly on shutdown.
+func (s *Service) Close() {
+	s.subsMu.Lock()
+	defer s.subsMu.Unlock()
+	if s.closed {
+		return
+	}
+	s.closed = true
+	for _, m := range s.subs {
+		for ch := range m {
+			close(ch)
+		}
+	}
+	clear(s.subs)
 }
 
 // HandleWorkerEvent processes an incoming worker event envelope from the node hub.
