@@ -25,3 +25,8 @@ Check first-run setup logs (including OTP / initial auth messages when SMTP is u
 To enable GitHub CLI (`gh`) access for vibe runs, create a secret and set github.existingSecret:
   kubectl --namespace {{ .Release.Namespace }} create secret generic opus-github --from-literal=GH_TOKEN=<token>
 {{- end }}
+{{- if not .Values.agy.existingSecret }}
+
+To authenticate agy non-interactively, create a secret from your ~/.gemini credentials and set agy.existingSecret (or run `kubectl exec` into the pod to log in interactively into the persistent /data volume):
+  kubectl --namespace {{ .Release.Namespace }} create secret generic opus-agy --from-file=$HOME/.gemini/
+{{- end }}

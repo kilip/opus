@@ -58,6 +58,11 @@ github:
   # Example: kubectl create secret generic opus-github --from-literal=GH_TOKEN=<token>
   existingSecret: ""
 
+agy:
+  # -- Name of an existing Kubernetes Secret containing agy credentials (files from ~/.gemini).
+  # Mounted read-only at /agy-credentials and copied to $HOME/.gemini on startup.
+  existingSecret: ""
+
 sentry:
   # -- Sentry DSN for error tracking.
   dsn: ""

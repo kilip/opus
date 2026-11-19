@@ -73,6 +73,11 @@ spec:
               mountPath: /tmp
             - name: data
               mountPath: {{ default "/data" .Values.persistence.mountPath }}
+            {{- if .Values.agy.existingSecret }}
+            - name: agy-credentials
+              mountPath: /agy-credentials
+              readOnly: true
+            {{- end }}
       volumes:
         - name: tmp
           emptyDir: {}
@@ -83,6 +88,12 @@ spec:
           {{- else }}
           emptyDir: {}
           {{- end }}
+        {{- if .Values.agy.existingSecret }}
+        - name: agy-credentials
+          secret:
+            secretName: {{ .Values.agy.existingSecret }}
+            defaultMode: 0400
+        {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

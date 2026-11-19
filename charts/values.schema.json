@@ -16,6 +16,12 @@
     "config": { "type": "object" },
     "auth": { "type": "object" },
     "github": { "type": "object" },
+    "agy": {
+      "type": "object",
+      "properties": {
+        "existingSecret": { "type": "string" }
+      }
+    },
     "sentry": { "type": "object" },
     "tracker": { "type": "object" },
     "notify": { "type": "object" },
