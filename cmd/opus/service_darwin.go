@@ -90,15 +90,11 @@ func runServiceInstall(ctx context.Context, opts serviceOptions, deps serviceDep
 	}
 
 	label := launchdLabel(opts.role)
-	plist := renderLaunchdPlist(label, exePath, opts.role, envPath, logPath)
-	if err := os.WriteFile(plistPath, []byte(plist), 0o644); err != nil {
-		return fmt.Errorf("write plist %s: %w", plistPath, err)
-	}
-
+	plist := renderLaunchdPlist(label, exePath, opts.role, appHome, envPath, logPath)
 	domain := launchdDomain(opts, deps)
 	_, _ = deps.runCmd(ctx, "launchctl", "bootout", domain+"/"+label)
-	if out, err := deps.runCmd(ctx, "launchctl", "bootstrap", domain, plistPath); err != nil {
-		return fmt.Errorf("launchctl bootstrap: %w (%s)", err, string(out))
+	if err := os.WriteFile(plistPath, []byte(plist), 0o644); err != nil {
+		return fmt.Errorf("write plist %s: %w", plistPath, err)
 	}
 
 	_, _ = fmt.Fprintf(deps.out, "Installed launchd plist: %s\n", plistPath)
@@ -148,9 +144,13 @@ func runServiceStart(ctx context.Context, opts serviceOptions, deps serviceDeps)
 	}
 	domain := launchdDomain(opts, deps)
 	label := launchdLabel(opts.role)
-	if out, err := deps.runCmd(ctx, "launchctl", "kickstart", "-k", domain+"/"+label); err != nil {
-		if bootOut, bootErr := deps.runCmd(ctx, "launchctl", "bootstrap", domain, plistPath); bootErr != nil {
-			return fmt.Errorf("launchctl start %s: %w (%s / %s)", label, bootErr, string(out), string(bootOut))
+	if out, err := deps.runCmd(ctx, "launchctl", "print", domain+"/"+label); err == nil && strings.Contains(string(out), "state = running") {
+		_, _ = fmt.Fprintf(deps.out, "Started %s.\n", label)
+		return nil
+	}
+	if out, err := deps.runCmd(ctx, "launchctl", "bootstrap", domain, plistPath); err != nil {
+		if kickOut, kickErr := deps.runCmd(ctx, "launchctl", "kickstart", domain+"/"+label); kickErr != nil {
+			return fmt.Errorf("launchctl start %s: %w (%s / %s)", label, kickErr, string(out), string(kickOut))
 		}
 	}
 	_, _ = fmt.Fprintf(deps.out, "Started %s.\n", label)

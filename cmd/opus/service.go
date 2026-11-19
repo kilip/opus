@@ -218,7 +218,9 @@ func ensureOpusEnvFile(appHome, role string) (string, bool, error) {
 			_ = os.Remove(envPath)
 			return "", false, fmt.Errorf("generate AUTH_SECRET: %w", err)
 		}
+		dbPath := filepath.ToSlash(filepath.Join(appHome, "opus.db"))
 		fmt.Fprintf(&sb, "AUTH_SECRET=%s\n", hex.EncodeToString(b))
+		fmt.Fprintf(&sb, "APP_DATABASE_URL=file:%s?_pragma=foreign_keys(ON)&_pragma=busy_timeout(5000)\n", dbPath)
 	}
 
 	if _, err := f.WriteString(sb.String()); err != nil {
@@ -255,6 +257,22 @@ func loadOpusEnvFile(path string) error {
 }
 
 func runServiceExec(ctx context.Context, role, envFile, logFile string) error {
+	return runServiceExecWith(ctx, role, envFile, logFile, func(runCtx context.Context) error {
+		serveCmd := newServeCmd()
+		serveCmd.SetContext(runCtx)
+		return serveCmd.RunE(serveCmd, nil)
+	}, runWorker)
+}
+
+func runServiceExecWith(
+	ctx context.Context,
+	role, envFile, logFile string,
+	serveFn func(context.Context) error,
+	workerFn func(context.Context) error,
+) error {
+	if ctx == nil {
+		return errors.New("service context is nil")
+	}
 	if err := validateServiceRole(role); err != nil {
 		return err
 	}
@@ -279,13 +297,12 @@ func runServiceExec(ctx context.Context, role, envFile, logFile string) error {
 	}
 
 	if role == serviceRoleWorker {
-		return runWorker(ctx)
+		return workerFn(ctx)
 	}
-	serveCmd := newServeCmd()
-	return serveCmd.RunE(serveCmd, nil)
+	return serveFn(ctx)
 }
 
-func renderSystemdUnit(exePath, role, envPath string, system bool) string {
+func renderSystemdUnit(exePath, role, appHome, envPath string, system bool) string {
 	subcmd := "serve"
 	desc := "Opus Server"
 	if role == serviceRoleWorker {
@@ -303,6 +320,7 @@ Wants=network-online.target
 
 [Service]
 Type=simple
+WorkingDirectory=%s
 ExecStart=%s %s
 EnvironmentFile=%s
 Restart=on-failure
@@ -310,15 +328,17 @@ RestartSec=2
 
 [Install]
 WantedBy=%s
-`, desc, exePath, subcmd, envPath, wantedBy)
+`, desc, appHome, exePath, subcmd, envPath, wantedBy)
 }
 
-func renderLaunchdPlist(label, exePath, role, envPath, logPath string) string {
+func renderLaunchdPlist(label, exePath, role, appHome, envPath, logPath string) string {
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
   <key>Label</key>
+  <string>%s</string>
+  <key>WorkingDirectory</key>
   <string>%s</string>
   <key>ProgramArguments</key>
   <array>
@@ -332,6 +352,8 @@ func renderLaunchdPlist(label, exePath, role, envPath, logPath string) string {
   </array>
   <key>RunAtLoad</key>
   <true/>
+  <key>ThrottleInterval</key>
+  <integer>2</integer>
   <key>KeepAlive</key>
   <dict>
     <key>SuccessfulExit</key>
@@ -343,10 +365,10 @@ func renderLaunchdPlist(label, exePath, role, envPath, logPath string) string {
   <string>%s</string>
 </dict>
 </plist>
-`, xmlEscape(label), xmlEscape(exePath), xmlEscape(role), xmlEscape(envPath), xmlEscape(logPath), xmlEscape(logPath))
+`, xmlEscape(label), xmlEscape(appHome), xmlEscape(exePath), xmlEscape(role), xmlEscape(envPath), xmlEscape(logPath), xmlEscape(logPath))
 }
 
-func renderWindowsTaskXML(exePath, role, envPath, logPath string) string {
+func renderWindowsTaskXML(exePath, role, appHome, envPath, logPath string) string {
 	args := fmt.Sprintf(`service run --role %s --env-file "%s" --log-file "%s"`, role, envPath, logPath)
 	return fmt.Sprintf(`<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
@@ -372,10 +394,11 @@ func renderWindowsTaskXML(exePath, role, envPath, logPath string) string {
     <Exec>
       <Command>%s</Command>
       <Arguments>%s</Arguments>
+      <WorkingDirectory>%s</WorkingDirectory>
     </Exec>
   </Actions>
 </Task>
-`, xmlEscape(exePath), xmlEscape(args))
+`, xmlEscape(exePath), xmlEscape(args), xmlEscape(appHome))
 }
 
 func xmlEscape(s string) string {

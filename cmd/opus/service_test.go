@@ -37,6 +37,9 @@ func TestService_EnvFileCreationAndNoOverwrite(t *testing.T) {
 	if !strings.Contains(string(raw), "AUTH_SECRET=") {
 		t.Fatalf("expected AUTH_SECRET in %s, got:\n%s", envPath, raw)
 	}
+	if !strings.Contains(string(raw), "APP_DATABASE_URL=file:") {
+		t.Fatalf("expected APP_DATABASE_URL in %s, got:\n%s", envPath, raw)
+	}
 	for _, line := range strings.Split(string(raw), "\n") {
 		if after, ok := strings.CutPrefix(line, "AUTH_SECRET="); ok {
 			if len(strings.TrimSpace(after)) < 32 {
@@ -68,10 +71,11 @@ func TestService_EnvFileCreationAndNoOverwrite(t *testing.T) {
 
 func TestService_RenderedUnitFilesExcludeSecrets(t *testing.T) {
 	const secret = "super-secret-auth-value-0123456789"
+	appHome := "/tmp/opus"
 	envPath := "/tmp/opus/opus.env"
 
-	unit := renderSystemdUnit("/usr/local/bin/opus", serviceRoleServer, envPath, false)
-	if strings.Contains(unit, secret) || !strings.Contains(unit, "EnvironmentFile="+envPath) {
+	unit := renderSystemdUnit("/usr/local/bin/opus", serviceRoleServer, appHome, envPath, false)
+	if strings.Contains(unit, secret) || !strings.Contains(unit, "EnvironmentFile="+envPath) || !strings.Contains(unit, "WorkingDirectory="+appHome) {
 		t.Fatalf("unexpected systemd unit:\n%s", unit)
 	}
 	if !strings.Contains(unit, "Restart=on-failure") || !strings.Contains(unit, "RestartSec=2") {
@@ -81,19 +85,47 @@ func TestService_RenderedUnitFilesExcludeSecrets(t *testing.T) {
 		t.Fatalf("expected ExecStart serve in systemd unit:\n%s", unit)
 	}
 
-	workerUnit := renderSystemdUnit("/usr/local/bin/opus", serviceRoleWorker, envPath, true)
+	workerUnit := renderSystemdUnit("/usr/local/bin/opus", serviceRoleWorker, appHome, envPath, true)
 	if !strings.Contains(workerUnit, "ExecStart=/usr/local/bin/opus worker") || !strings.Contains(workerUnit, "WantedBy=multi-user.target") {
 		t.Fatalf("unexpected system worker unit:\n%s", workerUnit)
 	}
 
-	plist := renderLaunchdPlist("com.kilip.opus", "/usr/local/bin/opus", serviceRoleServer, envPath, "/tmp/opus.log")
-	if strings.Contains(plist, secret) || !strings.Contains(plist, "<string>--env-file</string>") {
+	plist := renderLaunchdPlist("com.kilip.opus", "/usr/local/bin/opus", serviceRoleServer, appHome, envPath, "/tmp/opus.log")
+	if strings.Contains(plist, secret) || !strings.Contains(plist, "<string>--env-file</string>") ||
+		!strings.Contains(plist, "<key>WorkingDirectory</key>") || !strings.Contains(plist, "<key>ThrottleInterval</key>") {
 		t.Fatalf("unexpected launchd plist:\n%s", plist)
 	}
 
-	winXML := renderWindowsTaskXML(`C:\opus\opus.exe`, serviceRoleServer, envPath, `C:\opus\opus.log`)
-	if strings.Contains(winXML, secret) || !strings.Contains(winXML, "<RestartOnFailure>") || !strings.Contains(winXML, "<ExecutionTimeLimit>PT0S</ExecutionTimeLimit>") {
+	winXML := renderWindowsTaskXML(`C:\opus\opus.exe`, serviceRoleServer, appHome, envPath, `C:\opus\opus.log`)
+	if strings.Contains(winXML, secret) || !strings.Contains(winXML, "<RestartOnFailure>") ||
+		!strings.Contains(winXML, "<ExecutionTimeLimit>PT0S</ExecutionTimeLimit>") ||
+		!strings.Contains(winXML, "<WorkingDirectory>"+appHome+"</WorkingDirectory>") {
 		t.Fatalf("unexpected windows task XML:\n%s", winXML)
+	}
+}
+
+func TestService_RunServiceExecPropagatesContext(t *testing.T) {
+	t.Setenv("APP_HOME", "")
+	t.Setenv("AUTH_SECRET", "")
+	t.Setenv("APP_DATABASE_URL", "")
+	appHome := t.TempDir()
+	envPath, _, err := ensureOpusEnvFile(appHome, serviceRoleServer)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	type ctxKey struct{}
+	ctx := context.WithValue(context.Background(), ctxKey{}, "ok")
+	var gotCtx context.Context
+	err = runServiceExecWith(ctx, serviceRoleServer, envPath, "", func(c context.Context) error {
+		gotCtx = c
+		return nil
+	}, nil)
+	if err != nil {
+		t.Fatalf("runServiceExecWith: %v", err)
+	}
+	if gotCtx == nil || gotCtx.Value(ctxKey{}) != "ok" {
+		t.Fatalf("expected non-nil context propagated, got %v", gotCtx)
 	}
 }
 
@@ -166,6 +198,9 @@ func TestService_LifecycleAndStatusExitCodes(t *testing.T) {
 					case "kickstart":
 						active = true
 					case "print":
+						if !installed {
+							return []byte("Could not find service."), errors.New("exit status 113")
+						}
 						if active {
 							return []byte("state = running\n"), nil
 						}

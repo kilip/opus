@@ -52,7 +52,7 @@ func runServiceInstall(ctx context.Context, opts serviceOptions, deps serviceDep
 	}
 
 	logPath := windowsLogPath(opts.role, deps)
-	taskXML := renderWindowsTaskXML(exePath, opts.role, envPath, logPath)
+	taskXML := renderWindowsTaskXML(exePath, opts.role, appHome, envPath, logPath)
 
 	tmpFile, err := os.CreateTemp("", "opus-task-*.xml")
 	if err != nil {

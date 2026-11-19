@@ -65,7 +65,7 @@ func runServiceInstall(ctx context.Context, opts serviceOptions, deps serviceDep
 	if err := os.MkdirAll(filepath.Dir(unitPath), 0o755); err != nil {
 		return fmt.Errorf("create systemd unit dir: %w", err)
 	}
-	unitContent := renderSystemdUnit(exePath, opts.role, envPath, opts.system)
+	unitContent := renderSystemdUnit(exePath, opts.role, appHome, envPath, opts.system)
 	if err := os.WriteFile(unitPath, []byte(unitContent), 0o644); err != nil {
 		return fmt.Errorf("write systemd unit %s: %w", unitPath, err)
 	}
