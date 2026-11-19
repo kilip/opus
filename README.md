@@ -36,6 +36,18 @@ The installer downloads the latest release archive, verifies its `SHA-256` check
 
 **Manual download:** Prebuilt archives (`opus_<version>_<os>_<arch>.tar.gz` / `.zip`) and `checksums.txt` are published on [GitHub Releases](https://github.com/kilip/opus/releases). Verify with `sha256sum -c checksums.txt` before extracting.
 
+### 🔄 Self-Update
+
+Update an installed `opus` binary in place from GitHub Releases (including prereleases) with SHA-256 verification:
+
+```bash
+opus self-update
+```
+
+- `--check` — Check for updates without installing; exits `0` when up to date or `10` when a newer release is available.
+- `--version <v>` — Install a specific release version (e.g. `0.3.0` or `v0.3.0`).
+- `--yes` (`-y`) — Skip confirmation prompts and allow downgrades when `--version` is older than the current binary.
+
 ### 🐳 Docker
 
 ```bash
