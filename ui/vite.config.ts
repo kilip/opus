@@ -5,7 +5,7 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   build: {
-    sourcemap: "hidden",
+    sourcemap: Boolean(process.env.APP_SENTRY_AUTH_TOKEN),
   },
   plugins: [
     tailwindcss(),
@@ -15,6 +15,9 @@ export default defineConfig({
       project: "opus-ui",
       authToken: process.env.APP_SENTRY_AUTH_TOKEN,
       disable: !process.env.APP_SENTRY_AUTH_TOKEN,
+      sourcemaps: {
+        filesToDeleteAfterUpload: ["./build/client/**/*.map"],
+      },
     }),
   ],
   resolve: {
