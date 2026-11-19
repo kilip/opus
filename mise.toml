@@ -64,7 +64,7 @@ description = "Run Go and UI tests"
 run = """
 status=0
 go test -race ./... || status=1
-bun test --cwd ui --pass-with-no-tests || status=1
+bun test --cwd ui || status=1
 exit $status
 """
 

@@ -40,10 +40,12 @@ jobs:
         run: bun run typecheck
 
       - name: Run UI tests
-        run: bun test --pass-with-no-tests
+        run: bun test
 
       - name: Build UI bundle
-        run: bun run build
+        run: |
+          bun run build
+          test -z "$(find build/client -name '*.map')"
 
   go:
     name: Go
