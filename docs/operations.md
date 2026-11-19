@@ -47,3 +47,26 @@ WORKER_AGY_BIN=agy opus worker
 
 - **`start_run`**: Verifies `agy` is installed and authenticated (`agy auth status`), clones or validates the project repository, creates an isolated git worktree at `<APP_HOME>/wt/<project>/<task-key>` on the task branch, starts `agy acp` with policy enforcement and Opus MCP injection, streams `session/update` events, and reports `session_completed` (or `run_error` / `run_cancelled`).
 - **`cleanup_worktree`**: Removes the task worktree directory and deletes the local task branch when a run finishes or is cleaned up.
+
+## Uninstall
+
+Remove the installed `opus` binary while preserving your data directory (`$APP_HOME`, defaulting to `~/.opus`):
+
+```bash
+opus uninstall
+```
+
+To also remove the data directory, pass `--purge` (you will be prompted to type `purge` unless `--yes` is passed):
+
+```bash
+opus uninstall --purge
+```
+
+### Manual Removal
+
+- **macOS / Linux**: Delete the `opus` binary (for example `~/.local/bin/opus`), and optionally remove `$APP_HOME` (`~/.opus`).
+- **Windows**: Delete `opus.exe` (and any leftover `opus.exe.old`) from `%LOCALAPPDATA%\opus\bin` (or `$env:OPUS_INSTALL_DIR`), remove that directory from your User `Path` environment variable, and optionally remove `$env:APP_HOME` (`%USERPROFILE%\.opus`).
+
+### Docker & Kubernetes
+
+`opus uninstall` refuses to run inside containers. Stop and remove the Docker container (or uninstall the Helm release) instead.

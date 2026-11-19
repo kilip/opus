@@ -32,7 +32,7 @@ curl -fsSL https://raw.githubusercontent.com/kilip/opus/main/scripts/install.sh 
 irm https://raw.githubusercontent.com/kilip/opus/main/scripts/install.ps1 | iex
 ```
 
-The installer downloads the latest release archive, verifies its `SHA-256` checksum against `checksums.txt`, and installs `opus` to `~/.local/bin` (macOS/Linux) or `%LOCALAPPDATA%\opus\bin` (Windows, `amd64` only). Override with `OPUS_VERSION` and `OPUS_INSTALL_DIR`. To uninstall, delete the installed `opus` binary. Worker machines also require `git`, `gh`, and `agy` in `PATH`.
+The installer downloads the latest release archive, verifies its `SHA-256` checksum against `checksums.txt`, and installs `opus` to `~/.local/bin` (macOS/Linux) or `%LOCALAPPDATA%\opus\bin` (Windows, `amd64` only). Override with `OPUS_VERSION` and `OPUS_INSTALL_DIR`. To uninstall, run `opus uninstall` (add `--purge` to also remove `$APP_HOME` / `~/.opus`), or manually delete the installed `opus` binary. Worker machines also require `git`, `gh`, and `agy` in `PATH`.
 
 **Manual download:** Prebuilt archives (`opus_<version>_<os>_<arch>.tar.gz` / `.zip`) and `checksums.txt` are published on [GitHub Releases](https://github.com/kilip/opus/releases). Verify with `sha256sum -c checksums.txt` before extracting.
 
