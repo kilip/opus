@@ -85,8 +85,11 @@ type (
 // Config holds configuration parameters for the node feature.
 type Config struct {
 	BaseURL          string
+	TrustedOrigins   []string
 	Now              func() time.Time
 	RateLimitConfig  handler.RateLimitConfig
+	WSReadTimeout    time.Duration
+	WSPingInterval   time.Duration
 	Bus              *eventbus.Bus
 	DetectorInterval time.Duration
 	DetectorTimeout  time.Duration
@@ -124,8 +127,13 @@ func New(client *ent.Client, cfg Config) *Node {
 		svc:      svc,
 		hub:      hub,
 		detector: detector,
-		handler:  handler.New(svc, hub, cfg.RateLimitConfig),
-		caps:     make(map[string]Capabilities),
+		handler: handler.NewWithWS(svc, hub, cfg.RateLimitConfig, handler.WSConfig{
+			BaseURL:        cfg.BaseURL,
+			TrustedOrigins: cfg.TrustedOrigins,
+			ReadTimeout:    cfg.WSReadTimeout,
+			PingInterval:   cfg.WSPingInterval,
+		}),
+		caps: make(map[string]Capabilities),
 	}
 	hub.OnHeartbeat(func(nodeID string, env domain.Envelope) {
 		_ = svc.RecordHeartbeat(context.Background(), nodeID)

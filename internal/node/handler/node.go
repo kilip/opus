@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"net/url"
 	"strings"
 	"time"
 
@@ -17,7 +18,21 @@ import (
 const (
 	defaultJoinMaxIPRequests = 10
 	defaultJoinWindow        = 1 * time.Minute
+
+	// 1 MiB caps inbound WebSocket frames to prevent memory exhaustion from oversized messages.
+	defaultWSReadLimit    int64 = 1 << 20
+	defaultWSReadTimeout        = 60 * time.Second
+	defaultWSPingInterval       = 20 * time.Second
 )
+
+// WSConfig configures WebSocket origin validation and keepalive/frame limits.
+type WSConfig struct {
+	BaseURL        string
+	TrustedOrigins []string
+	ReadLimit      int64
+	ReadTimeout    time.Duration
+	PingInterval   time.Duration
+}
 
 // RateLimitConfig configures join request rate limits.
 type RateLimitConfig struct {
@@ -53,10 +68,13 @@ func newJoinLimiter(cfg RateLimitConfig) fiber.Handler {
 
 // Handler serves node endpoints.
 type Handler struct {
-	svc       *service.Node
-	hub       *service.Hub
-	limiter   fiber.Handler
-	wsHandler fiber.Handler
+	svc            *service.Node
+	hub            *service.Hub
+	limiter        fiber.Handler
+	wsHandler      fiber.Handler
+	wsReadLimit    int64
+	wsReadTimeout  time.Duration
+	wsPingInterval time.Duration
 }
 
 // ponytail: keep domain imported for swag OpenAPI doc generation
@@ -74,19 +92,65 @@ func New(svc *service.Node, hub *service.Hub, rl ...RateLimitConfig) *Handler {
 	if len(rl) > 0 {
 		cfg = rl[0]
 	}
+	return NewWithWS(svc, hub, cfg, WSConfig{})
+}
+
+// NewWithWS returns Handler with explicit WebSocket origin and keepalive configuration.
+func NewWithWS(svc *service.Node, hub *service.Hub, rl RateLimitConfig, ws WSConfig) *Handler {
 	if hub == nil {
 		hub = service.NewHub()
 	}
+	readLimit := ws.ReadLimit
+	if readLimit <= 0 {
+		readLimit = defaultWSReadLimit
+	}
+	readTimeout := ws.ReadTimeout
+	if readTimeout <= 0 {
+		readTimeout = defaultWSReadTimeout
+	}
+	pingInterval := ws.PingInterval
+	if pingInterval <= 0 {
+		pingInterval = defaultWSPingInterval
+	}
+
+	origins := buildAllowedWSOrigins(ws.BaseURL, ws.TrustedOrigins)
 	h := &Handler{
-		svc:     svc,
-		hub:     hub,
-		limiter: newJoinLimiter(cfg),
+		svc:            svc,
+		hub:            hub,
+		limiter:        newJoinLimiter(rl),
+		wsReadLimit:    readLimit,
+		wsReadTimeout:  readTimeout,
+		wsPingInterval: pingInterval,
 	}
 	h.wsHandler = websocket.New(h.handleWS, websocket.Config{
-		Origins:          []string{"*"},
+		Origins:          origins,
 		AllowEmptyOrigin: true,
 	})
 	return h
+}
+
+func buildAllowedWSOrigins(baseURL string, trusted []string) []string {
+	seen := make(map[string]struct{})
+	var out []string
+	add := func(raw string) {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			return
+		}
+		if u, err := url.Parse(raw); err == nil && u.Scheme != "" && u.Host != "" {
+			raw = u.Scheme + "://" + u.Host
+		}
+		raw = strings.TrimRight(raw, "/")
+		if _, ok := seen[raw]; !ok {
+			seen[raw] = struct{}{}
+			out = append(out, raw)
+		}
+	}
+	add(baseURL)
+	for _, o := range trusted {
+		add(o)
+	}
+	return out
 }
 
 // Register mounts node routes on r.
@@ -286,6 +350,29 @@ func (h *Handler) handleWS(c *websocket.Conn) {
 		return
 	}
 	defer cleanup()
+
+	c.SetReadLimit(h.wsReadLimit)
+	_ = c.SetReadDeadline(time.Now().Add(h.wsReadTimeout))
+	c.SetPongHandler(func(string) error {
+		return c.SetReadDeadline(time.Now().Add(h.wsReadTimeout))
+	})
+
+	done := make(chan struct{})
+	defer close(done)
+	go func() {
+		ticker := time.NewTicker(h.wsPingInterval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case <-ticker.C:
+				if err := c.WriteControl(websocket.PingMessage, nil, time.Now().Add(5*time.Second)); err != nil {
+					return
+				}
+			}
+		}
+	}()
 
 	for {
 		_, msg, err := c.ReadMessage()
