@@ -119,6 +119,18 @@ On each worker machine, make sure `gh` and `agy` are installed and logged in (`g
    opus worker
    ```
 
+### 3. Run as a Service (Optional)
+
+Manage Opus as a background service (`systemd` on Linux, `launchd` on macOS, Task Scheduler on Windows):
+
+```bash
+opus service install
+opus service start
+opus service status
+```
+
+Subcommands: `install`, `uninstall`, `start`, `stop`, `restart`, `status` (pass `--role worker` for worker nodes or `--system` for a Linux system unit). See [Operations Notes](docs/operations.md#run-as-a-service) for environment files, log paths, and status exit codes.
+
 ---
 
 ## ⚙️ Configuration

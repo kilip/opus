@@ -45,6 +45,28 @@ WORKER_AGY_BIN=agy opus worker
 - `APP_HOME`: Base directory for cloned repos (`<APP_HOME>/repos/<slug>`), worktrees (`<APP_HOME>/wt/<project>/<task-key>`), and `node.json`.
 - `GH_TOKEN`: Passed through from the worker environment to `agy` subprocesses so `gh` commands can create and merge pull requests.
 
+## Run as a Service
+
+Manage Opus (`server` or `worker`) as a background service using `opus service`:
+
+```bash
+opus service install [--role server|worker] [--system]
+opus service start   [--role server|worker] [--system]
+opus service stop    [--role server|worker] [--system]
+opus service restart [--role server|worker] [--system]
+opus service status  [--role server|worker] [--system]
+opus service uninstall [--role server|worker] [--system]
+```
+
+- **`--role`** (default `server`): `server` runs `opus serve`; `worker` runs `opus worker` (requires `$APP_HOME/node.json` from `opus join`).
+- **`--system`**: Install a system-wide unit (`/etc/systemd/system/opus.service` on Linux, `/Library/LaunchDaemons/com.kilip.opus.plist` on macOS) instead of a user-level service.
+- **Environment file (`$APP_HOME/opus.env`, mode `0600`)**: Created on `install` if absent (generating `AUTH_SECRET` for `server`), never overwritten if it already exists, and preserved on `uninstall`. Secrets are never embedded in unit, plist, or task XML files.
+- **Backends & Logs**:
+  - **Linux (`systemd`)**: `~/.config/systemd/user/opus.service` (or `opus-worker.service`), `Restart=on-failure`, `RestartSec=2`. Logs go to `journalctl --user -u opus`.
+  - **macOS (`launchd`)**: `~/Library/LaunchAgents/com.kilip.opus.plist`, logs to `~/Library/Logs/opus.log` (or `opus-worker.log`).
+  - **Windows (`schtasks`)**: Scheduled Task `Opus` (or `OpusWorker`), logs to `%LOCALAPPDATA%\opus\opus.log`.
+- **`opus service status` exit codes**: `0` running, `3` installed but stopped, `4` not installed.
+
 ### 4. Run Execution & Worktree Lifecycle
 
 - **`start_run`**: Verifies `agy` is installed and authenticated (`agy auth status`), clones or validates the project repository, creates an isolated git worktree at `<APP_HOME>/wt/<project>/<task-key>` on the task branch, starts `agy acp` with policy enforcement and Opus MCP injection, streams `session/update` events, and reports `session_completed` (or `run_error` / `run_cancelled`).
