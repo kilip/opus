@@ -81,6 +81,18 @@ func (f JoinTokenFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, e
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.JoinTokenMutation", m)
 }
 
+// The MetaFunc type is an adapter to allow the use of ordinary
+// function as Meta mutator.
+type MetaFunc func(context.Context, *ent.MetaMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f MetaFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.MetaMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.MetaMutation", m)
+}
+
 // The NodeFunc type is an adapter to allow the use of ordinary
 // function as Node mutator.
 type NodeFunc func(context.Context, *ent.NodeMutation) (ent.Value, error)

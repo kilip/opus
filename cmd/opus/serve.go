@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"sync/atomic"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/google/uuid"
@@ -148,6 +149,7 @@ func buildServer(
 		IsNodeConnected: nodeFeature.Hub().Connected,
 	})
 
+	shuttingDown := &atomic.Bool{}
 	fiberApp, err := app.GetFiber(cfg, logger, db, bus,
 		app.WithNode(nodeFeature),
 		app.WithProject(projectFeature),
@@ -155,6 +157,7 @@ func buildServer(
 		app.WithSession(sessionFeature),
 		app.WithTask(taskFeature),
 		app.WithTracker(trackerFeature),
+		app.WithShuttingDown(shuttingDown),
 	)
 	if err != nil {
 		return nil, err
@@ -174,8 +177,10 @@ func buildServer(
 	opusApp := app.New(cfg, fiberApp, logger, db, bus,
 		app.WithNode(nodeFeature),
 		app.WithRun(runFeature),
+		app.WithSession(sessionFeature),
 		app.WithTracker(trackerFeature),
 		app.WithWorker(masterWorker, inProc),
+		app.WithShuttingDown(shuttingDown),
 	)
 
 	return &server{
@@ -205,11 +210,14 @@ func newServeCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if cfg.Version == "" {
+				cfg.Version = Version
+			}
 			logger := app.GetLogger(cfg)
 			flushSentry := app.InitSentry(cfg, logger)
 			defer flushSentry()
 
-			db, err := app.OpenDB(ctx, cfg.DatabaseURL)
+			db, err := app.OpenDBWithVersion(ctx, cfg.DatabaseURL, cfg.Version, cfg.AllowDowngrade)
 			if err != nil {
 				return err
 			}

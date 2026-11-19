@@ -132,6 +132,19 @@ var (
 		Columns:    JoinTokensColumns,
 		PrimaryKey: []*schema.Column{JoinTokensColumns[0]},
 	}
+	// MetaColumns holds the columns for the "meta" table.
+	MetaColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "key", Type: field.TypeString, Unique: true},
+		{Name: "value", Type: field.TypeString},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// MetaTable holds the schema information for the "meta" table.
+	MetaTable = &schema.Table{
+		Name:       "meta",
+		Columns:    MetaColumns,
+		PrimaryKey: []*schema.Column{MetaColumns[0]},
+	}
 	// NodesColumns holds the columns for the "nodes" table.
 	NodesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -493,6 +506,7 @@ var (
 		AuthSessionsTable,
 		CountersTable,
 		JoinTokensTable,
+		MetaTable,
 		NodesTable,
 		OtPsTable,
 		ProjectsTable,

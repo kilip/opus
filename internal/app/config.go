@@ -30,6 +30,8 @@ type Config struct {
 	AuthSetupToken         string        `env:"AUTH_SETUP_TOKEN, default="`
 	AuthCookieSecure       string        `env:"AUTH_COOKIE_SECURE, default=auto"`
 	AppVersion             string        `env:"APP_VERSION"`
+	Version                string
+	AllowDowngrade         bool          `env:"APP_ALLOW_DOWNGRADE, default=false"`
 	SentryDSN              string        `env:"APP_SENTRY_DSN, default="`
 	SentryEnvironment      string        `env:"APP_SENTRY_ENVIRONMENT, default=development"`
 	SentryTracesSampleRate float64       `env:"APP_SENTRY_TRACES_SAMPLE_RATE, default=1.0"`

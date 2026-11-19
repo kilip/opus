@@ -24,6 +24,9 @@ type Counter func(*sql.Selector)
 // JoinToken is the predicate function for jointoken builders.
 type JoinToken func(*sql.Selector)
 
+// Meta is the predicate function for meta builders.
+type Meta func(*sql.Selector)
+
 // Node is the predicate function for node builders.
 type Node func(*sql.Selector)
 

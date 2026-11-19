@@ -24,6 +24,8 @@ type Tx struct {
 	Counter *CounterClient
 	// JoinToken is the client for interacting with the JoinToken builders.
 	JoinToken *JoinTokenClient
+	// Meta is the client for interacting with the Meta builders.
+	Meta *MetaClient
 	// Node is the client for interacting with the Node builders.
 	Node *NodeClient
 	// OTP is the client for interacting with the OTP builders.
@@ -185,6 +187,7 @@ func (tx *Tx) init() {
 	tx.AuthSession = NewAuthSessionClient(tx.config)
 	tx.Counter = NewCounterClient(tx.config)
 	tx.JoinToken = NewJoinTokenClient(tx.config)
+	tx.Meta = NewMetaClient(tx.config)
 	tx.Node = NewNodeClient(tx.config)
 	tx.OTP = NewOTPClient(tx.config)
 	tx.Project = NewProjectClient(tx.config)

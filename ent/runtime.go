@@ -12,6 +12,7 @@ import (
 	"github.com/kilip/opus/ent/authsession"
 	"github.com/kilip/opus/ent/counter"
 	"github.com/kilip/opus/ent/jointoken"
+	"github.com/kilip/opus/ent/meta"
 	"github.com/kilip/opus/ent/node"
 	"github.com/kilip/opus/ent/otp"
 	"github.com/kilip/opus/ent/project"
@@ -135,6 +136,18 @@ func init() {
 	jointokenDescID := jointokenFields[0].Descriptor()
 	// jointoken.DefaultID holds the default value on creation for the id field.
 	jointoken.DefaultID = jointokenDescID.Default.(func() uuid.UUID)
+	metaFields := schema.Meta{}.Fields()
+	_ = metaFields
+	// metaDescUpdatedAt is the schema descriptor for updated_at field.
+	metaDescUpdatedAt := metaFields[3].Descriptor()
+	// meta.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	meta.DefaultUpdatedAt = metaDescUpdatedAt.Default.(func() time.Time)
+	// meta.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	meta.UpdateDefaultUpdatedAt = metaDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// metaDescID is the schema descriptor for id field.
+	metaDescID := metaFields[0].Descriptor()
+	// meta.DefaultID holds the default value on creation for the id field.
+	meta.DefaultID = metaDescID.Default.(func() uuid.UUID)
 	nodeFields := schema.Node{}.Fields()
 	_ = nodeFields
 	// nodeDescName is the schema descriptor for name field.

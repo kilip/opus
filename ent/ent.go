@@ -18,6 +18,7 @@ import (
 	"github.com/kilip/opus/ent/authsession"
 	"github.com/kilip/opus/ent/counter"
 	"github.com/kilip/opus/ent/jointoken"
+	"github.com/kilip/opus/ent/meta"
 	"github.com/kilip/opus/ent/node"
 	"github.com/kilip/opus/ent/otp"
 	"github.com/kilip/opus/ent/project"
@@ -96,6 +97,7 @@ func checkColumn(t, c string) error {
 			authsession.Table:     authsession.ValidColumn,
 			counter.Table:         counter.ValidColumn,
 			jointoken.Table:       jointoken.ValidColumn,
+			meta.Table:            meta.ValidColumn,
 			node.Table:            node.ValidColumn,
 			otp.Table:             otp.ValidColumn,
 			project.Table:         project.ValidColumn,
