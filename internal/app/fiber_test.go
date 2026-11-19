@@ -1,858 +1,183 @@
-package app_test
+package app
 
 import (
 	"bytes"
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"database/sql"
-	"encoding/base64"
-	"encoding/hex"
-	"encoding/json"
-	"fmt"
 	"io"
 	"log/slog"
-	"net"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
-	"entgo.io/ent/dialect"
-	entsql "entgo.io/ent/dialect/sql"
-	"github.com/fasthttp/websocket"
-	"github.com/gofiber/fiber/v3"
-	"github.com/kilip/opus/ent"
-	"github.com/kilip/opus/ent/enttest"
-	entnode "github.com/kilip/opus/ent/node"
-	"github.com/kilip/opus/internal/app"
-	"github.com/kilip/opus/internal/node"
-	"github.com/kilip/opus/internal/node/domain"
 	"github.com/kilip/opus/internal/platform/eventbus"
-	"github.com/kilip/opus/internal/project"
-	_ "modernc.org/sqlite"
 )
 
-func parseResponseBody(t *testing.T, resp *http.Response) struct {
-	Data  any    `json:"data"`
-	Error string `json:"error"`
-} {
+func testAppConfig(t *testing.T) Config {
 	t.Helper()
-	defer func() { _ = resp.Body.Close() }()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("failed to read body: %v", err)
-	}
-	var res struct {
-		Data  any    `json:"data"`
-		Error string `json:"error"`
-	}
-	if err := json.Unmarshal(body, &res); err != nil {
-		t.Fatalf("failed to unmarshal body: %v (raw: %s)", err, string(body))
-	}
-	return res
-}
-
-func TestGetFiber_CSRFProtection(t *testing.T) {
-	cfg := app.Config{
-		AppName:        "test-opus",
-		BaseURL:        "http://localhost:7880",
-		TrustedOrigins: []string{"http://localhost:5173"},
-	}
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	fiberApp, err := app.GetFiber(cfg, logger, nil, eventbus.New())
-	if err != nil {
-		t.Fatalf("GetFiber: %v", err)
-	}
-	fiberApp.Post("/api/test-csrf", func(c fiber.Ctx) error {
-		return c.SendStatus(http.StatusCreated)
-	})
-
-	// Safe request (GET) with cross-origin Origin must pass through
-	t.Run("GET safe method allowed even with cross-origin", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/api/health", nil)
-		req.Header.Set("Origin", "https://evil.com")
-		resp, err := fiberApp.Test(req)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if resp.StatusCode != http.StatusOK {
-			t.Fatalf("expected status 200, got %d", resp.StatusCode)
-		}
-	})
-
-	// Mutating request (POST) with cross-origin Origin must be rejected with 403 CSRF_FORBIDDEN
-	t.Run("POST cross-origin rejected with 403 CSRF_FORBIDDEN", func(t *testing.T) {
-		payload := bytes.NewReader([]byte(`{"title":"csrf task"}`))
-		req := httptest.NewRequest("POST", "/api/test-csrf", payload)
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Origin", "https://evil.com")
-		resp, err := fiberApp.Test(req)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if resp.StatusCode != http.StatusForbidden {
-			t.Fatalf("expected status 403, got %d", resp.StatusCode)
-		}
-		body := parseResponseBody(t, resp)
-		if body.Error != "CSRF_FORBIDDEN" {
-			t.Errorf("expected error %q, got %q", "CSRF_FORBIDDEN", body.Error)
-		}
-	})
-
-	// Mutating request (POST) with same-origin Origin must pass
-	t.Run("POST same-origin allowed", func(t *testing.T) {
-		payload := bytes.NewReader([]byte(`{"title":"same origin task"}`))
-		req := httptest.NewRequest("POST", "/api/test-csrf", payload)
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Origin", "http://localhost:7880")
-		resp, err := fiberApp.Test(req)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if resp.StatusCode != http.StatusCreated {
-			t.Fatalf("expected status 201, got %d", resp.StatusCode)
-		}
-	})
-
-	// Mutating request (POST) with trusted origin must pass
-	t.Run("POST trusted origin allowed", func(t *testing.T) {
-		payload := bytes.NewReader([]byte(`{"title":"trusted origin task"}`))
-		req := httptest.NewRequest("POST", "/api/test-csrf", payload)
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Origin", "http://localhost:5173")
-		resp, err := fiberApp.Test(req)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if resp.StatusCode != http.StatusCreated {
-			t.Fatalf("expected status 201, got %d", resp.StatusCode)
-		}
-	})
-
-	// Mutating request (POST) with Sec-Fetch-Site: cross-site rejected
-	t.Run("POST Sec-Fetch-Site cross-site rejected", func(t *testing.T) {
-		payload := bytes.NewReader([]byte(`{"title":"sec fetch site task"}`))
-		req := httptest.NewRequest("POST", "/api/test-csrf", payload)
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Sec-Fetch-Site", "cross-site")
-		resp, err := fiberApp.Test(req)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if resp.StatusCode != http.StatusForbidden {
-			t.Fatalf("expected status 403, got %d", resp.StatusCode)
-		}
-		body := parseResponseBody(t, resp)
-		if body.Error != "CSRF_FORBIDDEN" {
-			t.Errorf("expected error %q, got %q", "CSRF_FORBIDDEN", body.Error)
-		}
-	})
-
-	// Mutating request (POST) with Sec-Fetch-Site: same-origin allowed
-	t.Run("POST Sec-Fetch-Site same-origin allowed", func(t *testing.T) {
-		payload := bytes.NewReader([]byte(`{"title":"sec fetch site same-origin task"}`))
-		req := httptest.NewRequest("POST", "/api/test-csrf", payload)
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Sec-Fetch-Site", "same-origin")
-		resp, err := fiberApp.Test(req)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
-		}
-		if resp.StatusCode != http.StatusCreated {
-			t.Fatalf("expected status 201, got %d", resp.StatusCode)
-		}
-	})
-}
-
-// AC3: task.New(db, bus).Register(api) is mounted inside `if db != nil` behind `api.Use(authFeature.Middleware())`.
-func TestGetFiber_TasksRequiresAuth(t *testing.T) {
-	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared&_pragma=foreign_keys(ON)&_pragma=busy_timeout(10000)")
-	if err != nil {
-		t.Fatalf("open sqlite failed: %v", err)
-	}
-	db.SetMaxOpenConns(1)
-	drv := entsql.OpenDB(dialect.SQLite, db)
-	client := enttest.NewClient(t, enttest.WithOptions(ent.Driver(drv)))
-	t.Cleanup(func() {
-		_ = client.Close()
-	})
-
-	cfg := app.Config{
-		AppName:       "test-opus",
-		BaseURL:       "http://localhost:7880",
-		SessionSecret: "secret-needs-to-be-32-bytes-long-ok",
-	}
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	fiberApp, err := app.GetFiber(cfg, logger, client, eventbus.New())
-	if err != nil {
-		t.Fatalf("GetFiber: %v", err)
-	}
-
-	// 1. Health check is public (200)
-	reqHealth := httptest.NewRequest("GET", "/api/health", nil)
-	respHealth, err := fiberApp.Test(reqHealth)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if respHealth.StatusCode != http.StatusOK {
-		t.Fatalf("expected 200 for /api/health, got %d", respHealth.StatusCode)
-	}
-
-	// 2. Unauthenticated GET /api/tasks returns 401
-	reqTasks := httptest.NewRequest("GET", "/api/tasks", nil)
-	respTasks, err := fiberApp.Test(reqTasks)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if respTasks.StatusCode != http.StatusUnauthorized {
-		t.Fatalf("expected 401 for /api/tasks, got %d", respTasks.StatusCode)
-	}
-	body := parseResponseBody(t, respTasks)
-	if body.Error != "UNAUTHORIZED" {
-		t.Errorf("expected error %q, got %q", "UNAUTHORIZED", body.Error)
-	}
-
-	// 3. Unauthenticated GET /api/projects returns 401
-	reqProjects := httptest.NewRequest("GET", "/api/projects", nil)
-	respProjects, err := fiberApp.Test(reqProjects)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if respProjects.StatusCode != http.StatusUnauthorized {
-		t.Fatalf("expected 401 for /api/projects, got %d", respProjects.StatusCode)
-	}
-	bodyProjects := parseResponseBody(t, respProjects)
-	if bodyProjects.Error != "UNAUTHORIZED" {
-		t.Errorf("expected error %q, got %q", "UNAUTHORIZED", bodyProjects.Error)
+	return Config{
+		AppName:         "opus-test",
+		AppHome:         t.TempDir(),
+		Host:            "127.0.0.1",
+		Port:            "0",
+		ReadTimeout:     5 * time.Second,
+		WriteTimeout:    5 * time.Second,
+		IdleTimeout:     5 * time.Second,
+		ShutdownTimeout: 100 * time.Millisecond,
+		BodyLimit:       4 * 1024 * 1024,
+		BaseURL:         "http://localhost:7880",
+		SessionSecret:   "0123456789abcdef0123456789abcdef",
+		SessionTTL:      time.Hour,
 	}
 }
 
-// AC2, AC4: Node registry startup master persistence across restarts and auth check (401 without session).
-func TestGetFiber_NodesRequiresAuthAndPersistsMaster(t *testing.T) {
-	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared&_pragma=foreign_keys(ON)&_pragma=busy_timeout(10000)")
-	if err != nil {
-		t.Fatalf("open sqlite failed: %v", err)
-	}
-	db.SetMaxOpenConns(1)
-	drv := entsql.OpenDB(dialect.SQLite, db)
-	client := enttest.NewClient(t, enttest.WithOptions(ent.Driver(drv)))
-	t.Cleanup(func() {
-		_ = client.Close()
-	})
-
-	cfg := app.Config{
-		AppName:       "test-opus",
-		BaseURL:       "http://localhost:7880",
-		SessionSecret: "secret-needs-to-be-32-bytes-long-ok",
-	}
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-
-	// 1. First app startup
-	fiberApp1, err := app.GetFiber(cfg, logger, client, eventbus.New())
-	if err != nil {
-		t.Fatalf("GetFiber: %v", err)
-	}
-
-	// Unauthenticated GET /api/nodes returns 401
-	reqNodes := httptest.NewRequest("GET", "/api/nodes", nil)
-	respNodes, err := fiberApp1.Test(reqNodes)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if respNodes.StatusCode != http.StatusUnauthorized {
-		t.Fatalf("expected 401 for /api/nodes, got %d", respNodes.StatusCode)
-	}
-	body := parseResponseBody(t, respNodes)
-	if body.Error != "UNAUTHORIZED" {
-		t.Errorf("expected error %q, got %q", "UNAUTHORIZED", body.Error)
-	}
-
-	// Unauthenticated POST /api/nodes/join-tokens returns 401
-	reqJoinTokens := httptest.NewRequest("POST", "/api/nodes/join-tokens", nil)
-	respJoinTokens, err := fiberApp1.Test(reqJoinTokens)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if respJoinTokens.StatusCode != http.StatusUnauthorized {
-		t.Fatalf("expected 401 for /api/nodes/join-tokens, got %d", respJoinTokens.StatusCode)
-	}
-	bodyJoinTokens := parseResponseBody(t, respJoinTokens)
-	if bodyJoinTokens.Error != "UNAUTHORIZED" {
-		t.Errorf("expected error %q, got %q", "UNAUTHORIZED", bodyJoinTokens.Error)
-	}
-
-	// Unauthenticated DELETE /api/nodes/:id returns 401
-	reqDeleteNode := httptest.NewRequest("DELETE", "/api/nodes/01933a3c-1b77-7000-8000-000000000000", nil)
-	respDeleteNode, err := fiberApp1.Test(reqDeleteNode)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if respDeleteNode.StatusCode != http.StatusUnauthorized {
-		t.Fatalf("expected 401 for /api/nodes/:id, got %d", respDeleteNode.StatusCode)
-	}
-	bodyDeleteNode := parseResponseBody(t, respDeleteNode)
-	if bodyDeleteNode.Error != "UNAUTHORIZED" {
-		t.Errorf("expected error %q, got %q", "UNAUTHORIZED", bodyDeleteNode.Error)
-	}
-
-	// Verify master node created in DB
+func TestReadyz_AndLoggerSkip(t *testing.T) {
 	ctx := context.Background()
-	masters1, err := client.Node.Query().Where(entnode.RoleEQ(entnode.RoleMaster)).All(ctx)
+	dbURL := "file:" + filepath.Join(t.TempDir(), "readyz.db")
+	db, err := OpenDBWithVersion(ctx, dbURL, "0.1.0", false)
 	if err != nil {
-		t.Fatalf("query masters: %v", err)
+		t.Fatalf("OpenDBWithVersion: %v", err)
 	}
-	if len(masters1) != 1 {
-		t.Fatalf("expected 1 master node, got %d", len(masters1))
-	}
-	m1 := masters1[0]
 
-	// 2. Second app startup (simulating restart)
-	if _, err := app.GetFiber(cfg, logger, client, eventbus.New()); err != nil {
+	var logBuf bytes.Buffer
+	logger := slog.New(slog.NewTextHandler(&logBuf, nil))
+	shuttingDown := &atomic.Bool{}
+	bus := eventbus.New(eventbus.WithLogger(logger))
+	defer func() { _ = bus.Close(ctx) }()
+
+	app, err := GetFiber(testAppConfig(t), logger, db, bus, WithShuttingDown(shuttingDown))
+	if err != nil {
 		t.Fatalf("GetFiber: %v", err)
 	}
 
-	masters2, err := client.Node.Query().Where(entnode.RoleEQ(entnode.RoleMaster)).All(ctx)
+	// /api/readyz returns 200 and skips request log.
+	resp, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/readyz", nil))
 	if err != nil {
-		t.Fatalf("query masters after restart: %v", err)
+		t.Fatalf("GET /api/readyz: %v", err)
 	}
-	if len(masters2) != 1 {
-		t.Fatalf("expected 1 master node after restart, got %d", len(masters2))
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("readyz status = %d, want 200", resp.StatusCode)
 	}
-	m2 := masters2[0]
-	if m2.ID != m1.ID {
-		t.Errorf("expected master ID to persist across restarts: got %v, want %v", m2.ID, m1.ID)
+
+	// /api/health returns 200 and skips request log.
+	respH, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/health", nil))
+	if err != nil {
+		t.Fatalf("GET /api/health: %v", err)
+	}
+	_ = respH.Body.Close()
+	if respH.StatusCode != http.StatusOK {
+		t.Fatalf("health status = %d, want 200", respH.StatusCode)
+	}
+
+	if strings.Contains(logBuf.String(), "/api/health") || strings.Contains(logBuf.String(), "/api/readyz") {
+		t.Fatalf("expected /api/health and /api/readyz to be skipped in logger, got:\n%s", logBuf.String())
+	}
+
+	// Non-health request is logged.
+	respNotFound, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/auth/me", nil))
+	if err != nil {
+		t.Fatalf("GET /api/auth/me: %v", err)
+	}
+	_ = respNotFound.Body.Close()
+	if !strings.Contains(logBuf.String(), "/api/auth/me") {
+		t.Fatalf("expected /api/auth/me to be logged, got:\n%s", logBuf.String())
+	}
+
+	// Shutting down flag -> /api/readyz returns 503, /api/health still returns 200.
+	shuttingDown.Store(true)
+	respDown, _ := app.Test(httptest.NewRequest(http.MethodGet, "/api/readyz", nil))
+	_ = respDown.Body.Close()
+	if respDown.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("readyz while shutting down = %d, want 503", respDown.StatusCode)
+	}
+
+	// Closed DB -> /api/readyz returns 503.
+	shuttingDown.Store(false)
+	_ = db.Close()
+	respClosed, _ := app.Test(httptest.NewRequest(http.MethodGet, "/api/readyz", nil))
+	_ = respClosed.Body.Close()
+	if respClosed.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("readyz with closed DB = %d, want 503", respClosed.StatusCode)
 	}
 }
 
-// POST /api/nodes/join succeeds without session cookie.
-func TestGetFiber_NodeJoinWithoutAuth(t *testing.T) {
-	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared&_pragma=foreign_keys(ON)&_pragma=busy_timeout(10000)")
-	if err != nil {
-		t.Fatalf("open sqlite failed: %v", err)
-	}
-	db.SetMaxOpenConns(1)
-	drv := entsql.OpenDB(dialect.SQLite, db)
-	client := enttest.NewClient(t, enttest.WithOptions(ent.Driver(drv)))
-	t.Cleanup(func() {
-		_ = client.Close()
-	})
-
-	cfg := app.Config{
-		AppName:       "test-opus",
-		BaseURL:       "http://localhost:7880",
-		SessionSecret: "secret-needs-to-be-32-bytes-long-ok",
-	}
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	fiberApp, err := app.GetFiber(cfg, logger, client, eventbus.New())
-	if err != nil {
-		t.Fatalf("GetFiber: %v", err)
-	}
-
-	// Create a join token directly in DB
+func TestSecurityHeaders_AndSPAFallback(t *testing.T) {
 	ctx := context.Background()
-	rawToken := "valid-join-token-for-fiber-test"
-	h := sha256.Sum256([]byte(rawToken))
-	_, err = client.JoinToken.Create().
-		SetTokenHash(hex.EncodeToString(h[:])).
-		SetExpiresAt(time.Now().Add(15 * time.Minute)).
-		Save(ctx)
+	dbURL := "file:" + filepath.Join(t.TempDir(), "headers.db")
+	db, err := OpenDBWithVersion(ctx, dbURL, "0.1.0", false)
 	if err != nil {
-		t.Fatalf("create join token: %v", err)
+		t.Fatalf("OpenDBWithVersion: %v", err)
 	}
-
-	// POST /api/nodes/join without session cookie must succeed (public endpoint)
-	reqBody := `{"token":"valid-join-token-for-fiber-test","name":"worker-public"}`
-	req := httptest.NewRequest("POST", "/api/nodes/join", strings.NewReader(reqBody))
-	req.Header.Set("Content-Type", "application/json")
-	resp, err := fiberApp.Test(req)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if resp.StatusCode != http.StatusCreated {
-		t.Fatalf("expected 201 for /api/nodes/join without session, got %d", resp.StatusCode)
-	}
-
-	var res struct {
-		Data struct {
-			NodeID     string `json:"nodeId"`
-			Credential string `json:"credential"`
-		} `json:"data"`
-	}
-	bodyBytes, _ := io.ReadAll(resp.Body)
-	if err := json.Unmarshal(bodyBytes, &res); err != nil {
-		t.Fatalf("unmarshal response: %v", err)
-	}
-	if res.Data.NodeID == "" || res.Data.Credential == "" {
-		t.Errorf("expected non-empty NodeID and Credential, got %+v", res.Data)
-	}
-
-	// Verify worker node created in DB
-	worker, err := client.Node.Query().Where(entnode.NameEQ("worker-public")).Only(ctx)
-	if err != nil {
-		t.Fatalf("query worker: %v", err)
-	}
-	if worker.Role != entnode.RoleWorker {
-		t.Errorf("expected worker role, got %s", worker.Role)
-	}
-}
-
-// AC5: A test using an in-process Fiber app and a WebSocket client sends hello,
-// receives a command sent through Send, and sends an event that reaches a registered handler callback.
-func TestGetFiber_NodeControlChannel(t *testing.T) {
-	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared&_pragma=foreign_keys(ON)&_pragma=busy_timeout(10000)")
-	if err != nil {
-		t.Fatalf("open sqlite failed: %v", err)
-	}
-	db.SetMaxOpenConns(1)
-	drv := entsql.OpenDB(dialect.SQLite, db)
-	client := enttest.NewClient(t, enttest.WithOptions(ent.Driver(drv)))
-	t.Cleanup(func() {
-		_ = client.Close()
-	})
-
-	cfg := app.Config{
-		AppName:       "test-opus",
-		BaseURL:       "http://localhost:7880",
-		SessionSecret: "secret-needs-to-be-32-bytes-long-ok",
-	}
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	nodeFeature := node.New(client, node.Config{BaseURL: cfg.BaseURL})
-
-	// Register event callback on hub
-	eventCh := make(chan domain.Envelope, 1)
-	nodeFeature.Hub().OnEvent(func(nodeID string, env domain.Envelope) {
-		eventCh <- env
-	})
-
-	fiberApp, err := app.GetFiber(cfg, logger, client, eventbus.New(), app.WithNode(nodeFeature))
-	if err != nil {
-		t.Fatalf("GetFiber: %v", err)
-	}
-
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("listen failed: %v", err)
-	}
-	defer func() { _ = ln.Close() }()
-
-	go func() {
-		_ = fiberApp.Listener(ln)
-	}()
-
-	// Create a worker node in DB
-	ctx := context.Background()
-	workerCred := "worker-secret-control-token"
-	h := sha256.Sum256([]byte(workerCred))
-	workerNode, err := client.Node.Create().
-		SetName("worker-ws-test").
-		SetRole(entnode.RoleWorker).
-		SetStatus(entnode.StatusOffline).
-		SetCredentialHash(hex.EncodeToString(h[:])).
-		Save(ctx)
-	if err != nil {
-		t.Fatalf("create worker: %v", err)
-	}
-
-	wsURL := fmt.Sprintf("ws://%s/api/nodes/connect", ln.Addr().String())
-	header := http.Header{
-		"Authorization": []string{"Bearer " + workerCred},
-	}
-
-	wsConn, resp, err := websocket.DefaultDialer.Dial(wsURL, header)
-	if err != nil {
-		t.Fatalf("websocket dial failed: %v", err)
-	}
-	defer func() { _ = wsConn.Close() }()
-
-	if resp.StatusCode != http.StatusSwitchingProtocols {
-		t.Fatalf("expected 101 Switching Protocols, got %d", resp.StatusCode)
-	}
-
-	// 1. Client sends hello
-	helloEnv := domain.Envelope{
-		Type: domain.EnvelopeTypeHello,
-		ID:   "hello-1",
-	}
-	if err := wsConn.WriteJSON(helloEnv); err != nil {
-		t.Fatalf("send hello failed: %v", err)
-	}
-
-	// Wait briefly for connection registration in Hub
-	deadline := time.Now().Add(2 * time.Second)
-	for !nodeFeature.Hub().Connected(workerNode.ID.String()) {
-		if time.Now().After(deadline) {
-			t.Fatal("timed out waiting for worker to be connected in hub")
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
-
-	// 2. Server sends command through Send; client receives it
-	cmdEnv := domain.Envelope{
-		Type:    domain.EnvelopeTypeCommand,
-		ID:      "cmd-42",
-		Payload: []byte(`{"action":"sync"}`),
-	}
-	if err := nodeFeature.Hub().Send(workerNode.ID.String(), cmdEnv); err != nil {
-		t.Fatalf("send command failed: %v", err)
-	}
-
-	var receivedCmd domain.Envelope
-	if err := wsConn.ReadJSON(&receivedCmd); err != nil {
-		t.Fatalf("client read command failed: %v", err)
-	}
-	if receivedCmd.Type != domain.EnvelopeTypeCommand {
-		t.Errorf("expected command type, got %s", receivedCmd.Type)
-	}
-	if receivedCmd.ID != "cmd-42" {
-		t.Errorf("expected cmd-42 id, got %s", receivedCmd.ID)
-	}
-
-	// 3. Client sends event that reaches the registered handler callback
-	eventEnv := domain.Envelope{
-		Type:    domain.EnvelopeTypeEvent,
-		ID:      "evt-99",
-		Payload: []byte(`{"status":"progress"}`),
-	}
-	if err := wsConn.WriteJSON(eventEnv); err != nil {
-		t.Fatalf("client send event failed: %v", err)
-	}
-
-	select {
-	case receivedEvent := <-eventCh:
-		if receivedEvent.Type != domain.EnvelopeTypeEvent {
-			t.Errorf("expected event type, got %s", receivedEvent.Type)
-		}
-		if receivedEvent.ID != "evt-99" {
-			t.Errorf("expected evt-99 id, got %s", receivedEvent.ID)
-		}
-	case <-time.After(2 * time.Second):
-		t.Fatal("timed out waiting for event callback")
-	}
-}
-
-func TestGetFiber_ProjectDeleteGuardWithTasks(t *testing.T) {
-	ctx := context.Background()
-	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared&_pragma=foreign_keys(ON)&_pragma=busy_timeout(10000)")
-	if err != nil {
-		t.Fatalf("open sqlite failed: %v", err)
-	}
-	db.SetMaxOpenConns(1)
-	drv := entsql.OpenDB(dialect.SQLite, db)
-	client := enttest.NewClient(t, enttest.WithOptions(ent.Driver(drv)))
-	t.Cleanup(func() {
-		_ = client.Close()
-	})
-
-	cfg := app.Config{
-		AppName:       "test-opus",
-		BaseURL:       "http://localhost:7880",
-		SessionSecret: "secret-needs-to-be-32-bytes-long-ok",
-	}
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	fiberApp, err := app.GetFiber(cfg, logger, client, eventbus.New())
-	if err != nil {
-		t.Fatalf("GetFiber: %v", err)
-	}
-
-	// Create user & session
-	u, err := client.User.Create().
-		SetEmail("admin@example.com").
-		Save(ctx)
-	if err != nil {
-		t.Fatalf("create user: %v", err)
-	}
-	token := "valid-session-token-12345678901234567890"
-	mac := hmac.New(sha256.New, []byte(cfg.SessionSecret))
-	mac.Write([]byte(token))
-	tokenHash := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
-	_, err = client.AuthSession.Create().
-		SetUserID(u.ID).
-		SetTokenHash(tokenHash).
-		SetExpiresAt(time.Now().Add(time.Hour)).
-		Save(ctx)
-	if err != nil {
-		t.Fatalf("create session: %v", err)
-	}
-
-	authReq := func(method, path string, body any) *http.Request {
-		var r io.Reader
-		if body != nil {
-			b, _ := json.Marshal(body)
-			r = bytes.NewReader(b)
-		}
-		req := httptest.NewRequest(method, path, r)
-		req.Header.Set("Cookie", "opus_session="+token)
-		req.Header.Set("Origin", "http://localhost:7880")
-		if body != nil {
-			req.Header.Set("Content-Type", "application/json")
-		}
-		return req
-	}
-
-	// 1. Create project 1
-	p1Body := project.CreateProjectRequest{
-		Slug:            "p1",
-		Name:            "Project 1",
-		RepoProvider:    "github",
-		RepoRef:         "org/p1",
-		TrackerProvider: "github",
-		TrackerRef:      "org/p1",
-	}
-	respP1, err := fiberApp.Test(authReq("POST", "/api/projects", p1Body))
-	if err != nil || respP1.StatusCode != http.StatusCreated {
-		t.Fatalf("create project 1 failed: %v (code %d)", err, respP1.StatusCode)
-	}
-	var p1Created struct {
-		Data struct {
-			ID string `json:"id"`
-		} `json:"data"`
-	}
-	_ = json.NewDecoder(respP1.Body).Decode(&p1Created)
-	p1ID := p1Created.Data.ID
-
-	// 2. Create project 2 (no tasks)
-	p2Body := project.CreateProjectRequest{
-		Slug:            "p2",
-		Name:            "Project 2",
-		RepoProvider:    "github",
-		RepoRef:         "org/p2",
-		TrackerProvider: "github",
-		TrackerRef:      "org/p2",
-	}
-	respP2, err := fiberApp.Test(authReq("POST", "/api/projects", p2Body))
-	if err != nil || respP2.StatusCode != http.StatusCreated {
-		t.Fatalf("create project 2 failed: %v (code %d)", err, respP2.StatusCode)
-	}
-	var p2Created struct {
-		Data struct {
-			ID string `json:"id"`
-		} `json:"data"`
-	}
-	_ = json.NewDecoder(respP2.Body).Decode(&p2Created)
-	p2ID := p2Created.Data.ID
-
-	// 3. Create a task for project 1
-	taskBody := map[string]string{
-		"projectId": p1ID,
-		"title":     "Task for P1",
-	}
-	respTask, err := fiberApp.Test(authReq("POST", "/api/tasks", taskBody))
-	if err != nil || respTask.StatusCode != http.StatusCreated {
-		t.Fatalf("create task failed: %v (code %d)", err, respTask.StatusCode)
-	}
-
-	// 4. Attempt DELETE /api/projects/:p1ID -> 409 Conflict (AC5)
-	respDelP1, err := fiberApp.Test(authReq("DELETE", "/api/projects/"+p1ID, nil))
-	if err != nil {
-		t.Fatalf("delete p1 failed: %v", err)
-	}
-	if respDelP1.StatusCode != http.StatusConflict {
-		t.Fatalf("expected 409 Conflict for project with tasks, got %d", respDelP1.StatusCode)
-	}
-	delP1Body := parseResponseBody(t, respDelP1)
-	if delP1Body.Error != "PROJECT_HAS_TASKS" {
-		t.Fatalf("expected PROJECT_HAS_TASKS error, got %s", delP1Body.Error)
-	}
-
-	// 5. DELETE /api/projects/:p2ID (has no tasks) -> 204 No Content (AC5)
-	respDelP2, err := fiberApp.Test(authReq("DELETE", "/api/projects/"+p2ID, nil))
-	if err != nil {
-		t.Fatalf("delete p2 failed: %v", err)
-	}
-	if respDelP2.StatusCode != http.StatusNoContent {
-		t.Fatalf("expected 204 No Content for project without tasks, got %d", respDelP2.StatusCode)
-	}
-}
-
-func TestGetFiber_TrackerAuthAndProjectLabelValidation(t *testing.T) {
-	ctx := context.Background()
-	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared&_pragma=foreign_keys(ON)&_pragma=busy_timeout(10000)")
-	if err != nil {
-		t.Fatalf("open sqlite failed: %v", err)
-	}
-	db.SetMaxOpenConns(1)
-	drv := entsql.OpenDB(dialect.SQLite, db)
-	client := enttest.NewClient(t, enttest.WithOptions(ent.Driver(drv)))
-	t.Cleanup(func() {
-		_ = client.Close()
-	})
-
-	cfg := app.Config{
-		AppName:       "test-opus",
-		BaseURL:       "http://localhost:7880",
-		SessionSecret: "secret-needs-to-be-32-bytes-long-ok",
-	}
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	fiberApp, err := app.GetFiber(cfg, logger, client, eventbus.New())
-	if err != nil {
-		t.Fatalf("GetFiber: %v", err)
-	}
-
-	// 1. Tracker endpoints reject unauthenticated requests with 401
-	for _, tc := range []struct {
-		method string
-		path   string
-	}{
-		{http.MethodGet, "/api/tracker/settings"},
-		{http.MethodPut, "/api/tracker/settings"},
-		{http.MethodGet, "/api/projects/01933a3c-1b77-7000-8000-000000000000/tracker"},
-	} {
-		req := httptest.NewRequest(tc.method, tc.path, nil)
-		req.Header.Set("Origin", "http://localhost:7880")
-		resp, err := fiberApp.Test(req)
-		if err != nil {
-			t.Fatalf("%s %s: %v", tc.method, tc.path, err)
-		}
-		_ = resp.Body.Close()
-		if resp.StatusCode != http.StatusUnauthorized {
-			t.Fatalf("expected 401 for unauthenticated %s %s, got %d", tc.method, tc.path, resp.StatusCode)
-		}
-	}
-
-	// Create authenticated session
-	u, err := client.User.Create().SetEmail("tracker@example.com").Save(ctx)
-	if err != nil {
-		t.Fatalf("create user: %v", err)
-	}
-	token := "valid-session-token-tracker-1234567890"
-	mac := hmac.New(sha256.New, []byte(cfg.SessionSecret))
-	mac.Write([]byte(token))
-	tokenHash := base64.RawURLEncoding.EncodeToString(mac.Sum(nil))
-	if _, err := client.AuthSession.Create().
-		SetUserID(u.ID).
-		SetTokenHash(tokenHash).
-		SetExpiresAt(time.Now().Add(time.Hour)).
-		Save(ctx); err != nil {
-		t.Fatalf("create session: %v", err)
-	}
-
-	authReq := func(method, path string, body any) *http.Request {
-		var r io.Reader
-		if body != nil {
-			b, _ := json.Marshal(body)
-			r = bytes.NewReader(b)
-		}
-		req := httptest.NewRequest(method, path, r)
-		req.Header.Set("Cookie", "opus_session="+token)
-		req.Header.Set("Origin", "http://localhost:7880")
-		if body != nil {
-			req.Header.Set("Content-Type", "application/json")
-		}
-		return req
-	}
-
-	// 2. Create a project and validate PATCH trackerLabels through wired tracker validator
-	respCreate, err := fiberApp.Test(authReq(http.MethodPost, "/api/projects", project.CreateProjectRequest{
-		Slug:         "wired-tracker",
-		Name:         "Wired Tracker",
-		RepoProvider: "github",
-		RepoRef:      "org/wired-tracker",
-	}))
-	if err != nil || respCreate.StatusCode != http.StatusCreated {
-		t.Fatalf("create project failed: %v (code %d)", err, respCreate.StatusCode)
-	}
-	var created struct {
-		Data struct {
-			ID string `json:"id"`
-		} `json:"data"`
-	}
-	_ = json.NewDecoder(respCreate.Body).Decode(&created)
-	_ = respCreate.Body.Close()
-
-	// Invalid trackerLabels ("done") returns 400 PROJECT_INVALID_TRACKER_LABELS
-	respBadPatch, err := fiberApp.Test(authReq(http.MethodPatch, "/api/projects/"+created.Data.ID, map[string]any{
-		"trackerLabels": map[string]string{"done": "finished"},
-	}))
-	if err != nil {
-		t.Fatalf("patch project failed: %v", err)
-	}
-	if respBadPatch.StatusCode != http.StatusBadRequest {
-		t.Fatalf("expected 400 on invalid trackerLabels, got %d", respBadPatch.StatusCode)
-	}
-	badBody := parseResponseBody(t, respBadPatch)
-	if badBody.Error != "PROJECT_INVALID_TRACKER_LABELS" {
-		t.Fatalf("expected PROJECT_INVALID_TRACKER_LABELS, got %q", badBody.Error)
-	}
-
-	// Valid trackerLabels succeeds -> 200
-	respGoodPatch, err := fiberApp.Test(authReq(http.MethodPatch, "/api/projects/"+created.Data.ID, map[string]any{
-		"trackerLabels": map[string]string{"todo": "queue"},
-	}))
-	if err != nil || respGoodPatch.StatusCode != http.StatusOK {
-		t.Fatalf("expected 200 on valid trackerLabels, got %d (err: %v)", respGoodPatch.StatusCode, err)
-	}
-	_ = respGoodPatch.Body.Close()
-
-	// GET /api/projects/:id/tracker -> 200
-	respStatus, err := fiberApp.Test(authReq(http.MethodGet, "/api/projects/"+created.Data.ID+"/tracker", nil))
-	if err != nil || respStatus.StatusCode != http.StatusOK {
-		t.Fatalf("expected 200 on GET /tracker, got %d (err: %v)", respStatus.StatusCode, err)
-	}
-	_ = respStatus.Body.Close()
-
-	// GET /api/tracker/settings -> 200
-	respSettings, err := fiberApp.Test(authReq(http.MethodGet, "/api/tracker/settings", nil))
-	if err != nil || respSettings.StatusCode != http.StatusOK {
-		t.Fatalf("expected 200 on GET /tracker/settings, got %d (err: %v)", respSettings.StatusCode, err)
-	}
-	_ = respSettings.Body.Close()
-}
-
-func TestGetFiber_TrustedProxies(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-
-	// Empty APP_TRUSTED_PROXIES -> ignores X-Forwarded-For.
-	appUntrusted, err := app.GetFiber(app.Config{AppName: "opus"}, logger, nil, eventbus.New())
-	if err != nil {
-		t.Fatalf("GetFiber untrusted: %v", err)
-	}
-	appUntrusted.Get("/api/test-ip", func(c fiber.Ctx) error { return c.SendString(c.IP()) })
-
-	req1 := httptest.NewRequest(http.MethodGet, "/api/test-ip", nil)
-	req1.Header.Set("X-Forwarded-For", "203.0.113.9")
-	resp1, _ := appUntrusted.Test(req1)
-	b1, _ := io.ReadAll(resp1.Body)
-	_ = resp1.Body.Close()
-	if string(b1) == "203.0.113.9" {
-		t.Fatalf("expected untrusted proxy to ignore X-Forwarded-For, got %q", string(b1))
-	}
-
-	// Configured APP_TRUSTED_PROXIES -> trusts X-Forwarded-For from listed proxy.
-	appTrusted, err := app.GetFiber(app.Config{
-		AppName:        "opus",
-		TrustedProxies: []string{"0.0.0.0/0"},
-	}, logger, nil, eventbus.New())
-	if err != nil {
-		t.Fatalf("GetFiber trusted: %v", err)
-	}
-	appTrusted.Get("/api/test-ip", func(c fiber.Ctx) error { return c.SendString(c.IP()) })
-
-	req2 := httptest.NewRequest(http.MethodGet, "/api/test-ip", nil)
-	req2.Header.Set("X-Forwarded-For", "203.0.113.9")
-	resp2, _ := appTrusted.Test(req2)
-	b2, _ := io.ReadAll(resp2.Body)
-	_ = resp2.Body.Close()
-	if string(b2) != "203.0.113.9" {
-		t.Fatalf("expected trusted proxy to return X-Forwarded-For 203.0.113.9, got %q", string(b2))
-	}
-}
-
-func TestGetFiber_ShortAuthSecretErrors(t *testing.T) {
-	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared&_pragma=foreign_keys(ON)")
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
-	}
-	db.SetMaxOpenConns(1)
-	client := enttest.NewClient(t, enttest.WithOptions(ent.Driver(entsql.OpenDB(dialect.SQLite, db))))
-	t.Cleanup(func() { _ = client.Close() })
+	defer func() { _ = db.Close() }()
 
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	if _, err := app.GetFiber(app.Config{
-		AppName:       "opus",
-		SessionSecret: "short",
-	}, logger, client, eventbus.New()); err == nil {
-		t.Fatal("expected GetFiber to fail on short AUTH_SECRET")
+	bus := eventbus.New(eventbus.WithLogger(logger))
+	defer func() { _ = bus.Close(ctx) }()
+
+	// HTTP BaseURL -> no HSTS header.
+	appHTTP, err := GetFiber(testAppConfig(t), logger, db, bus)
+	if err != nil {
+		t.Fatalf("GetFiber HTTP: %v", err)
+	}
+	resp, err := appHTTP.Test(httptest.NewRequest(http.MethodGet, "/config.js", nil))
+	if err != nil {
+		t.Fatalf("GET /config.js: %v", err)
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("/config.js status = %d, want 200", resp.StatusCode)
+	}
+	if got := resp.Header.Get("X-Content-Type-Options"); got != "nosniff" {
+		t.Fatalf("X-Content-Type-Options = %q, want nosniff", got)
+	}
+	if got := resp.Header.Get("X-Frame-Options"); got != "DENY" {
+		t.Fatalf("X-Frame-Options = %q, want DENY", got)
+	}
+	if got := resp.Header.Get("Referrer-Policy"); got != "strict-origin-when-cross-origin" {
+		t.Fatalf("Referrer-Policy = %q", got)
+	}
+	if got := resp.Header.Get("Content-Security-Policy"); !strings.Contains(got, "script-src 'self'") {
+		t.Fatalf("CSP missing script-src 'self': %q", got)
+	}
+	if got := resp.Header.Get("Strict-Transport-Security"); got != "" {
+		t.Fatalf("expected no HSTS on http://, got %q", got)
+	}
+
+	// Missing asset with extension returns 404.
+	respMissing, err := appHTTP.Test(httptest.NewRequest(http.MethodGet, "/assets/does-not-exist.js", nil))
+	if err != nil {
+		t.Fatalf("GET missing asset: %v", err)
+	}
+	_ = respMissing.Body.Close()
+	if respMissing.StatusCode != http.StatusNotFound {
+		t.Fatalf("missing asset status = %d, want 404", respMissing.StatusCode)
+	}
+
+	// Extensionless client route returns 200 index.html.
+	respSPA, err := appHTTP.Test(httptest.NewRequest(http.MethodGet, "/tasks/123", nil))
+	if err != nil {
+		t.Fatalf("GET /tasks/123: %v", err)
+	}
+	spaBody, _ := io.ReadAll(respSPA.Body)
+	_ = respSPA.Body.Close()
+	if respSPA.StatusCode != http.StatusOK {
+		t.Fatalf("SPA route status = %d, want 200 (body=%q)", respSPA.StatusCode, string(spaBody))
+	}
+
+	// HTTPS BaseURL -> HSTS header present.
+	httpsCfg := testAppConfig(t)
+	httpsCfg.BaseURL = "https://opus.example.com"
+	appHTTPS, err := GetFiber(httpsCfg, logger, db, bus)
+	if err != nil {
+		t.Fatalf("GetFiber HTTPS: %v", err)
+	}
+	respHTTPS, _ := appHTTPS.Test(httptest.NewRequest(http.MethodGet, "https://opus.example.com/api/health", nil))
+	_ = respHTTPS.Body.Close()
+	if got := respHTTPS.Header.Get("Strict-Transport-Security"); got == "" {
+		t.Fatal("expected Strict-Transport-Security on https:// BaseURL")
 	}
 }

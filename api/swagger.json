@@ -2615,6 +2615,38 @@
                 ]
             }
         },
+        "/readyz": {
+            "get": {
+                "description": "Verifies database connectivity and server readiness",
+                "operationId": "readyCheck",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-app_HealthStatus"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "503": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Service Unavailable"
+                    }
+                },
+                "summary": "System readiness check",
+                "tags": [
+                    "system"
+                ]
+            }
+        },
         "/runs": {
             "get": {
                 "description": "Returns runs filtered by optional taskId, projectId, and state.",

@@ -6,11 +6,14 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"path"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	sentryfiber "github.com/getsentry/sentry-go/fiberv3"
 	"github.com/gofiber/fiber/v3"
+	"github.com/gofiber/fiber/v3/middleware/helmet"
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/fiber/v3/middleware/requestid"
 	"github.com/gofiber/fiber/v3/middleware/static"
@@ -45,6 +48,32 @@ func healthCheck(c fiber.Ctx) error {
 	return httpx.OK(c, HealthStatus{Status: "ok"})
 }
 
+// readyCheck godoc
+// @Summary System readiness check
+// @Description Verifies database connectivity and server readiness
+// @ID readyCheck
+// @Tags system
+// @Produce json
+// @Success 200 {object} httpx.Response[HealthStatus]
+// @Failure 503 {object} httpx.ErrorResponse
+// @Router /readyz [get]
+func readyCheckHandler(db *ent.Client, shuttingDown *atomic.Bool) fiber.Handler {
+	return func(c fiber.Ctx) error {
+		if shuttingDown != nil && shuttingDown.Load() {
+			return httpx.NewError(fiber.StatusServiceUnavailable, errors.New("shutting down"))
+		}
+		if db == nil {
+			return httpx.NewError(fiber.StatusServiceUnavailable, errors.New("database not configured"))
+		}
+		pingCtx, cancel := context.WithTimeout(c.Context(), time.Second)
+		defer cancel()
+		if _, err := db.Meta.Query().Limit(1).Count(pingCtx); err != nil {
+			return httpx.NewError(fiber.StatusServiceUnavailable, err)
+		}
+		return httpx.OK(c, HealthStatus{Status: "ok"})
+	}
+}
+
 // GetFiber initializes HTTP server.
 func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus, opts ...Option) (*fiber.App, error) {
 	var o options
@@ -72,6 +101,19 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 
 	app.Use(requestid.New())
 	app.Use(recover.New())
+	helmetCfg := helmet.Config{
+		XSSProtection:         "0",
+		ContentTypeNosniff:    "nosniff",
+		XFrameOptions:         "DENY",
+		ReferrerPolicy:        "strict-origin-when-cross-origin",
+		ContentSecurityPolicy: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'",
+		HSTSMaxAge:            0,
+		HSTSExcludeSubdomains: true,
+	}
+	if strings.HasPrefix(strings.ToLower(cfg.BaseURL), "https://") {
+		helmetCfg.HSTSMaxAge = 31536000
+	}
+	app.Use(helmet.New(helmetCfg))
 	if cfg.SentryDSN != "" {
 		app.Use(sentryfiber.New(sentryfiber.Options{
 			Repanic:         true,
@@ -90,6 +132,9 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 				}
 			}
 			_ = c.App().ErrorHandler(c, err)
+		}
+		if c.Method() == fiber.MethodGet && (c.Path() == "/api/health" || c.Path() == "/api/readyz") {
+			return err
 		}
 		logger.InfoContext(c.Context(), "http request",
 			"request_id", requestid.FromContext(c),
@@ -121,6 +166,7 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 
 	api := app.Group("/api")
 	api.Get("/health", healthCheck)
+	api.Get("/readyz", readyCheckHandler(db, o.shuttingDown))
 
 	if db != nil {
 		reg := auth.NewProviderRegistry(auth.ProviderConfig{
@@ -245,7 +291,7 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 
 	// ponytail: serves embedded SPA without custom Cache-Control headers; add immutable asset caching when CDN/traffic requires.
 	if distFS, err := ui.Dist(); err == nil {
-		app.Use(static.New("", static.Config{
+		app.Get("/*", static.New("", static.Config{
 			FS: distFS,
 			Next: func(c fiber.Ctx) bool {
 				return strings.HasPrefix(c.Path(), "/api") ||
@@ -253,12 +299,15 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 					strings.HasPrefix(c.Path(), "/mcp/")
 			},
 			NotFoundHandler: func(c fiber.Ctx) error {
+				if path.Ext(c.Path()) != "" {
+					return fiber.ErrNotFound
+				}
 				index, err := fs.ReadFile(distFS, "index.html")
 				if err != nil {
 					return fiber.ErrNotFound
 				}
 				c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
-				return c.Send(index)
+				return c.Status(fiber.StatusOK).Send(index)
 			},
 		}))
 	}

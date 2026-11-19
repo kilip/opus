@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gofiber/fiber/v3"
@@ -46,14 +47,22 @@ func NewMailer(cfg Config, logger *slog.Logger) mailer.Mailer {
 type Option func(*options)
 
 type options struct {
-	node    *node.Node
-	project *project.Project
-	run     *run.Feature
-	session *session.Session
-	task    *task.Task
-	tracker *tracker.Tracker
-	worker  *worker.Worker
-	inProc  *worker.InProcessTransport
+	node         *node.Node
+	project      *project.Project
+	run          *run.Feature
+	session      *session.Session
+	task         *task.Task
+	tracker      *tracker.Tracker
+	worker       *worker.Worker
+	inProc       *worker.InProcessTransport
+	shuttingDown *atomic.Bool
+}
+
+// WithShuttingDown injects the shared atomic readiness/shutdown flag into GetFiber and Opus.
+func WithShuttingDown(flag *atomic.Bool) Option {
+	return func(o *options) {
+		o.shuttingDown = flag
+	}
 }
 
 // WithNode injects a pre-configured Node feature into GetFiber and Opus.
@@ -107,16 +116,18 @@ func WithWorker(w *worker.Worker, inProc *worker.InProcessTransport) Option {
 }
 
 type Opus struct {
-	cfg     Config
-	fiber   *fiber.App
-	logger  *slog.Logger
-	db      *ent.Client
-	bus     *eventbus.Bus
-	node    *node.Node
-	run     *run.Feature
-	tracker *tracker.Tracker
-	worker  *worker.Worker
-	inProc  *worker.InProcessTransport
+	cfg          Config
+	fiber        *fiber.App
+	logger       *slog.Logger
+	db           *ent.Client
+	bus          *eventbus.Bus
+	node         *node.Node
+	run          *run.Feature
+	session      *session.Session
+	tracker      *tracker.Tracker
+	worker       *worker.Worker
+	inProc       *worker.InProcessTransport
+	shuttingDown *atomic.Bool
 }
 
 func New(cfg Config, fiberApp *fiber.App, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus, opts ...Option) *Opus {
@@ -126,17 +137,23 @@ func New(cfg Config, fiberApp *fiber.App, logger *slog.Logger, db *ent.Client, b
 			opt(&o)
 		}
 	}
+	shuttingDown := o.shuttingDown
+	if shuttingDown == nil {
+		shuttingDown = &atomic.Bool{}
+	}
 	return &Opus{
-		cfg:     cfg,
-		fiber:   fiberApp,
-		logger:  logger,
-		db:      db,
-		bus:     bus,
-		node:    o.node,
-		run:     o.run,
-		tracker: o.tracker,
-		worker:  o.worker,
-		inProc:  o.inProc,
+		cfg:          cfg,
+		fiber:        fiberApp,
+		logger:       logger,
+		db:           db,
+		bus:          bus,
+		node:         o.node,
+		run:          o.run,
+		session:      o.session,
+		tracker:      o.tracker,
+		worker:       o.worker,
+		inProc:       o.inProc,
+		shuttingDown: shuttingDown,
 	}
 }
 
@@ -164,6 +181,18 @@ func (o *Opus) Serve(ctx context.Context) error {
 	stopWorker := o.startMasterWorker(ctx)
 	stopRun := o.startRunReconciler(ctx)
 
+	watchCtx, cancelWatch := context.WithCancel(context.Background())
+	defer cancelWatch()
+	go func() {
+		select {
+		case <-ctx.Done():
+			if o.shuttingDown != nil {
+				o.shuttingDown.Store(true)
+			}
+		case <-watchCtx.Done():
+		}
+	}()
+
 	addr := net.JoinHostPort(o.cfg.Host, o.cfg.Port)
 	o.logger.InfoContext(ctx, "starting server", "addr", addr)
 	err := o.fiber.Listen(addr, fiber.ListenConfig{
@@ -171,11 +200,18 @@ func (o *Opus) Serve(ctx context.Context) error {
 		GracefulContext:       ctx,
 		ShutdownTimeout:       o.cfg.ShutdownTimeout,
 	})
+	if o.shuttingDown != nil {
+		o.shuttingDown.Store(true)
+	}
 
 	stopRun()
 	stopWorker()
 	if o.node != nil {
 		o.node.Stop()
+		_ = o.node.Hub().Close()
+	}
+	if o.session != nil {
+		o.session.Close()
 	}
 	if o.tracker != nil {
 		o.tracker.Stop()
