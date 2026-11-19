@@ -131,6 +131,16 @@ opus service status
 
 Subcommands: `install`, `uninstall`, `start`, `stop`, `restart`, `status` (pass `--role worker` for worker nodes or `--system` for a Linux system unit). See [Operations Notes](docs/operations.md#run-as-a-service) for environment files, log paths, and status exit codes.
 
+### 4. Diagnostics (`opus doctor`)
+
+Run read-only environment and configuration diagnostics:
+
+```bash
+opus doctor [--json]
+```
+
+Checks binary version, `git`/`gh`/`agy`, `$APP_HOME`, SQLite WAL/busy_timeout, `AUTH_SECRET`, `APP_BASE_URL`/cookie policy, SMTP, Telegram, port availability, worker config, setup state, and service status. Exits `0` when all checks pass/warn or `1` if any check fails.
+
 ---
 
 ## ⚙️ Configuration
