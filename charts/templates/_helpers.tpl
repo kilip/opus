@@ -82,7 +82,7 @@ Environment variables from values.
 - name: APP_HOST
   value: {{ $c.host | quote }}
 - name: APP_PORT
-  value: {{ .Values.port | quote }}
+  value: {{ .Values.port | int64 | quote }}
 - name: APP_LOG_LEVEL
   value: {{ $c.logLevel | quote }}
 - name: APP_READ_TIMEOUT
@@ -94,7 +94,7 @@ Environment variables from values.
 - name: APP_SHUTDOWN_TIMEOUT
   value: {{ $c.shutdownTimeout | quote }}
 - name: APP_BODY_LIMIT
-  value: {{ $c.bodyLimit | quote }}
+  value: {{ $c.bodyLimit | int64 | quote }}
 {{- if $c.sessionTtl }}
 - name: AUTH_SESSION_TTL
   value: {{ $c.sessionTtl | quote }}
@@ -149,7 +149,7 @@ Environment variables from values.
   value: {{ .Values.smtp.host | quote }}
 {{- if .Values.smtp.port }}
 - name: APP_SMTP_PORT
-  value: {{ .Values.smtp.port | quote }}
+  value: {{ .Values.smtp.port | int64 | quote }}
 {{- end }}
 {{- if .Values.smtp.username }}
 - name: APP_SMTP_USERNAME
