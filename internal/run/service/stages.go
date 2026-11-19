@@ -138,9 +138,37 @@ func (s *Service) PrepareAndStartSession(ctx context.Context, cfg StageConfig, r
 		McpToken:      rawToken,
 	}
 	if err := cfg.Worker.SendStartRun(ctx, *run.NodeID, cmd); err != nil {
+		reason := fmt.Sprintf("failed to dispatch to worker: %v", err)
+		if cfg.Sessions != nil {
+			_, _, _ = cfg.Sessions.MarkFailed(ctx, sess.ID, reason)
+		}
+		_, _ = s.FailRun(ctx, cfg, run.ID, reason)
+		s.cleanupRunWorktree(ctx, cfg, run)
 		return domain.Run{}, err
 	}
 	return run, nil
+}
+
+func (s *Service) cleanupRunWorktree(ctx context.Context, cfg StageConfig, r domain.Run) {
+	if cfg.Tasks == nil || cfg.Projects == nil || cfg.Worker == nil || r.NodeID == nil {
+		return
+	}
+	logger := cfg.Logger
+	if logger == nil {
+		logger = slog.Default()
+	}
+	t, tErr := cfg.Tasks.Get(ctx, r.TaskID.String())
+	proj, pErr := cfg.Projects.Get(ctx, r.ProjectID.String())
+	if tErr != nil || pErr != nil {
+		return
+	}
+	mappedPath := s.findMappedPath(ctx, r.ProjectID, *r.NodeID)
+	if err := cfg.Worker.CleanupWorktree(ctx, *r.NodeID, proj.Slug, t.Key, r.Branch, mappedPath); err != nil {
+		logger.WarnContext(ctx, "worktree cleanup failed",
+			slog.String("run_id", r.ID.String()),
+			slog.Any("error", err),
+		)
+	}
 }
 
 func generateMCPToken() (rawToken, tokenHash string, err error) {

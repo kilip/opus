@@ -67,17 +67,19 @@ type (
 
 // Config configures the run feature.
 type Config struct {
-	Bus          *eventbus.Bus
-	Now          func() time.Time
-	AppHome      string
-	Tasks        *task.Task
-	Projects     *project.Project
-	Sessions     *session.Session
-	Worker       WorkerTransport
-	PollInterval time.Duration
-	StageTimeout time.Duration
-	Logger       *slog.Logger
-	IsAgyReady   func(ctx context.Context, nodeID uuid.UUID) bool
+	Bus             *eventbus.Bus
+	Now             func() time.Time
+	AppHome         string
+	Tasks           *task.Task
+	Projects        *project.Project
+	Sessions        *session.Session
+	Worker          WorkerTransport
+	PollInterval    time.Duration
+	StageTimeout    time.Duration
+	NodeGrace       time.Duration
+	Logger          *slog.Logger
+	IsAgyReady      func(ctx context.Context, nodeID uuid.UUID) bool
+	IsNodeConnected func(nodeID string) bool
 }
 
 // Feature is the public facade for the run feature.
@@ -108,13 +110,15 @@ func New(db *ent.Client, cfg Config) *Feature {
 		handler:  handler.New(svc, stageCfg),
 		stageCfg: stageCfg,
 		reconciler: service.ReconcilerConfig{
-			Tasks:        cfg.Tasks,
-			Sessions:     cfg.Sessions,
-			Stages:       stageCfg,
-			PollInterval: cfg.PollInterval,
-			StageTimeout: cfg.StageTimeout,
-			Logger:       cfg.Logger,
-			IsAgyReady:   cfg.IsAgyReady,
+			Tasks:           cfg.Tasks,
+			Sessions:        cfg.Sessions,
+			Stages:          stageCfg,
+			PollInterval:    cfg.PollInterval,
+			StageTimeout:    cfg.StageTimeout,
+			NodeGrace:       cfg.NodeGrace,
+			Logger:          cfg.Logger,
+			IsAgyReady:      cfg.IsAgyReady,
+			IsNodeConnected: cfg.IsNodeConnected,
 		},
 	}
 }

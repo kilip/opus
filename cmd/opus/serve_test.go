@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net"
@@ -26,6 +27,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/kilip/opus/ent"
 	"github.com/kilip/opus/internal/app"
+	"github.com/kilip/opus/internal/node"
+	"github.com/kilip/opus/internal/platform/eventbus"
 	"github.com/kilip/opus/internal/platform/httpx"
 	"github.com/kilip/opus/internal/run"
 	"github.com/kilip/opus/internal/task"
@@ -531,6 +534,123 @@ func TestServe_StageTimeoutFromConfig(t *testing.T) {
 	if got.FailureReason == nil || !strings.Contains(*got.FailureReason, "stage timeout") {
 		t.Fatalf("FailureReason = %v, want stage timeout", got.FailureReason)
 	}
+
+	cancel()
+	if err := <-serveErr; err != nil {
+		t.Fatalf("Serve: %v", err)
+	}
+}
+
+func TestServe_WorkerRunErrorAndDisconnectFailRun(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	db := openTestDB(t)
+	cfg := testConfig(t)
+	cfg.RunPollInterval = 20 * time.Millisecond
+	cfg.RunStageTimeout = time.Hour
+	cfg.RunNodeGrace = 50 * time.Millisecond
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	remote := initTestRepo(t)
+
+	srv, err := buildServer(ctx, cfg, logger, db,
+		withCapabilityProbe(func(context.Context) worker.Capabilities {
+			return worker.Capabilities{Agy: worker.ToolStatusReady, Gh: worker.ToolStatusReady}
+		}),
+		withOnStartRun(func(_ context.Context, cmd worker.StartRun) error {
+			return fmt.Errorf("simulated worker error for %s", cmd.RunID)
+		}),
+	)
+	if err != nil {
+		t.Fatalf("buildServer: %v", err)
+	}
+
+	proj, err := db.Project.Create().
+		SetSlug("opus-err").
+		SetName("Opus Error").
+		SetRepoProvider("github").
+		SetRepoRef(remote).
+		SetTrackerProvider("github").
+		SetTrackerRef("kilip/opus").
+		SetDefaultBranch("main").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create project: %v", err)
+	}
+	if _, err := db.ProjectNode.Create().
+		SetProjectID(proj.ID).
+		SetNodeID(uuid.MustParse(srv.masterID)).
+		SetPath(t.TempDir()).
+		Save(ctx); err != nil {
+		t.Fatalf("create project node mapping: %v", err)
+	}
+
+	tsk, err := srv.tasks.Import(ctx, task.ImportTaskRequest{
+		ProjectID:   proj.ID.String(),
+		Title:       "Worker error task",
+		Description: "## Scope\nVerify run_error propagates\n\n## Acceptance Criteria\n- Fails run\n\n## Definition of Done\n- `go test ./...`\n",
+		Status:      task.StatusTodo,
+		Labels:      []string{"vibe"},
+		Source:      task.SourceGitHub,
+		ExternalID:  "300",
+	})
+	if err != nil {
+		t.Fatalf("tasks.Import: %v", err)
+	}
+	taskUUID := uuid.MustParse(tsk.ID)
+
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- srv.opus.Serve(ctx) }()
+
+	waitUntil(t, 5*time.Second, "master node agy ready", func() bool {
+		return srv.nodes.IsAgyReady(srv.masterID)
+	})
+
+	waitUntil(t, 5*time.Second, "run to fail on worker run_error", func() bool {
+		runs, err := srv.runs.List(context.Background(), run.ListFilter{TaskID: &taskUUID})
+		return err == nil && len(runs) == 1 && runs[0].State == run.StateFailed
+	})
+
+	// Also verify node.offline + disconnect grace fails an active preparing/running run.
+	tsk2, err := srv.tasks.Import(ctx, task.ImportTaskRequest{
+		ProjectID:  proj.ID.String(),
+		Title:      "Disconnect grace task",
+		Status:     task.StatusTodo,
+		Source:     task.SourceGitHub,
+		ExternalID: "301",
+	})
+	if err != nil {
+		t.Fatalf("tasks.Import 2: %v", err)
+	}
+	offlineNode, err := db.Node.Create().
+		SetName("worker-offline-test").
+		SetRole("worker").
+		SetStatus("offline").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create node: %v", err)
+	}
+	seeded, err := srv.runs.Create(ctx, run.CreateInput{
+		TaskID:    uuid.MustParse(tsk2.ID),
+		ProjectID: proj.ID,
+		NodeID:    &offlineNode.ID,
+		Mode:      run.ModeVibe,
+	})
+	if err != nil {
+		t.Fatalf("runs.Create: %v", err)
+	}
+	if _, err := srv.runs.Transition(ctx, seeded.ID, run.StatePreparing, run.TransitionInput{}); err != nil {
+		t.Fatalf("Transition preparing: %v", err)
+	}
+	payload, _ := json.Marshal(node.NodeEventPayload{ID: offlineNode.ID.String(), Name: offlineNode.Name})
+	if err := srv.bus.Publish(ctx, eventbus.Event{Type: node.EventOffline, Payload: payload}); err != nil {
+		t.Fatalf("bus.Publish node.offline: %v", err)
+	}
+
+	waitUntil(t, 5*time.Second, "preparing run to fail after RUN_NODE_GRACE", func() bool {
+		got, err := srv.runs.Get(context.Background(), seeded.ID)
+		return err == nil && got.State == run.StateFailed
+	})
 
 	cancel()
 	if err := <-serveErr; err != nil {

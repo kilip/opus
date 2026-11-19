@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -14,6 +15,7 @@ import (
 	"github.com/kilip/opus/internal/project"
 	"github.com/kilip/opus/internal/run/domain"
 	"github.com/kilip/opus/internal/run/service"
+	"github.com/kilip/opus/internal/session"
 	"github.com/kilip/opus/internal/task"
 	"github.com/kilip/opus/internal/worker"
 )
@@ -175,5 +177,64 @@ func TestStages_ClaimPrepareRunAndCleanup(t *testing.T) {
 	defer mu.Unlock()
 	if len(events) != 2 || events[0].Type != domain.EventStarted || events[1].Type != domain.EventFinished {
 		t.Fatalf("expected [run.started, run.finished], got %+v", events)
+	}
+}
+
+type failingStartWorker struct {
+	fakeWorkerTransport
+	err error
+}
+
+func (f *failingStartWorker) SendStartRun(context.Context, uuid.UUID, worker.StartRun) error {
+	return f.err
+}
+
+func TestPrepareAndStartSession_DispatchFailure(t *testing.T) {
+	ctx := context.Background()
+	svc, client, _, tasks, sessions, projID, nodeID := setupReconcilerEnv(t)
+	fw := &failingStartWorker{err: fmt.Errorf("node unreachable")}
+	cfg := service.StageConfig{
+		AppHome:  t.TempDir(),
+		Tasks:    tasks,
+		Projects: project.New(client),
+		Sessions: sessions,
+		Worker:   fw,
+	}
+
+	rec := importGitHubTask(t, tasks, projID, "502", task.StatusTodo, []string{"vibe"}, validDescription)
+	run, err := svc.Create(ctx, domain.CreateInput{
+		TaskID:    uuid.MustParse(rec.ID),
+		ProjectID: projID,
+		NodeID:    &nodeID,
+		Mode:      domain.ModeVibe,
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if _, err := svc.Claim(ctx, cfg, run.ID); err != nil {
+		t.Fatalf("Claim: %v", err)
+	}
+	if _, err := svc.PrepareAndStartSession(ctx, cfg, run.ID); err == nil {
+		t.Fatal("expected PrepareAndStartSession to fail on SendStartRun error")
+	}
+
+	got, err := svc.Get(ctx, run.ID)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if got.State != domain.StateFailed || got.FailureReason == nil || !strings.Contains(*got.FailureReason, "failed to dispatch to worker") {
+		t.Fatalf("expected failed run with dispatch reason, got %+v", got)
+	}
+	if got.SessionID != nil {
+		sess, err := sessions.Get(ctx, *got.SessionID)
+		if err != nil || sess.Status != session.StatusFailed {
+			t.Fatalf("expected session failed, got %+v (err=%v)", sess, err)
+		}
+	}
+	fw.mu.Lock()
+	cleanups := len(fw.cleanups)
+	fw.mu.Unlock()
+	if cleanups != 1 {
+		t.Fatalf("expected best-effort worktree cleanup on dispatch failure, got %d", cleanups)
 	}
 }

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -80,6 +81,13 @@ func (s *Service) CancelRun(ctx context.Context, cfg StageConfig, runID uuid.UUI
 		logger = slog.Default()
 	}
 
+	cancelled, err := s.Transition(ctx, run.ID, domain.StateCancelled, domain.TransitionInput{
+		FailureReason: &reason,
+	})
+	if err != nil {
+		return domain.Run{}, err
+	}
+
 	if cfg.Worker != nil && run.NodeID != nil {
 		if err := cfg.Worker.SendCancelRun(ctx, *run.NodeID, worker.CancelRun{
 			RunID:  run.ID.String(),
@@ -102,27 +110,7 @@ func (s *Service) CancelRun(ctx context.Context, cfg StageConfig, runID uuid.UUI
 		}
 	}
 
-	if cfg.Tasks != nil && cfg.Projects != nil && cfg.Worker != nil && run.NodeID != nil {
-		t, tErr := cfg.Tasks.Get(ctx, run.TaskID.String())
-		proj, pErr := cfg.Projects.Get(ctx, run.ProjectID.String())
-		if tErr == nil && pErr == nil {
-			mappedPath := s.findMappedPath(ctx, run.ProjectID, *run.NodeID)
-			if err := cfg.Worker.CleanupWorktree(ctx, *run.NodeID, proj.Slug, t.Key, run.Branch, mappedPath); err != nil {
-				logger.WarnContext(ctx, "worktree cleanup on cancel failed",
-					slog.String("run_id", run.ID.String()),
-					slog.Any("error", err),
-				)
-			}
-		}
-	}
-
-	cancelled, err := s.Transition(ctx, run.ID, domain.StateCancelled, domain.TransitionInput{
-		FailureReason: &reason,
-	})
-	if err != nil {
-		return domain.Run{}, err
-	}
-
+	s.cleanupRunWorktree(ctx, cfg, run)
 	s.resetTaskToTodoWithFailedLabel(ctx, cfg, run.TaskID.String(), reason)
 	return cancelled, nil
 }
@@ -130,48 +118,60 @@ func (s *Service) CancelRun(ctx context.Context, cfg StageConfig, runID uuid.UUI
 // RecoverActiveRuns fails interrupted preparing/running runs on master restart so their tasks
 // can be inspected or retried cleanly. Queued runs remain queued for reconciler pickup.
 func (s *Service) RecoverActiveRuns(ctx context.Context, cfg StageConfig) error {
+	var errs []error
 	for _, st := range []domain.RunState{domain.StatePreparing, domain.StateRunning} {
 		state := st
 		runs, err := s.List(ctx, domain.ListFilter{State: &state})
 		if err != nil {
-			return err
+			errs = append(errs, err)
+			continue
 		}
 		for _, r := range runs {
 			if cfg.Sessions != nil && r.SessionID != nil {
 				_, _, _ = cfg.Sessions.MarkFailed(ctx, *r.SessionID, "interrupted by server restart")
 			}
 			if _, err := s.FailRun(ctx, cfg, r.ID, "interrupted by server restart"); err != nil {
-				return err
+				errs = append(errs, err)
+				continue
 			}
+			s.cleanupRunWorktree(ctx, cfg, r)
 		}
 	}
-	return nil
+	return errors.Join(errs...)
 }
 
-// EnforceStageTimeouts fails preparing/running runs that have exceeded timeout since their last update.
+// EnforceStageTimeouts fails preparing/running runs that have exceeded timeout since their last activity.
 func (s *Service) EnforceStageTimeouts(ctx context.Context, cfg StageConfig, timeout time.Duration) error {
 	if timeout <= 0 {
 		return nil
 	}
 	cutoff := s.now().Add(-timeout)
+	var errs []error
 	for _, st := range []domain.RunState{domain.StatePreparing, domain.StateRunning} {
 		state := st
 		runs, err := s.List(ctx, domain.ListFilter{State: &state})
 		if err != nil {
-			return err
+			errs = append(errs, err)
+			continue
 		}
 		for _, r := range runs {
-			if r.UpdatedAt.Before(cutoff) {
+			lastActivity := r.UpdatedAt
+			if cfg.Sessions != nil && r.SessionID != nil {
+				if ts, err := cfg.Sessions.LatestEventTime(ctx, *r.SessionID); err == nil && ts != nil && ts.After(lastActivity) {
+					lastActivity = *ts
+				}
+			}
+			if lastActivity.Before(cutoff) {
 				if cfg.Sessions != nil && r.SessionID != nil {
 					_, _, _ = cfg.Sessions.MarkFailed(ctx, *r.SessionID, "stage timeout exceeded")
 				}
 				if _, err := s.FailRun(ctx, cfg, r.ID, "stage timeout exceeded"); err != nil {
-					return err
+					errs = append(errs, err)
 				}
 			}
 		}
 	}
-	return nil
+	return errors.Join(errs...)
 }
 
 func (s *Service) resetTaskToTodoWithFailedLabel(ctx context.Context, cfg StageConfig, taskID, reason string) {

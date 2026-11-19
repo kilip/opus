@@ -11,7 +11,9 @@ import (
 	"github.com/kilip/opus/ent"
 	"github.com/kilip/opus/ent/node"
 	"github.com/kilip/opus/internal/platform/eventbus"
+	"github.com/kilip/opus/internal/project"
 	"github.com/kilip/opus/internal/run/domain"
+	"github.com/kilip/opus/internal/run/repo"
 	"github.com/kilip/opus/internal/run/service"
 	"github.com/kilip/opus/internal/session"
 	"github.com/kilip/opus/internal/task"
@@ -352,5 +354,105 @@ func TestReconciler_PeriodicScanRecoversDroppedBusEvent(t *testing.T) {
 	cancel()
 	if err := <-done; err != nil {
 		t.Fatalf("Run returned error on cancel: %v", err)
+	}
+}
+
+func TestReconciler_SessionLifecycleAndNodeGrace(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
+	_, client, bus, tasks, sessions, projID, nodeID := setupReconcilerEnv(t)
+	svc := service.New(repo.New(client), service.Config{
+		Bus: bus,
+		Now: func() time.Time { return now },
+	})
+	fw := &fakeWorkerTransport{}
+	stageCfg := service.StageConfig{
+		AppHome:  t.TempDir(),
+		Tasks:    tasks,
+		Projects: project.New(client),
+		Sessions: sessions,
+		Worker:   fw,
+	}
+
+	// 1. session.failed propagates to running Run, fails it, and cleans up worktree.
+	rec1 := importGitHubTask(t, tasks, projID, "701", task.StatusTodo, []string{"vibe"}, validDescription)
+	r1, _ := svc.Create(ctx, domain.CreateInput{TaskID: uuid.MustParse(rec1.ID), ProjectID: projID, NodeID: &nodeID})
+	_, _ = svc.Claim(ctx, stageCfg, r1.ID)
+	sess1, _ := sessions.Enqueue(ctx, session.CreateInput{TaskID: uuid.MustParse(rec1.ID), NodeID: nodeID, Provider: "agy"})
+	_, _ = svc.Transition(ctx, r1.ID, domain.StateRunning, domain.TransitionInput{SessionID: &sess1.ID})
+
+	_, _, _ = sessions.MarkFailed(ctx, sess1.ID, "agy crashed")
+	payload1, _ := json.Marshal(session.SessionLifecyclePayload{
+		SessionID: sess1.ID,
+		TaskID:    r1.TaskID,
+		NodeID:    nodeID,
+		Status:    session.StatusFailed,
+	})
+	if err := svc.HandleSessionLifecycleEvent(ctx, stageCfg, eventbus.Event{
+		Type:    session.EventFailed,
+		Payload: payload1,
+	}); err != nil {
+		t.Fatalf("HandleSessionLifecycleEvent failed: %v", err)
+	}
+	got1, _ := svc.Get(ctx, r1.ID)
+	if got1.State != domain.StateFailed || got1.FailureReason == nil || *got1.FailureReason != "agy crashed" {
+		t.Fatalf("expected failed run with reason 'agy crashed', got %+v", got1)
+	}
+
+	// Idempotent replay on already terminal run must succeed without error.
+	if err := svc.HandleSessionLifecycleEvent(ctx, stageCfg, eventbus.Event{
+		Type:    session.EventFailed,
+		Payload: payload1,
+	}); err != nil {
+		t.Fatalf("HandleSessionLifecycleEvent idempotent replay: %v", err)
+	}
+
+	// 2. session.cancelled propagates to running Run.
+	rec2 := importGitHubTask(t, tasks, projID, "702", task.StatusTodo, []string{"vibe"}, validDescription)
+	r2, _ := svc.Create(ctx, domain.CreateInput{TaskID: uuid.MustParse(rec2.ID), ProjectID: projID, NodeID: &nodeID})
+	_, _ = svc.Claim(ctx, stageCfg, r2.ID)
+	sess2, _ := sessions.Enqueue(ctx, session.CreateInput{TaskID: uuid.MustParse(rec2.ID), NodeID: nodeID, Provider: "agy"})
+	_, _ = svc.Transition(ctx, r2.ID, domain.StateRunning, domain.TransitionInput{SessionID: &sess2.ID})
+	_, _, _ = sessions.Cancel(ctx, sess2.ID, "cancelled externally")
+	payload2, _ := json.Marshal(session.SessionLifecyclePayload{
+		SessionID: sess2.ID,
+		TaskID:    r2.TaskID,
+		NodeID:    nodeID,
+		Status:    session.StatusCancelled,
+	})
+	if err := svc.HandleSessionLifecycleEvent(ctx, stageCfg, eventbus.Event{
+		Type:    session.EventCancelled,
+		Payload: payload2,
+	}); err != nil {
+		t.Fatalf("HandleSessionLifecycleEvent cancelled: %v", err)
+	}
+	got2, _ := svc.Get(ctx, r2.ID)
+	if got2.State != domain.StateCancelled {
+		t.Fatalf("expected cancelled run, got %s", got2.State)
+	}
+
+	// 3. Node disconnect grace: offline > NodeGrace fails run and unblocks capacity gate.
+	rec3 := importGitHubTask(t, tasks, projID, "703", task.StatusTodo, []string{"vibe"}, validDescription)
+	r3, _ := svc.Create(ctx, domain.CreateInput{TaskID: uuid.MustParse(rec3.ID), ProjectID: projID, NodeID: &nodeID})
+	_, _ = svc.Claim(ctx, stageCfg, r3.ID)
+	sess3, _ := sessions.Enqueue(ctx, session.CreateInput{TaskID: uuid.MustParse(rec3.ID), NodeID: nodeID, Provider: "agy"})
+	_, _ = svc.Transition(ctx, r3.ID, domain.StateRunning, domain.TransitionInput{SessionID: &sess3.ID})
+
+	_ = bus
+	svc.MarkNodeOffline(nodeID.String())
+	now = now.Add(3 * time.Minute)
+	cfg := service.ReconcilerConfig{
+		Tasks:           tasks,
+		Sessions:        sessions,
+		Stages:          stageCfg,
+		NodeGrace:       2 * time.Minute,
+		IsNodeConnected: func(string) bool { return false },
+	}
+	if err := svc.ReconcileOnce(ctx, cfg); err != nil {
+		t.Fatalf("ReconcileOnce disconnect grace: %v", err)
+	}
+	got3, _ := svc.Get(ctx, r3.ID)
+	if got3.State != domain.StateFailed || got3.FailureReason == nil || *got3.FailureReason != "worker node offline" {
+		t.Fatalf("expected run failed with 'worker node offline', got %+v", got3)
 	}
 }

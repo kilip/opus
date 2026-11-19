@@ -27,6 +27,10 @@ type Service struct {
 	bus     *eventbus.Bus
 	now     func() time.Time
 	writeMu sync.Mutex
+
+	// ponytail: in-memory offlineSince map lost on server restart; RecoverActiveRuns handles interrupted runs on startup.
+	offlineMu    sync.Mutex
+	offlineSince map[string]time.Time
 }
 
 // New creates a new run Service.
@@ -36,10 +40,40 @@ func New(r *repo.Ent, cfg Config) *Service {
 		now = time.Now
 	}
 	return &Service{
-		repo: r,
-		bus:  cfg.Bus,
-		now:  now,
+		repo:         r,
+		bus:          cfg.Bus,
+		now:          now,
+		offlineSince: make(map[string]time.Time),
 	}
+}
+
+// MarkNodeOffline records the timestamp when nodeID went offline (preserving the earliest timestamp).
+func (s *Service) MarkNodeOffline(nodeID string) {
+	if nodeID == "" {
+		return
+	}
+	s.offlineMu.Lock()
+	defer s.offlineMu.Unlock()
+	if _, exists := s.offlineSince[nodeID]; !exists {
+		s.offlineSince[nodeID] = s.now()
+	}
+}
+
+// ClearNodeOffline clears any recorded offline timestamp for nodeID.
+func (s *Service) ClearNodeOffline(nodeID string) {
+	if nodeID == "" {
+		return
+	}
+	s.offlineMu.Lock()
+	defer s.offlineMu.Unlock()
+	delete(s.offlineSince, nodeID)
+}
+
+func (s *Service) nodeOfflineSince(nodeID string) (time.Time, bool) {
+	s.offlineMu.Lock()
+	defer s.offlineMu.Unlock()
+	t, ok := s.offlineSince[nodeID]
+	return t, ok
 }
 
 // Create validates input and persists a new Run in the queued state.

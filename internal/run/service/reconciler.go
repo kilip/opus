@@ -2,29 +2,36 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kilip/opus/internal/node"
 	"github.com/kilip/opus/internal/platform/eventbus"
 	"github.com/kilip/opus/internal/run/domain"
 	"github.com/kilip/opus/internal/session"
 	"github.com/kilip/opus/internal/task"
 )
 
-const defaultPollInterval = 30 * time.Second
+const (
+	defaultPollInterval = 30 * time.Second
+	defaultNodeGrace    = 2 * time.Minute
+)
 
 // ReconcilerConfig configures the run reconciler loop and its sibling feature dependencies.
 type ReconcilerConfig struct {
-	Tasks        *task.Task
-	Sessions     *session.Session
-	Stages       StageConfig
-	PollInterval time.Duration
-	StageTimeout time.Duration
-	Logger       *slog.Logger
-	IsAgyReady   func(ctx context.Context, nodeID uuid.UUID) bool
+	Tasks           *task.Task
+	Sessions        *session.Session
+	Stages          StageConfig
+	PollInterval    time.Duration
+	StageTimeout    time.Duration
+	NodeGrace       time.Duration
+	Logger          *slog.Logger
+	IsAgyReady      func(ctx context.Context, nodeID uuid.UUID) bool
+	IsNodeConnected func(nodeID string) bool
 }
 
 // ReconcileOnce runs a single eligibility scan across tasks.
@@ -40,27 +47,32 @@ func (s *Service) ReconcileOnce(ctx context.Context, cfg ReconcilerConfig) error
 	if err := s.ResumePausedRuns(ctx); err != nil && ctx.Err() == nil {
 		logger.ErrorContext(ctx, "resume paused runs failed", slog.Any("error", err))
 	}
+
+	stageCfg := cfg.Stages
+	if stageCfg.Tasks == nil {
+		stageCfg.Tasks = cfg.Tasks
+	}
+	if stageCfg.Sessions == nil {
+		stageCfg.Sessions = cfg.Sessions
+	}
+	if cfg.NodeGrace > 0 {
+		if err := s.enforceNodeDisconnectGrace(ctx, cfg, stageCfg); err != nil && ctx.Err() == nil {
+			logger.ErrorContext(ctx, "enforce node disconnect grace failed", slog.Any("error", err))
+		}
+	}
 	if cfg.StageTimeout > 0 {
-		stageCfg := cfg.Stages
-		if stageCfg.Tasks == nil {
-			stageCfg.Tasks = cfg.Tasks
-		}
-		if stageCfg.Sessions == nil {
-			stageCfg.Sessions = cfg.Sessions
-		}
 		if err := s.EnforceStageTimeouts(ctx, stageCfg, cfg.StageTimeout); err != nil && ctx.Err() == nil {
 			logger.ErrorContext(ctx, "enforce stage timeouts failed", slog.Any("error", err))
 		}
 	}
 
 	if cfg.Sessions != nil {
-		running := session.StatusRunning
-		active, err := cfg.Sessions.List(ctx, session.ListFilter{Status: &running})
+		blocked, err := s.hasBlockingRunningSession(ctx, cfg)
 		if err != nil {
 			return err
 		}
 		// ponytail: single-account global FIFO slot in MVP; check per-account capacity when multi-account pooling lands.
-		if len(active) > 0 {
+		if blocked {
 			return nil
 		}
 	}
@@ -116,6 +128,24 @@ func (s *Service) Run(ctx context.Context, cfg ReconcilerConfig) error {
 		}, task.EventReceived, task.EventStatusChanged)
 		if err != nil && logger != nil {
 			logger.WarnContext(ctx, "run reconciler bus subscribe failed", slog.Any("error", err))
+		}
+
+		if err := s.bus.Subscribe("run-session-watcher", func(subCtx context.Context, e eventbus.Event) error {
+			if err := s.HandleSessionLifecycleEvent(subCtx, cfg.Stages, e); err != nil {
+				logger.ErrorContext(subCtx, "handle session lifecycle event failed", slog.Any("error", err))
+			}
+			signal()
+			return nil
+		}, session.EventFailed, session.EventCancelled); err != nil && logger != nil {
+			logger.WarnContext(ctx, "run session watcher bus subscribe failed", slog.Any("error", err))
+		}
+
+		if err := s.bus.Subscribe("run-node-watcher", func(_ context.Context, e eventbus.Event) error {
+			s.HandleNodeLifecycleEvent(e)
+			signal()
+			return nil
+		}, node.EventOffline, node.EventOnline); err != nil && logger != nil {
+			logger.WarnContext(ctx, "run node watcher bus subscribe failed", slog.Any("error", err))
 		}
 	}
 
@@ -250,4 +280,143 @@ func (s *Service) failStructureLint(
 		logger.ErrorContext(ctx, "failed to add vibe activity", slog.String("task_id", rawTaskID), slog.Any("error", err))
 	}
 	return nil
+}
+
+// HandleSessionLifecycleEvent propagates session.failed and session.cancelled events to active runs.
+func (s *Service) HandleSessionLifecycleEvent(ctx context.Context, cfg StageConfig, e eventbus.Event) error {
+	if e.Type != session.EventFailed && e.Type != session.EventCancelled {
+		return nil
+	}
+	var payload session.SessionLifecyclePayload
+	if err := json.Unmarshal(e.Payload, &payload); err != nil || payload.SessionID == uuid.Nil {
+		return nil
+	}
+
+	reason := "session failed"
+	if e.Type == session.EventCancelled {
+		reason = "session cancelled"
+	}
+	if cfg.Sessions != nil {
+		if sess, err := cfg.Sessions.Get(ctx, payload.SessionID); err == nil && sess.FailureReason != nil && *sess.FailureReason != "" {
+			reason = *sess.FailureReason
+		}
+	}
+
+	for _, st := range []domain.RunState{domain.StatePreparing, domain.StateRunning} {
+		state := st
+		runs, err := s.List(ctx, domain.ListFilter{State: &state})
+		if err != nil {
+			return err
+		}
+		for _, r := range runs {
+			if r.SessionID == nil || *r.SessionID != payload.SessionID {
+				continue
+			}
+			if e.Type == session.EventFailed {
+				if _, err := s.FailRun(ctx, cfg, r.ID, reason); err != nil {
+					return err
+				}
+			} else {
+				if _, err := s.Transition(ctx, r.ID, domain.StateCancelled, domain.TransitionInput{
+					FailureReason: &reason,
+				}); err != nil {
+					return err
+				}
+				s.resetTaskToTodoWithFailedLabel(ctx, cfg, r.TaskID.String(), reason)
+			}
+			s.cleanupRunWorktree(ctx, cfg, r)
+		}
+	}
+	return nil
+}
+
+// HandleNodeLifecycleEvent tracks node offline/online timestamps for disconnect grace enforcement.
+func (s *Service) HandleNodeLifecycleEvent(e eventbus.Event) {
+	var payload node.NodeEventPayload
+	if err := json.Unmarshal(e.Payload, &payload); err != nil || payload.ID == "" {
+		return
+	}
+	switch e.Type {
+	case node.EventOffline:
+		s.MarkNodeOffline(payload.ID)
+	case node.EventOnline:
+		s.ClearNodeOffline(payload.ID)
+	}
+}
+
+func (s *Service) enforceNodeDisconnectGrace(ctx context.Context, cfg ReconcilerConfig, stageCfg StageConfig) error {
+	now := s.now()
+	for _, st := range []domain.RunState{domain.StatePreparing, domain.StateRunning} {
+		state := st
+		runs, err := s.List(ctx, domain.ListFilter{State: &state})
+		if err != nil {
+			return err
+		}
+		for _, r := range runs {
+			if r.NodeID == nil {
+				continue
+			}
+			nid := r.NodeID.String()
+			if cfg.IsNodeConnected != nil && cfg.IsNodeConnected(nid) {
+				s.ClearNodeOffline(nid)
+				continue
+			}
+			since, offline := s.nodeOfflineSince(nid)
+			if !offline || now.Sub(since) <= cfg.NodeGrace {
+				continue
+			}
+			if stageCfg.Sessions != nil && r.SessionID != nil {
+				_, _, _ = stageCfg.Sessions.MarkFailed(ctx, *r.SessionID, "worker node offline")
+			}
+			if _, err := s.FailRun(ctx, stageCfg, r.ID, "worker node offline"); err != nil {
+				return err
+			}
+			s.cleanupRunWorktree(ctx, stageCfg, r)
+		}
+	}
+	return nil
+}
+
+func (s *Service) hasBlockingRunningSession(ctx context.Context, cfg ReconcilerConfig) (bool, error) {
+	running := session.StatusRunning
+	active, err := cfg.Sessions.List(ctx, session.ListFilter{Status: &running})
+	if err != nil {
+		return false, err
+	}
+	if len(active) == 0 {
+		return false, nil
+	}
+
+	terminalRunSessions := make(map[uuid.UUID]struct{})
+	for _, st := range []domain.RunState{domain.StateMerged, domain.StateFailed, domain.StateNeedsInfo, domain.StateCancelled} {
+		state := st
+		runs, err := s.List(ctx, domain.ListFilter{State: &state})
+		if err != nil {
+			return false, err
+		}
+		for _, r := range runs {
+			if r.SessionID != nil {
+				terminalRunSessions[*r.SessionID] = struct{}{}
+			}
+		}
+	}
+
+	now := s.now()
+	grace := cfg.NodeGrace
+	if grace <= 0 {
+		grace = defaultNodeGrace
+	}
+	for _, sess := range active {
+		if _, terminal := terminalRunSessions[sess.ID]; terminal {
+			continue
+		}
+		nid := sess.NodeID.String()
+		if cfg.IsNodeConnected != nil && !cfg.IsNodeConnected(nid) {
+			if since, offline := s.nodeOfflineSince(nid); offline && now.Sub(since) > grace {
+				continue
+			}
+		}
+		return true, nil
+	}
+	return false, nil
 }

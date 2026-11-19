@@ -14,6 +14,7 @@ import (
 	"github.com/kilip/opus/internal/run/domain"
 	"github.com/kilip/opus/internal/run/repo"
 	"github.com/kilip/opus/internal/run/service"
+	"github.com/kilip/opus/internal/session"
 	"github.com/kilip/opus/internal/task"
 )
 
@@ -153,11 +154,15 @@ func TestResilience_QuotaPauseAndAutoResume(t *testing.T) {
 
 func TestResilience_CancelRecoverAndTimeout(t *testing.T) {
 	ctx := context.Background()
-	_, client, bus, tasks, sessions, projID, nodeID := setupReconcilerEnv(t)
+	_, client, bus, tasks, _, projID, nodeID := setupReconcilerEnv(t)
 	projects := project.New(client)
 	fw := &fakeWorkerTransport{}
 
 	now := time.Date(2026, 11, 18, 9, 0, 0, 0, time.UTC)
+	sessions := session.New(client, session.Config{
+		Bus: bus,
+		Now: func() time.Time { return now },
+	})
 	svc := service.New(repo.New(client), service.Config{
 		Bus: bus,
 		Now: func() time.Time { return now },
@@ -213,5 +218,43 @@ func TestResilience_CancelRecoverAndTimeout(t *testing.T) {
 	got3, _ := svc.Get(ctx, r3.ID)
 	if got3.State != domain.StateFailed {
 		t.Fatalf("expected recovered run to fail, got %s", got3.State)
+	}
+
+	// 4. Activity-based staleness: recent session_event keeps run alive past UpdatedAt cutoff.
+	rec4 := importGitHubTask(t, tasks, projID, "604", task.StatusTodo, []string{"vibe"}, validDescription)
+	sess4, err := sessions.Enqueue(ctx, session.CreateInput{
+		TaskID:   uuid.MustParse(rec4.ID),
+		NodeID:   nodeID,
+		Provider: "agy",
+	})
+	if err != nil {
+		t.Fatalf("Enqueue sess4: %v", err)
+	}
+	r4, _ := svc.Create(ctx, domain.CreateInput{TaskID: uuid.MustParse(rec4.ID), ProjectID: projID, NodeID: &nodeID})
+	_, _ = svc.Claim(ctx, cfg, r4.ID)
+	_, _ = svc.Transition(ctx, r4.ID, domain.StateRunning, domain.TransitionInput{SessionID: &sess4.ID})
+
+	now = now.Add(25 * time.Minute)
+	if _, err := sessions.RecordEvent(ctx, sess4.ID, "agent_message_chunk", []byte(`{"text":"working"}`)); err != nil {
+		t.Fatalf("RecordEvent: %v", err)
+	}
+	// Advance past UpdatedAt timeout (30m from Claim), but within 30m of RecordEvent.
+	now = now.Add(10 * time.Minute)
+	if err := svc.EnforceStageTimeouts(ctx, cfg, 30*time.Minute); err != nil {
+		t.Fatalf("EnforceStageTimeouts active: %v", err)
+	}
+	got4, _ := svc.Get(ctx, r4.ID)
+	if got4.State != domain.StateRunning {
+		t.Fatalf("expected run with recent session_event to remain running, got %s", got4.State)
+	}
+
+	// Now advance past 30m since RecordEvent -> must fail.
+	now = now.Add(31 * time.Minute)
+	if err := svc.EnforceStageTimeouts(ctx, cfg, 30*time.Minute); err != nil {
+		t.Fatalf("EnforceStageTimeouts stale: %v", err)
+	}
+	got4After, _ := svc.Get(ctx, r4.ID)
+	if got4After.State != domain.StateFailed {
+		t.Fatalf("expected run with stale activity to fail, got %s", got4After.State)
 	}
 }

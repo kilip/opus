@@ -140,10 +140,12 @@ func buildServer(
 		Worker:       transport,
 		PollInterval: cfg.RunPollInterval,
 		StageTimeout: cfg.RunStageTimeout,
+		NodeGrace:    cfg.RunNodeGrace,
 		Logger:       logger,
 		IsAgyReady: func(_ context.Context, nodeID uuid.UUID) bool {
 			return nodeFeature.IsAgyReady(nodeID.String())
 		},
+		IsNodeConnected: nodeFeature.Hub().Connected,
 	})
 
 	fiberApp, err := app.GetFiber(cfg, logger, db, bus,
