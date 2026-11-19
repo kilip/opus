@@ -25,6 +25,7 @@ func newRootCmd() *cobra.Command {
 	rootCmd.AddCommand(newJoinCmd())
 	rootCmd.AddCommand(newWorkerCmd())
 	rootCmd.AddCommand(newServiceCmd())
+	rootCmd.AddCommand(newDoctorCmd())
 	rootCmd.AddCommand(newSelfUpdateCmd())
 	rootCmd.AddCommand(newUninstallCmd())
 	return rootCmd
