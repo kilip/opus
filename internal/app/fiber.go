@@ -107,7 +107,7 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 		ContentTypeNosniff:    "nosniff",
 		XFrameOptions:         "DENY",
 		ReferrerPolicy:        "strict-origin-when-cross-origin",
-		ContentSecurityPolicy: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'",
+		ContentSecurityPolicy: "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'",
 		HSTSMaxAge:            0,
 		HSTSExcludeSubdomains: true,
 	}

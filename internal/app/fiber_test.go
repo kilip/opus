@@ -145,8 +145,8 @@ func TestSecurityHeaders_AndSPAFallback(t *testing.T) {
 	if got := resp.Header.Get("Referrer-Policy"); got != "strict-origin-when-cross-origin" {
 		t.Fatalf("Referrer-Policy = %q", got)
 	}
-	if got := resp.Header.Get("Content-Security-Policy"); !strings.Contains(got, "script-src 'self'") {
-		t.Fatalf("CSP missing script-src 'self': %q", got)
+	if got := resp.Header.Get("Content-Security-Policy"); !strings.Contains(got, "script-src 'self' 'unsafe-inline'") {
+		t.Fatalf("CSP missing script-src 'self' 'unsafe-inline': %q", got)
 	}
 	if got := resp.Header.Get("Strict-Transport-Security"); got != "" {
 		t.Fatalf("expected no HSTS on http://, got %q", got)
