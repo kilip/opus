@@ -191,6 +191,35 @@ jobs:
           fi
           [ ! -e "$BIN_DIR/opus" ]
 
+      - name: Set up Go (macOS)
+        if: matrix.os == 'macos-latest'
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Smoke test opus service (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          set -euo pipefail
+          SVC_DIR=$(mktemp -d)
+          APP_HOME="$SVC_DIR/home"
+          export APP_HOME
+          mkdir -p "$APP_HOME"
+          trap 'rm -rf "$SVC_DIR"' EXIT
+
+          go build -o "$SVC_DIR/opus" ./cmd/opus
+          "$SVC_DIR/opus" service install
+          "$SVC_DIR/opus" service start
+          "$SVC_DIR/opus" service status
+          "$SVC_DIR/opus" service stop
+          set +e
+          "$SVC_DIR/opus" service status
+          CODE=$?
+          set -e
+          [ "$CODE" -eq 3 ]
+          "$SVC_DIR/opus" service uninstall
+          [ -f "$APP_HOME/opus.env" ]
+
       - name: Set up Go (Windows)
         if: matrix.os == 'windows-latest'
         uses: actions/setup-go@v5
@@ -200,6 +229,27 @@ jobs:
       - name: Run cmd/opus tests (Windows)
         if: matrix.os == 'windows-latest'
         run: go test ./cmd/opus/...
+
+      - name: Smoke test opus service (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $svcDir = Join-Path $env:RUNNER_TEMP 'opus-svc'
+          $appHome = Join-Path $svcDir 'home'
+          New-Item -ItemType Directory -Path $appHome -Force | Out-Null
+          $env:APP_HOME = $appHome
+
+          $bin = Join-Path $svcDir 'opus.exe'
+          go build -o $bin ./cmd/opus
+          & $bin service install
+          & $bin service start
+          & $bin service status
+          & $bin service stop
+          & $bin service uninstall
+          if (-not (Test-Path (Join-Path $appHome 'opus.env'))) {
+            throw 'Expected opus.env to be preserved after uninstall'
+          }
 
       - name: Test install.ps1 (Windows)
         if: matrix.os == 'windows-latest'
