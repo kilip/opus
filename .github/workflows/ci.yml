@@ -195,6 +195,10 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Run cmd/opus tests (Windows)
+        if: matrix.os == 'windows-latest'
+        run: go test ./cmd/opus/...
+
       - name: Test install.ps1 (Windows)
         if: matrix.os == 'windows-latest'
         shell: pwsh
