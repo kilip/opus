@@ -37,6 +37,7 @@ func newRootCmd() *cobra.Command {
 // @BasePath /api
 func main() {
 	cleanupOldBinary()
+	syncAgyCredentials()
 
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
