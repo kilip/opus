@@ -132,6 +132,11 @@ func (s *Session) ListEventsAfter(ctx context.Context, sessionID uuid.UUID, afte
 	return s.svc.ListEventsAfter(ctx, sessionID, afterSeq)
 }
 
+// LatestEventTime returns the timestamp of the latest event for sessionID, or nil if none exist.
+func (s *Session) LatestEventTime(ctx context.Context, sessionID uuid.UUID) (*time.Time, error) {
+	return s.svc.LatestEventTime(ctx, sessionID)
+}
+
 // HandleWorkerEvent processes an incoming worker event envelope from the node hub.
 func (s *Session) HandleWorkerEvent(ctx context.Context, nodeID string, env node.Envelope) {
 	s.svc.HandleWorkerEvent(ctx, nodeID, env)

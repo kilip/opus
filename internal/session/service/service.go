@@ -158,6 +158,11 @@ func (s *Service) ListEventsAfter(ctx context.Context, sessionID uuid.UUID, afte
 	return s.repo.ListEventsAfter(ctx, sessionID, afterSeq)
 }
 
+// LatestEventTime returns the timestamp of the latest event for sessionID, or nil if none exist.
+func (s *Service) LatestEventTime(ctx context.Context, sessionID uuid.UUID) (*time.Time, error) {
+	return s.repo.LatestEventTime(ctx, sessionID)
+}
+
 // Subscribe registers a live event stream channel for sessionID and returns an unsubscribe func.
 func (s *Service) Subscribe(sessionID uuid.UUID) (<-chan domain.SessionEvent, func()) {
 	ch := make(chan domain.SessionEvent, 64)

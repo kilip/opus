@@ -249,6 +249,22 @@ func (r *Ent) ListEventsAfter(ctx context.Context, sessionID uuid.UUID, afterSeq
 	return out, nil
 }
 
+// LatestEventTime returns the CreatedAt timestamp of the most recent event for sessionID, or nil if none exist.
+func (r *Ent) LatestEventTime(ctx context.Context, sessionID uuid.UUID) (*time.Time, error) {
+	row, err := r.db.SessionEvent.Query().
+		Where(sessionevent.SessionIDEQ(sessionID)).
+		Order(ent.Desc(sessionevent.FieldSeq)).
+		First(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	t := row.At
+	return &t, nil
+}
+
 func toDomainSession(s *ent.Session) domain.Session {
 	return domain.Session{
 		ID:              s.ID,
