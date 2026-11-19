@@ -334,7 +334,8 @@ describe("NodesPage (AC1, AC2, AC3, AC4, AC5)", () => {
       nodes: [masterNode, workerNode],
       initialEditingNode: masterNode,
     });
-    assert.match(modalHtml, /role="dialog"/);
+    assert.match(modalHtml, /<dialog/);
+    assert.match(modalHtml, /aria-labelledby="edit-node-title"/);
     assert.match(modalHtml, /value="master-host"/);
     assert.match(modalHtml, /value="control-plane"/);
     assert.match(modalHtml, /value="10\.0\.0\.1"/);

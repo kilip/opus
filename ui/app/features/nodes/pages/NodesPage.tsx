@@ -2,6 +2,7 @@ import { type FormEvent, type ReactNode, useState } from "react";
 
 import { Button } from "~/shared/components/Button";
 import { ControlPanel } from "~/shared/components/ControlPanel";
+import { Dialog } from "~/shared/components/Dialog";
 import { Tag } from "~/shared/components/Tag";
 import {
   useCreateJoinToken,
@@ -324,19 +325,21 @@ export default function NodesPage({
         {content}
       </div>
 
-      {editingNode && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Edit node"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-        >
-          <form
-            onSubmit={handleEditSubmit}
-            className="flex w-full max-w-md flex-col gap-4 rounded-lg border border-line bg-surface p-6 shadow-xl"
-          >
+      <Dialog
+        open={Boolean(editingNode)}
+        onClose={closeEdit}
+        titleId="edit-node-title"
+        className="w-full max-w-md p-6"
+      >
+        {editingNode && (
+          <form onSubmit={handleEditSubmit} className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-fg">Edit node</h2>
+              <h2
+                id="edit-node-title"
+                className="text-base font-semibold text-fg"
+              >
+                Edit node
+              </h2>
               <span className="font-mono text-xs text-muted">
                 {editingNode.role ?? "worker"}
               </span>
@@ -412,8 +415,8 @@ export default function NodesPage({
               </Button>
             </div>
           </form>
-        </div>
-      )}
+        )}
+      </Dialog>
     </>
   );
 }
