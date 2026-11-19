@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -117,8 +118,10 @@ func TestJoin_AC1_ExchangeWriteFileAndRunWorker(t *testing.T) {
 	if !dirInfo.IsDir() {
 		t.Fatalf("expected %s to be directory", dirPath)
 	}
-	if perm := dirInfo.Mode().Perm(); perm != 0700 {
-		t.Errorf("expected ~/.opus directory mode 0700, got %04o", perm)
+	if runtime.GOOS != "windows" {
+		if perm := dirInfo.Mode().Perm(); perm != 0700 {
+			t.Errorf("expected ~/.opus directory mode 0700, got %04o", perm)
+		}
 	}
 
 	// Verify node.json mode is 0600
@@ -127,8 +130,10 @@ func TestJoin_AC1_ExchangeWriteFileAndRunWorker(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat node.json: %v", err)
 	}
-	if perm := fileInfo.Mode().Perm(); perm != 0600 {
-		t.Errorf("expected node.json file mode 0600, got %04o", perm)
+	if runtime.GOOS != "windows" {
+		if perm := fileInfo.Mode().Perm(); perm != 0600 {
+			t.Errorf("expected node.json file mode 0600, got %04o", perm)
+		}
 	}
 
 	// Verify node.json contents
