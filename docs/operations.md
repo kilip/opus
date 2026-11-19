@@ -98,7 +98,10 @@ opus uninstall --purge
 When running the built-in worker inside Docker or Kubernetes:
 
 - Set `GH_TOKEN` (via Secret or `-e GH_TOKEN=...`) with **Contents**, **Issues**, **Pull requests** (read/write) and **Metadata** (read) scopes.
-- Complete `agy auth login` interactively inside the container (`docker exec -it <container> agy auth login` or `kubectl exec -it ... -- agy auth login`) so credentials persist in `/data`; automated login is planned.
+- **Non-interactive `agy` auth (recommended)**: Mount host `~/.gemini` read-only at `/agy-credentials` (`-v "$HOME/.gemini:/agy-credentials:ro"` in Docker, or `agy.existingSecret` in Helm). On startup, Opus copies mounted files into `$HOME/.gemini` (`0700` dirs, `0600` files) inside `/data` (compatible with `readOnlyRootFilesystem: true`).
+- **Interactive fallback**: Run `docker exec -it <container> agy auth login` (or `kubectl exec -it ... -- agy auth login`). Because `HOME=/data`, credentials persist in the `/data` volume across restarts.
+- **Rotation**: Update the mounted host `~/.gemini` directory or Kubernetes Secret (`kubectl create secret ... --dry-run=client -o yaml | kubectl apply -f -`) and restart the container/pod.
+- **Expired / missing credentials**: Worker preflight fails fast before creating any worktree with `agy is not authenticated (run: agy auth login)` and reports `agy: unauthenticated` in node capabilities.
 
 ## Security Model
 

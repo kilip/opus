@@ -25,6 +25,7 @@ Set these core production variables:
 - `APP_SMTP_HOST`, `APP_SMTP_PORT`, `APP_SMTP_USERNAME`, `APP_SMTP_PASSWORD`, `APP_SMTP_FROM`: Required for email OTP delivery. If `APP_SMTP_HOST` is unset, Opus falls back to the console mailer (OTP codes are printed to server logs only).
 - `AUTH_SETUP_TOKEN`: Optional pre-set first-run onboarding token. If unset, Opus generates one on first startup and prints `Opus setup token: ...` to stderr.
 - `GH_TOKEN`: Fine-grained GitHub PAT with **Contents** (read/write), **Issues** (read/write), **Pull requests** (read/write), and **Metadata** (read) for vibe runs.
+- `AGY_CREDENTIALS_DIR`: Optional directory containing `agy` credentials to copy into `$HOME/.gemini` on startup (defaults to `/agy-credentials`; used by Docker `-v "$HOME/.gemini:/agy-credentials:ro"` and Helm `agy.existingSecret`). If credentials expire, worker runs fail fast with `agy is not authenticated (run: agy auth login)` until the Secret/mount is rotated and the pod restarted.
 
 ## Reverse Proxy & TLS
 

@@ -67,7 +67,13 @@ To enable `gh` CLI access for vibe runs, pass `-e GH_TOKEN=<token>` (minimum fin
 docker run -d -p 7880:7880 -v opus-data:/data -e GH_TOKEN=<token> opus
 ```
 
-To authenticate `agy` inside the running container (persisted in `/data`; automated login is planned):
+To authenticate `agy` non-interactively, mount your host credentials directory read-only at `/agy-credentials` (Opus copies them into `$HOME/.gemini` with `0700`/`0600` permissions on startup, and `/data` persists them across restarts):
+
+```bash
+docker run -d -p 7880:7880 -v opus-data:/data -v "$HOME/.gemini:/agy-credentials:ro" opus
+```
+
+Or log in interactively once into the persistent `/data` volume:
 
 ```bash
 docker exec -it <container> agy auth login
@@ -91,6 +97,7 @@ helm install opus oci://ghcr.io/kilip/charts/opus --version <version>
 
 - **Secrets (`auth.existingSecret`)**: By default the chart auto-generates `<release>-opus-auth` with `AUTH_SECRET` (reused on `helm upgrade` via `lookup`). Argo CD users (which render via `helm template`) should set `auth.existingSecret` to an existing Secret.
 - **GitHub token (`github.existingSecret`)**: Create `kubectl create secret generic opus-github --from-literal=GH_TOKEN=<token>` and pass `--set github.existingSecret=opus-github` for vibe runs.
+- **`agy` credentials (`agy.existingSecret`)**: Create `kubectl create secret generic opus-agy --from-file=$HOME/.gemini/` and pass `--set agy.existingSecret=opus-agy` to mount credentials read-only at `/agy-credentials` (copied to `$HOME/.gemini` on startup).
 - **Ingress (`config.baseUrl`)**: When enabling `ingress.enabled=true`, set `config.baseUrl` (e.g. `https://opus.example.com`) for OAuth callbacks.
 
 ---
