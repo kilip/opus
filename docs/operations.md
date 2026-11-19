@@ -70,3 +70,23 @@ opus uninstall --purge
 ### Docker & Kubernetes
 
 `opus uninstall` refuses to run inside containers. Stop and remove the Docker container (or uninstall the Helm release) instead.
+
+## Security Model
+
+### Run-Scoped MCP Token
+
+- Every active run receives a unique 32-byte random Bearer token (`mcp_token`) generated in `PrepareAndStartSession`.
+- Only the SHA-256 hash (`mcp_token_hash`) is stored on the `Run` record; the raw token is never persisted to SQLite or logged.
+- `POST /mcp` requires `X-Opus-Run-ID` for Bearer callers, verifies the token with constant-time comparison, rejects terminal runs (`merged`, `failed`, `cancelled`), and scopes all MCP tools strictly to that run's project.
+- Workers inject `mcp_token` (never the node's long-lived `credential`) into `agy` MCP server headers and fail closed if `mcp_token` is absent.
+
+### Node Credential Capabilities
+
+- Long-lived node credentials authenticate `/api/nodes/connect` WebSocket connections and node-level envelopes.
+- Node-originated session events (`HandleWorkerEvent`) are verified against the session's assigned `node_id`; events from mismatched nodes are ignored and logged.
+
+### WebSocket Limits & Origin Validation
+
+- Inbound WebSocket frames on `/api/nodes/connect` are capped at **1 MiB** (`1 << 20` bytes).
+- Connections use a 60-second read deadline extended by Pong frames, with server Ping keepalives every 20 seconds.
+- Non-empty `Origin` headers are restricted to `APP_BASE_URL` and `APP_TRUSTED_ORIGINS` (empty `Origin` remains allowed for non-browser worker clients).
