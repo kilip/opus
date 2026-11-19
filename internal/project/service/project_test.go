@@ -670,3 +670,36 @@ func TestService_UpdateTrackerLabels(t *testing.T) {
 		t.Fatalf("expected cleared trackerLabels, got %v", clearedNull.TrackerLabels)
 	}
 }
+
+func TestProjectValidation_SecurityHardening(t *testing.T) {
+	ctx := context.Background()
+	client := setupTestClient(t)
+	svc := service.New(repo.New(client))
+
+	if _, err := svc.Create(ctx, domain.CreateProjectRequest{
+		Slug:         "-bad-slug",
+		Name:         "Bad",
+		RepoProvider: "github",
+		RepoRef:      "kilip/opus",
+	}); !errors.Is(err, domain.ErrInvalidSlug) {
+		t.Fatalf("expected ErrInvalidSlug, got %v", err)
+	}
+
+	if _, err := svc.Create(ctx, domain.CreateProjectRequest{
+		Slug:         "good-slug",
+		Name:         "Bad Repo",
+		RepoProvider: "github",
+		RepoRef:      "-evil/repo",
+	}); !errors.Is(err, domain.ErrInvalidRepo) {
+		t.Fatalf("expected ErrInvalidRepo for leading '-', got %v", err)
+	}
+
+	if _, err := svc.Create(ctx, domain.CreateProjectRequest{
+		Slug:         "good-slug",
+		Name:         "Bad Repo 2",
+		RepoProvider: "github",
+		RepoRef:      "owner/..repo",
+	}); !errors.Is(err, domain.ErrInvalidRepo) {
+		t.Fatalf("expected ErrInvalidRepo for '..', got %v", err)
+	}
+}

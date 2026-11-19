@@ -376,6 +376,55 @@ func TestConsumeJoinToken_Validation(t *testing.T) {
 	}
 }
 
+func TestConsumeJoinToken_ConcurrentRace(t *testing.T) {
+	client := setupTestClient(t)
+	r := repo.New(client)
+	now := time.Now().UTC()
+	svc := service.New(r, service.Config{
+		BaseURL: "http://localhost:7880",
+		Now:     func() time.Time { return now },
+	})
+	ctx := context.Background()
+
+	tokResp, err := svc.GenerateJoinToken(ctx)
+	if err != nil {
+		t.Fatalf("CreateJoinToken: %v", err)
+	}
+	parts := strings.Split(tokResp.URL, "/join/")
+	rawToken := parts[len(parts)-1]
+
+	const callers = 10
+	errs := make(chan error, callers)
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	for range callers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			errs <- svc.ConsumeJoinToken(ctx, rawToken)
+		}()
+	}
+	close(start)
+	wg.Wait()
+	close(errs)
+
+	var successes, alreadyUsed int
+	for err := range errs {
+		switch {
+		case err == nil:
+			successes++
+		case errors.Is(err, domain.ErrTokenAlreadyUsed):
+			alreadyUsed++
+		default:
+			t.Fatalf("unexpected error: %v", err)
+		}
+	}
+	if successes != 1 || alreadyUsed != callers-1 {
+		t.Fatalf("expected 1 success and %d ErrTokenAlreadyUsed, got %d / %d", callers-1, successes, alreadyUsed)
+	}
+}
+
 func TestJoin_Success(t *testing.T) {
 	client := setupTestClient(t)
 	r := repo.New(client)

@@ -383,6 +383,28 @@ func (r *Ent) ConsumeJoinToken(ctx context.Context, tokenHash string, now time.T
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	if err := consumeJoinTokenTx(ctx, tx, tokenHash, now); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func consumeJoinTokenTx(ctx context.Context, tx *ent.Tx, tokenHash string, now time.Time) error {
+	affected, err := tx.JoinToken.Update().
+		Where(
+			jointoken.TokenHashEQ(tokenHash),
+			jointoken.UsedAtIsNil(),
+			jointoken.ExpiresAtGT(now),
+		).
+		SetUsedAt(now).
+		Save(ctx)
+	if err != nil {
+		return err
+	}
+	if affected > 0 {
+		return nil
+	}
+
 	tok, err := tx.JoinToken.Query().
 		Where(jointoken.TokenHashEQ(tokenHash)).
 		Only(ctx)
@@ -392,22 +414,10 @@ func (r *Ent) ConsumeJoinToken(ctx context.Context, tokenHash string, now time.T
 		}
 		return err
 	}
-
 	if tok.UsedAt != nil {
 		return domain.ErrTokenAlreadyUsed
 	}
-
-	if now.After(tok.ExpiresAt) {
-		return domain.ErrTokenExpired
-	}
-
-	if err := tx.JoinToken.UpdateOne(tok).
-		SetUsedAt(now).
-		Exec(ctx); err != nil {
-		return err
-	}
-
-	return tx.Commit()
+	return domain.ErrTokenExpired
 }
 
 // JoinNode atomically validates and consumes a join token, and inserts a worker node.
@@ -420,27 +430,7 @@ func (r *Ent) JoinNode(ctx context.Context, tokenHash, name, credHash string, no
 	}
 	defer func() { _ = tx.Rollback() }()
 
-	tok, err := tx.JoinToken.Query().
-		Where(jointoken.TokenHashEQ(tokenHash)).
-		Only(ctx)
-	if err != nil {
-		if ent.IsNotFound(err) {
-			return nil, domain.ErrTokenNotFound
-		}
-		return nil, err
-	}
-
-	if tok.UsedAt != nil {
-		return nil, domain.ErrTokenAlreadyUsed
-	}
-
-	if now.After(tok.ExpiresAt) {
-		return nil, domain.ErrTokenExpired
-	}
-
-	if err := tx.JoinToken.UpdateOne(tok).
-		SetUsedAt(now).
-		Exec(ctx); err != nil {
+	if err := consumeJoinTokenTx(ctx, tx, tokenHash, now); err != nil {
 		return nil, err
 	}
 

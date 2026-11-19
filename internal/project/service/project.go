@@ -81,6 +81,8 @@ func (s *Project) Create(ctx context.Context, req domain.CreateProjectRequest) (
 	trackerRef := req.TrackerRef
 	if trackerRef == "" {
 		trackerRef = req.RepoRef
+	} else if err := validateSafeRef(trackerRef); err != nil {
+		return domain.Project{}, err
 	}
 	defaultBranch := req.DefaultBranch
 	if defaultBranch == "" {
@@ -102,6 +104,16 @@ func (s *Project) Create(ctx context.Context, req domain.CreateProjectRequest) (
 
 // Update updates fields of an existing project.
 func (s *Project) Update(ctx context.Context, id string, req domain.UpdateProjectRequest) (domain.Project, error) {
+	if req.TrackerRef != nil && *req.TrackerRef != "" {
+		if err := validateSafeRef(*req.TrackerRef); err != nil {
+			return domain.Project{}, err
+		}
+	}
+	if req.DefaultBranch != nil && *req.DefaultBranch != "" {
+		if err := validateSafeRef(*req.DefaultBranch); err != nil {
+			return domain.Project{}, err
+		}
+	}
 	if req.ClearTrackerLabels || (req.TrackerLabels != nil && len(req.TrackerLabels) == 0) {
 		req.ClearTrackerLabels = true
 		req.TrackerLabels = nil
@@ -187,7 +199,7 @@ func (s *Project) SetNodePath(ctx context.Context, projectID, nodeID string, pat
 
 	var normalizedPath *string
 	if path != nil && *path != "" {
-		if !strings.HasPrefix(*path, "/") {
+		if !strings.HasPrefix(*path, "/") || strings.ContainsRune(*path, '\x00') {
 			return domain.ProjectNodeResponse{}, domain.ErrInvalidPath
 		}
 		normalizedPath = path
@@ -204,4 +216,16 @@ func (s *Project) SetNodePath(ctx context.Context, projectID, nodeID string, pat
 		NodeStatus: string(n.Status),
 		Path:       normalizedPath,
 	}, nil
+}
+
+func validateSafeRef(v string) error {
+	if strings.HasPrefix(v, "-") {
+		return domain.ErrInvalidRepo
+	}
+	for i := 0; i < len(v); i++ {
+		if v[i] < 0x20 || v[i] == 0x7f {
+			return domain.ErrInvalidRepo
+		}
+	}
+	return nil
 }

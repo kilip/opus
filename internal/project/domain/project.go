@@ -2,6 +2,7 @@ package domain
 
 import (
 	"regexp"
+	"strings"
 )
 
 const (
@@ -11,7 +12,7 @@ const (
 
 var (
 	slugRegex    = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,62}$`)
-	repoRefRegex = regexp.MustCompile(`^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$`)
+	repoRefRegex = regexp.MustCompile(`^[a-zA-Z0-9_][a-zA-Z0-9_.-]*/[a-zA-Z0-9_][a-zA-Z0-9_.-]*$`)
 )
 
 // ValidateSlug checks if slug matches ^[a-z0-9][a-z0-9-]{0,62}$.
@@ -30,9 +31,9 @@ func ValidateRepoProvider(provider string) error {
 	return nil
 }
 
-// ValidateRepoRef checks that repo ref matches owner/name format.
+// ValidateRepoRef checks that repo ref matches owner/name format without leading '-' or '..'.
 func ValidateRepoRef(ref string) error {
-	if !repoRefRegex.MatchString(ref) {
+	if strings.HasPrefix(ref, "-") || strings.Contains(ref, "..") || !repoRefRegex.MatchString(ref) {
 		return ErrInvalidRepo
 	}
 	return nil

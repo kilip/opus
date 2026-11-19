@@ -57,14 +57,56 @@ func (m *GitManager) EnsureRepo(ctx context.Context, slug, repoURL, mappedPath s
 	if repoURL == "" {
 		return "", fmt.Errorf("repo URL is required to clone %q", slug)
 	}
+	if err := ValidateRepoURL(repoURL); err != nil {
+		return "", fmt.Errorf("invalid repo URL for %s: %w", slug, err)
+	}
 	if err := os.MkdirAll(filepath.Dir(repoDir), 0o755); err != nil {
 		return "", fmt.Errorf("create repos dir: %w", err)
 	}
 
-	if _, err := runGit(ctx, "", "clone", repoURL, repoDir); err != nil {
+	if _, err := runGit(ctx, "", "clone", "--", repoURL, repoDir); err != nil {
 		return "", fmt.Errorf("clone %s: %w", slug, err)
 	}
 	return repoDir, nil
+}
+
+// ValidateRepoURL enforces an allowlist of safe git clone targets (https://, ssh://,
+// git@host:path, or absolute local paths) and rejects flag injection / ext:: / file://.
+func ValidateRepoURL(repoURL string) error {
+	if repoURL == "" {
+		return errors.New("empty repo URL")
+	}
+	for i := 0; i < len(repoURL); i++ {
+		if repoURL[i] < 0x20 || repoURL[i] == 0x7f {
+			return errors.New("repo URL contains control characters")
+		}
+	}
+	if strings.HasPrefix(repoURL, "-") {
+		return errors.New("repo URL must not start with '-'")
+	}
+	low := strings.ToLower(repoURL)
+	if strings.HasPrefix(low, "ext::") || strings.HasPrefix(low, "file://") {
+		return errors.New("unsupported repo URL scheme")
+	}
+	if strings.HasPrefix(low, "https://") || strings.HasPrefix(low, "ssh://") {
+		rest := repoURL[strings.Index(repoURL, "://")+3:]
+		if rest == "" || strings.ContainsAny(rest, " \t\r\n") {
+			return errors.New("invalid repo URL")
+		}
+		return nil
+	}
+	if strings.HasPrefix(repoURL, "git@") {
+		rest := repoURL[len("git@"):]
+		host, pathPart, ok := strings.Cut(rest, ":")
+		if !ok || host == "" || pathPart == "" || strings.HasPrefix(host, "-") || strings.ContainsAny(repoURL, " \t\r\n") {
+			return errors.New("invalid git@ repo URL")
+		}
+		return nil
+	}
+	if filepath.IsAbs(repoURL) {
+		return nil
+	}
+	return errors.New("unsupported repo URL format")
 }
 
 // PrepareWorktree fetches origin, cleans any stale worktree/branch for taskKey/branch,

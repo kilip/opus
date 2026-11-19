@@ -227,3 +227,29 @@ func TestGitManager_MappedPath_LeavesUserWorkingTreeUntouched(t *testing.T) {
 		t.Fatalf("expected unstaged edit preserved, got %q (err=%v)", string(readmeData), err)
 	}
 }
+
+func TestValidateRepoURL(t *testing.T) {
+	cases := []struct {
+		url     string
+		wantErr bool
+	}{
+		{"https://github.com/kilip/opus.git", false},
+		{"ssh://git@github.com/kilip/opus.git", false},
+		{"git@github.com:kilip/opus.git", false},
+		{"/tmp/local-repo", false},
+		{"", true},
+		{"-u./payload", true},
+		{"--upload-pack=evil", true},
+		{"ext::sh -c evil", true},
+		{"EXT::sh -c evil", true},
+		{"file:///etc/passwd", true},
+		{"FILE:///etc/passwd", true},
+		{"https://github.com/a\nb", true},
+	}
+	for _, tc := range cases {
+		err := worker.ValidateRepoURL(tc.url)
+		if (err != nil) != tc.wantErr {
+			t.Fatalf("ValidateRepoURL(%q) err=%v, wantErr=%v", tc.url, err, tc.wantErr)
+		}
+	}
+}
