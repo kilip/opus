@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/kilip/opus/internal/platform/eventbus"
@@ -119,7 +120,11 @@ func TestSecurityHeaders_AndSPAFallback(t *testing.T) {
 	defer func() { _ = bus.Close(ctx) }()
 
 	// HTTP BaseURL -> no HSTS header.
-	appHTTP, err := GetFiber(testAppConfig(t), logger, db, bus)
+	mockDist := fstest.MapFS{
+		"index.html":    {Data: []byte("<!doctype html><html><body>Opus</body></html>")},
+		"assets/app.js": {Data: []byte("console.log('ok')")},
+	}
+	appHTTP, err := GetFiber(testAppConfig(t), logger, db, bus, WithDistFS(mockDist))
 	if err != nil {
 		t.Fatalf("GetFiber HTTP: %v", err)
 	}

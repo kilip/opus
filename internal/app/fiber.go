@@ -290,7 +290,12 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 	}
 
 	// ponytail: serves embedded SPA without custom Cache-Control headers; add immutable asset caching when CDN/traffic requires.
-	if distFS, err := ui.Dist(); err == nil {
+	distFS := o.distFS
+	var distErr error
+	if distFS == nil {
+		distFS, distErr = ui.Dist()
+	}
+	if distErr == nil && distFS != nil {
 		app.Get("/*", static.New("", static.Config{
 			FS: distFS,
 			Next: func(c fiber.Ctx) bool {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io/fs"
 	"log/slog"
 	"net"
 	"sync"
@@ -56,6 +57,14 @@ type options struct {
 	worker       *worker.Worker
 	inProc       *worker.InProcessTransport
 	shuttingDown *atomic.Bool
+	distFS       fs.FS
+}
+
+// WithDistFS injects a custom SPA static filesystem (used in tests without built UI assets).
+func WithDistFS(distFS fs.FS) Option {
+	return func(o *options) {
+		o.distFS = distFS
+	}
 }
 
 // WithShuttingDown injects the shared atomic readiness/shutdown flag into GetFiber and Opus.
