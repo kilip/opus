@@ -50,11 +50,18 @@ jobs:
           git checkout "${PR_BRANCH}"
           bun .github/scripts/generate-changelog.ts
           if [ -n "$(git status --porcelain CHANGELOG.md)" ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add CHANGELOG.md
-            git commit -m "chore(release): update CHANGELOG.md"
-            git push origin "${PR_BRANCH}"
+            FILE_SHA=$(gh api "repos/${{ github.repository }}/contents/CHANGELOG.md?ref=${PR_BRANCH}" --jq '.sha' 2>/dev/null || true)
+            PR_BRANCH="${PR_BRANCH}" FILE_SHA="${FILE_SHA}" bun -e '
+              const fs = require("fs");
+              const content = fs.readFileSync("CHANGELOG.md").toString("base64");
+              const payload = {
+                message: "chore(release): update CHANGELOG.md",
+                content,
+                branch: process.env.PR_BRANCH,
+                ...(process.env.FILE_SHA ? { sha: process.env.FILE_SHA } : {}),
+              };
+              process.stdout.write(JSON.stringify(payload));
+            ' | gh api --silent --method PUT "repos/${{ github.repository }}/contents/CHANGELOG.md" --input -
           fi
 
       - name: Update GitHub Release notes
