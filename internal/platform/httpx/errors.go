@@ -53,7 +53,11 @@ func ErrorHandler(logger *slog.Logger) fiber.ErrorHandler {
 			errCode = e.Message
 		}
 
-		logger.ErrorContext(c.Context(), "request error",
+		level := slog.LevelError
+		if code < fiber.StatusInternalServerError {
+			level = slog.LevelWarn
+		}
+		logger.Log(c.Context(), level, "request error",
 			"request_id", requestid.FromContext(c),
 			"method", c.Method(),
 			"path", c.Path(),
