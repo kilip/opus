@@ -23,6 +23,7 @@ func newRootCmd() *cobra.Command {
 	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(newJoinCmd())
 	rootCmd.AddCommand(newWorkerCmd())
+	rootCmd.AddCommand(newUninstallCmd())
 	return rootCmd
 }
 
