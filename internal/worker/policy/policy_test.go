@@ -1,6 +1,8 @@
 package policy_test
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/kilip/opus/internal/worker/domain"
@@ -129,5 +131,80 @@ func TestEnforcer_OneShotQuestionThenLimit(t *testing.T) {
 	second := enf.HandleQuestion()
 	if second.Answered || !second.LimitHit {
 		t.Fatalf("second question = %+v, want LimitHit=true", second)
+	}
+}
+
+func TestEvaluatePermission_SymlinkEscapeAndMergeVariants(t *testing.T) {
+	outside := t.TempDir()
+	worktree := t.TempDir()
+	escapeLink := filepath.Join(worktree, "escape")
+	if err := os.Symlink(outside, escapeLink); err != nil {
+		t.Fatalf("Symlink: %v", err)
+	}
+
+	spec := domain.Policy{
+		WorktreeRoot: worktree,
+		AllowMerge:   false,
+	}
+
+	cases := []struct {
+		name    string
+		req     policy.PermissionRequest
+		allowed bool
+	}{
+		{
+			name:    "deny symlink escaping worktree (existing target)",
+			req:     policy.PermissionRequest{Kind: policy.KindFileEdit, Path: escapeLink},
+			allowed: false,
+		},
+		{
+			name:    "deny symlink escaping worktree (non-existent child)",
+			req:     policy.PermissionRequest{Kind: policy.KindFileEdit, Path: filepath.Join(escapeLink, "newfile.txt")},
+			allowed: false,
+		},
+		{
+			name:    "deny parent traversal",
+			req:     policy.PermissionRequest{Kind: policy.KindFileEdit, Path: filepath.Join(worktree, "..", "outside.txt")},
+			allowed: false,
+		},
+		{
+			name:    "allow valid file inside worktree",
+			req:     policy.PermissionRequest{Kind: policy.KindFileEdit, Path: filepath.Join(worktree, "sub", "file.go")},
+			allowed: true,
+		},
+		{
+			name:    "deny gh pr merge",
+			req:     policy.PermissionRequest{Kind: policy.KindGit, Path: worktree, Command: "gh pr merge --squash 123"},
+			allowed: false,
+		},
+		{
+			name:    "deny git merge with -C",
+			req:     policy.PermissionRequest{Kind: policy.KindGit, Path: worktree, Command: "git -C . merge origin/main"},
+			allowed: false,
+		},
+		{
+			name:    "deny git push to main",
+			req:     policy.PermissionRequest{Kind: policy.KindGit, Path: worktree, Command: "git push origin main"},
+			allowed: false,
+		},
+		{
+			name:    "deny git push HEAD:master",
+			req:     policy.PermissionRequest{Kind: policy.KindGit, Path: worktree, Command: "git push origin HEAD:master"},
+			allowed: false,
+		},
+		{
+			name:    "allow git push to feature branch",
+			req:     policy.PermissionRequest{Kind: policy.KindGit, Path: worktree, Command: "git push origin feat/my-branch"},
+			allowed: true,
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			dec := policy.EvaluatePermission(spec, tc.req)
+			if dec.Allowed != tc.allowed {
+				t.Fatalf("EvaluatePermission(%+v) = %+v, want allowed=%v", tc.req, dec, tc.allowed)
+			}
+		})
 	}
 }

@@ -2,6 +2,7 @@
 package policy
 
 import (
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -124,19 +125,173 @@ func isWithinWorktree(root, target string) bool {
 	} else {
 		cleanTarget = filepath.Clean(cleanTarget)
 	}
-	rel, err := filepath.Rel(cleanRoot, cleanTarget)
+
+	resolvedRoot := resolveWithDeepestParent(cleanRoot)
+	resolvedTarget := resolveWithDeepestParent(cleanTarget)
+
+	rel, err := filepath.Rel(resolvedRoot, resolvedTarget)
 	if err != nil {
 		return false
 	}
 	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
+func resolveWithDeepestParent(p string) string {
+	if resolved, err := filepath.EvalSymlinks(p); err == nil {
+		return filepath.Clean(resolved)
+	}
+	var tail []string
+	cur := filepath.Clean(p)
+	for {
+		parent := filepath.Dir(cur)
+		if parent == cur {
+			return filepath.Clean(p)
+		}
+		tail = append(tail, filepath.Base(cur))
+		cur = parent
+		if _, err := os.Lstat(cur); err == nil {
+			if resolved, err := filepath.EvalSymlinks(cur); err == nil {
+				parts := make([]string, 0, len(tail)+1)
+				parts = append(parts, resolved)
+				for i := len(tail) - 1; i >= 0; i-- {
+					parts = append(parts, tail[i])
+				}
+				return filepath.Clean(filepath.Join(parts...))
+			}
+		}
+	}
+}
+
 func containsMergeCommand(cmd string) bool {
-	fields := strings.Fields(strings.ToLower(cmd))
-	for _, f := range fields {
-		if f == "merge" {
+	for _, args := range splitShellCommands(cmd) {
+		if len(args) == 0 {
+			continue
+		}
+		bin := strings.ToLower(filepath.Base(args[0]))
+		switch bin {
+		case "gh":
+			if hasSubcommandSequence(args[1:], "pr", "merge") {
+				return true
+			}
+		case "git":
+			sub, rest := firstGitSubcommand(args[1:])
+			if sub == "merge" {
+				return true
+			}
+			if sub == "push" && pushesToDefaultBranch(rest) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func hasSubcommandSequence(args []string, first, second string) bool {
+	foundFirst := false
+	for _, a := range args {
+		if strings.HasPrefix(a, "-") {
+			continue
+		}
+		low := strings.ToLower(a)
+		if !foundFirst {
+			if low == first {
+				foundFirst = true
+			}
+			continue
+		}
+		return low == second
+	}
+	return false
+}
+
+func firstGitSubcommand(args []string) (string, []string) {
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if a == "-C" || a == "-c" || a == "--git-dir" || a == "--work-tree" {
+			i++
+			continue
+		}
+		if strings.HasPrefix(a, "-") {
+			continue
+		}
+		return strings.ToLower(a), args[i+1:]
+	}
+	return "", nil
+}
+
+func pushesToDefaultBranch(args []string) bool {
+	for _, a := range args {
+		if strings.HasPrefix(a, "-") {
+			continue
+		}
+		low := strings.ToLower(a)
+		if idx := strings.LastIndex(low, ":"); idx >= 0 {
+			low = low[idx+1:]
+		}
+		low = strings.TrimPrefix(low, "refs/heads/")
+		if low == "main" || low == "master" {
 			return true
 		}
 	}
 	return false
+}
+
+func splitShellCommands(cmd string) [][]string {
+	var commands [][]string
+	var cur []string
+	var tok strings.Builder
+	inToken := false
+	var quote byte
+
+	flushTok := func() {
+		if inToken {
+			cur = append(cur, tok.String())
+			tok.Reset()
+			inToken = false
+		}
+	}
+	flushCmd := func() {
+		flushTok()
+		if len(cur) > 0 {
+			commands = append(commands, cur)
+			cur = nil
+		}
+	}
+
+	for i := 0; i < len(cmd); i++ {
+		ch := cmd[i]
+		if quote != 0 {
+			if ch == '\\' && quote == '"' && i+1 < len(cmd) {
+				i++
+				tok.WriteByte(cmd[i])
+				continue
+			}
+			if ch == quote {
+				quote = 0
+				continue
+			}
+			tok.WriteByte(ch)
+			continue
+		}
+		switch ch {
+		case '\'', '"':
+			quote = ch
+			inToken = true
+		case '\\':
+			if i+1 < len(cmd) {
+				i++
+				tok.WriteByte(cmd[i])
+				inToken = true
+			}
+		case ' ', '\t', '\r':
+			flushTok()
+		case '\n', ';', '|', '&':
+			flushCmd()
+		default:
+			tok.WriteByte(ch)
+			inToken = true
+		}
+	}
+	flushCmd()
+	return commands
 }

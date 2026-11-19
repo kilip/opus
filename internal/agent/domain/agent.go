@@ -10,11 +10,13 @@ const (
 	MaxReportBytes       = 64 * 1024
 	RateLimitPerMinute   = 30
 	RateLimitWindow      = time.Minute
+	MaxRateLimitBuckets  = 10_000
 )
 
 // CallerContext identifies the authenticated agent caller, its active run/session
 // bindings, and its allowed project scope.
 type CallerContext struct {
+	UserID            string
 	NodeID            string
 	RunID             string
 	SessionID         string
@@ -65,8 +67,8 @@ func (c CallerContext) RateLimitKey() string {
 	switch {
 	case c.RunID != "":
 		return "run:" + c.RunID
-	case c.SessionID != "":
-		return "session:" + c.SessionID
+	case c.UserID != "":
+		return "user:" + c.UserID
 	case c.NodeID != "":
 		return "node:" + c.NodeID
 	default:

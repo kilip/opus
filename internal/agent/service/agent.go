@@ -385,7 +385,29 @@ func (s *Service) allowCall(key string, now time.Time) bool {
 	defer s.mu.Unlock()
 
 	cutoff := now.Add(-domain.RateLimitWindow)
-	entries := s.buckets[key]
+
+	// Evict expired buckets when approaching or at capacity so memory stays bounded.
+	if len(s.buckets) >= domain.MaxRateLimitBuckets {
+		for k, timestamps := range s.buckets {
+			kept := timestamps[:0]
+			for _, ts := range timestamps {
+				if ts.After(cutoff) {
+					kept = append(kept, ts)
+				}
+			}
+			if len(kept) == 0 {
+				delete(s.buckets, k)
+			} else {
+				s.buckets[k] = kept
+			}
+		}
+	}
+
+	entries, exists := s.buckets[key]
+	if !exists && len(s.buckets) >= domain.MaxRateLimitBuckets {
+		return false
+	}
+
 	kept := entries[:0]
 	for _, ts := range entries {
 		if ts.After(cutoff) {
@@ -399,6 +421,9 @@ func (s *Service) allowCall(key string, now time.Time) bool {
 	s.buckets[key] = append(kept, now)
 	return true
 }
+
+// Close releases any resources held by the agent service.
+func (s *Service) Close() {}
 
 func (s *Service) recordToolCall(
 	ctx context.Context,

@@ -583,3 +583,60 @@ func TestRateLimiterAndToolCallSessionEvents(t *testing.T) {
 		t.Fatalf("unexpected tool_call event payload: %+v", lastPayload)
 	}
 }
+
+func TestRateLimiter_RunScopedAndBucketCap(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 5, 1, 12, 0, 0, 0, time.UTC)
+	runID := uuid.New()
+	projID := uuid.New().String()
+	taskID := uuid.New().String()
+
+	svc := New(Config{
+		Tasks: &fakeTaskStore{tasks: map[string]task.Record{
+			taskID: {ID: taskID, Key: "OP-10", ProjectID: projID, Title: "Test"},
+		}},
+		Runs: &fakeRunStore{runs: map[uuid.UUID]run.Run{
+			runID: {ID: runID, TaskID: uuid.MustParse(taskID), ProjectID: uuid.MustParse(projID)},
+		}},
+		Now: func() time.Time { return now },
+	})
+
+	// Rotating X-Opus-Session-ID must still share the same run-scoped rate limit bucket.
+	for i := 0; i < domain.RateLimitPerMinute; i++ {
+		caller := domain.CallerContext{
+			RunID:     runID.String(),
+			SessionID: uuid.New().String(),
+			TaskID:    taskID,
+			ProjectID: projID,
+		}
+		if _, err := svc.GetTask(context.Background(), caller, domain.GetTaskInput{}); err != nil {
+			t.Fatalf("call %d failed unexpectedly: %v", i+1, err)
+		}
+	}
+	callerRotated := domain.CallerContext{
+		RunID:     runID.String(),
+		SessionID: uuid.New().String(),
+		TaskID:    taskID,
+		ProjectID: projID,
+	}
+	if _, err := svc.GetTask(context.Background(), callerRotated, domain.GetTaskInput{}); !errors.Is(err, domain.ErrRateLimited) {
+		t.Fatalf("expected ErrRateLimited with rotated SessionID, got %v", err)
+	}
+
+	// Fill remaining buckets up to MaxRateLimitBuckets and verify cap + expiry eviction.
+	for i := 1; i < domain.MaxRateLimitBuckets; i++ {
+		if !svc.allowCall(fmt.Sprintf("run:%d", i), now) {
+			t.Fatalf("expected bucket %d to be allowed", i)
+		}
+	}
+	if svc.allowCall("run:overflow", now) {
+		t.Fatal("expected new bucket beyond MaxRateLimitBuckets to be rejected")
+	}
+
+	// Advance past RateLimitWindow; expired buckets are evicted and new key succeeds.
+	now = now.Add(domain.RateLimitWindow + time.Second)
+	if !svc.allowCall("run:after-evict", now) {
+		t.Fatal("expected new bucket to succeed after expired buckets are evicted")
+	}
+}
