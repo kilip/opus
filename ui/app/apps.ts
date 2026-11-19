@@ -2,6 +2,7 @@ import { dashboardApp } from "~/features/dashboard/app";
 import { nodesApp } from "~/features/nodes/app";
 import { projectsApp } from "~/features/projects/app";
 import { runsApp } from "~/features/runs/app";
+import { settingsApp } from "~/features/settings/app";
 import { tasksApp } from "~/features/tasks/app";
 import type { AppDef } from "~/shared/types";
 
@@ -22,11 +23,5 @@ export const apps: AppDef[] = [
     enabled: false,
   },
   runsApp,
-  {
-    id: "settings",
-    name: "Settings",
-    path: "/settings",
-    icon: "settings",
-    enabled: false,
-  },
+  settingsApp,
 ];

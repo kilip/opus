@@ -580,6 +580,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/settings/github-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get GitHub token status
+         * @description Returns whether a GitHub token is configured, its last 4 characters, update timestamp, env override flag, and whether re-entry is required.
+         */
+        get: operations["getGitHubTokenStatus"];
+        /**
+         * Set GitHub token
+         * @description Validates a GitHub personal access token against the GitHub API and stores it encrypted at rest.
+         */
+        put: operations["setGitHubToken"];
+        post?: never;
+        /**
+         * Delete GitHub token
+         * @description Removes the stored GitHub token from the database.
+         */
+        delete: operations["deleteGitHubToken"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/setup": {
         parameters: {
             query?: never;
@@ -812,6 +840,13 @@ export interface components {
             title: string;
             type?: components["schemas"]["domain.TaskType"];
         };
+        "domain.GitHubTokenStatusResponse": {
+            configured?: boolean;
+            envOverride?: boolean;
+            last4?: string;
+            needsReentry?: boolean;
+            updatedAt?: string;
+        };
         "domain.JoinNodeRequest": {
             hostname?: string;
             ipAddress?: string;
@@ -912,6 +947,9 @@ export interface components {
         };
         /** @enum {string} */
         "domain.SessionStatus": "queued" | "running" | "completed" | "failed" | "cancelled";
+        "domain.SetGitHubTokenRequest": {
+            token?: string;
+        };
         "domain.SetupStatusResponse": {
             needs_setup?: boolean;
             requiresToken?: boolean;
@@ -1080,6 +1118,11 @@ export interface components {
         };
         "httpx.Response-domain_Activity": {
             data?: components["schemas"]["domain.Activity"];
+            error?: string;
+            meta?: components["schemas"]["httpx.Meta"];
+        };
+        "httpx.Response-domain_GitHubTokenStatusResponse": {
+            data?: components["schemas"]["domain.GitHubTokenStatusResponse"];
             error?: string;
             meta?: components["schemas"]["httpx.Meta"];
         };
@@ -2571,6 +2614,105 @@ export interface operations {
                 };
                 content: {
                     "text/event-stream": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    getGitHubTokenStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-domain_GitHubTokenStatusResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    setGitHubToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description GitHub token payload */
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["domain.SetGitHubTokenRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.Response-domain_GitHubTokenStatusResponse"];
+                };
+            };
+            /** @description Bad Request */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
+                };
+            };
+        };
+    };
+    deleteGitHubToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Internal Server Error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["httpx.ErrorResponse"];
                 };
             };
         };

@@ -5,6 +5,7 @@ import { dashboardRoutes } from "./features/dashboard/routes";
 import { nodesRoutes } from "./features/nodes/routes";
 import { projectsRoutes } from "./features/projects/routes";
 import { runsRoutes } from "./features/runs/routes";
+import { settingsRoutes } from "./features/settings/routes";
 import { shellRoutes } from "./features/shell/routes";
 import { tasksRoutes } from "./features/tasks/routes";
 
@@ -25,6 +26,7 @@ export default [
     ...projectsRoutes,
     ...nodesRoutes,
     ...runsRoutes,
+    ...settingsRoutes,
     ...authSettingsRoutes,
   ]),
 
