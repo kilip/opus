@@ -2,6 +2,51 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.3.0-rc3](https://github.com/kilip/opus/compare/v0.3.0-rc2...v0.3.0-rc3) (2026-11-19)
+
+### ✨ Features
+
+- **api:** sync mounted agy credentials into HOME on startup ([ed5aee4](https://github.com/kilip/opus/commit/ed5aee486bdfa2c20cf09416120f7db14a35c894))
+- **api:** add opus doctor diagnostics command ([6824d15](https://github.com/kilip/opus/commit/6824d15471b0cdb80512de6aa1e97716b625df71))
+- **api:** add opus service lifecycle command ([b19e305](https://github.com/kilip/opus/commit/b19e3057b6903acef0466e9cf78ed1569de40758))
+- **ui:** add Settings page for GitHub token management ([98268d7](https://github.com/kilip/opus/commit/98268d71ed0c248a9d6a41f89f93c67e9db108a5))
+- **api:** add encrypted GitHub token settings ([70dd80a](https://github.com/kilip/opus/commit/70dd80a886ecdf76e97646388d0975a087007389))
+- **api:** add opus self-update command ([9041e9b](https://github.com/kilip/opus/commit/9041e9b0bdd2bcb68ff3f806bd5720c8e1cde659))
+- **api:** add opus uninstall command ([bb224fc](https://github.com/kilip/opus/commit/bb224fccceb13e310c39a8b3891e03cac750e093))
+- **ui:** add node edit dialog, network info, and Wake-on-LAN action ([b6715b9](https://github.com/kilip/opus/commit/b6715b9252bbbef30af589afea8bd0464de07d61))
+- **api:** add Wake-on-LAN endpoint POST /api/nodes/{id}/wake ([6da2ce5](https://github.com/kilip/opus/commit/6da2ce50ce6780adbdbcd413b2ce1cc2968da24d))
+- **api:** report active hostname, IP, and MAC on worker join and hello ([504f07b](https://github.com/kilip/opus/commit/504f07baf7de5a253e21a48ddd09b7e1393231a2))
+- **api:** add hostname, IP, MAC fields and PATCH /api/nodes/{id} ([84c1966](https://github.com/kilip/opus/commit/84c196677f400a3331b38018ab8624328ffee2d0))
+- **api:** forward slog error logs to sentry ([ca39f30](https://github.com/kilip/opus/commit/ca39f3038bd15c4de8233e23bf99e4a85669a60d))
+
+### 🐛 Bug Fixes
+
+- **api:** propagate context, WorkingDirectory, and launchd start lifecycle ([0512c5f](https://github.com/kilip/opus/commit/0512c5fe10e334fb905001cf185e82e0c4e06d6d))
+- **api:** harden git clone URLs, join-token, and project validation ([a44035e](https://github.com/kilip/opus/commit/a44035e7b85b4d9e1ec4afe16e2a37be65ca5787))
+- **api:** add SSE keepalive, session Close, and shutdown order ([95738b4](https://github.com/kilip/opus/commit/95738b44705aaf7fa8212122c5c67d9ce8abd331))
+- **api:** add /api/readyz, helmet security headers, and SPA 404 ([0728def](https://github.com/kilip/opus/commit/0728def631517c5a405eb93392aa73e00818b346))
+- **api:** enable SQLite WAL, pooling, and schema version guard ([43532c3](https://github.com/kilip/opus/commit/43532c365437da1dffd270fd42b031c5255e9c00))
+- **api:** fail runs on dispatch error, session failure, and node grace ([e083690](https://github.com/kilip/opus/commit/e083690531b09711e11cead307a9697ad7491086))
+- **api:** expose session LatestEventTime for activity staleness ([8b36972](https://github.com/kilip/opus/commit/8b36972ed29a06b70ae7e816042e998acd5e0863))
+- **api:** harden MCP rate limiter and worker policy ([687a678](https://github.com/kilip/opus/commit/687a678413c6ec4cf4645383db8cbfc6811b2f32))
+- **api:** enforce WebSocket limits, keepalive, and origins ([95b8b53](https://github.com/kilip/opus/commit/95b8b53244cffcc1fafe63f7af5a3ab0bc836a13))
+- **api:** verify node ownership in session worker events ([98c1a73](https://github.com/kilip/opus/commit/98c1a73ce7fd9f01a54f0d484e03002a5a1768b5))
+- **api:** add run-scoped MCP token and handler scoping ([6e555bc](https://github.com/kilip/opus/commit/6e555bc0b2d31fa98167cf4d374e190fb9db25cf))
+- **ui:** cap SessionLogStream entries and reconnect SSE with backoff ([7dfc7eb](https://github.com/kilip/opus/commit/7dfc7eb771f298c9d2f098d39758d2d43f76c194))
+- **ui:** add shell ErrorBoundary, public 404, and dashboard error state ([5fe618f](https://github.com/kilip/opus/commit/5fe618f46d77690865c70533cce0a9ee6c4fd730))
+- **ui:** add accessible Dialog, ErrorState, and modal migrations ([f55b079](https://github.com/kilip/opus/commit/f55b0797dc751bb759c48ce4f551424ce3d73289))
+- **ui:** harden auth redirect, 401 navigation, and safe next URLs ([116f8f2](https://github.com/kilip/opus/commit/116f8f2cdbf4a56f9e899b390c9322762564027a))
+- **ui:** disable unrequested sourcemaps and strip .map files ([30976b0](https://github.com/kilip/opus/commit/30976b00b75ed72f119c04245cb5a7bc239e1197))
+- **ui:** add setup token field and X-Setup-Token header to onboarding ([2c3535f](https://github.com/kilip/opus/commit/2c3535f8bbe5e604d7b60fc1d6f39df3b5bdba1f))
+- **api:** harden setup token, atomic OTP, proxy trust, secret, and mailer ([23d9979](https://github.com/kilip/opus/commit/23d9979562dfd302033317106fcadcb312e26461))
+- **api:** implement worker start_run runner, session events, and cleanup ([c6e59db](https://github.com/kilip/opus/commit/c6e59dbe27af96400532c54e96bcd028f29e79b9))
+- **api:** wire run pipeline, HubTransport, tracker bus, and stage timeout ([ee297ac](https://github.com/kilip/opus/commit/ee297ac4e268d02a7d12102df6272a2f05327ee1))
+- **api:** skip github auth check when no github projects exist ([9c8e1be](https://github.com/kilip/opus/commit/9c8e1beaff300f2ffcdf7ed40902acfd1d7b466a))
+
+### 📦 Dependencies
+
+- **deps:** keep ent codegen sums in go.sum ([a4db42b](https://github.com/kilip/opus/commit/a4db42b5869645a57bf84d1569e27f3cf58f239e))
+
 ## [v0.3.0-rc2](https://github.com/kilip/opus/compare/v0.3.0-rc1...v0.3.0-rc2) (2026-11-18)
 
 ### ✨ Features
