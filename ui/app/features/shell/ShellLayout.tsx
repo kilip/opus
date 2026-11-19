@@ -1,8 +1,9 @@
-import { Link, Outlet, useLocation } from "react-router";
+import { isRouteErrorResponse, Link, Outlet, useLocation } from "react-router";
 
 import { apps } from "~/apps";
 import { useLogout } from "~/shared/auth/session";
 import { Avatar } from "~/shared/components/Avatar";
+import { ErrorState } from "~/shared/components/ErrorState";
 import { Icon, type IconName } from "~/shared/components/Icon";
 import { Popover } from "~/shared/components/Popover";
 import { type ThemePref, useTheme } from "~/shared/theme";
@@ -10,7 +11,7 @@ import { type ThemePref, useTheme } from "~/shared/theme";
 const navButton =
   "inline-flex h-9 items-center gap-2 rounded-md px-2.5 text-navbar-fg hover:bg-white/15 aria-expanded:bg-white/15";
 
-export default function ShellLayout() {
+function ShellFrame({ children }: { children: React.ReactNode }) {
   const { pathname } = useLocation();
   const current = apps.find((a) => pathname.startsWith(a.path));
 
@@ -28,10 +29,39 @@ export default function ShellLayout() {
           <UserMenu />
         </div>
       </header>
-      <main className="flex min-h-0 flex-1 flex-col">
-        <Outlet />
-      </main>
+      <main className="flex min-h-0 flex-1 flex-col">{children}</main>
     </div>
+  );
+}
+
+export default function ShellLayout() {
+  return (
+    <ShellFrame>
+      <Outlet />
+    </ShellFrame>
+  );
+}
+
+export function ErrorBoundary({ error }: { error: unknown }) {
+  let title = "Something went wrong";
+  let message = "An unexpected error occurred in this view.";
+  if (isRouteErrorResponse(error)) {
+    title = error.status === 404 ? "Page not found" : `Error ${error.status}`;
+    message = error.statusText || message;
+  } else if (error instanceof Error && error.message) {
+    message = error.message;
+  }
+
+  return (
+    <ShellFrame>
+      <div className="flex flex-1 items-center justify-center p-6">
+        <ErrorState
+          title={title}
+          message={message}
+          onRetry={() => window.location.reload()}
+        />
+      </div>
+    </ShellFrame>
   );
 }
 

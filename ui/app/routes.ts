@@ -1,4 +1,4 @@
-import type { RouteConfig } from "@react-router/dev/routes";
+import { type RouteConfig, route } from "@react-router/dev/routes";
 
 import { authRoutes, authSettingsRoutes } from "./features/auth/routes";
 import { dashboardRoutes } from "./features/dashboard/routes";
@@ -27,4 +27,6 @@ export default [
     ...runsRoutes,
     ...authSettingsRoutes,
   ]),
+
+  route("*", "shared/pages/NotFound.tsx"),
 ] satisfies RouteConfig;
