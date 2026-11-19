@@ -126,6 +126,7 @@ Opus is configured via environment variables. Common settings:
 | `NOTIFY_TELEGRAM_CHAT_ID` | — | Telegram chat ID for alerts |
 | `RUN_POLL_INTERVAL` | `30s` | Interval between run reconciler scans |
 | `RUN_STAGE_TIMEOUT` | `2h` | Timeout for an active run stage |
+| `RUN_NODE_GRACE` | `2m` | Grace period before failing active runs on a disconnected worker |
 
 ---
 
