@@ -169,4 +169,32 @@ func TestService_OrderedEventPersistenceAndWorkerDelivery(t *testing.T) {
 	if events[10].Kind != "tool_call" {
 		t.Errorf("expected last event kind tool_call, got %s", events[10].Kind)
 	}
+
+	// Mismatched nodeID must be ignored without mutating session or recording events.
+	wrongNode := uuid.New().String()
+	badRaw, _ := json.Marshal(map[string]any{
+		"sessionId": sess.ID.String(),
+		"kind":      "session_failed",
+		"reason":    "spoofed",
+	})
+	svc.HandleWorkerEvent(ctx, wrongNode, node.Envelope{
+		Type:    node.EnvelopeTypeEvent,
+		ID:      "evt-spoof",
+		Payload: badRaw,
+	})
+
+	afterSess, err := svc.Get(ctx, sess.ID)
+	if err != nil {
+		t.Fatalf("Get session: %v", err)
+	}
+	if afterSess.Status != domain.StatusRunning {
+		t.Fatalf("expected session status to remain running, got %s", afterSess.Status)
+	}
+	afterEvents, err := svc.ListEventsAfter(ctx, sess.ID, 0)
+	if err != nil {
+		t.Fatalf("ListEventsAfter: %v", err)
+	}
+	if len(afterEvents) != 11 {
+		t.Fatalf("expected event count to remain 11, got %d", len(afterEvents))
+	}
 }

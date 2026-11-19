@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -18,6 +19,7 @@ type Config struct {
 	Bus       *eventbus.Bus
 	Now       func() time.Time
 	OnPromote func(domain.Session)
+	Logger    *slog.Logger
 }
 
 // Service owns session lifecycle, single-active-session FIFO queueing,
@@ -27,6 +29,7 @@ type Service struct {
 	bus       *eventbus.Bus
 	now       func() time.Time
 	onPromote func(domain.Session)
+	logger    *slog.Logger
 
 	// writeMu serializes SQLite write transactions for queue/seq consistency.
 	writeMu sync.Mutex
@@ -41,11 +44,16 @@ func New(r *repo.Ent, cfg Config) *Service {
 	if now == nil {
 		now = time.Now
 	}
+	logger := cfg.Logger
+	if logger == nil {
+		logger = slog.Default()
+	}
 	return &Service{
 		repo:      r,
 		bus:       cfg.Bus,
 		now:       now,
 		onPromote: cfg.OnPromote,
+		logger:    logger,
 		subs:      make(map[uuid.UUID]map[chan domain.SessionEvent]struct{}),
 	}
 }
@@ -177,7 +185,7 @@ func (s *Service) Subscribe(sessionID uuid.UUID) (<-chan domain.SessionEvent, fu
 }
 
 // HandleWorkerEvent processes an incoming worker event envelope from the node hub.
-func (s *Service) HandleWorkerEvent(ctx context.Context, _ string, env node.Envelope) {
+func (s *Service) HandleWorkerEvent(ctx context.Context, nodeID string, env node.Envelope) {
 	if env.Type != node.EnvelopeTypeEvent || len(env.Payload) == 0 {
 		return
 	}
@@ -195,6 +203,18 @@ func (s *Service) HandleWorkerEvent(ctx context.Context, _ string, env node.Enve
 
 	sessionID, err := uuid.Parse(msg.SessionID)
 	if err != nil {
+		return
+	}
+
+	sess, err := s.Get(ctx, sessionID)
+	if err != nil {
+		return
+	}
+	if sess.NodeID.String() != nodeID {
+		s.logger.WarnContext(ctx, "ignoring worker event from mismatched node",
+			"node_id", nodeID,
+			"session_id", sessionID.String(),
+		)
 		return
 	}
 
