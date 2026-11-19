@@ -1,6 +1,7 @@
 {
   "name": "ui",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "build": "react-router build && find build/client -name '*.map' -delete && touch build/client/.keep",
