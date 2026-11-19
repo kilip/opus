@@ -242,13 +242,27 @@ jobs:
 
           $bin = Join-Path $svcDir 'opus.exe'
           go build -o $bin ./cmd/opus
-          & $bin service install
-          & $bin service start
-          & $bin service status
-          & $bin service stop
-          & $bin service uninstall
-          if (-not (Test-Path (Join-Path $appHome 'opus.env'))) {
-            throw 'Expected opus.env to be preserved after uninstall'
+          try {
+            & $bin service install
+            if ($LASTEXITCODE -ne 0) { throw "service install failed: $LASTEXITCODE" }
+            & $bin service start
+            if ($LASTEXITCODE -ne 0) { throw "service start failed: $LASTEXITCODE" }
+            & $bin service status
+            if ($LASTEXITCODE -ne 0) { throw "expected status 0 when running, got $LASTEXITCODE" }
+            & $bin service stop
+            if ($LASTEXITCODE -ne 0) { throw "service stop failed: $LASTEXITCODE" }
+            & $bin service status
+            if ($LASTEXITCODE -ne 3) { throw "expected status 3 when stopped, got $LASTEXITCODE" }
+            & $bin service uninstall
+            if ($LASTEXITCODE -ne 0) { throw "service uninstall failed: $LASTEXITCODE" }
+            & $bin service status
+            if ($LASTEXITCODE -ne 4) { throw "expected status 4 when uninstalled, got $LASTEXITCODE" }
+            if (-not (Test-Path (Join-Path $appHome 'opus.env'))) {
+              throw 'Expected opus.env to be preserved after uninstall'
+            }
+          } finally {
+            & $bin service uninstall 2>$null | Out-Null
+            $LASTEXITCODE = 0
           }
 
       - name: Test install.ps1 (Windows)
