@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -22,7 +23,16 @@ func NewRunner() Runner {
 	return newExecRunner("gh", DefaultCommandTimeout)
 }
 
+// NewRunnerWithToken returns a Runner that injects GH_TOKEN from tokenProvider when non-empty.
+func NewRunnerWithToken(tokenProvider func() string) Runner {
+	return newExecRunnerWithToken("gh", DefaultCommandTimeout, tokenProvider)
+}
+
 func newExecRunner(bin string, timeout time.Duration) Runner {
+	return newExecRunnerWithToken(bin, timeout, nil)
+}
+
+func newExecRunnerWithToken(bin string, timeout time.Duration, tokenProvider func() string) Runner {
 	return func(ctx context.Context, args ...string) ([]byte, error) {
 		if timeout > 0 {
 			var cancel context.CancelFunc
@@ -31,6 +41,11 @@ func newExecRunner(bin string, timeout time.Duration) Runner {
 		}
 
 		cmd := exec.CommandContext(ctx, bin, args...)
+		if tokenProvider != nil {
+			if tok := tokenProvider(); tok != "" {
+				cmd.Env = append(os.Environ(), "GH_TOKEN="+tok)
+			}
+		}
 		var stdout, stderr bytes.Buffer
 		cmd.Stdout = &stdout
 		cmd.Stderr = &stderr

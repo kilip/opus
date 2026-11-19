@@ -20,6 +20,7 @@ import (
 	"github.com/kilip/opus/internal/project"
 	"github.com/kilip/opus/internal/run"
 	"github.com/kilip/opus/internal/session"
+	"github.com/kilip/opus/internal/settings"
 	"github.com/kilip/opus/internal/task"
 	"github.com/kilip/opus/internal/tracker"
 	"github.com/kilip/opus/internal/worker"
@@ -52,6 +53,7 @@ type options struct {
 	project      *project.Project
 	run          *run.Feature
 	session      *session.Session
+	settings     *settings.Settings
 	task         *task.Task
 	tracker      *tracker.Tracker
 	worker       *worker.Worker
@@ -113,6 +115,13 @@ func WithTask(t *task.Task) Option {
 func WithTracker(t *tracker.Tracker) Option {
 	return func(o *options) {
 		o.tracker = t
+	}
+}
+
+// WithSettings injects a pre-configured Settings feature into GetFiber.
+func WithSettings(s *settings.Settings) Option {
+	return func(o *options) {
+		o.settings = s
 	}
 }
 

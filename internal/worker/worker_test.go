@@ -954,6 +954,7 @@ done
 	}
 
 	const secretCred = "super-secret-worker-token"
+	const extraGHSecret = "ghp_extra_secret_token_42"
 	var logBuf bytes.Buffer
 	logger := slog.New(slog.NewTextHandler(&logBuf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	transport := worker.NewInProcess()
@@ -966,6 +967,9 @@ done
 		InProcess:         transport,
 		HeartbeatInterval: time.Hour,
 		Logger:            logger,
+		ExtraSecrets: func() []string {
+			return []string{extraGHSecret}
+		},
 		OnStartRun: func(ctx context.Context, cmd worker.StartRun) error {
 			client, err := agy.Start(ctx, agy.Config{Bin: fakeAgy})
 			if err != nil {
@@ -978,7 +982,7 @@ done
 			if _, err := w.StartAgySession(ctx, client, dir, cmd, "", nil); err != nil {
 				return err
 			}
-			return errors.New("simulated failure containing Bearer " + secretCred)
+			return errors.New("simulated failure containing Bearer " + secretCred + " and " + extraGHSecret)
 		},
 	})
 
@@ -1021,7 +1025,7 @@ done
 		if evt.Type != worker.EventRunError {
 			t.Fatalf("expected run_error, got %s", evt.Type)
 		}
-		if strings.Contains(evt.Error, secretCred) {
+		if strings.Contains(evt.Error, secretCred) || strings.Contains(evt.Error, extraGHSecret) {
 			t.Fatalf("credential leaked into EventRunError: %q", evt.Error)
 		}
 		if !strings.Contains(evt.Error, "[REDACTED]") {
@@ -1059,7 +1063,7 @@ done
 		t.Fatalf("expected nil MCP servers when McpToken is empty, got %+v", got)
 	}
 
-	if strings.Contains(logBuf.String(), secretCred) {
+	if strings.Contains(logBuf.String(), secretCred) || strings.Contains(logBuf.String(), extraGHSecret) {
 		t.Fatalf("credential leaked into slog output:\n%s", logBuf.String())
 	}
 }

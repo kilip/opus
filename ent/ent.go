@@ -24,6 +24,7 @@ import (
 	"github.com/kilip/opus/ent/project"
 	"github.com/kilip/opus/ent/projectnode"
 	"github.com/kilip/opus/ent/run"
+	"github.com/kilip/opus/ent/secretsetting"
 	"github.com/kilip/opus/ent/session"
 	"github.com/kilip/opus/ent/sessionevent"
 	"github.com/kilip/opus/ent/task"
@@ -103,6 +104,7 @@ func checkColumn(t, c string) error {
 			project.Table:         project.ValidColumn,
 			projectnode.Table:     projectnode.ValidColumn,
 			run.Table:             run.ValidColumn,
+			secretsetting.Table:   secretsetting.ValidColumn,
 			session.Table:         session.ValidColumn,
 			sessionevent.Table:    sessionevent.ValidColumn,
 			task.Table:            task.ValidColumn,

@@ -98,6 +98,10 @@ type Config struct {
 	// Defaults to 30s if <= 0.
 	MaxBackoff time.Duration
 
+	// ExtraSecrets returns additional runtime secrets (e.g. stored GitHub token)
+	// to scrub from worker logs and error reports.
+	ExtraSecrets func() []string
+
 	// Dialer allows overriding the WebSocket dialer (e.g. in tests).
 	// Defaults to websocket.DefaultDialer if nil.
 	Dialer *websocket.Dialer
@@ -771,6 +775,15 @@ func (w *Worker) scrubSecret(s string, extra ...string) string {
 		}
 		s = strings.ReplaceAll(s, "Bearer "+secret, "[REDACTED]")
 		s = strings.ReplaceAll(s, secret, "[REDACTED]")
+	}
+	if w.cfg.ExtraSecrets != nil {
+		for _, secret := range w.cfg.ExtraSecrets() {
+			if secret == "" {
+				continue
+			}
+			s = strings.ReplaceAll(s, "Bearer "+secret, "[REDACTED]")
+			s = strings.ReplaceAll(s, secret, "[REDACTED]")
+		}
 	}
 	return s
 }

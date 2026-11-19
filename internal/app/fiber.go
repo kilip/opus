@@ -27,6 +27,7 @@ import (
 	"github.com/kilip/opus/internal/project"
 	"github.com/kilip/opus/internal/run"
 	"github.com/kilip/opus/internal/session"
+	"github.com/kilip/opus/internal/settings"
 	"github.com/kilip/opus/internal/task"
 	"github.com/kilip/opus/internal/tracker"
 	"github.com/kilip/opus/ui"
@@ -211,12 +212,23 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 		api.Use(authFeature.Middleware())
 		authFeature.Register(authRoutes) // GET /me, POST /logout (protected)
 		var (
-			projectFeature *project.Project
-			runFeature     *run.Feature
-			sessionFeature *session.Session
-			taskFeature    *task.Task
-			trackerFeature *tracker.Tracker
+			projectFeature  *project.Project
+			runFeature      *run.Feature
+			sessionFeature  *session.Session
+			settingsFeature *settings.Settings
+			taskFeature     *task.Task
+			trackerFeature  *tracker.Tracker
 		)
+		if o.settings != nil {
+			settingsFeature = o.settings
+		} else {
+			settingsFeature, err = settings.New(db, settings.Config{
+				Secret: authFeature.SessionSecret(),
+			})
+			if err != nil {
+				return nil, err
+			}
+		}
 		if o.project != nil {
 			projectFeature = o.project
 		} else {
@@ -246,9 +258,12 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 		} else {
 			trackerFeature = tracker.New(db, tracker.Config{
 				PollInterval: cfg.TrackerPollInterval,
-				Logger:       logger,
-				Tasks:        taskFeature,
-				Bus:          bus,
+				GitHubTokenProvider: func() string {
+					return settingsFeature.EffectiveGitHubToken(context.Background())
+				},
+				Logger: logger,
+				Tasks:  taskFeature,
+				Bus:    bus,
 			})
 		}
 		if o.session != nil {
@@ -276,6 +291,7 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 		projectFeature.Register(api)
 		runFeature.Register(api)
 		sessionFeature.Register(api)
+		settingsFeature.Register(api)
 		trackerFeature.Register(api)
 
 		agentFeature := agent.New(agent.Config{

@@ -188,6 +188,26 @@
                 ],
                 "type": "object"
             },
+            "domain.GitHubTokenStatusResponse": {
+                "properties": {
+                    "configured": {
+                        "type": "boolean"
+                    },
+                    "envOverride": {
+                        "type": "boolean"
+                    },
+                    "last4": {
+                        "type": "string"
+                    },
+                    "needsReentry": {
+                        "type": "boolean"
+                    },
+                    "updatedAt": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
+            },
             "domain.JoinNodeRequest": {
                 "properties": {
                     "hostname": {
@@ -516,6 +536,14 @@
                     "StatusFailed",
                     "StatusCancelled"
                 ]
+            },
+            "domain.SetGitHubTokenRequest": {
+                "properties": {
+                    "token": {
+                        "type": "string"
+                    }
+                },
+                "type": "object"
             },
             "domain.SetupStatusResponse": {
                 "properties": {
@@ -1093,6 +1121,20 @@
                 "properties": {
                     "data": {
                         "$ref": "#/components/schemas/domain.Activity"
+                    },
+                    "error": {
+                        "type": "string"
+                    },
+                    "meta": {
+                        "$ref": "#/components/schemas/httpx.Meta"
+                    }
+                },
+                "type": "object"
+            },
+            "httpx.Response-domain_GitHubTokenStatusResponse": {
+                "properties": {
+                    "data": {
+                        "$ref": "#/components/schemas/domain.GitHubTokenStatusResponse"
                     },
                     "error": {
                         "type": "string"
@@ -3052,6 +3094,114 @@
                 "summary": "Stream session events (SSE)",
                 "tags": [
                     "sessions"
+                ]
+            }
+        },
+        "/settings/github-token": {
+            "delete": {
+                "description": "Removes the stored GitHub token from the database.",
+                "operationId": "deleteGitHubToken",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Delete GitHub token",
+                "tags": [
+                    "settings"
+                ]
+            },
+            "get": {
+                "description": "Returns whether a GitHub token is configured, its last 4 characters, update timestamp, env override flag, and whether re-entry is required.",
+                "operationId": "getGitHubTokenStatus",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-domain_GitHubTokenStatusResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Get GitHub token status",
+                "tags": [
+                    "settings"
+                ]
+            },
+            "put": {
+                "description": "Validates a GitHub personal access token against the GitHub API and stores it encrypted at rest.",
+                "operationId": "setGitHubToken",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/domain.SetGitHubTokenRequest",
+                                "summary": "body",
+                                "description": "GitHub token payload"
+                            }
+                        }
+                    },
+                    "description": "GitHub token payload",
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.Response-domain_GitHubTokenStatusResponse"
+                                }
+                            }
+                        },
+                        "description": "OK"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Bad Request"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/httpx.ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal Server Error"
+                    }
+                },
+                "summary": "Set GitHub token",
+                "tags": [
+                    "settings"
                 ]
             }
         },

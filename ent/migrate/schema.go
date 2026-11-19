@@ -296,6 +296,23 @@ var (
 			},
 		},
 	}
+	// SecretSettingsColumns holds the columns for the "secret_settings" table.
+	SecretSettingsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeUUID},
+		{Name: "key", Type: field.TypeString, Unique: true},
+		{Name: "ciphertext", Type: field.TypeBytes},
+		{Name: "nonce", Type: field.TypeBytes},
+		{Name: "key_version", Type: field.TypeInt, Default: 1},
+		{Name: "last4", Type: field.TypeString},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// SecretSettingsTable holds the schema information for the "secret_settings" table.
+	SecretSettingsTable = &schema.Table{
+		Name:       "secret_settings",
+		Columns:    SecretSettingsColumns,
+		PrimaryKey: []*schema.Column{SecretSettingsColumns[0]},
+	}
 	// SessionsColumns holds the columns for the "sessions" table.
 	SessionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeUUID},
@@ -512,6 +529,7 @@ var (
 		ProjectsTable,
 		ProjectNodesTable,
 		RunsTable,
+		SecretSettingsTable,
 		SessionsTable,
 		SessionEventsTable,
 		TasksTable,

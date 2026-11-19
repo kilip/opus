@@ -42,6 +42,9 @@ type ProjectNode func(*sql.Selector)
 // Run is the predicate function for run builders.
 type Run func(*sql.Selector)
 
+// SecretSetting is the predicate function for secretsetting builders.
+type SecretSetting func(*sql.Selector)
+
 // Session is the predicate function for session builders.
 type Session func(*sql.Selector)
 

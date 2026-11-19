@@ -10,11 +10,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/kilip/opus/ent"
 	"github.com/kilip/opus/internal/app"
+	"github.com/kilip/opus/internal/auth"
 	"github.com/kilip/opus/internal/node"
 	"github.com/kilip/opus/internal/platform/eventbus"
 	"github.com/kilip/opus/internal/project"
 	"github.com/kilip/opus/internal/run"
 	"github.com/kilip/opus/internal/session"
+	"github.com/kilip/opus/internal/settings"
 	"github.com/kilip/opus/internal/task"
 	"github.com/kilip/opus/internal/tracker"
 	"github.com/kilip/opus/internal/worker"
@@ -119,12 +121,24 @@ func buildServer(
 		sessionFeature.HandleWorkerEvent(ctx, nodeID, env)
 	})
 
+	secret, err := auth.ResolveSessionSecret(cfg.SessionSecret, cfg.AppHome)
+	if err != nil {
+		return nil, err
+	}
+	settingsFeature, err := settings.New(db, settings.Config{Secret: secret})
+	if err != nil {
+		return nil, err
+	}
+
 	trackerFeature = tracker.New(db, tracker.Config{
 		PollInterval: cfg.TrackerPollInterval,
 		Runner:       o.trackerRunner,
-		Logger:       logger,
-		Tasks:        taskFeature,
-		Bus:          bus,
+		GitHubTokenProvider: func() string {
+			return settingsFeature.EffectiveGitHubToken(ctx)
+		},
+		Logger: logger,
+		Tasks:  taskFeature,
+		Bus:    bus,
 	})
 
 	transport := &worker.HubTransport{
@@ -155,6 +169,7 @@ func buildServer(
 		app.WithProject(projectFeature),
 		app.WithRun(runFeature),
 		app.WithSession(sessionFeature),
+		app.WithSettings(settingsFeature),
 		app.WithTask(taskFeature),
 		app.WithTracker(trackerFeature),
 		app.WithShuttingDown(shuttingDown),
@@ -172,6 +187,12 @@ func buildServer(
 		Logger:          logger,
 		CapabilityProbe: o.capabilityProbe,
 		OnStartRun:      o.onStartRun,
+		ExtraSecrets: func() []string {
+			if tok := settingsFeature.StoredGitHubToken(ctx); tok != "" {
+				return []string{tok}
+			}
+			return nil
+		},
 	})
 
 	opusApp := app.New(cfg, fiberApp, logger, db, bus,

@@ -36,6 +36,8 @@ type Tx struct {
 	ProjectNode *ProjectNodeClient
 	// Run is the client for interacting with the Run builders.
 	Run *RunClient
+	// SecretSetting is the client for interacting with the SecretSetting builders.
+	SecretSetting *SecretSettingClient
 	// Session is the client for interacting with the Session builders.
 	Session *SessionClient
 	// SessionEvent is the client for interacting with the SessionEvent builders.
@@ -193,6 +195,7 @@ func (tx *Tx) init() {
 	tx.Project = NewProjectClient(tx.config)
 	tx.ProjectNode = NewProjectNodeClient(tx.config)
 	tx.Run = NewRunClient(tx.config)
+	tx.SecretSetting = NewSecretSettingClient(tx.config)
 	tx.Session = NewSessionClient(tx.config)
 	tx.SessionEvent = NewSessionEventClient(tx.config)
 	tx.Task = NewTaskClient(tx.config)

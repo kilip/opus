@@ -69,6 +69,7 @@ type AuthConfig struct {
 type Auth struct {
 	handler *handler.Handler
 	svc     *service.Auth
+	secret  string
 }
 
 // New creates an Auth feature from an Ent client and config.
@@ -113,7 +114,20 @@ func NewWithMailer(db *ent.Client, cfg AuthConfig, m mailer.Mailer) (*Auth, erro
 		Secure: cookieSecure,
 		MaxAge: int(cfg.SessionTTL.Seconds()),
 	}
-	return &Auth{handler: handler.New(svc, cc, cfg.RateLimit), svc: svc}, nil
+	return &Auth{handler: handler.New(svc, cc, cfg.RateLimit), svc: svc, secret: secret}, nil
+}
+
+// SessionSecret returns the resolved session signing secret.
+func (a *Auth) SessionSecret() string {
+	if a == nil {
+		return ""
+	}
+	return a.secret
+}
+
+// ResolveSessionSecret returns the configured AUTH_SECRET or loads/generates $APP_HOME/auth_secret.
+func ResolveSessionSecret(configured, appHome string) (string, error) {
+	return resolveSessionSecret(configured, appHome)
 }
 
 func resolveSessionSecret(configured, appHome string) (string, error) {

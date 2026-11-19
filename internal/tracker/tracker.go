@@ -52,13 +52,14 @@ func DefaultStatusLabels() map[string]string {
 
 // Config configures the Tracker feature.
 type Config struct {
-	PollInterval time.Duration
-	Runner       github.Runner
-	Tasks        *task.Task
-	Bus          *eventbus.Bus
-	Logger       *slog.Logger
-	Now          func() time.Time
-	OnStop       func()
+	PollInterval        time.Duration
+	Runner              github.Runner
+	GitHubTokenProvider func() string
+	Tasks               *task.Task
+	Bus                 *eventbus.Bus
+	Logger              *slog.Logger
+	Now                 func() time.Time
+	OnStop              func()
 }
 
 // Tracker is the tracker feature facade.
@@ -73,6 +74,9 @@ func New(client *ent.Client, cfg ...Config) *Tracker {
 	var c Config
 	if len(cfg) > 0 {
 		c = cfg[0]
+	}
+	if c.Runner == nil && c.GitHubTokenProvider != nil {
+		c.Runner = github.NewRunnerWithToken(c.GitHubTokenProvider)
 	}
 	r := repo.New(client)
 	svc := service.New(r)

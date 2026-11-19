@@ -19,6 +19,7 @@ import (
 	"github.com/kilip/opus/ent/projectnode"
 	"github.com/kilip/opus/ent/run"
 	"github.com/kilip/opus/ent/schema"
+	"github.com/kilip/opus/ent/secretsetting"
 	"github.com/kilip/opus/ent/session"
 	"github.com/kilip/opus/ent/sessionevent"
 	"github.com/kilip/opus/ent/task"
@@ -258,6 +259,42 @@ func init() {
 	runDescID := runFields[0].Descriptor()
 	// run.DefaultID holds the default value on creation for the id field.
 	run.DefaultID = runDescID.Default.(func() uuid.UUID)
+	secretsettingFields := schema.SecretSetting{}.Fields()
+	_ = secretsettingFields
+	// secretsettingDescKey is the schema descriptor for key field.
+	secretsettingDescKey := secretsettingFields[1].Descriptor()
+	// secretsetting.KeyValidator is a validator for the "key" field. It is called by the builders before save.
+	secretsetting.KeyValidator = secretsettingDescKey.Validators[0].(func(string) error)
+	// secretsettingDescCiphertext is the schema descriptor for ciphertext field.
+	secretsettingDescCiphertext := secretsettingFields[2].Descriptor()
+	// secretsetting.CiphertextValidator is a validator for the "ciphertext" field. It is called by the builders before save.
+	secretsetting.CiphertextValidator = secretsettingDescCiphertext.Validators[0].(func([]byte) error)
+	// secretsettingDescNonce is the schema descriptor for nonce field.
+	secretsettingDescNonce := secretsettingFields[3].Descriptor()
+	// secretsetting.NonceValidator is a validator for the "nonce" field. It is called by the builders before save.
+	secretsetting.NonceValidator = secretsettingDescNonce.Validators[0].(func([]byte) error)
+	// secretsettingDescKeyVersion is the schema descriptor for key_version field.
+	secretsettingDescKeyVersion := secretsettingFields[4].Descriptor()
+	// secretsetting.DefaultKeyVersion holds the default value on creation for the key_version field.
+	secretsetting.DefaultKeyVersion = secretsettingDescKeyVersion.Default.(int)
+	// secretsettingDescLast4 is the schema descriptor for last4 field.
+	secretsettingDescLast4 := secretsettingFields[5].Descriptor()
+	// secretsetting.Last4Validator is a validator for the "last4" field. It is called by the builders before save.
+	secretsetting.Last4Validator = secretsettingDescLast4.Validators[0].(func(string) error)
+	// secretsettingDescCreatedAt is the schema descriptor for created_at field.
+	secretsettingDescCreatedAt := secretsettingFields[6].Descriptor()
+	// secretsetting.DefaultCreatedAt holds the default value on creation for the created_at field.
+	secretsetting.DefaultCreatedAt = secretsettingDescCreatedAt.Default.(func() time.Time)
+	// secretsettingDescUpdatedAt is the schema descriptor for updated_at field.
+	secretsettingDescUpdatedAt := secretsettingFields[7].Descriptor()
+	// secretsetting.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	secretsetting.DefaultUpdatedAt = secretsettingDescUpdatedAt.Default.(func() time.Time)
+	// secretsetting.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	secretsetting.UpdateDefaultUpdatedAt = secretsettingDescUpdatedAt.UpdateDefault.(func() time.Time)
+	// secretsettingDescID is the schema descriptor for id field.
+	secretsettingDescID := secretsettingFields[0].Descriptor()
+	// secretsetting.DefaultID holds the default value on creation for the id field.
+	secretsetting.DefaultID = secretsettingDescID.Default.(func() uuid.UUID)
 	sessionFields := schema.Session{}.Fields()
 	_ = sessionFields
 	// sessionDescProvider is the schema descriptor for provider field.
