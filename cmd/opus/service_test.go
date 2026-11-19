@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -25,7 +26,7 @@ func TestService_EnvFileCreationAndNoOverwrite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat %s: %v", envPath, err)
 	}
-	if info.Mode().Perm() != 0o600 {
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0o600 {
 		t.Fatalf("env file perm = %o, want 0600", info.Mode().Perm())
 	}
 
@@ -123,7 +124,9 @@ func TestService_WorkerRequiresNodeJSON(t *testing.T) {
 func TestService_LifecycleAndStatusExitCodes(t *testing.T) {
 	appHome := t.TempDir()
 	cfgDir := t.TempDir()
+	homeDir := t.TempDir()
 	var cmds [][]string
+	installed := false
 	active := false
 
 	deps := serviceDeps{
@@ -132,14 +135,65 @@ func TestService_LifecycleAndStatusExitCodes(t *testing.T) {
 		evalSymlinks:  func(p string) (string, error) { return p, nil },
 		homeDir:       func() (string, error) { return appHome, nil },
 		userConfigDir: func() (string, error) { return cfgDir, nil },
+		userHomeDir:   func() (string, error) { return homeDir, nil },
+		getenv:        func(string) string { return "" },
 		stat:          os.Stat,
+		uid:           func() int { return 1000 },
 		runCmd: func(_ context.Context, name string, args ...string) ([]byte, error) {
 			cmds = append(cmds, append([]string{name}, args...))
-			if len(args) >= 2 && args[1] == "is-active" {
-				if active {
-					return []byte("active\n"), nil
+			switch name {
+			case "systemctl":
+				if len(args) >= 2 && args[1] == "is-active" {
+					if active {
+						return []byte("active\n"), nil
+					}
+					return []byte("inactive\n"), errors.New("exit status 3")
 				}
-				return []byte("inactive\n"), errors.New("exit status 3")
+				if len(args) >= 2 && (args[1] == "start" || args[1] == "restart") {
+					active = true
+				}
+				if len(args) >= 2 && args[1] == "stop" {
+					active = false
+				}
+			case "launchctl":
+				if len(args) >= 1 {
+					switch args[0] {
+					case "bootstrap":
+						installed = true
+						active = true
+					case "bootout":
+						active = false
+					case "kickstart":
+						active = true
+					case "print":
+						if active {
+							return []byte("state = running\n"), nil
+						}
+						return []byte("state = waiting\n"), nil
+					}
+				}
+			case "schtasks":
+				if len(args) >= 1 {
+					switch args[0] {
+					case "/Create":
+						installed = true
+					case "/Delete":
+						installed = false
+						active = false
+					case "/Run":
+						active = true
+					case "/End":
+						active = false
+					case "/Query":
+						if !installed {
+							return []byte("ERROR: The system cannot find the file specified."), errors.New("exit status 1")
+						}
+						if active {
+							return []byte("Status: Running\n"), nil
+						}
+						return []byte("Status: Ready\n"), nil
+					}
+				}
 			}
 			return nil, nil
 		},
@@ -153,13 +207,23 @@ func TestService_LifecycleAndStatusExitCodes(t *testing.T) {
 		t.Fatalf("status before install = (%d, %v), want (4, nil)", code, err)
 	}
 
-	// Install creates unit and opus.env
+	// Install creates unit/plist/task and opus.env
 	if err := runServiceInstall(context.Background(), opts, deps); err != nil {
 		t.Fatalf("install: %v", err)
 	}
-	unitPath := filepath.Join(cfgDir, "systemd", "user", "opus.service")
-	if _, err := os.Stat(unitPath); err != nil {
-		t.Fatalf("expected unit file %s: %v", unitPath, err)
+	var unitPath string
+	switch runtime.GOOS {
+	case "darwin":
+		unitPath = filepath.Join(homeDir, "Library", "LaunchAgents", "com.kilip.opus.plist")
+	case "windows":
+		unitPath = ""
+	default:
+		unitPath = filepath.Join(cfgDir, "systemd", "user", "opus.service")
+	}
+	if unitPath != "" {
+		if _, err := os.Stat(unitPath); err != nil {
+			t.Fatalf("expected unit file %s: %v", unitPath, err)
+		}
 	}
 	envPath := filepath.Join(appHome, "opus.env")
 	if _, err := os.Stat(envPath); err != nil {
@@ -167,6 +231,7 @@ func TestService_LifecycleAndStatusExitCodes(t *testing.T) {
 	}
 
 	// Installed but stopped -> exit code 3
+	active = false
 	code, err = runServiceStatus(context.Background(), opts, deps)
 	if err != nil || code != serviceStatusStopped {
 		t.Fatalf("status when stopped = (%d, %v), want (3, nil)", code, err)
@@ -176,7 +241,6 @@ func TestService_LifecycleAndStatusExitCodes(t *testing.T) {
 	if err := runServiceStart(context.Background(), opts, deps); err != nil {
 		t.Fatalf("start: %v", err)
 	}
-	active = true
 	code, err = runServiceStatus(context.Background(), opts, deps)
 	if err != nil || code != serviceStatusRunning {
 		t.Fatalf("status when running = (%d, %v), want (0, nil)", code, err)
@@ -190,17 +254,19 @@ func TestService_LifecycleAndStatusExitCodes(t *testing.T) {
 		t.Fatalf("stop: %v", err)
 	}
 
-	// AC3: Uninstall removes unit file, keeps opus.env
+	// AC3: Uninstall removes unit/task, keeps opus.env
 	if err := runServiceUninstall(context.Background(), opts, deps); err != nil {
 		t.Fatalf("uninstall: %v", err)
 	}
-	if _, err := os.Stat(unitPath); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("expected unit file removed, stat err=%v", err)
+	if unitPath != "" {
+		if _, err := os.Stat(unitPath); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("expected unit file removed, stat err=%v", err)
+		}
 	}
 	if _, err := os.Stat(envPath); err != nil {
 		t.Fatalf("expected opus.env to be kept after uninstall: %v", err)
 	}
 	if len(cmds) == 0 {
-		t.Fatal("expected systemctl commands to be invoked")
+		t.Fatal("expected service commands to be invoked")
 	}
 }
