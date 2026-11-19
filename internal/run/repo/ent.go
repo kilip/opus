@@ -146,6 +146,9 @@ func (r *Ent) Transition(
 	if in.FailureReason != nil {
 		upd.SetFailureReason(*in.FailureReason)
 	}
+	if in.MCPTokenHash != nil {
+		upd.SetMcpTokenHash(*in.MCPTokenHash)
+	}
 	if in.IncrementAttempt {
 		upd.SetStageAttempts(row.StageAttempts + 1)
 	}
@@ -234,6 +237,7 @@ func toDomainRun(row *ent.Run) domain.Run {
 		Report:        row.Report,
 		PausedUntil:   row.PausedUntil,
 		FailureReason: row.FailureReason,
+		MCPTokenHash:  row.McpTokenHash,
 		CreatedAt:     row.CreatedAt,
 		StartedAt:     row.StartedAt,
 		EndedAt:       row.EndedAt,

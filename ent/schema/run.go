@@ -61,6 +61,10 @@ func (Run) Fields() []ent.Field {
 		field.String("failure_reason").
 			Optional().
 			Nillable(),
+		field.String("mcp_token_hash").
+			Optional().
+			Nillable().
+			Sensitive(),
 		field.Time("created_at").
 			Default(time.Now).
 			Immutable(),

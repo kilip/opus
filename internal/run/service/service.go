@@ -2,6 +2,9 @@ package service
 
 import (
 	"context"
+	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"sync"
 	"time"
@@ -106,6 +109,35 @@ func (s *Service) SetReport(ctx context.Context, id uuid.UUID, report json.RawMe
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
 	return s.repo.SetReport(ctx, id, report, s.now())
+}
+
+// HashMCPToken returns the lowercase hex SHA-256 digest of a raw MCP run token.
+func HashMCPToken(rawToken string) string {
+	sum := sha256.Sum256([]byte(rawToken))
+	return hex.EncodeToString(sum[:])
+}
+
+// AuthenticateMCP verifies rawToken against the run's stored mcp_token_hash and ensures
+// the run is in an active execution state (preparing or running).
+func (s *Service) AuthenticateMCP(ctx context.Context, runID uuid.UUID, rawToken string) (domain.Run, error) {
+	if runID == uuid.Nil || rawToken == "" {
+		return domain.Run{}, domain.ErrMCPUnauthorized
+	}
+	r, err := s.Get(ctx, runID)
+	if err != nil {
+		return domain.Run{}, domain.ErrMCPUnauthorized
+	}
+	if r.State != domain.StatePreparing && r.State != domain.StateRunning {
+		return domain.Run{}, domain.ErrMCPUnauthorized
+	}
+	if r.MCPTokenHash == nil || *r.MCPTokenHash == "" {
+		return domain.Run{}, domain.ErrMCPUnauthorized
+	}
+	got := HashMCPToken(rawToken)
+	if subtle.ConstantTimeCompare([]byte(got), []byte(*r.MCPTokenHash)) != 1 {
+		return domain.Run{}, domain.ErrMCPUnauthorized
+	}
+	return r, nil
 }
 
 func (s *Service) publishStarted(ctx context.Context, run domain.Run) {

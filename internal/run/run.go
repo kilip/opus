@@ -47,6 +47,7 @@ var (
 	ErrInvalidTransition = domain.ErrInvalidTransition
 	ErrTaskIDRequired    = domain.ErrTaskIDRequired
 	ErrProjectIDRequired = domain.ErrProjectIDRequired
+	ErrMCPUnauthorized   = domain.ErrMCPUnauthorized
 )
 
 // Re-exported domain types.
@@ -161,4 +162,9 @@ func (f *Feature) Transition(ctx context.Context, id uuid.UUID, to RunState, in 
 // SetReport persists the structured report JSON on a Run.
 func (f *Feature) SetReport(ctx context.Context, id uuid.UUID, report json.RawMessage) (Run, error) {
 	return f.svc.SetReport(ctx, id, report)
+}
+
+// AuthenticateMCP verifies a run-scoped MCP Bearer token for an active run.
+func (f *Feature) AuthenticateMCP(ctx context.Context, runID uuid.UUID, rawToken string) (Run, error) {
+	return f.svc.AuthenticateMCP(ctx, runID, rawToken)
 }

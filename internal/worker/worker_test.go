@@ -997,10 +997,12 @@ done
 		t.Fatal("timed out waiting for hello")
 	}
 
+	const mcpToken = "mcp-run-token-xyz"
 	env, err := worker.NewStartRunEnvelope("cmd-1", worker.StartRun{
 		RunID:     "run-123",
 		SessionID: "sess-456",
 		ProjectID: "proj-789",
+		McpToken:  mcpToken,
 	})
 	if err != nil {
 		t.Fatalf("NewStartRunEnvelope: %v", err)
@@ -1041,7 +1043,7 @@ done
 	acpText := string(raw)
 	for _, want := range []string{
 		`"url":"http://127.0.0.1:7880/mcp"`,
-		`"value":"Bearer ` + secretCred + `"`,
+		`"value":"Bearer ` + mcpToken + `"`,
 		`"name":"X-Opus-Run-ID","value":"run-123"`,
 		`"name":"X-Opus-Session-ID","value":"sess-456"`,
 		`"name":"X-Opus-Project-ID","value":"proj-789"`,
@@ -1049,6 +1051,12 @@ done
 		if !strings.Contains(acpText, want) {
 			t.Fatalf("ACP session/new missing %s:\n%s", want, acpText)
 		}
+	}
+	if strings.Contains(acpText, secretCred) {
+		t.Fatalf("node credential leaked into ACP MCP headers:\n%s", acpText)
+	}
+	if got := w.OpusMCPServers(worker.StartRun{RunID: "run-no-token"}); got != nil {
+		t.Fatalf("expected nil MCP servers when McpToken is empty, got %+v", got)
 	}
 
 	if strings.Contains(logBuf.String(), secretCred) {

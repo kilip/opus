@@ -232,11 +232,11 @@ func init() {
 	// run.DefaultBranch holds the default value on creation for the branch field.
 	run.DefaultBranch = runDescBranch.Default.(string)
 	// runDescCreatedAt is the schema descriptor for created_at field.
-	runDescCreatedAt := runFields[13].Descriptor()
+	runDescCreatedAt := runFields[14].Descriptor()
 	// run.DefaultCreatedAt holds the default value on creation for the created_at field.
 	run.DefaultCreatedAt = runDescCreatedAt.Default.(func() time.Time)
 	// runDescUpdatedAt is the schema descriptor for updated_at field.
-	runDescUpdatedAt := runFields[16].Descriptor()
+	runDescUpdatedAt := runFields[17].Descriptor()
 	// run.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	run.DefaultUpdatedAt = runDescUpdatedAt.Default.(func() time.Time)
 	// run.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

@@ -692,7 +692,7 @@ func (w *Worker) handleStartRun(cmd domain.StartRun) {
 				Type:      domain.EventRunError,
 				RunID:     cmd.RunID,
 				SessionID: cmd.SessionID,
-				Error:     w.scrubSecret(err.Error()),
+				Error:     w.scrubSecret(err.Error(), cmd.McpToken),
 			})
 		}
 	}()
@@ -705,12 +705,17 @@ func (w *Worker) OpusMCPServers(cmd StartRun) []agy.MCPServer {
 	if base == "" {
 		return nil
 	}
-	var headers []agy.MCPHeader
-	if w.cfg.Credential != "" {
-		headers = append(headers, agy.MCPHeader{
+	if cmd.McpToken == "" {
+		if w.logger != nil {
+			w.logger.Warn("omitting opus MCP server: missing run-scoped mcp_token", "run_id", cmd.RunID)
+		}
+		return nil
+	}
+	headers := []agy.MCPHeader{
+		{
 			Name:  "Authorization",
-			Value: "Bearer " + w.cfg.Credential,
-		})
+			Value: "Bearer " + cmd.McpToken,
+		},
 	}
 	if cmd.RunID != "" {
 		headers = append(headers, agy.MCPHeader{Name: "X-Opus-Run-ID", Value: cmd.RunID})
@@ -755,12 +760,19 @@ func (w *Worker) StartAgySession(
 	})
 }
 
-func (w *Worker) scrubSecret(s string) string {
-	if w.cfg.Credential == "" {
-		return s
+func (w *Worker) scrubSecret(s string, extra ...string) string {
+	if w.cfg.Credential != "" {
+		s = strings.ReplaceAll(s, "Bearer "+w.cfg.Credential, "[REDACTED]")
+		s = strings.ReplaceAll(s, w.cfg.Credential, "[REDACTED]")
 	}
-	s = strings.ReplaceAll(s, "Bearer "+w.cfg.Credential, "[REDACTED]")
-	return strings.ReplaceAll(s, w.cfg.Credential, "[REDACTED]")
+	for _, secret := range extra {
+		if secret == "" {
+			continue
+		}
+		s = strings.ReplaceAll(s, "Bearer "+secret, "[REDACTED]")
+		s = strings.ReplaceAll(s, secret, "[REDACTED]")
+	}
+	return s
 }
 
 func (w *Worker) handleCancelRun(cmd domain.CancelRun) {

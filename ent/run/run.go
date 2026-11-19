@@ -40,6 +40,8 @@ const (
 	FieldPausedUntil = "paused_until"
 	// FieldFailureReason holds the string denoting the failure_reason field in the database.
 	FieldFailureReason = "failure_reason"
+	// FieldMcpTokenHash holds the string denoting the mcp_token_hash field in the database.
+	FieldMcpTokenHash = "mcp_token_hash"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldStartedAt holds the string denoting the started_at field in the database.
@@ -76,6 +78,7 @@ var Columns = []string{
 	FieldReport,
 	FieldPausedUntil,
 	FieldFailureReason,
+	FieldMcpTokenHash,
 	FieldCreatedAt,
 	FieldStartedAt,
 	FieldEndedAt,
@@ -227,6 +230,11 @@ func ByPausedUntil(opts ...sql.OrderTermOption) OrderOption {
 // ByFailureReason orders the results by the failure_reason field.
 func ByFailureReason(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldFailureReason, opts...).ToFunc()
+}
+
+// ByMcpTokenHash orders the results by the mcp_token_hash field.
+func ByMcpTokenHash(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMcpTokenHash, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

@@ -10,4 +10,5 @@ var (
 	ErrInvalidTransition = errors.New("RUN_INVALID_TRANSITION")
 	ErrTaskIDRequired    = errors.New("RUN_TASK_ID_REQUIRED")
 	ErrProjectIDRequired = errors.New("RUN_PROJECT_ID_REQUIRED")
+	ErrMCPUnauthorized   = errors.New("RUN_MCP_UNAUTHORIZED")
 )

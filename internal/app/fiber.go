@@ -152,7 +152,11 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 		if o.node != nil {
 			nodeFeature = o.node
 		} else {
-			nodeFeature = node.New(db, node.Config{BaseURL: cfg.BaseURL, Bus: bus})
+			nodeFeature = node.New(db, node.Config{
+				BaseURL:        cfg.BaseURL,
+				TrustedOrigins: cfg.TrustedOrigins,
+				Bus:            bus,
+			})
 		}
 		if err := nodeFeature.Bootstrap(context.Background()); err != nil {
 			logger.Error("node registry bootstrap failed", "error", err)
@@ -231,6 +235,7 @@ func GetFiber(cfg Config, logger *slog.Logger, db *ent.Client, bus *eventbus.Bus
 		agentFeature := agent.New(agent.Config{
 			Tasks:    taskFeature,
 			Runs:     runFeature,
+			Projects: projectFeature,
 			Sessions: sessionFeature,
 			Nodes:    nodeFeature,
 			Auth:     authFeature,

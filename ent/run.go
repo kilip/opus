@@ -45,6 +45,8 @@ type Run struct {
 	PausedUntil *time.Time `json:"paused_until,omitempty"`
 	// FailureReason holds the value of the "failure_reason" field.
 	FailureReason *string `json:"failure_reason,omitempty"`
+	// McpTokenHash holds the value of the "mcp_token_hash" field.
+	McpTokenHash *string `json:"-"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// StartedAt holds the value of the "started_at" field.
@@ -90,7 +92,7 @@ func (*Run) scanValues(columns []string) ([]any, error) {
 			values[i] = new([]byte)
 		case run.FieldStageAttempts, run.FieldPrNumber:
 			values[i] = new(sql.NullInt64)
-		case run.FieldMode, run.FieldState, run.FieldBranch, run.FieldFailureReason:
+		case run.FieldMode, run.FieldState, run.FieldBranch, run.FieldFailureReason, run.FieldMcpTokenHash:
 			values[i] = new(sql.NullString)
 		case run.FieldPausedUntil, run.FieldCreatedAt, run.FieldStartedAt, run.FieldEndedAt, run.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -195,6 +197,13 @@ func (_m *Run) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.FailureReason = new(string)
 				*_m.FailureReason = value.String
+			}
+		case run.FieldMcpTokenHash:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field mcp_token_hash", values[i])
+			} else if value.Valid {
+				_m.McpTokenHash = new(string)
+				*_m.McpTokenHash = value.String
 			}
 		case run.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -308,6 +317,8 @@ func (_m *Run) String() string {
 		builder.WriteString("failure_reason=")
 		builder.WriteString(*v)
 	}
+	builder.WriteString(", ")
+	builder.WriteString("mcp_token_hash=<sensitive>")
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

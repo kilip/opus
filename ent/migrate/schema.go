@@ -240,6 +240,7 @@ var (
 		{Name: "report", Type: field.TypeJSON, Nullable: true},
 		{Name: "paused_until", Type: field.TypeTime, Nullable: true},
 		{Name: "failure_reason", Type: field.TypeString, Nullable: true},
+		{Name: "mcp_token_hash", Type: field.TypeString, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "started_at", Type: field.TypeTime, Nullable: true},
 		{Name: "ended_at", Type: field.TypeTime, Nullable: true},
@@ -254,7 +255,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "runs_sessions_session",
-				Columns:    []*schema.Column{RunsColumns[16]},
+				Columns:    []*schema.Column{RunsColumns[17]},
 				RefColumns: []*schema.Column{SessionsColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -278,7 +279,7 @@ var (
 			{
 				Name:    "run_session_id",
 				Unique:  false,
-				Columns: []*schema.Column{RunsColumns[16]},
+				Columns: []*schema.Column{RunsColumns[17]},
 			},
 		},
 	}

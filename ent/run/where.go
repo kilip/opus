@@ -101,6 +101,11 @@ func FailureReason(v string) predicate.Run {
 	return predicate.Run(sql.FieldEQ(FieldFailureReason, v))
 }
 
+// McpTokenHash applies equality check predicate on the "mcp_token_hash" field. It's identical to McpTokenHashEQ.
+func McpTokenHash(v string) predicate.Run {
+	return predicate.Run(sql.FieldEQ(FieldMcpTokenHash, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Run {
 	return predicate.Run(sql.FieldEQ(FieldCreatedAt, v))
@@ -609,6 +614,81 @@ func FailureReasonEqualFold(v string) predicate.Run {
 // FailureReasonContainsFold applies the ContainsFold predicate on the "failure_reason" field.
 func FailureReasonContainsFold(v string) predicate.Run {
 	return predicate.Run(sql.FieldContainsFold(FieldFailureReason, v))
+}
+
+// McpTokenHashEQ applies the EQ predicate on the "mcp_token_hash" field.
+func McpTokenHashEQ(v string) predicate.Run {
+	return predicate.Run(sql.FieldEQ(FieldMcpTokenHash, v))
+}
+
+// McpTokenHashNEQ applies the NEQ predicate on the "mcp_token_hash" field.
+func McpTokenHashNEQ(v string) predicate.Run {
+	return predicate.Run(sql.FieldNEQ(FieldMcpTokenHash, v))
+}
+
+// McpTokenHashIn applies the In predicate on the "mcp_token_hash" field.
+func McpTokenHashIn(vs ...string) predicate.Run {
+	return predicate.Run(sql.FieldIn(FieldMcpTokenHash, vs...))
+}
+
+// McpTokenHashNotIn applies the NotIn predicate on the "mcp_token_hash" field.
+func McpTokenHashNotIn(vs ...string) predicate.Run {
+	return predicate.Run(sql.FieldNotIn(FieldMcpTokenHash, vs...))
+}
+
+// McpTokenHashGT applies the GT predicate on the "mcp_token_hash" field.
+func McpTokenHashGT(v string) predicate.Run {
+	return predicate.Run(sql.FieldGT(FieldMcpTokenHash, v))
+}
+
+// McpTokenHashGTE applies the GTE predicate on the "mcp_token_hash" field.
+func McpTokenHashGTE(v string) predicate.Run {
+	return predicate.Run(sql.FieldGTE(FieldMcpTokenHash, v))
+}
+
+// McpTokenHashLT applies the LT predicate on the "mcp_token_hash" field.
+func McpTokenHashLT(v string) predicate.Run {
+	return predicate.Run(sql.FieldLT(FieldMcpTokenHash, v))
+}
+
+// McpTokenHashLTE applies the LTE predicate on the "mcp_token_hash" field.
+func McpTokenHashLTE(v string) predicate.Run {
+	return predicate.Run(sql.FieldLTE(FieldMcpTokenHash, v))
+}
+
+// McpTokenHashContains applies the Contains predicate on the "mcp_token_hash" field.
+func McpTokenHashContains(v string) predicate.Run {
+	return predicate.Run(sql.FieldContains(FieldMcpTokenHash, v))
+}
+
+// McpTokenHashHasPrefix applies the HasPrefix predicate on the "mcp_token_hash" field.
+func McpTokenHashHasPrefix(v string) predicate.Run {
+	return predicate.Run(sql.FieldHasPrefix(FieldMcpTokenHash, v))
+}
+
+// McpTokenHashHasSuffix applies the HasSuffix predicate on the "mcp_token_hash" field.
+func McpTokenHashHasSuffix(v string) predicate.Run {
+	return predicate.Run(sql.FieldHasSuffix(FieldMcpTokenHash, v))
+}
+
+// McpTokenHashIsNil applies the IsNil predicate on the "mcp_token_hash" field.
+func McpTokenHashIsNil() predicate.Run {
+	return predicate.Run(sql.FieldIsNull(FieldMcpTokenHash))
+}
+
+// McpTokenHashNotNil applies the NotNil predicate on the "mcp_token_hash" field.
+func McpTokenHashNotNil() predicate.Run {
+	return predicate.Run(sql.FieldNotNull(FieldMcpTokenHash))
+}
+
+// McpTokenHashEqualFold applies the EqualFold predicate on the "mcp_token_hash" field.
+func McpTokenHashEqualFold(v string) predicate.Run {
+	return predicate.Run(sql.FieldEqualFold(FieldMcpTokenHash, v))
+}
+
+// McpTokenHashContainsFold applies the ContainsFold predicate on the "mcp_token_hash" field.
+func McpTokenHashContainsFold(v string) predicate.Run {
+	return predicate.Run(sql.FieldContainsFold(FieldMcpTokenHash, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

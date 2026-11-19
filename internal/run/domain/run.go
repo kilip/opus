@@ -147,6 +147,7 @@ type Run struct {
 	Report        json.RawMessage
 	PausedUntil   *time.Time
 	FailureReason *string
+	MCPTokenHash  *string
 	CreatedAt     time.Time
 	StartedAt     *time.Time
 	EndedAt       *time.Time
@@ -171,6 +172,7 @@ type TransitionInput struct {
 	Report           json.RawMessage
 	PausedUntil      *time.Time
 	FailureReason    *string
+	MCPTokenHash     *string
 	IncrementAttempt bool
 }
 

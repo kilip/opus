@@ -72,6 +72,7 @@ func ErrorCode(err error) string {
 type Config struct {
 	Tasks    *task.Task
 	Runs     *run.Feature
+	Projects handler.ProjectLister
 	Sessions *session.Session
 	Nodes    *node.Node
 	Auth     *auth.Auth
@@ -95,11 +96,19 @@ func New(cfg Config) *Agent {
 	return &Agent{
 		svc: svc,
 		handler: handler.New(handler.Config{
-			Service: svc,
-			Nodes:   cfg.Nodes,
-			Auth:    cfg.Auth,
-			Runs:    cfg.Runs,
+			Service:  svc,
+			Nodes:    cfg.Nodes,
+			Auth:     cfg.Auth,
+			Runs:     cfg.Runs,
+			Projects: cfg.Projects,
 		}),
+	}
+}
+
+// Close releases resources held by the agent feature.
+func (a *Agent) Close() {
+	if a.svc != nil {
+		a.svc.Close()
 	}
 }
 

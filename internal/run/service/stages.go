@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -106,9 +108,15 @@ func (s *Service) PrepareAndStartSession(ctx context.Context, cfg StageConfig, r
 		return domain.Run{}, err
 	}
 
+	rawToken, tokenHash, err := generateMCPToken()
+	if err != nil {
+		return domain.Run{}, err
+	}
+
 	run, err = s.Transition(ctx, run.ID, domain.StateRunning, domain.TransitionInput{
-		SessionID: &sess.ID,
-		Branch:    &branch,
+		SessionID:    &sess.ID,
+		Branch:       &branch,
+		MCPTokenHash: &tokenHash,
 	})
 	if err != nil {
 		return domain.Run{}, err
@@ -127,11 +135,21 @@ func (s *Service) PrepareAndStartSession(ctx context.Context, cfg StageConfig, r
 		Branch:        branch,
 		Prompt:        prompt,
 		Policy:        &pol,
+		McpToken:      rawToken,
 	}
 	if err := cfg.Worker.SendStartRun(ctx, *run.NodeID, cmd); err != nil {
 		return domain.Run{}, err
 	}
 	return run, nil
+}
+
+func generateMCPToken() (rawToken, tokenHash string, err error) {
+	var buf [32]byte
+	if _, err := rand.Read(buf[:]); err != nil {
+		return "", "", fmt.Errorf("generate mcp token: %w", err)
+	}
+	rawToken = base64.RawURLEncoding.EncodeToString(buf[:])
+	return rawToken, HashMCPToken(rawToken), nil
 }
 
 // CompleteAndCleanup cleans up the worker worktree, transitions Run to merged, and emits run.finished.

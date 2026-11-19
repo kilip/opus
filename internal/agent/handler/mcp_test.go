@@ -44,7 +44,8 @@ func (s *stubAuth) ValidateSession(_ context.Context, token string) (uuid.UUID, 
 }
 
 type stubRuns struct {
-	runs map[uuid.UUID]run.Run
+	runs      map[uuid.UUID]run.Run
+	mcpTokens map[uuid.UUID]string
 }
 
 func (s *stubRuns) Get(_ context.Context, id uuid.UUID) (run.Run, error) {
@@ -52,6 +53,20 @@ func (s *stubRuns) Get(_ context.Context, id uuid.UUID) (run.Run, error) {
 		return r, nil
 	}
 	return run.Run{}, run.ErrRunNotFound
+}
+
+func (s *stubRuns) AuthenticateMCP(_ context.Context, runID uuid.UUID, rawToken string) (run.Run, error) {
+	r, ok := s.runs[runID]
+	if !ok {
+		return run.Run{}, run.ErrMCPUnauthorized
+	}
+	if r.State != run.StatePreparing && r.State != run.StateRunning {
+		return run.Run{}, run.ErrMCPUnauthorized
+	}
+	if s.mcpTokens[runID] == "" || s.mcpTokens[runID] != rawToken {
+		return run.Run{}, run.ErrMCPUnauthorized
+	}
+	return r, nil
 }
 
 func (s *stubRuns) SetReport(_ context.Context, id uuid.UUID, report json.RawMessage) (run.Run, error) {
@@ -394,6 +409,71 @@ func TestMCPEndpointAuthAndTools(t *testing.T) {
 		}
 		if res.IsError || res.StructuredContent.Total != 1 {
 			t.Fatalf("unexpected cookie list_tasks result: %+v", res)
+		}
+	})
+
+	t.Run("rejects node credential without X-Opus-Run-ID", func(t *testing.T) {
+		resp, _ := mcpCall(t, app, map[string]string{
+			"Authorization": "Bearer worker-secret-a",
+		}, nil, map[string]any{
+			"jsonrpc": "2.0",
+			"id":      21,
+			"method":  "tools/list",
+		})
+		if resp.StatusCode != http.StatusForbidden {
+			t.Fatalf("status = %d, want 403", resp.StatusCode)
+		}
+	})
+
+	t.Run("authenticates run-scoped MCP token and enforces project scope", func(t *testing.T) {
+		runs.mcpTokens = map[uuid.UUID]string{
+			runA: "mcp-run-token-a",
+		}
+		rA := runs.runs[runA]
+		rA.State = run.StateRunning
+		runs.runs[runA] = rA
+
+		resp, rpc := mcpCall(t, app, map[string]string{
+			"Authorization": "Bearer mcp-run-token-a",
+			"X-Opus-Run-ID": runA.String(),
+		}, nil, map[string]any{
+			"jsonrpc": "2.0",
+			"id":      22,
+			"method":  "tools/call",
+			"params": map[string]any{
+				"name":      "get_task",
+				"arguments": map[string]any{"ref": "OP-999"},
+			},
+		})
+		if resp.StatusCode != http.StatusOK || rpc.Error != nil {
+			t.Fatalf("unexpected HTTP/RPC failure: status=%d err=%+v", resp.StatusCode, rpc.Error)
+		}
+		var errRes struct {
+			IsError bool `json:"isError"`
+			Content []struct {
+				Text string `json:"text"`
+			} `json:"content"`
+		}
+		if err := json.Unmarshal(rpc.Result, &errRes); err != nil {
+			t.Fatalf("unmarshal result: %v", err)
+		}
+		if !errRes.IsError || len(errRes.Content) == 0 || !strings.Contains(errRes.Content[0].Text, "forbidden_scope") {
+			t.Fatalf("expected forbidden_scope for project B task, got %+v", errRes)
+		}
+
+		// Terminal run token must be rejected with 401.
+		rA.State = run.StateMerged
+		runs.runs[runA] = rA
+		respTerm, _ := mcpCall(t, app, map[string]string{
+			"Authorization": "Bearer mcp-run-token-a",
+			"X-Opus-Run-ID": runA.String(),
+		}, nil, map[string]any{
+			"jsonrpc": "2.0",
+			"id":      23,
+			"method":  "tools/list",
+		})
+		if respTerm.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("terminal run token status = %d, want 401", respTerm.StatusCode)
 		}
 	})
 }

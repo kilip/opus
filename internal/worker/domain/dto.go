@@ -55,6 +55,7 @@ type StartRun struct {
 	Branch        string  `json:"branch,omitempty"`
 	Prompt        string  `json:"prompt,omitempty"`
 	Policy        *Policy `json:"policy,omitempty"`
+	McpToken      string  `json:"mcp_token,omitempty"`
 }
 
 // CancelRun is the command payload for cancelling an active run on a worker.

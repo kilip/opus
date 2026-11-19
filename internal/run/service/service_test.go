@@ -197,3 +197,51 @@ func TestService_PauseResumeAndFailureReason(t *testing.T) {
 		t.Fatalf("expected PausedUntil cleared on resume: %+v", run)
 	}
 }
+
+func TestService_AuthenticateMCP(t *testing.T) {
+	ctx := context.Background()
+	svc, _, _ := setupService(t)
+
+	r, err := svc.Create(ctx, domain.CreateInput{
+		TaskID:    uuid.New(),
+		ProjectID: uuid.New(),
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	rawToken := "run-secret-token-123"
+	hash := service.HashMCPToken(rawToken)
+	r, err = svc.Transition(ctx, r.ID, domain.StatePreparing, domain.TransitionInput{
+		MCPTokenHash: &hash,
+	})
+	if err != nil {
+		t.Fatalf("Transition preparing: %v", err)
+	}
+
+	authed, err := svc.AuthenticateMCP(ctx, r.ID, rawToken)
+	if err != nil || authed.ID != r.ID {
+		t.Fatalf("expected valid token on preparing run, got %v", err)
+	}
+	if _, err := svc.AuthenticateMCP(ctx, r.ID, "wrong-token"); err == nil {
+		t.Fatal("expected wrong token to fail")
+	}
+	if _, err := svc.AuthenticateMCP(ctx, uuid.New(), rawToken); err == nil {
+		t.Fatal("expected wrong run ID to fail")
+	}
+
+	r, err = svc.Transition(ctx, r.ID, domain.StateRunning, domain.TransitionInput{})
+	if err != nil {
+		t.Fatalf("Transition running: %v", err)
+	}
+	if _, err := svc.AuthenticateMCP(ctx, r.ID, rawToken); err != nil {
+		t.Fatalf("expected valid token on running run, got %v", err)
+	}
+
+	if _, err := svc.Transition(ctx, r.ID, domain.StateMerged, domain.TransitionInput{}); err != nil {
+		t.Fatalf("Transition merged: %v", err)
+	}
+	if _, err := svc.AuthenticateMCP(ctx, r.ID, rawToken); err == nil {
+		t.Fatal("expected terminal merged run token to be rejected")
+	}
+}

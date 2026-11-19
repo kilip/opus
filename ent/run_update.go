@@ -248,6 +248,26 @@ func (_u *RunUpdate) ClearFailureReason() *RunUpdate {
 	return _u
 }
 
+// SetMcpTokenHash sets the "mcp_token_hash" field.
+func (_u *RunUpdate) SetMcpTokenHash(v string) *RunUpdate {
+	_u.mutation.SetMcpTokenHash(v)
+	return _u
+}
+
+// SetNillableMcpTokenHash sets the "mcp_token_hash" field if the given value is not nil.
+func (_u *RunUpdate) SetNillableMcpTokenHash(v *string) *RunUpdate {
+	if v != nil {
+		_u.SetMcpTokenHash(*v)
+	}
+	return _u
+}
+
+// ClearMcpTokenHash clears the value of the "mcp_token_hash" field.
+func (_u *RunUpdate) ClearMcpTokenHash() *RunUpdate {
+	_u.mutation.ClearMcpTokenHash()
+	return _u
+}
+
 // SetStartedAt sets the "started_at" field.
 func (_u *RunUpdate) SetStartedAt(v time.Time) *RunUpdate {
 	_u.mutation.SetStartedAt(v)
@@ -436,6 +456,12 @@ func (_u *RunUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.FailureReasonCleared() {
 		_spec.ClearField(run.FieldFailureReason, field.TypeString)
+	}
+	if value, ok := _u.mutation.McpTokenHash(); ok {
+		_spec.SetField(run.FieldMcpTokenHash, field.TypeString, value)
+	}
+	if _u.mutation.McpTokenHashCleared() {
+		_spec.ClearField(run.FieldMcpTokenHash, field.TypeString)
 	}
 	if value, ok := _u.mutation.StartedAt(); ok {
 		_spec.SetField(run.FieldStartedAt, field.TypeTime, value)
@@ -717,6 +743,26 @@ func (_u *RunUpdateOne) ClearFailureReason() *RunUpdateOne {
 	return _u
 }
 
+// SetMcpTokenHash sets the "mcp_token_hash" field.
+func (_u *RunUpdateOne) SetMcpTokenHash(v string) *RunUpdateOne {
+	_u.mutation.SetMcpTokenHash(v)
+	return _u
+}
+
+// SetNillableMcpTokenHash sets the "mcp_token_hash" field if the given value is not nil.
+func (_u *RunUpdateOne) SetNillableMcpTokenHash(v *string) *RunUpdateOne {
+	if v != nil {
+		_u.SetMcpTokenHash(*v)
+	}
+	return _u
+}
+
+// ClearMcpTokenHash clears the value of the "mcp_token_hash" field.
+func (_u *RunUpdateOne) ClearMcpTokenHash() *RunUpdateOne {
+	_u.mutation.ClearMcpTokenHash()
+	return _u
+}
+
 // SetStartedAt sets the "started_at" field.
 func (_u *RunUpdateOne) SetStartedAt(v time.Time) *RunUpdateOne {
 	_u.mutation.SetStartedAt(v)
@@ -935,6 +981,12 @@ func (_u *RunUpdateOne) sqlSave(ctx context.Context) (_node *Run, err error) {
 	}
 	if _u.mutation.FailureReasonCleared() {
 		_spec.ClearField(run.FieldFailureReason, field.TypeString)
+	}
+	if value, ok := _u.mutation.McpTokenHash(); ok {
+		_spec.SetField(run.FieldMcpTokenHash, field.TypeString, value)
+	}
+	if _u.mutation.McpTokenHashCleared() {
+		_spec.ClearField(run.FieldMcpTokenHash, field.TypeString)
 	}
 	if value, ok := _u.mutation.StartedAt(); ok {
 		_spec.SetField(run.FieldStartedAt, field.TypeTime, value)

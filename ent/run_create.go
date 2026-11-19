@@ -167,6 +167,20 @@ func (_c *RunCreate) SetNillableFailureReason(v *string) *RunCreate {
 	return _c
 }
 
+// SetMcpTokenHash sets the "mcp_token_hash" field.
+func (_c *RunCreate) SetMcpTokenHash(v string) *RunCreate {
+	_c.mutation.SetMcpTokenHash(v)
+	return _c
+}
+
+// SetNillableMcpTokenHash sets the "mcp_token_hash" field if the given value is not nil.
+func (_c *RunCreate) SetNillableMcpTokenHash(v *string) *RunCreate {
+	if v != nil {
+		_c.SetMcpTokenHash(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *RunCreate) SetCreatedAt(v time.Time) *RunCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -426,6 +440,10 @@ func (_c *RunCreate) createSpec() (*Run, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.FailureReason(); ok {
 		_spec.SetField(run.FieldFailureReason, field.TypeString, value)
 		_node.FailureReason = &value
+	}
+	if value, ok := _c.mutation.McpTokenHash(); ok {
+		_spec.SetField(run.FieldMcpTokenHash, field.TypeString, value)
+		_node.McpTokenHash = &value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(run.FieldCreatedAt, field.TypeTime, value)

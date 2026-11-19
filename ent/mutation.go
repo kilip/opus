@@ -6624,6 +6624,7 @@ type RunMutation struct {
 	appendreport      jsontext.Value
 	paused_until      *time.Time
 	failure_reason    *string
+	mcp_token_hash    *string
 	created_at        *time.Time
 	started_at        *time.Time
 	ended_at          *time.Time
@@ -7307,6 +7308,55 @@ func (m *RunMutation) ResetFailureReason() {
 	delete(m.clearedFields, run.FieldFailureReason)
 }
 
+// SetMcpTokenHash sets the "mcp_token_hash" field.
+func (m *RunMutation) SetMcpTokenHash(s string) {
+	m.mcp_token_hash = &s
+}
+
+// McpTokenHash returns the value of the "mcp_token_hash" field in the mutation.
+func (m *RunMutation) McpTokenHash() (r string, exists bool) {
+	v := m.mcp_token_hash
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMcpTokenHash returns the old "mcp_token_hash" field's value of the Run entity.
+// If the Run object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RunMutation) OldMcpTokenHash(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMcpTokenHash is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMcpTokenHash requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMcpTokenHash: %w", err)
+	}
+	return oldValue.McpTokenHash, nil
+}
+
+// ClearMcpTokenHash clears the value of the "mcp_token_hash" field.
+func (m *RunMutation) ClearMcpTokenHash() {
+	m.mcp_token_hash = nil
+	m.clearedFields[run.FieldMcpTokenHash] = struct{}{}
+}
+
+// McpTokenHashCleared returns if the "mcp_token_hash" field was cleared in this mutation.
+func (m *RunMutation) McpTokenHashCleared() bool {
+	_, ok := m.clearedFields[run.FieldMcpTokenHash]
+	return ok
+}
+
+// ResetMcpTokenHash resets all changes to the "mcp_token_hash" field.
+func (m *RunMutation) ResetMcpTokenHash() {
+	m.mcp_token_hash = nil
+	delete(m.clearedFields, run.FieldMcpTokenHash)
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *RunMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -7538,7 +7588,7 @@ func (m *RunMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RunMutation) Fields() []string {
-	fields := make([]string, 0, 16)
+	fields := make([]string, 0, 17)
 	if m.task_id != nil {
 		fields = append(fields, run.FieldTaskID)
 	}
@@ -7574,6 +7624,9 @@ func (m *RunMutation) Fields() []string {
 	}
 	if m.failure_reason != nil {
 		fields = append(fields, run.FieldFailureReason)
+	}
+	if m.mcp_token_hash != nil {
+		fields = append(fields, run.FieldMcpTokenHash)
 	}
 	if m.created_at != nil {
 		fields = append(fields, run.FieldCreatedAt)
@@ -7619,6 +7672,8 @@ func (m *RunMutation) Field(name string) (ent.Value, bool) {
 		return m.PausedUntil()
 	case run.FieldFailureReason:
 		return m.FailureReason()
+	case run.FieldMcpTokenHash:
+		return m.McpTokenHash()
 	case run.FieldCreatedAt:
 		return m.CreatedAt()
 	case run.FieldStartedAt:
@@ -7660,6 +7715,8 @@ func (m *RunMutation) OldField(ctx context.Context, name string) (ent.Value, err
 		return m.OldPausedUntil(ctx)
 	case run.FieldFailureReason:
 		return m.OldFailureReason(ctx)
+	case run.FieldMcpTokenHash:
+		return m.OldMcpTokenHash(ctx)
 	case run.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case run.FieldStartedAt:
@@ -7760,6 +7817,13 @@ func (m *RunMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetFailureReason(v)
+		return nil
+	case run.FieldMcpTokenHash:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMcpTokenHash(v)
 		return nil
 	case run.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -7864,6 +7928,9 @@ func (m *RunMutation) ClearedFields() []string {
 	if m.FieldCleared(run.FieldFailureReason) {
 		fields = append(fields, run.FieldFailureReason)
 	}
+	if m.FieldCleared(run.FieldMcpTokenHash) {
+		fields = append(fields, run.FieldMcpTokenHash)
+	}
 	if m.FieldCleared(run.FieldStartedAt) {
 		fields = append(fields, run.FieldStartedAt)
 	}
@@ -7901,6 +7968,9 @@ func (m *RunMutation) ClearField(name string) error {
 		return nil
 	case run.FieldFailureReason:
 		m.ClearFailureReason()
+		return nil
+	case run.FieldMcpTokenHash:
+		m.ClearMcpTokenHash()
 		return nil
 	case run.FieldStartedAt:
 		m.ClearStartedAt()
@@ -7951,6 +8021,9 @@ func (m *RunMutation) ResetField(name string) error {
 		return nil
 	case run.FieldFailureReason:
 		m.ResetFailureReason()
+		return nil
+	case run.FieldMcpTokenHash:
+		m.ResetMcpTokenHash()
 		return nil
 	case run.FieldCreatedAt:
 		m.ResetCreatedAt()
