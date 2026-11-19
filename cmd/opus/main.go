@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/signal"
 	"syscall"
@@ -23,6 +24,7 @@ func newRootCmd() *cobra.Command {
 	rootCmd.AddCommand(serveCmd)
 	rootCmd.AddCommand(newJoinCmd())
 	rootCmd.AddCommand(newWorkerCmd())
+	rootCmd.AddCommand(newSelfUpdateCmd())
 	rootCmd.AddCommand(newUninstallCmd())
 	return rootCmd
 }
@@ -32,10 +34,16 @@ func newRootCmd() *cobra.Command {
 // @description Opus API specification.
 // @BasePath /api
 func main() {
+	cleanupOldBinary()
+
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
 	if err := newRootCmd().ExecuteContext(ctx); err != nil {
+		var exitErr exitCodeError
+		if errors.As(err, &exitErr) {
+			os.Exit(exitErr.code)
+		}
 		os.Exit(1)
 	}
 }

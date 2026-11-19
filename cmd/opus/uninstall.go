@@ -189,12 +189,16 @@ func runUninstall(opts uninstallOptions, deps uninstallDeps) error {
 }
 
 func isInsideContainer(deps uninstallDeps) bool {
-	if deps.dockerEnvPath != "" {
-		if _, err := deps.stat(deps.dockerEnvPath); err == nil {
+	return checkInsideContainer(deps.dockerEnvPath, deps.stat, deps.getenv)
+}
+
+func checkInsideContainer(dockerEnvPath string, stat func(string) (os.FileInfo, error), getenv func(string) string) bool {
+	if dockerEnvPath != "" && stat != nil {
+		if _, err := stat(dockerEnvPath); err == nil {
 			return true
 		}
 	}
-	if deps.getenv != nil && deps.getenv("KUBERNETES_SERVICE_HOST") != "" {
+	if getenv != nil && getenv("KUBERNETES_SERVICE_HOST") != "" {
 		return true
 	}
 	return false
