@@ -1,5 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   isRouteErrorResponse,
   Links,
@@ -7,10 +7,12 @@ import {
   Outlet,
   Scripts,
   ScrollRestoration,
+  useNavigate,
 } from "react-router";
 
 import type { Route } from "./+types/root";
 import "./opus.css";
+import { setUnauthorizedRedirect } from "./shared/api/client";
 import { createQueryClient } from "./shared/api/query-client";
 import { themeBootstrapScript } from "./shared/theme";
 
@@ -46,6 +48,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   // One client per app instance; state must not be shared across renders.
   const [queryClient] = useState(createQueryClient);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setUnauthorizedRedirect((to) => {
+      navigate(to, { replace: true });
+    });
+  }, [navigate]);
 
   return (
     <QueryClientProvider client={queryClient}>

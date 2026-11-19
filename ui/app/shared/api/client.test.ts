@@ -1,6 +1,7 @@
 import assert from "node:assert";
 import { describe, it } from "node:test";
 import {
+  buildExpiredLoginUrl,
   handleUnauthorized,
   isAuthOrSetupPath,
   setActiveQueryClient,
@@ -46,7 +47,15 @@ describe("401 handling logic", () => {
 
     assert.strictEqual(removeQueriesCalled, 1);
     assert.deepStrictEqual(removedQueryKey, ["session"]);
-    assert.strictEqual(redirectedTo, "/login");
+    assert.strictEqual(redirectedTo, "/login?expired=1");
+  });
+
+  it("preserves next path and search in expired login URL", () => {
+    assert.strictEqual(
+      buildExpiredLoginUrl("/tasks?status=open"),
+      "/login?next=%2Ftasks%3Fstatus%3Dopen&expired=1",
+    );
+    assert.strictEqual(buildExpiredLoginUrl("/login"), "/login?expired=1");
   });
 
   it("ignores 401 from auth or setup endpoints", () => {
@@ -98,7 +107,7 @@ describe("401 handling logic", () => {
 
       handleUnauthorized("/api/tasks");
 
-      assert.strictEqual(removeQueriesCalled, 1);
+      assert.strictEqual(removeQueriesCalled, 0);
       assert.strictEqual(assignedUrl, null);
     } finally {
       // biome-ignore lint/suspicious/noExplicitAny: restore window

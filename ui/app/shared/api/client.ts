@@ -62,8 +62,17 @@ export function setActiveQueryClient(client: QueryCacheRemover | null) {
   activeQueryClient = client;
 }
 
+export function buildExpiredLoginUrl(currentPathWithSearch: string): string {
+  const params = new URLSearchParams();
+  if (currentPathWithSearch && !currentPathWithSearch.startsWith("/login")) {
+    params.set("next", currentPathWithSearch);
+  }
+  params.set("expired", "1");
+  return `/login?${params.toString()}`;
+}
+
 let redirectFn: UnauthorizedRedirectFn = (to: string) => {
-  if (typeof window !== "undefined" && window.location.pathname !== to) {
+  if (typeof window !== "undefined" && window.location.pathname !== "/login") {
     window.location.assign(to);
   }
 };
@@ -76,8 +85,15 @@ export function handleUnauthorized(url: string) {
   if (isAuthOrSetupPath(url)) {
     return;
   }
+  if (typeof window !== "undefined" && window.location.pathname === "/login") {
+    return;
+  }
   activeQueryClient?.removeQueries({ queryKey: ["session"] });
-  redirectFn("/login");
+  const currentPath =
+    typeof window !== "undefined"
+      ? `${window.location.pathname}${window.location.search ?? ""}`
+      : "";
+  redirectFn(buildExpiredLoginUrl(currentPath));
 }
 
 api.use({

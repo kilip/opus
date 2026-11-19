@@ -7,7 +7,7 @@ import { MemoryRouter } from "react-router";
 
 import { AUTH_ERRORS } from "../api/errors";
 import { authKeys } from "../api/keys";
-import LoginPage from "./LoginPage";
+import LoginPage, { resolveSafeNextPath } from "./LoginPage";
 
 function renderLoginPage({
   providers = [],
@@ -85,5 +85,24 @@ describe("LoginPage (AC2, AC4)", () => {
 
     assert.match(html, /role="alert"/);
     assert.match(html, new RegExp(AUTH_ERRORS.PROVIDER_NOT_FOUND));
+  });
+
+  it("renders session expired notice for ?expired=1 (AC5)", () => {
+    const html = renderLoginPage({
+      url: "/login?expired=1&next=%2Ftasks",
+    });
+
+    assert.match(html, /Your session expired/);
+  });
+
+  it("validates next redirect targets against open redirects (AC4)", () => {
+    assert.strictEqual(resolveSafeNextPath(null), "/tasks");
+    assert.strictEqual(
+      resolveSafeNextPath("/projects?tab=1"),
+      "/projects?tab=1",
+    );
+    assert.strictEqual(resolveSafeNextPath("https://evil.example"), "/tasks");
+    assert.strictEqual(resolveSafeNextPath("//evil.example/foo"), "/tasks");
+    assert.strictEqual(resolveSafeNextPath("/\\evil.example"), "/tasks");
   });
 });

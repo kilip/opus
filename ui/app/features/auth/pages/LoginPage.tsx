@@ -16,6 +16,22 @@ import {
 
 export const meta = () => [{ title: "Log in · Opus" }];
 
+export function resolveSafeNextPath(raw: string | null): string {
+  if (!raw) return "/tasks";
+  if (!raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/\\")) {
+    return "/tasks";
+  }
+  try {
+    const parsed = new URL(raw, "http://localhost");
+    if (parsed.origin !== "http://localhost") {
+      return "/tasks";
+    }
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return "/tasks";
+  }
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -69,8 +85,11 @@ export default function LoginPage() {
     return <Navigate to="/onboarding" replace />;
   }
 
+  const nextTarget = resolveSafeNextPath(searchParams.get("next"));
+  const isSessionExpired = searchParams.get("expired") === "1";
+
   if (user) {
-    return <Navigate to="/tasks" replace />;
+    return <Navigate to={nextTarget} replace />;
   }
 
   const handleRequestOTP = async (e: FormEvent) => {
@@ -132,7 +151,7 @@ export default function LoginPage() {
         email: email.trim(),
         code: cleanCode,
       });
-      navigate("/tasks", { replace: true });
+      navigate(nextTarget, { replace: true });
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -161,6 +180,15 @@ export default function LoginPage() {
             </p>
           </div>
         </div>
+
+        {isSessionExpired && !error && (
+          <div
+            role="status"
+            className="rounded-md border border-line bg-surface-2 p-3 text-sm text-fg"
+          >
+            Your session expired. Please log in again.
+          </div>
+        )}
 
         {error && (
           <div
