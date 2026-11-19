@@ -111,22 +111,63 @@ On each worker machine, make sure `gh` and `agy` are installed and logged in (`g
 
 ## ⚙️ Configuration
 
-Opus is configured via environment variables. Common settings:
+Opus is configured via environment variables (a `.env` file in the working directory is auto-loaded on startup). See [.env.example](.env.example), [Production Deployment Guide](docs/deploy.md), and [Backup and Restore](docs/backup.md).
 
-| Variable | Default | Description |
-| :--- | :--- | :--- |
-| `APP_HOME` | `~/.opus` | Directory for repos, worktrees, and node config |
-| `APP_BASE_URL` | `http://localhost:7880` | Public URL for OAuth callbacks |
-| `APP_DATABASE_URL` | `file:opus.db?...` | SQLite / LibSQL database connection string |
-| `AUTH_SECRET` | — | Secret key for signing session cookies (min 32 chars; persisted in `APP_HOME/auth_secret` if unset) |
-| `AUTH_SETUP_TOKEN` | — | First-run token for `/onboarding` (auto-generated on stderr if unset) |
-| `AUTH_COOKIE_SECURE` | `auto` | Session cookie `Secure` flag (`auto`, `true`, `false`) |
-| `APP_TRUSTED_PROXIES` | — | Comma-separated trusted proxy IPs/CIDRs for `X-Forwarded-For` |
-| `NOTIFY_TELEGRAM_BOT_TOKEN` | — | Telegram bot token for alerts |
-| `NOTIFY_TELEGRAM_CHAT_ID` | — | Telegram chat ID for alerts |
-| `RUN_POLL_INTERVAL` | `30s` | Interval between run reconciler scans |
-| `RUN_STAGE_TIMEOUT` | `2h` | Timeout for an active run stage |
-| `RUN_NODE_GRACE` | `2m` | Grace period before failing active runs on a disconnected worker |
+### `APP_*`
+
+| Variable | Default | Description | Required in production |
+| :--- | :--- | :--- | :--- |
+| `APP_NAME` | `opus` | Application name used in HTTP headers and logs | No |
+| `APP_HOME` | `~/.opus` | Directory for repos, worktrees, `auth_secret`, and `node.json` | Recommended |
+| `APP_HOST` | `0.0.0.0` | TCP bind address for the HTTP server | No |
+| `APP_PORT` | `7880` | TCP listen port for the HTTP server | No |
+| `APP_LOG_LEVEL` | `info` | Structured log level (`debug`, `info`, `warn`, `error`) | No |
+| `APP_READ_TIMEOUT` | `10s` | HTTP server read timeout | No |
+| `APP_WRITE_TIMEOUT` | `10s` | HTTP server write timeout (SSE streams clear this per connection) | No |
+| `APP_IDLE_TIMEOUT` | `60s` | HTTP keep-alive idle timeout | No |
+| `APP_SHUTDOWN_TIMEOUT` | `10s` | Graceful shutdown timeout | No |
+| `APP_BODY_LIMIT` | `4194304` | Maximum HTTP request body size in bytes (4 MiB) | No |
+| `APP_DATABASE_URL` | `file:opus.db?_pragma=foreign_keys(ON)&_pragma=busy_timeout(5000)` | SQLite DSN (WAL mode and `_txlock=immediate` added automatically) | Recommended |
+| `APP_BASE_URL` | `http://localhost:7880` | Canonical public URL for OAuth callbacks, HSTS, and origin checks | **Yes** |
+| `APP_TRUSTED_ORIGINS` | — | Comma-separated additional allowed CORS / CSRF / WebSocket origins | If multi-origin |
+| `APP_TRUSTED_PROXIES` | — | Comma-separated trusted proxy IPs/CIDRs for `X-Forwarded-For` | If behind proxy |
+| `APP_VERSION` | — | Optional version string exposed to the UI via `/config.js` | No |
+| `APP_ALLOW_DOWNGRADE` | `false` | Allow starting a binary older than the stored schema version | No |
+| `APP_SENTRY_DSN` | — | Sentry DSN for backend and UI error reporting | No |
+| `APP_SENTRY_ENVIRONMENT` | `development` | Sentry environment tag | No |
+| `APP_SENTRY_TRACES_SAMPLE_RATE` | `1.0` | Sentry performance trace sample rate (`0.0`–`1.0`) | No |
+| `APP_SMTP_HOST` | — | SMTP server host (falls back to console mailer when unset) | For email OTP |
+| `APP_SMTP_PORT` | `587` | SMTP server port | For email OTP |
+| `APP_SMTP_USERNAME` | — | SMTP authentication username | If SMTP auth |
+| `APP_SMTP_PASSWORD` | — | SMTP authentication password | If SMTP auth |
+| `APP_SMTP_FROM` | — | Outgoing sender email address | For email OTP |
+
+### `AUTH_*`
+
+| Variable | Default | Description | Required in production |
+| :--- | :--- | :--- | :--- |
+| `AUTH_SECRET` | — | Secret key for signing session cookies (min 32 chars; persisted in `APP_HOME/auth_secret` if unset) | **Yes** |
+| `AUTH_SESSION_TTL` | `720h` | Session cookie lifetime | No |
+| `AUTH_SETUP_TOKEN` | — | First-run token for `/onboarding` (auto-generated on stderr if unset) | No |
+| `AUTH_COOKIE_SECURE` | `auto` | Session cookie `Secure` flag (`auto`, `true`, `false`) | No |
+| `AUTH_GITHUB_ID` | — | GitHub OAuth client ID | For GitHub OAuth |
+| `AUTH_GITHUB_SECRET` | — | GitHub OAuth client secret | For GitHub OAuth |
+| `AUTH_GOOGLE_ID` | — | Google OAuth client ID | For Google OAuth |
+| `AUTH_GOOGLE_SECRET` | — | Google OAuth client secret | For Google OAuth |
+| `AUTH_FACEBOOK_ID` | — | Facebook OAuth app ID | For Facebook OAuth |
+| `AUTH_FACEBOOK_SECRET` | — | Facebook OAuth app secret | For Facebook OAuth |
+
+### `TRACKER_*`, `RUN_*`, `WORKER_*`, and `NOTIFY_*`
+
+| Variable | Default | Description | Required in production |
+| :--- | :--- | :--- | :--- |
+| `TRACKER_POLL_INTERVAL` | `60s` | Interval between GitHub tracker sync polling cycles | No |
+| `RUN_POLL_INTERVAL` | `30s` | Interval between run reconciler scans | No |
+| `RUN_STAGE_TIMEOUT` | `2h` | Inactivity timeout for an active run stage | No |
+| `RUN_NODE_GRACE` | `2m` | Grace period before failing active runs on a disconnected worker | No |
+| `WORKER_AGY_BIN` | `agy` | Path or binary name for the `agy` ACP CLI on worker nodes | No |
+| `NOTIFY_TELEGRAM_BOT_TOKEN` | — | Telegram bot token for alerts | No |
+| `NOTIFY_TELEGRAM_CHAT_ID` | — | Telegram chat ID for alerts | No |
 
 ---
 
@@ -141,6 +182,14 @@ mise run dev
 # Format, lint, and test everything
 mise run qc
 ```
+
+See [Operations Notes](docs/operations.md), [Production Deployment Guide](docs/deploy.md), [Backup and Restore](docs/backup.md), and [Contributing](CONTRIBUTING.md).
+
+---
+
+## 📄 License
+
+Licensed under the [MIT License](LICENSE).
 
 ---
 

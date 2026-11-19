@@ -6,7 +6,7 @@ Security updates are applied to the latest release and the `main` branch.
 
 | Version | Supported |
 | :--- | :--- |
-| `0.1.x` / `main` | ✅ |
+| `0.3.x` / `main` | ✅ |
 
 ---
 

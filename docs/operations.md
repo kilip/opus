@@ -1,5 +1,7 @@
 # Operations Notes
 
+For production deployment, reverse proxy, and backup procedures, see the [Production Deployment Guide](deploy.md) and [Backup and Restore](backup.md).
+
 ## Worker Node Setup
 
 Worker nodes execute `vibe` runs inside isolated git worktrees using `gh` and `agy`.
@@ -70,6 +72,11 @@ opus uninstall --purge
 ### Docker & Kubernetes
 
 `opus uninstall` refuses to run inside containers. Stop and remove the Docker container (or uninstall the Helm release) instead.
+
+When running the built-in worker inside Docker or Kubernetes:
+
+- Set `GH_TOKEN` (via Secret or `-e GH_TOKEN=...`) with **Contents**, **Issues**, **Pull requests** (read/write) and **Metadata** (read) scopes.
+- Complete `agy auth login` interactively inside the container (`docker exec -it <container> agy auth login` or `kubectl exec -it ... -- agy auth login`) so credentials persist in `/data`; automated login is planned.
 
 ## Security Model
 

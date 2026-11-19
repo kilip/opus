@@ -51,6 +51,29 @@ Or run individual checks:
 - `mise run lint` — Run Go vet, `golangci-lint`, Biome, and TypeScript checks
 - `mise run test` — Run Go tests (`-race`) and UI tests
 
+### Testing Helm Charts & Install Scripts
+
+```bash
+# Lint and render Helm chart with CI values
+helm lint charts --strict
+helm template opus charts -f charts/ci/default-values.yaml > /dev/null
+
+# Run Unix install script against a local fixture or in CI
+shellcheck scripts/install.sh
+```
+
+For full Kubernetes smoke testing, load a local image into `kind` and install with `helm install opus ./charts`.
+
+---
+
+## 🚀 Releases
+
+Releases are automated by `release-please`:
+
+1. Conventional commits merged to `main` update the open `release-please` PR.
+2. Merging the release PR creates a version tag (`vX.Y.Z`) and GitHub Release.
+3. Tag workflows build and publish cross-platform binaries (`checksums.txt`), multi-arch Docker images (`ghcr.io/kilip/opus`), and the OCI Helm chart (`oci://ghcr.io/kilip/charts/opus`).
+
 ---
 
 ## 📬 Pull Requests
