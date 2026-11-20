@@ -1,7 +1,7 @@
 {
 	"name": "opus",
 	"displayName": "AGY Builder & PR Workflow",
-	"version": "0.0.0-dev",
+	"version": "1.0.0-rc.1",
 	"description": "Token-efficient Issue-to-PR workflows (express, vibe via Opus MCP), Streamable HTTP MCP config, Telegram notifications, and specialized subagents (scout, planner, coder, verifier, pr-manager).",
 	"logo": "assets/logo.svg"
 }
