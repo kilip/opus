@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [v0.3.1-rc3](https://github.com/kilip/opus/compare/v0.3.0-rc3...v0.3.1-rc3) (2026-11-20)
+
+### 🐛 Bug Fixes
+
+- **api:** allow inline bootstrap scripts in CSP ([877e85d](https://github.com/kilip/opus/commit/877e85d6a4611d23cdb83a04763fab39b87f2379))
+- **api:** log 4xx request errors at warn level ([09672e1](https://github.com/kilip/opus/commit/09672e13d9957c1a5b82f556d11f151435f21053))
+
 ## [v0.3.0-rc3](https://github.com/kilip/opus/compare/v0.3.0-rc2...v0.3.0-rc3) (2026-11-19)
 
 ### ✨ Features
