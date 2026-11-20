@@ -69,5 +69,10 @@ jobs:
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
         run: |
+          TAG="${{ steps.release.outputs.tag_name }}"
+          PRERELEASE_FLAG=""
+          if [[ "$TAG" == *-* ]]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
           bun .github/scripts/generate-changelog.ts --stdout > /tmp/release-notes.md
-          gh release edit "${{ steps.release.outputs.tag_name }}" -F /tmp/release-notes.md
+          gh release edit "$TAG" $PRERELEASE_FLAG -F /tmp/release-notes.md
